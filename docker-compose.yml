@@ -1,0 +1,54 @@
+# Single DO droplet stack: Bun/SvelteKit app + self-managed Postgres + Caddy (auto-TLS).
+# See sales-crm.md §Deployment & runtime notes. Secrets come from a sibling .env (gitignored).
+
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgres://crm:${POSTGRES_PASSWORD:-crm}@db:5432/veent_crm
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-}
+      BETTER_AUTH_URL: ${BETTER_AUTH_URL:-}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      REMINDERS_ENDPOINT_SECRET: ${REMINDERS_ENDPOINT_SECRET:-}
+      INGEST_SECRET: ${INGEST_SECRET:-}
+    depends_on:
+      db:
+        condition: service_healthy
+    expose:
+      - '3000'
+
+  db:
+    image: postgres:17
+    restart: unless-stopped
+    # Postgres is compose-internal only — NOT published to the host (see §Ops/security).
+    environment:
+      POSTGRES_USER: crm
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-crm}
+      POSTGRES_DB: veent_crm
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U crm -d veent_crm']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - '80:80'
+      - '443:443'
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - app
+
+volumes:
+  pgdata:
+  caddy_data:
+  caddy_config:

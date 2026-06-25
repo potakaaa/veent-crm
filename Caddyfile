@@ -1,0 +1,7 @@
+# Caddy reverse proxy with automatic TLS (see sales-crm.md §Deployment).
+# Replace the placeholder hostname with the real CRM domain before deploy.
+
+crm.example.com {
+	encode gzip
+	reverse_proxy app:3000
+}

@@ -1,0 +1,7 @@
+# Dev convenience — exposes Postgres to the host so drizzle-kit and seed scripts
+# can connect from outside the compose network. Bound to 127.0.0.1 only (not
+# exposed to the network), so this is safe to commit and safe on the droplet.
+services:
+  db:
+    ports:
+      - '127.0.0.1:5432:5432'

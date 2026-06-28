@@ -22,7 +22,7 @@
 			</Table.Row>
 		</Table.Header>
 		<Table.Body>
-			{#each data.users as u}
+			{#each data.users as u (u.id)}
 				<Table.Row>
 					<Table.Cell class="font-medium">{u.name}</Table.Cell>
 					<Table.Cell class="text-muted-foreground">{u.email ?? '— record only'}</Table.Cell>

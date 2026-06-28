@@ -6,7 +6,7 @@ import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import { crmUsers } from '../src/lib/server/db/schema.ts';
 
-const url = process.env.DATABASE_URL ?? 'postgres://crm:crm@localhost:5432/veent_crm';
+const url = process.env.DATABASE_URL ?? 'postgres://crm:crm@127.0.0.1:5432/veent_crm';
 const client = postgres(url, { max: 1 });
 const db = drizzle(client);
 
@@ -23,6 +23,9 @@ const users: (typeof crmUsers.$inferInsert)[] = [
 	{ id: '00000000-0000-0000-0000-000000000010', name: 'Dhen',         email: null,                   role: 'rep',     active: false },
 ];
 
-await db.insert(crmUsers).values(users).onConflictDoNothing();
-console.log(`Seeded ${users.length} users`);
-await client.end();
+try {
+	await db.insert(crmUsers).values(users).onConflictDoNothing();
+	console.log(`Seeded ${users.length} users`);
+} finally {
+	await client.end();
+}

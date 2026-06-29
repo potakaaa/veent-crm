@@ -109,6 +109,36 @@ export const userFormSchema = z.object({
 });
 export type UserForm = z.infer<typeof userFormSchema>;
 
+// --- Move lead stage (pipeline + detail page) ---------------------------------
+const PIPELINE_STAGES = ['new', 'contacted', 'replied', 'in_discussion'] as const;
+
+export const moveStageSchema = z.discriminatedUnion('stage', [
+	z.object({ stage: z.enum(PIPELINE_STAGES) }),
+	z.object({
+		stage: z.literal('won'),
+		wonOrgName: z.string().optional(),
+		dealValueCents: z.number().int().nonnegative().optional(),
+		currency: z.enum(CURRENCIES).default('PHP'),
+		signedAt: z.string().optional()
+	}),
+	z.object({
+		stage: z.literal('lost'),
+		lostReason: z.enum(LOST_REASONS)
+	})
+]);
+export type MoveStageInput = z.infer<typeof moveStageSchema>;
+
+// --- Update lead owner -------------------------------------------------------
+// Use a shape-only UUID regex rather than z.string().uuid() so that seeded
+// fixed-format UUIDs (e.g. 00000000-…-0001) also pass. Real DB UUIDs from
+// defaultRandom() satisfy both; z.string().uuid() enforces RFC 4122 variant
+// bits which the seeded rows intentionally violate.
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+export const ownerUpdateSchema = z.object({
+	ownerId: z.string().regex(UUID_RE, 'Invalid owner ID')
+});
+export type OwnerUpdate = z.infer<typeof ownerUpdateSchema>;
+
 // --- Scraper ingest contract (future; reused as the /api/leads/ingest validator) ---
 export const ingestLeadSchema = z.object({
 	pageName: z.string().min(1),

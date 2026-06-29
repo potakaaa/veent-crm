@@ -56,9 +56,18 @@
 		if (stage === 'won') return void (wonOpen = true);
 		if (stage === 'lost') return void (lostOpen = true);
 		try {
-			await crm.moveLeadStage(lead.id, stage);
+			const res = await fetch(`/api/leads/${lead.id}/stage`, {
+				method: 'PATCH',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ stage })
+			});
+			if (!res.ok) {
+				const msg = await res.text().catch(() => 'Server error');
+				toasts.push(`Stage update failed: ${msg}`);
+				return;
+			}
 		} catch {
-			toasts.push('Stage transitions will be wired in Phase 5.');
+			toasts.push('Stage update failed — server error');
 			return;
 		}
 		await invalidateAll();
@@ -66,41 +75,65 @@
 	}
 
 	async function confirmWon(payload: MoveStagePayload) {
+		wonOpen = false;
 		try {
-			await crm.moveLeadStage(lead.id, 'won', payload);
+			const res = await fetch(`/api/leads/${lead.id}/stage`, {
+				method: 'PATCH',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ stage: 'won', ...payload })
+			});
+			if (!res.ok) {
+				const msg = await res.text().catch(() => 'Server error');
+				toasts.push(`Won capture failed: ${msg}`);
+				return;
+			}
 		} catch {
-			wonOpen = false;
-			toasts.push('Won capture will be wired in Phase 5.');
+			toasts.push('Won capture failed — server error');
 			return;
 		}
-		wonOpen = false;
 		await invalidateAll();
 		toasts.success('Deal won — captured 🎉');
 	}
 
 	async function confirmLost(reason: LostReason, note?: string) {
 		void note;
+		lostOpen = false;
 		try {
-			await crm.moveLeadStage(lead.id, 'lost', { lostReason: reason });
+			const res = await fetch(`/api/leads/${lead.id}/stage`, {
+				method: 'PATCH',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ stage: 'lost', lostReason: reason })
+			});
+			if (!res.ok) {
+				const msg = await res.text().catch(() => 'Server error');
+				toasts.push(`Mark lost failed: ${msg}`);
+				return;
+			}
 		} catch {
-			lostOpen = false;
-			toasts.push('Lost marking will be wired in Phase 5.');
+			toasts.push('Mark lost failed — server error');
 			return;
 		}
-		lostOpen = false;
 		await invalidateAll();
 		toasts.push('Marked lost — still searchable');
 	}
 
 	async function confirmReassign(ownerId: string) {
+		reassignOpen = false;
 		try {
-			await crm.reassignLeads([lead.id], ownerId);
+			const res = await fetch(`/api/leads/${lead.id}/owner`, {
+				method: 'PATCH',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ ownerId })
+			});
+			if (!res.ok) {
+				const msg = await res.text().catch(() => 'Server error');
+				toasts.push(`Reassign failed: ${msg}`);
+				return;
+			}
 		} catch {
-			reassignOpen = false;
-			toasts.push('Reassign will be wired in Phase 5.');
+			toasts.push('Reassign failed — server error');
 			return;
 		}
-		reassignOpen = false;
 		await invalidateAll();
 		toasts.success('Lead reassigned');
 	}

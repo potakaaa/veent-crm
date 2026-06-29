@@ -3,9 +3,17 @@
  * All public functions run queries; pure mapper helpers are exported for testing.
  */
 import { db } from './index';
-import { crmLeads, crmUsers, crmActivities } from './schema';
+import { crmLeads, crmUsers, crmActivities, crmLeadHistory } from './schema';
 import { eq, isNull, desc, and, sql } from 'drizzle-orm';
-import type { Lead, User, Activity, Stage, Urgency } from '$lib/types';
+import type {
+	Lead,
+	User,
+	Activity,
+	Stage,
+	Urgency,
+	LostReason,
+	MoveStagePayload
+} from '$lib/types';
 import { computeAge } from '$lib/utils/dates';
 
 type DbLead = typeof crmLeads.$inferSelect;
@@ -174,4 +182,123 @@ export async function createLead(
 		.returning();
 
 	return dbRowToLead(row);
+}
+
+export async function moveLeadStage(
+	id: string,
+	stage: Stage,
+	payload: MoveStagePayload,
+	actorId: string
+): Promise<Lead | null> {
+	const [existing] = await db
+		.select({ stage: crmLeads.stage, ownerId: crmLeads.ownerId })
+		.from(crmLeads)
+		.where(and(eq(crmLeads.id, id), isNull(crmLeads.deletedAt)))
+		.limit(1);
+
+	if (!existing) return null;
+
+	const now = new Date();
+	let updated: DbLead;
+
+	if (stage === 'won') {
+		[updated] = await db
+			.update(crmLeads)
+			.set({
+				stage: 'won',
+				wonOrgName: payload.wonOrgName ?? null,
+				dealValueCents: payload.dealValueCents ?? null,
+				currency: payload.currency ?? 'PHP',
+				signedAt: payload.signedAt ? new Date(payload.signedAt) : now,
+				lastActivityAt: now,
+				updatedAt: now
+			})
+			.where(eq(crmLeads.id, id))
+			.returning();
+	} else if (stage === 'lost') {
+		[updated] = await db
+			.update(crmLeads)
+			.set({
+				stage: 'lost',
+				lostReason: (payload.lostReason ?? null) as LostReason | null,
+				lastActivityAt: now,
+				updatedAt: now
+			})
+			.where(eq(crmLeads.id, id))
+			.returning();
+	} else {
+		[updated] = await db
+			.update(crmLeads)
+			.set({ stage, updatedAt: now })
+			.where(eq(crmLeads.id, id))
+			.returning();
+	}
+
+	// Audit trail — always record the stage change
+	const historyRows: (typeof crmLeadHistory.$inferInsert)[] = [
+		{ leadId: id, actorUserId: actorId, field: 'stage', oldValue: existing.stage, newValue: stage }
+	];
+	if (stage === 'won') {
+		if (payload.wonOrgName) {
+			historyRows.push({
+				leadId: id,
+				actorUserId: actorId,
+				field: 'won_org_name',
+				oldValue: null,
+				newValue: payload.wonOrgName
+			});
+		}
+		if (payload.dealValueCents !== undefined) {
+			historyRows.push({
+				leadId: id,
+				actorUserId: actorId,
+				field: 'deal_value_cents',
+				oldValue: null,
+				newValue: String(payload.dealValueCents)
+			});
+		}
+	}
+	if (stage === 'lost' && payload.lostReason) {
+		historyRows.push({
+			leadId: id,
+			actorUserId: actorId,
+			field: 'lost_reason',
+			oldValue: null,
+			newValue: payload.lostReason
+		});
+	}
+	await db.insert(crmLeadHistory).values(historyRows);
+
+	return dbRowToLead(updated);
+}
+
+export async function reassignLead(
+	id: string,
+	ownerId: string,
+	actorId: string
+): Promise<Lead | null> {
+	const [existing] = await db
+		.select({ ownerId: crmLeads.ownerId })
+		.from(crmLeads)
+		.where(and(eq(crmLeads.id, id), isNull(crmLeads.deletedAt)))
+		.limit(1);
+
+	if (!existing) return null;
+
+	const now = new Date();
+	const [updated] = await db
+		.update(crmLeads)
+		.set({ ownerId, updatedAt: now })
+		.where(eq(crmLeads.id, id))
+		.returning();
+
+	await db.insert(crmLeadHistory).values({
+		leadId: id,
+		actorUserId: actorId,
+		field: 'owner_id',
+		oldValue: existing.ownerId,
+		newValue: ownerId
+	});
+
+	return dbRowToLead(updated);
 }

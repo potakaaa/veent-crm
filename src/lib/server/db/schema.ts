@@ -247,6 +247,11 @@ export const baSession = pgTable('session', {
 		.references(() => baUser.id, { onDelete: 'cascade' })
 });
 
+// Composite unique constraint (provider_id, account_id) is enforced via
+// drizzle/0003_ba_account_unique.sql — not managed by Drizzle schema diff
+// per project convention (Better Auth owns this table's migration lifecycle).
+// TODO (when Better Auth is wired): confirm the adapter handles the unique
+// violation gracefully (ON CONFLICT) rather than surfacing a 500.
 export const baAccount = pgTable('account', {
 	id: text('id').primaryKey(),
 	accountId: text('account_id').notNull(),

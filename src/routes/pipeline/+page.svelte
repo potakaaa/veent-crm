@@ -4,7 +4,6 @@
 	import PipelineBoard from '$lib/components/pipeline/PipelineBoard.svelte';
 	import WonCaptureModal from '$lib/components/leads/WonCaptureModal.svelte';
 	import LostReasonModal from '$lib/components/leads/LostReasonModal.svelte';
-	import { crm } from '$lib/services';
 	import { toasts } from '$lib/stores/toasts.svelte';
 	import type { Lead, LostReason, MoveStagePayload, Stage } from '$lib/types';
 
@@ -18,23 +17,69 @@
 		if (!lead || lead.stage === stage) return;
 		if (stage === 'won') return void (wonLead = lead);
 		if (stage === 'lost') return void (lostLead = lead);
-		await crm.moveLeadStage(leadId, stage);
+
+		try {
+			const res = await fetch(`/api/leads/${leadId}/stage`, {
+				method: 'PATCH',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ stage })
+			});
+			if (!res.ok) {
+				const msg = await res.text().catch(() => 'Server error');
+				toasts.push(`Failed to move stage: ${msg}`);
+				return;
+			}
+		} catch {
+			toasts.push('Failed to move stage — server error');
+			return;
+		}
 		await invalidateAll();
 		toasts.push(`Moved ${lead.name} to ${stage}`);
 	}
 
 	async function confirmWon(payload: MoveStagePayload) {
 		if (!wonLead) return;
-		await crm.moveLeadStage(wonLead.id, 'won', payload);
+		const id = wonLead.id;
+		const name = wonLead.name;
 		wonLead = null;
+		try {
+			const res = await fetch(`/api/leads/${id}/stage`, {
+				method: 'PATCH',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ stage: 'won', ...payload })
+			});
+			if (!res.ok) {
+				const msg = await res.text().catch(() => 'Server error');
+				toasts.push(`Won capture failed: ${msg}`);
+				return;
+			}
+		} catch {
+			toasts.push('Won capture failed — server error');
+			return;
+		}
 		await invalidateAll();
-		toasts.success('Deal won — captured 🎉');
+		toasts.success(`${name} — deal won 🎉`);
 	}
 
 	async function confirmLost(reason: LostReason) {
 		if (!lostLead) return;
-		await crm.moveLeadStage(lostLead.id, 'lost', { lostReason: reason });
+		const id = lostLead.id;
 		lostLead = null;
+		try {
+			const res = await fetch(`/api/leads/${id}/stage`, {
+				method: 'PATCH',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ stage: 'lost', lostReason: reason })
+			});
+			if (!res.ok) {
+				const msg = await res.text().catch(() => 'Server error');
+				toasts.push(`Mark lost failed: ${msg}`);
+				return;
+			}
+		} catch {
+			toasts.push('Mark lost failed — server error');
+			return;
+		}
 		await invalidateAll();
 		toasts.push('Marked lost — still searchable');
 	}
@@ -48,7 +93,7 @@
 			<span
 				class="rounded-control border border-primary/25 bg-[rgba(192,54,44,0.1)] px-2.5 py-[5px] font-mono text-[11.5px] text-primary"
 			>
-				scope: my active leads
+				scope: all active leads
 			</span>
 		{/snippet}
 	</PageHeader>

@@ -1,0 +1,29 @@
+import { json, error } from '@sveltejs/kit';
+import type { RequestHandler } from './$types';
+import { moveStageSchema } from '$lib/zod/schemas';
+import { moveLeadStage } from '$lib/server/db/leads';
+
+export const PATCH: RequestHandler = async ({ params, request, locals }) => {
+	if (!locals.user) throw error(401, 'Unauthorized');
+
+	let body: unknown;
+	try {
+		body = await request.json();
+	} catch {
+		throw error(400, 'Invalid JSON');
+	}
+
+	const parsed = moveStageSchema.safeParse(body);
+	if (!parsed.success) {
+		const msg = parsed.error.issues[0]?.message ?? 'Invalid input';
+		throw error(400, msg);
+	}
+
+	const { stage, ...payload } = parsed.data;
+	// Auth is evaluated atomically with the mutation inside moveLeadStage's transaction.
+	const result = await moveLeadStage(params.id, stage, payload, locals.user.id, locals.user.role);
+	if (result === 'forbidden') throw error(403, 'Forbidden');
+	if (result === null) throw error(404, 'Lead not found');
+
+	return json(result);
+};

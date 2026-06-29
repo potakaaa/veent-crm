@@ -73,7 +73,8 @@ export const activityChannel = pgEnum('crm_activity_channel', [
 	'email',
 	'call',
 	'meeting',
-	'other'
+	'other',
+	'scraped_event'
 ]);
 
 export const activityOutcome = pgEnum('crm_activity_outcome', [
@@ -157,6 +158,9 @@ export const crmLeads = pgTable(
 		currency: text('currency').default('PHP'), // required when value set (enforced in app)
 		signedAt: timestamp('signed_at', { withTimezone: true }),
 
+		// scraper provenance — event ID from the scraper DB; unique per non-null value
+		sourceRef: text('source_ref'),
+
 		notes: text('notes'),
 		createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 		updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
@@ -165,7 +169,10 @@ export const crmLeads = pgTable(
 		index('crm_leads_normalized_handle_idx').on(t.normalizedHandle),
 		index('crm_leads_stage_idx').on(t.stage),
 		index('crm_leads_owner_idx').on(t.ownerId),
-		index('crm_leads_last_activity_idx').on(t.lastActivityAt)
+		index('crm_leads_last_activity_idx').on(t.lastActivityAt),
+		uniqueIndex('crm_leads_source_ref_uq')
+			.on(t.sourceRef)
+			.where(sql`source_ref IS NOT NULL AND deleted_at IS NULL`)
 	]
 );
 
@@ -187,6 +194,14 @@ export const crmActivities = pgTable(
 		// drives reminders; partial index WHERE follow_up_at IS NOT NULL
 		followUpAt: timestamp('follow_up_at', { withTimezone: true }),
 		notes: text('notes'),
+
+		// scraper-event provenance (D-1) — nullable; populated only for channel='scraped_event'
+		eventName: text('event_name'),
+		eventDate: date('event_date'),
+		eventUrl: text('event_url'),
+		eventCategory: text('event_category'),
+		eventSource: text('event_source'),
+
 		createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 		updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
 	},
@@ -197,7 +212,14 @@ export const crmActivities = pgTable(
 		// partial index for the reminder query
 		index('crm_activities_follow_up_idx')
 			.on(t.followUpAt)
-			.where(sql`${t.followUpAt} IS NOT NULL`)
+			.where(sql`${t.followUpAt} IS NOT NULL`),
+		// dedupe scraper events: re-running the importer / re-POSTing to /api/leads/ingest
+		// must never create duplicate activity rows. Partial (event_url IS NOT NULL) so
+		// rep-touch activities (event_url null) are unaffected — still deduped by
+		// crm_activities_dedupe_uq above.
+		uniqueIndex('crm_activities_scraped_event_uq')
+			.on(t.leadId, t.eventUrl)
+			.where(sql`${t.eventUrl} IS NOT NULL`)
 	]
 );
 

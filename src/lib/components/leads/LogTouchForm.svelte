@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { Textarea } from '$lib/components/ui/textarea';
 	import { Button } from '$lib/components/ui/button';
+	import { ACTIVITY_CHANNELS } from '$lib/zod/schemas';
 	import type { ActivityChannel, ActivityOutcome, AddActivityInput } from '$lib/types';
 
 	let {
@@ -8,12 +9,19 @@
 		disabled = false
 	}: { onSubmit: (input: AddActivityInput) => void | Promise<void>; disabled?: boolean } = $props();
 
-	const channelOpts: { key: ActivityChannel; label: string }[] = [
-		{ key: 'fb_dm', label: 'FB DM' },
-		{ key: 'fb_comment', label: 'FB comment' },
-		{ key: 'ig_dm', label: 'IG DM' },
-		{ key: 'email', label: 'Email' }
-	];
+	const channelLabels: Record<ActivityChannel, string> = {
+		fb_dm: 'FB DM',
+		fb_comment: 'FB comment',
+		ig_dm: 'IG DM',
+		email: 'Email',
+		call: 'Call',
+		meeting: 'Meeting',
+		other: 'Other'
+	};
+	const channelOpts: { key: ActivityChannel; label: string }[] = ACTIVITY_CHANNELS.map((key) => ({
+		key,
+		label: channelLabels[key]
+	}));
 	const outcomeOpts: { key: ActivityOutcome; label: string }[] = [
 		{ key: 'sent', label: 'sent' },
 		{ key: 'replied', label: 'replied' },
@@ -36,6 +44,8 @@
 		try {
 			await onSubmit({ channel, outcome, followUpInDays, note: note.trim() || undefined });
 			note = '';
+		} catch {
+			// errors already surfaced as toasts by the onSubmit handler
 		} finally {
 			submitting = false;
 		}

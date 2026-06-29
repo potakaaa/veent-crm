@@ -99,7 +99,7 @@ For most substantial tasks:
 | leads     | `process/features/leads/_GUIDE.md`     | not-started (mock data only)             |
 | pipeline  | `process/features/pipeline/_GUIDE.md`  | not-started (mock data only)             |
 | import    | `process/features/import/_GUIDE.md`    | not-started (stub pipeline)              |
-| reminders | `process/features/reminders/_GUIDE.md` | not-started (stub)                       |
+| reminders | `process/features/reminders/_GUIDE.md` | in-progress (code-complete, EVL green; manual UI/DB gates pending) |
 | reports   | `process/features/reports/_GUIDE.md`   | not-started (mock data only)             |
 
 ---

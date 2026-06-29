@@ -40,32 +40,35 @@
 	]);
 
 	async function logTouch(input: AddActivityInput) {
-		let followUpAt: string | undefined;
-		if (input.followUpInDays != null) {
-			followUpAt = new Date(Date.now() + input.followUpInDays * 86_400_000)
-				.toISOString()
-				.slice(0, 10);
-		}
+		const occurredAt = new Date().toISOString();
+		let res: Response;
 		try {
-			const res = await fetch(`/api/leads/${lead.id}/touch`, {
+			res = await fetch(`/api/leads/${lead.id}/activities`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
+					leadId: lead.id,
 					channel: input.channel,
 					outcome: input.outcome,
-					followUpAt,
+					occurredAt,
+					followUpInDays: input.followUpInDays,
 					notes: input.note
 				})
 			});
-			if (!res.ok) {
-				const msg = await res.text().catch(() => 'Server error');
-				toasts.push(`Touch failed: ${msg}`);
-				return;
-			}
 		} catch {
-			toasts.push('Touch failed — server error');
-			return;
+			toasts.push('Touch logging failed — server error');
+			throw new Error('network');
 		}
+
+		if (res.status === 409) {
+			toasts.push('Already logged — touch already recorded for this channel/time');
+			throw new Error('duplicate');
+		}
+		if (!res.ok) {
+			toasts.push('Touch logging failed — please try again');
+			throw new Error('http');
+		}
+
 		await invalidateAll();
 		toasts.success('Touch logged · follow-up booked');
 	}

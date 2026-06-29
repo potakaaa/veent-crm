@@ -26,9 +26,15 @@ type DbActivity = typeof crmActivities.$inferSelect;
 // Pure mappers (exported for unit tests)
 // ---------------------------------------------------------------------------
 
-export function dbRowToLead(row: DbLead, followUpAt?: Date | null): Lead {
+export function dbRowToLead(row: DbLead, followUpAt?: string | Date | null): Lead {
 	const createdAt = row.createdAt.toISOString();
 	const lastActivityAt = row.lastActivityAt?.toISOString() ?? createdAt;
+
+	const followUpIso = followUpAt
+		? followUpAt instanceof Date
+			? followUpAt.toISOString()
+			: followUpAt
+		: undefined;
 
 	const handle = row.normalizedHandle
 		? row.normalizedHandle.startsWith('@')
@@ -40,12 +46,7 @@ export function dbRowToLead(row: DbLead, followUpAt?: Date | null): Lead {
 				.replace(/\s+/g, '')
 				.replace(/[^a-z0-9@]/g, '');
 
-	const followUpAtIso = followUpAt ? followUpAt.toISOString() : undefined;
-	const now = new Date();
-	const age = computeAge(
-		{ lastActivityAt, stage: row.stage as Stage, followUpAt: followUpAtIso },
-		now
-	);
+	const age = computeAge({ lastActivityAt, stage: row.stage as Stage, followUpAt: followUpIso });
 
 	const urgency: Urgency = (() => {
 		if (age.type === 'overdue') return 'overdue';
@@ -79,7 +80,7 @@ export function dbRowToLead(row: DbLead, followUpAt?: Date | null): Lead {
 		lostReason: (row.lostReason as Lead['lostReason']) ?? undefined,
 		createdAt,
 		lastActivityAt,
-		followUpAt: followUpAtIso,
+		followUpAt: followUpIso,
 		age,
 		urgency
 	};
@@ -106,6 +107,24 @@ export function dbActivityToActivity(row: DbActivity): Activity {
 		createdAt: row.occurredAt.toISOString(),
 		followUpAt: row.followUpAt?.toISOString()
 	};
+}
+
+/**
+ * Resolve a follow-up timestamp for a logged touch (pure — unit-testable without a DB).
+ * Precedence: explicit `followUpAt` > computed from `followUpInDays` > null.
+ */
+export function resolveFollowUpAt(
+	occurredAt: Date,
+	followUpInDays?: number,
+	followUpAt?: Date | string
+): Date | null {
+	if (followUpAt != null) {
+		return followUpAt instanceof Date ? followUpAt : new Date(followUpAt);
+	}
+	if (followUpInDays != null && Number.isFinite(followUpInDays)) {
+		return new Date(occurredAt.getTime() + followUpInDays * 86_400_000);
+	}
+	return null;
 }
 
 // ---------------------------------------------------------------------------
@@ -190,6 +209,61 @@ export async function createLead(
 		.returning();
 
 	return dbRowToLead(row);
+}
+
+/**
+ * Insert an outreach touch and bump the lead's `last_activity_at`, transactionally.
+ * Returns the created Activity, or `null` on a dedup conflict (caller maps to 409).
+ * On a dedup no-op the lead is NOT updated.
+ */
+export async function insertActivity(input: {
+	leadId: string;
+	repId: string;
+	channel: DbActivity['channel'];
+	outcome?: DbActivity['outcome'];
+	occurredAt?: Date;
+	followUpInDays?: number;
+	followUpAt?: Date;
+	notes?: string;
+}): Promise<Activity | null> {
+	const ts = input.occurredAt ?? new Date();
+	const followUpAt = resolveFollowUpAt(ts, input.followUpInDays, input.followUpAt);
+
+	return db.transaction(async (tx) => {
+		const inserted = await tx
+			.insert(crmActivities)
+			.values({
+				leadId: input.leadId,
+				repId: input.repId,
+				channel: input.channel,
+				outcome: input.outcome ?? null,
+				occurredAt: ts,
+				followUpAt,
+				notes: input.notes ?? null
+			})
+			.onConflictDoNothing({
+				target: [
+					crmActivities.leadId,
+					crmActivities.repId,
+					crmActivities.occurredAt,
+					crmActivities.channel
+				]
+			})
+			.returning();
+
+		// Dedup no-op: identical touch already recorded — do NOT touch the lead.
+		if (inserted.length === 0) return null;
+
+		await tx
+			.update(crmLeads)
+			.set({
+				lastActivityAt: sql`GREATEST(COALESCE(${crmLeads.lastActivityAt}, ${ts}), ${ts})`,
+				updatedAt: new Date()
+			})
+			.where(eq(crmLeads.id, input.leadId));
+
+		return dbActivityToActivity(inserted[0]);
+	});
 }
 
 export async function moveLeadStage(

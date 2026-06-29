@@ -45,10 +45,15 @@ export function relativeFromNow(iso: string | undefined, now = new Date()): stri
 	return `${Math.floor(hours / 24)}d ago`;
 }
 
-/** Compute an age badge from a lead's follow-up / last-activity timestamps. */
+/**
+ * Compute an age badge from a lead's follow-up / last-activity timestamps.
+ *
+ * `now` defaults to live `new Date()` so server-side urgency matches SQL `now()`
+ * (C6 fix). Pass an explicit reference time for deterministic tests / mock data.
+ */
 export function computeAge(
 	lead: Pick<Lead, 'followUpAt' | 'lastActivityAt' | 'stage'>,
-	now = new Date()
+	now: Date = new Date()
 ): {
 	label: string;
 	type: AgeType;

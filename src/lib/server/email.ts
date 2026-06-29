@@ -12,8 +12,10 @@ export type EmailMessage = {
 const resend = new Resend(env.RESEND_API_KEY);
 
 export async function sendEmail(msg: EmailMessage): Promise<void> {
+	const from = env.RESEND_FROM;
+	if (!from) throw new Error('RESEND_FROM env var is not set');
 	const { error } = await resend.emails.send({
-		from: env.RESEND_FROM,
+		from,
 		to: msg.to,
 		subject: msg.subject,
 		html: msg.html

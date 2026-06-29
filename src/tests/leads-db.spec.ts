@@ -61,10 +61,7 @@ describe('createLead + getLead roundtrip (DB)', () => {
 		createdIds.push(lead.id);
 
 		// Soft-delete it directly
-		await db
-			.update(crmLeads)
-			.set({ deletedAt: new Date() })
-			.where(eq(crmLeads.id, lead.id));
+		await db.update(crmLeads).set({ deletedAt: new Date() }).where(eq(crmLeads.id, lead.id));
 
 		const fetched = await getLead(lead.id);
 		expect(fetched).toBeNull();
@@ -101,10 +98,7 @@ describe('listLeads (DB)', () => {
 		);
 		createdIds.push(lead.id);
 
-		await db
-			.update(crmLeads)
-			.set({ deletedAt: new Date() })
-			.where(eq(crmLeads.id, lead.id));
+		await db.update(crmLeads).set({ deletedAt: new Date() }).where(eq(crmLeads.id, lead.id));
 
 		const list = await listLeads();
 		const found = list.find((l) => l.id === lead.id);

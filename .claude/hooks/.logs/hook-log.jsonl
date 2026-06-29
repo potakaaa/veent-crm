@@ -446,3 +446,23 @@
 {"ts":"2026-06-29T02:44:53.018Z","hook":"privacy-block","event":"PreToolUse","tool":"Write","target":"","note":"","dur":10,"status":"ok","exit":0,"error":""}
 {"ts":"2026-06-29T02:44:53.633Z","hook":"post-edit-simplify-reminder","event":"PostToolUse","tool":"Write","target":"","note":"tracked-edit","dur":15,"status":"ok","exit":0,"error":""}
 {"ts":"2026-06-29T02:44:53.690Z","hook":"session-state","event":"PostToolUse","tool":"","target":"","note":"handled","dur":81,"status":"ok","exit":0,"error":""}
+{"ts":"2026-06-29T02:47:38.678Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":12,"status":"ok","exit":0,"error":""}
+{"ts":"2026-06-29T02:47:38.682Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"E:/OJT/Veent Apps Inc/SCRAPING/veent-crm\""}
+{"ts":"2026-06-29T02:47:50.888Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":7,"status":"ok","exit":0,"error":""}
+{"ts":"2026-06-29T02:47:50.888Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"E:/OJT/Veent Apps Inc/SCRAPING/veent-crm\""}
+{"ts":"2026-06-29T02:48:21.915Z","hook":"privacy-block","event":"PreToolUse","tool":"Glob","target":"","note":"","dur":9,"status":"ok","exit":0,"error":""}
+{"ts":"2026-06-29T02:48:21.912Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"E:/OJT/Veent Apps Inc/SCRAPING/veent-crm\""}
+{"ts":"2026-06-29T02:48:25.396Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"E:/OJT/Veent Apps Inc/SCRAPING/veent-crm/.github/workflows/ci.yml\""}
+{"ts":"2026-06-29T02:48:25.398Z","hook":"privacy-block","event":"PreToolUse","tool":"Read","target":"","note":"","dur":8,"status":"ok","exit":0,"error":""}
+{"ts":"2026-06-29T02:48:25.610Z","hook":"privacy-block","event":"PreToolUse","tool":"Read","target":"","note":"","dur":7,"status":"ok","exit":0,"error":""}
+{"ts":"2026-06-29T02:48:25.609Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"E:/OJT/Veent Apps Inc/SCRAPING/veent-crm/.prettierrc\""}
+{"ts":"2026-06-29T02:48:45.038Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":6,"status":"ok","exit":0,"error":""}
+{"ts":"2026-06-29T02:48:45.048Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"E:/OJT/Veent Apps Inc/SCRAPING/veent-crm\""}
+{"ts":"2026-06-29T02:48:51.844Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":5,"status":"ok","exit":0,"error":""}
+{"ts":"2026-06-29T02:48:51.846Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"E:/OJT/Veent Apps Inc/SCRAPING/veent-crm\""}
+{"ts":"2026-06-29T02:49:12.011Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"E:/OJT/Veent Apps Inc/SCRAPING/veent-crm\""}
+{"ts":"2026-06-29T02:49:12.012Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":8,"status":"ok","exit":0,"error":""}
+{"ts":"2026-06-29T02:50:13.422Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":6,"status":"ok","exit":0,"error":""}
+{"ts":"2026-06-29T02:50:13.422Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"E:/OJT/Veent Apps Inc/SCRAPING/veent-crm\""}
+{"ts":"2026-06-29T02:50:57.599Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"path should be a `path.relative()`d string, but got \"E:/OJT/Veent Apps Inc/SCRAPING/veent-crm\""}
+{"ts":"2026-06-29T02:50:57.598Z","hook":"privacy-block","event":"PreToolUse","tool":"Bash","target":"","note":"","dur":4,"status":"ok","exit":0,"error":""}

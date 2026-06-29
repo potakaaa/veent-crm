@@ -142,6 +142,25 @@ export const ownerUpdateSchema = z.object({
 });
 export type OwnerUpdate = z.infer<typeof ownerUpdateSchema>;
 
+// --- Log a touch (API endpoint: POST /api/leads/[id]/touch) ---------------------
+export const logTouchSchema = z.object({
+	channel: z.enum(ACTIVITY_CHANNELS),
+	outcome: z.enum(ACTIVITY_OUTCOMES).default('sent'),
+	followUpAt: z
+		.string()
+		.regex(/^\d{4}-\d{2}-\d{2}$/, 'followUpAt must be YYYY-MM-DD')
+		.optional(),
+	notes: z.string().optional()
+});
+export type LogTouchInput = z.infer<typeof logTouchSchema>;
+
+// --- Snooze (defer follow-up): POST /api/leads/[id]/snooze ----------------------
+export const snoozeSchema = z.object({
+	followUpAt: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'followUpAt must be YYYY-MM-DD'),
+	notes: z.string().optional()
+});
+export type SnoozeInput = z.infer<typeof snoozeSchema>;
+
 // --- Scraper ingest contract (future; reused as the /api/leads/ingest validator) ---
 export const ingestLeadSchema = z.object({
 	pageName: z.string().min(1),

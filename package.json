@@ -21,7 +21,8 @@
 		"db:migrate": "drizzle-kit migrate",
 		"db:studio": "drizzle-kit studio",
 		"import": "bun run scripts/import.ts",
-		"seed": "bun scripts/seed.ts"
+		"seed": "bun scripts/seed.ts",
+		"db:seed": "bun scripts/seed.ts"
 	},
 	"devDependencies": {
 		"@eslint/js": "^10.0.1",

@@ -4,7 +4,7 @@
  */
 import { db } from './index';
 import { crmLeads, crmUsers, crmActivities, crmLeadHistory } from './schema';
-import { eq, isNull, desc, and, sql } from 'drizzle-orm';
+import { eq, isNull, isNotNull, desc, and, ne, inArray, sql } from 'drizzle-orm';
 import type {
 	Lead,
 	User,
@@ -12,7 +12,9 @@ import type {
 	Stage,
 	Urgency,
 	LostReason,
-	MoveStagePayload
+	MoveStagePayload,
+	ActivityChannel,
+	ActivityOutcome
 } from '$lib/types';
 import { computeAge } from '$lib/utils/dates';
 
@@ -24,7 +26,7 @@ type DbActivity = typeof crmActivities.$inferSelect;
 // Pure mappers (exported for unit tests)
 // ---------------------------------------------------------------------------
 
-export function dbRowToLead(row: DbLead): Lead {
+export function dbRowToLead(row: DbLead, followUpAt?: Date | null): Lead {
 	const createdAt = row.createdAt.toISOString();
 	const lastActivityAt = row.lastActivityAt?.toISOString() ?? createdAt;
 
@@ -38,7 +40,12 @@ export function dbRowToLead(row: DbLead): Lead {
 				.replace(/\s+/g, '')
 				.replace(/[^a-z0-9@]/g, '');
 
-	const age = computeAge({ lastActivityAt, stage: row.stage as Stage, followUpAt: undefined });
+	const followUpAtIso = followUpAt ? followUpAt.toISOString() : undefined;
+	const now = new Date();
+	const age = computeAge(
+		{ lastActivityAt, stage: row.stage as Stage, followUpAt: followUpAtIso },
+		now
+	);
 
 	const urgency: Urgency = (() => {
 		if (age.type === 'overdue') return 'overdue';
@@ -72,6 +79,7 @@ export function dbRowToLead(row: DbLead): Lead {
 		lostReason: (row.lostReason as Lead['lostReason']) ?? undefined,
 		createdAt,
 		lastActivityAt,
+		followUpAt: followUpAtIso,
 		age,
 		urgency
 	};
@@ -110,7 +118,7 @@ export async function listLeads(): Promise<Lead[]> {
 		.from(crmLeads)
 		.where(isNull(crmLeads.deletedAt))
 		.orderBy(desc(sql`coalesce(${crmLeads.lastActivityAt}, ${crmLeads.createdAt})`));
-	return rows.map(dbRowToLead);
+	return rows.map((row) => dbRowToLead(row));
 }
 
 export async function getLead(id: string): Promise<Lead | null> {
@@ -352,4 +360,191 @@ export async function reassignLead(
 
 	if (!updated) return null;
 	return dbRowToLead(updated);
+}
+
+// ---------------------------------------------------------------------------
+// Today queue — real DB read model for the Today page
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns all active (non-won/lost/deleted) leads owned by `userId`, with the
+ * latest follow-up date from activities so urgency is computed correctly.
+ * The caller (Today page) filters by urgency bucket.
+ */
+export async function getTodayQueue(userId: string): Promise<Lead[]> {
+	const rows = await db
+		.select()
+		.from(crmLeads)
+		.where(
+			and(
+				isNull(crmLeads.deletedAt),
+				eq(crmLeads.ownerId, userId),
+				ne(crmLeads.stage, 'won'),
+				ne(crmLeads.stage, 'lost')
+			)
+		)
+		.orderBy(desc(sql`coalesce(${crmLeads.lastActivityAt}, ${crmLeads.createdAt})`));
+
+	if (rows.length === 0) return [];
+
+	// Batch-fetch the latest follow_up_at per lead from activities.
+	const leadIds = rows.map((r) => r.id);
+	const followUps = await db
+		.select({
+			leadId: crmActivities.leadId,
+			followUpAt: sql<Date | null>`MAX(${crmActivities.followUpAt})`
+		})
+		.from(crmActivities)
+		.where(and(inArray(crmActivities.leadId, leadIds), isNotNull(crmActivities.followUpAt)))
+		.groupBy(crmActivities.leadId);
+
+	// postgres-js returns MAX() aggregate results as strings even for timestamp columns;
+	// coerce explicitly so dbRowToLead receives a real Date.
+	const followUpMap = new Map(
+		followUps.map((f) => [f.leadId, f.followUpAt ? new Date(f.followUpAt as unknown as string) : null])
+	);
+
+	return rows.map((row) => dbRowToLead(row, followUpMap.get(row.id) ?? undefined));
+}
+
+// ---------------------------------------------------------------------------
+// Log touch — persist a real outreach activity
+// ---------------------------------------------------------------------------
+
+export async function logLeadTouch(
+	id: string,
+	input: {
+		repId: string;
+		channel: ActivityChannel;
+		outcome: ActivityOutcome;
+		followUpAt?: Date;
+		notes?: string;
+	}
+): Promise<Lead | null> {
+	const now = new Date();
+
+	return db.transaction(async (tx) => {
+		const [existing] = await tx
+			.select({ id: crmLeads.id, stage: crmLeads.stage })
+			.from(crmLeads)
+			.where(and(eq(crmLeads.id, id), isNull(crmLeads.deletedAt)))
+			.limit(1);
+
+		if (!existing) return null;
+
+		await tx.insert(crmActivities).values({
+			leadId: id,
+			repId: input.repId,
+			channel: input.channel,
+			outcome: input.outcome,
+			followUpAt: input.followUpAt ?? null,
+			notes: input.notes ?? null,
+			occurredAt: now
+		});
+
+		// Auto-advance stage: contacted → replied when the outcome is 'replied'.
+		const historyRows: (typeof crmLeadHistory.$inferInsert)[] = [];
+		const newStage: Stage =
+			input.outcome === 'replied' && existing.stage === 'contacted'
+				? 'replied'
+				: (existing.stage as Stage);
+
+		if (newStage !== existing.stage) {
+			historyRows.push({
+				leadId: id,
+				actorUserId: input.repId,
+				field: 'stage',
+				oldValue: existing.stage,
+				newValue: newStage
+			});
+		}
+
+		const [updated] = await tx
+			.update(crmLeads)
+			.set({
+				lastActivityAt: now,
+				...(newStage !== existing.stage ? { stage: newStage } : {}),
+				updatedAt: now
+			})
+			.where(and(eq(crmLeads.id, id), isNull(crmLeads.deletedAt)))
+			.returning();
+
+		if (historyRows.length > 0) {
+			await tx.insert(crmLeadHistory).values(historyRows);
+		}
+
+		return updated ? dbRowToLead(updated, input.followUpAt) : null;
+	});
+}
+
+// ---------------------------------------------------------------------------
+// Nav counts — sidebar badge values (real DB, server-only)
+// ---------------------------------------------------------------------------
+
+export async function getNavCounts(
+	userId: string
+): Promise<{ overdue: number; unassigned: number; review: number }> {
+	const [todayLeads, [unassignedRow], [reviewRow]] = await Promise.all([
+		getTodayQueue(userId),
+		db
+			.select({ count: sql<number>`COUNT(*)` })
+			.from(crmLeads)
+			.where(
+				and(
+					isNull(crmLeads.ownerId),
+					isNull(crmLeads.deletedAt),
+					ne(crmLeads.stage, 'won'),
+					ne(crmLeads.stage, 'lost')
+				)
+			),
+		db
+			.select({ count: sql<number>`COUNT(*)` })
+			.from(crmLeads)
+			.where(and(eq(crmLeads.needsReview, true), isNull(crmLeads.deletedAt)))
+	]);
+
+	return {
+		overdue: todayLeads.filter((l) => l.urgency === 'overdue').length,
+		unassigned: Number(unassignedRow?.count ?? 0),
+		review: Number(reviewRow?.count ?? 0)
+	};
+}
+
+// ---------------------------------------------------------------------------
+// Snooze — defer follow-up without counting as an outreach touch
+// ---------------------------------------------------------------------------
+
+export async function snoozeLead(
+	id: string,
+	repId: string,
+	followUpAt: Date,
+	notes?: string
+): Promise<Lead | null> {
+	const [existing] = await db
+		.select({ id: crmLeads.id })
+		.from(crmLeads)
+		.where(and(eq(crmLeads.id, id), isNull(crmLeads.deletedAt)))
+		.limit(1);
+
+	if (!existing) return null;
+
+	// Snooze inserts a scheduling-only activity.  We do NOT update lastActivityAt
+	// so the lead's staleness timer is not reset by a snooze.
+	await db.insert(crmActivities).values({
+		leadId: id,
+		repId,
+		channel: 'other',
+		outcome: 'other',
+		followUpAt,
+		notes: notes ?? 'Snoozed — deferred follow-up',
+		occurredAt: new Date()
+	});
+
+	const [row] = await db
+		.select()
+		.from(crmLeads)
+		.where(and(eq(crmLeads.id, id), isNull(crmLeads.deletedAt)))
+		.limit(1);
+
+	return row ? dbRowToLead(row, followUpAt) : null;
 }

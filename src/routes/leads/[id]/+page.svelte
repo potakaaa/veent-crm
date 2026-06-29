@@ -12,7 +12,6 @@
 	import WonCaptureModal from '$lib/components/leads/WonCaptureModal.svelte';
 	import LostReasonModal from '$lib/components/leads/LostReasonModal.svelte';
 	import ReassignModal from '$lib/components/leads/ReassignModal.svelte';
-	import { crm } from '$lib/services';
 	import { toasts } from '$lib/stores/toasts.svelte';
 	import { canEditLead, canReassign } from '$lib/utils/permissions';
 	import { formatDate } from '$lib/utils/dates';
@@ -41,10 +40,30 @@
 	]);
 
 	async function logTouch(input: AddActivityInput) {
+		let followUpAt: string | undefined;
+		if (input.followUpInDays != null) {
+			followUpAt = new Date(Date.now() + input.followUpInDays * 86_400_000)
+				.toISOString()
+				.slice(0, 10);
+		}
 		try {
-			await crm.addActivity(lead.id, input);
+			const res = await fetch(`/api/leads/${lead.id}/touch`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					channel: input.channel,
+					outcome: input.outcome,
+					followUpAt,
+					notes: input.note
+				})
+			});
+			if (!res.ok) {
+				const msg = await res.text().catch(() => 'Server error');
+				toasts.push(`Touch failed: ${msg}`);
+				return;
+			}
 		} catch {
-			toasts.push('Activity logging will be wired in Phase 6.');
+			toasts.push('Touch failed — server error');
 			return;
 		}
 		await invalidateAll();

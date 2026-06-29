@@ -3,7 +3,7 @@ import { crm } from '$lib/services';
 
 export const ssr = false;
 
-export const load: LayoutLoad = async ({ url }) => {
+export const load: LayoutLoad = async ({ url, fetch }) => {
 	if (url.pathname === '/login') {
 		return {
 			currentUser: null,
@@ -13,23 +13,16 @@ export const load: LayoutLoad = async ({ url }) => {
 		};
 	}
 
-	const [currentUser, users, leads, mine, unassigned, review] = await Promise.all([
+	const [currentUser, users, leads, countsRes] = await Promise.all([
 		crm.getCurrentUser(),
 		crm.listUsers(),
 		crm.listLeads({ segment: 'all', includeLost: true }),
-		crm.listLeads({ segment: 'mine' }),
-		crm.listLeads({ segment: 'unassigned' }),
-		crm.listReviewItems()
+		fetch('/api/nav-counts')
 	]);
 
-	return {
-		currentUser,
-		users,
-		leads,
-		counts: {
-			overdue: mine.filter((l) => l.urgency === 'overdue').length,
-			unassigned: unassigned.length,
-			review: review.length
-		}
-	};
+	const counts: { overdue: number; unassigned: number; review: number } = countsRes.ok
+		? await countsRes.json()
+		: { overdue: 0, unassigned: 0, review: 0 };
+
+	return { currentUser, users, leads, counts };
 };

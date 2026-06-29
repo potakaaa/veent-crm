@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { invalidateAll } from '$app/navigation';
 	import PageHeader from '$lib/components/shared/PageHeader.svelte';
 	import Stat from '$lib/components/shared/Stat.svelte';
 	import LeadListRow from '$lib/components/leads/LeadListRow.svelte';
@@ -45,8 +46,30 @@
 	);
 	const count = (k: Urgency) => data.leads.filter((l: Lead) => l.urgency === k).length;
 
-	const snooze = (l: Lead) => toasts.push(`Snoozed ${l.name} — booked a new follow-up`);
-	const nudge = (l: Lead) => toasts.success(`Nudge sent to ${l.name}`);
+	/** Snooze for 3 days (Asia/Manila midnight). */
+	async function snooze(l: Lead) {
+		const followUpAt = new Date(Date.now() + 3 * 86_400_000).toISOString().slice(0, 10);
+		try {
+			const res = await fetch(`/api/leads/${l.id}/snooze`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ followUpAt })
+			});
+			if (!res.ok) {
+				const msg = await res.text().catch(() => 'Server error');
+				toasts.push(`Snooze failed: ${msg}`);
+				return;
+			}
+		} catch {
+			toasts.push('Snooze failed — server error');
+			return;
+		}
+		await invalidateAll();
+		toasts.push(`Snoozed ${l.name} · follow-up in 3 days`);
+	}
+
+	const nudge = (l: Lead) =>
+		toasts.push(`Nudge: no outbound messaging integration yet (${l.name})`);
 </script>
 
 <svelte:head><title>Today · Veent CRM</title></svelte:head>

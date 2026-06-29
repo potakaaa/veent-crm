@@ -1,12 +1,10 @@
 /**
- * Date helpers. The prototype anchors "now" to the design's reference moment
- * (Tue 24 Jun 2026, Asia/Manila) so computed ages match the mock data.
- * Swap NOW for `new Date()` once the backend supplies live timestamps.
+ * Date helpers for the Veent CRM. All time-sensitive computations accept an
+ * optional `now` parameter so tests can inject a fixed reference point.
  */
 import type { AgeType, Lead } from '$lib/types';
 
 export const TIMEZONE = 'Asia/Manila';
-export const NOW = new Date('2026-06-24T09:00:00+08:00');
 
 const DAY = 86_400_000;
 
@@ -26,7 +24,7 @@ export function formatDate(iso: string | undefined, opts: Intl.DateTimeFormatOpt
 }
 
 export const todayLabel = (): string =>
-	NOW.toLocaleDateString('en-PH', {
+	new Date().toLocaleDateString('en-PH', {
 		timeZone: TIMEZONE,
 		weekday: 'short',
 		day: 'numeric',
@@ -34,12 +32,12 @@ export const todayLabel = (): string =>
 		year: 'numeric'
 	});
 
-/** Human "2h ago" / "3d ago" relative to NOW. */
-export function relativeFromNow(iso: string | undefined): string {
+/** Human "2h ago" / "3d ago" relative to a reference point (defaults to now). */
+export function relativeFromNow(iso: string | undefined, now = new Date()): string {
 	if (!iso) return '—';
 	const d = new Date(iso);
 	if (Number.isNaN(d.getTime())) return iso;
-	const diff = NOW.getTime() - d.getTime();
+	const diff = now.getTime() - d.getTime();
 	if (diff < 0) return formatDate(iso);
 	const hours = Math.floor(diff / 3_600_000);
 	if (hours < 1) return 'just now';
@@ -48,7 +46,10 @@ export function relativeFromNow(iso: string | undefined): string {
 }
 
 /** Compute an age badge from a lead's follow-up / last-activity timestamps. */
-export function computeAge(lead: Pick<Lead, 'followUpAt' | 'lastActivityAt' | 'stage'>): {
+export function computeAge(
+	lead: Pick<Lead, 'followUpAt' | 'lastActivityAt' | 'stage'>,
+	now = new Date()
+): {
 	label: string;
 	type: AgeType;
 } {
@@ -56,13 +57,13 @@ export function computeAge(lead: Pick<Lead, 'followUpAt' | 'lastActivityAt' | 's
 	if (lead.stage === 'lost') return { label: 'lost', type: 'normal' };
 
 	if (lead.followUpAt) {
-		const due = daysBetween(NOW, new Date(lead.followUpAt));
+		const due = daysBetween(now, new Date(lead.followUpAt));
 		if (due < 0) return { label: `${Math.abs(due)}d overdue`, type: 'overdue' };
 		if (due === 0) return { label: 'due today', type: 'due' };
 	}
-	const idle = daysBetween(new Date(lead.lastActivityAt), NOW);
+	const idle = daysBetween(new Date(lead.lastActivityAt), now);
 	if (idle > 30) return { label: `${idle}d cold`, type: 'stale' };
-	if (idle <= 1) return { label: relativeFromNow(lead.lastActivityAt), type: 'fresh' };
+	if (idle <= 1) return { label: relativeFromNow(lead.lastActivityAt, now), type: 'fresh' };
 	return { label: `${idle}d`, type: 'normal' };
 }
 

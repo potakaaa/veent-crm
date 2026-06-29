@@ -1,0 +1,73 @@
+/**
+ * Design token reference for the Veent Outreach Console moodboard.
+ *
+ * These mirror the CSS custom properties declared in `src/lib/styles/tokens.css`.
+ * Use the Tailwind utilities (e.g. `bg-stage-won`, `text-overdue`) in markup;
+ * use these maps when a value is needed in script (charts, inline SVG, etc.).
+ *
+ * NOTE: the CRM domain enums (Stage, etc.) will be defined under `src/lib/types`
+ * when the full frontend lands. This file only carries the *visual* vocabulary.
+ */
+
+/** Pipeline stages, in funnel order, with their moodboard accent colors. */
+export const STAGE_TOKENS = [
+	{ key: 'new', label: 'New', color: 'var(--color-stage-new)', hex: '#64748b' },
+	{ key: 'contacted', label: 'Contacted', color: 'var(--color-stage-contacted)', hex: '#2563eb' },
+	{ key: 'replied', label: 'Replied', color: 'var(--color-stage-replied)', hex: '#7c3aed' },
+	{
+		key: 'in_discussion',
+		label: 'In discussion',
+		color: 'var(--color-stage-discussion)',
+		hex: '#c2710c'
+	},
+	{ key: 'won', label: 'Won', color: 'var(--color-stage-won)', hex: '#0e9f6e' },
+	{ key: 'lost', label: 'Lost', color: 'var(--color-stage-lost)', hex: '#71717a' }
+] as const;
+
+export type StageKey = (typeof STAGE_TOKENS)[number]['key'];
+
+/** Lead-age / attention badges. */
+export const AGE_TOKENS = [
+	{ key: 'fresh', label: 'Fresh', color: 'var(--color-fresh)', hex: '#0e9f6e' },
+	{ key: 'stale', label: 'Stale', color: 'var(--color-stale)', hex: '#c2710c' },
+	{ key: 'overdue', label: 'Overdue', color: 'var(--color-overdue)', hex: '#e11d48' }
+] as const;
+
+export type AgeKey = (typeof AGE_TOKENS)[number]['key'];
+
+/** Convenience lookups. */
+export const stageColor = (key: StageKey): string =>
+	STAGE_TOKENS.find((s) => s.key === key)?.color ?? 'var(--color-stage-new)';
+
+export const stageLabel = (key: StageKey): string =>
+	STAGE_TOKENS.find((s) => s.key === key)?.label ?? key;
+
+/** Platform badges — abbreviation + brand-ish hex (matches the design). */
+export const PLATFORM_TOKENS: Record<string, { abbr: string; hex: string }> = {
+	Facebook: { abbr: 'FB', hex: '#2563eb' },
+	Instagram: { abbr: 'IG', hex: '#c2710c' },
+	TikTok: { abbr: 'TT', hex: '#261617' },
+	'Twitter/X': { abbr: 'X', hex: '#261617' },
+	Other: { abbr: '•', hex: '#71717a' }
+};
+
+export const platformToken = (platform: string) =>
+	PLATFORM_TOKENS[platform] ?? PLATFORM_TOKENS.Other;
+
+/** Activity-outcome chip colors. */
+export const OUTCOME_TOKENS: Record<string, { label: string; hex: string }> = {
+	sent: { label: 'sent', hex: '#64748b' },
+	replied: { label: 'replied', hex: '#0e9f6e' },
+	no_response: { label: 'no response', hex: '#c2710c' },
+	rejected: { label: 'rejected', hex: '#e11d48' },
+	other: { label: 'other', hex: '#71717a' }
+};
+
+/** Deterministic avatar color for a rep, by name. */
+const AVATAR_PALETTE = ['#c0362c', '#0e9f6e', '#c2710c', '#2563eb', '#7c3aed', '#94908a'];
+export const avatarColor = (name: string | null | undefined): string => {
+	if (!name) return '#94908a';
+	let h = 0;
+	for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
+	return AVATAR_PALETTE[h % AVATAR_PALETTE.length];
+};

@@ -42,6 +42,14 @@ export const ACTIVITY_CHANNELS = [
 
 export const ACTIVITY_OUTCOMES = ['sent', 'replied', 'no_response', 'rejected', 'other'] as const;
 
+export const LOST_REASONS = ['no_response', 'rejected', 'not_a_fit'] as const;
+
+export const USER_ROLES = ['rep', 'manager'] as const;
+
+export const LEAD_SOURCES = ['sheet_import', 'manual', 'scraper', 'other'] as const;
+
+export const CURRENCIES = ['PHP', 'SGD'] as const;
+
 // --- Add / edit a lead (Superforms) ---------------------------------------
 export const leadFormSchema = z.object({
 	name: z.string().min(1, 'Page / organizer name is required'),
@@ -76,6 +84,30 @@ export const wonFormSchema = z.object({
 	signedAt: z.string().optional()
 });
 export type WonForm = z.infer<typeof wonFormSchema>;
+
+// --- Mark lost (requires a reason) ----------------------------------------
+export const lostFormSchema = z.object({
+	leadIds: z.array(z.string()).min(1),
+	reason: z.enum(LOST_REASONS),
+	note: z.string().optional()
+});
+export type LostForm = z.infer<typeof lostFormSchema>;
+
+// --- Reassign owner --------------------------------------------------------
+export const reassignFormSchema = z.object({
+	leadIds: z.array(z.string()).min(1),
+	ownerId: z.string().min(1)
+});
+export type ReassignForm = z.infer<typeof reassignFormSchema>;
+
+// --- Add / edit a team member (the magic-link allowlist) -------------------
+export const userFormSchema = z.object({
+	name: z.string().min(1, 'Name is required'),
+	email: z.string().email('A valid work email is required'),
+	role: z.enum(USER_ROLES).default('rep'),
+	active: z.boolean().default(true)
+});
+export type UserForm = z.infer<typeof userFormSchema>;
 
 // --- Scraper ingest contract (future; reused as the /api/leads/ingest validator) ---
 export const ingestLeadSchema = z.object({

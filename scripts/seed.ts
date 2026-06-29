@@ -608,9 +608,12 @@ const leadIds = leads.map((l) => l.id as string);
 // ---------------------------------------------------------------------------
 try {
 	if (hasReset) {
-		// Delete only the known seed rows, FK-safe order: history → activities → leads.
-		await db.delete(crmLeadHistory).where(inArray(crmLeadHistory.leadId, leadIds));
-		await db.delete(crmActivities).where(inArray(crmActivities.leadId, leadIds));
+		// Delete only the exact seed rows by their fixed IDs (FK-safe order: history → activities → leads).
+		// Deleting by leadId would remove non-seed rows attached to seeded leads.
+		const activityIds = activities.map((a) => a.id as string);
+		const historyIds = history.map((h) => h.id as string);
+		await db.delete(crmLeadHistory).where(inArray(crmLeadHistory.id, historyIds));
+		await db.delete(crmActivities).where(inArray(crmActivities.id, activityIds));
 		await db.delete(crmLeads).where(inArray(crmLeads.id, leadIds));
 		console.log('Reset: deleted existing seed lead/activity/history rows.');
 	}

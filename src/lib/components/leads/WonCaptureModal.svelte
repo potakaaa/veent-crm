@@ -23,14 +23,15 @@
 	let signedOrg = $state('');
 	let dealValue = $state('');
 	let currency = $state<string>('PHP');
-	let signedDate = $state(new Date().toISOString().slice(0, 10));
+	const manilaDate = () => new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Manila' });
+	let signedDate = $state(manilaDate());
 
 	$effect(() => {
 		if (open) {
 			signedOrg = '';
 			dealValue = '';
 			currency = 'PHP';
-			signedDate = new Date().toISOString().slice(0, 10);
+			signedDate = manilaDate();
 		}
 	});
 

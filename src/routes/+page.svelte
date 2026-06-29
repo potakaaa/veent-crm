@@ -48,7 +48,9 @@
 
 	/** Snooze for 3 days (Asia/Manila midnight). */
 	async function snooze(l: Lead) {
-		const followUpAt = new Date(Date.now() + 3 * 86_400_000).toISOString().slice(0, 10);
+		const followUpAt = new Date(Date.now() + 3 * 86_400_000).toLocaleDateString('en-CA', {
+			timeZone: 'Asia/Manila'
+		});
 		try {
 			const res = await fetch(`/api/leads/${l.id}/snooze`, {
 				method: 'POST',

@@ -1,10 +1,16 @@
 import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { snoozeSchema } from '$lib/zod/schemas';
-import { snoozeLead } from '$lib/server/db/leads';
+import { getLead, snoozeLead } from '$lib/server/db/leads';
 
 export const POST: RequestHandler = async ({ params, request, locals }) => {
 	if (!locals.user) throw error(401, 'Unauthorized');
+
+	const lead = await getLead(params.id);
+	if (!lead) throw error(404, 'Lead not found');
+	if (locals.user.role !== 'manager' && lead.ownerId !== locals.user.id) {
+		throw error(403, 'Forbidden');
+	}
 
 	let body: unknown;
 	try {

@@ -36,7 +36,7 @@ All 14 checklist items applied:
 | `bun scripts/seed.ts` (AC1, Hybrid) | PASS — exit 0, summary printed |
 | `bun scripts/seed.ts` x2 (AC2 idempotency) | PASS — exit 0, no dup/unique-index violation |
 | `bun scripts/seed.ts --reset` (AC7) | PASS — deletes seed IDs then re-seeds, exit 0 |
-| `NODE_ENV=production … --no-force` (AC8) | PASS — exit 1, no DB writes |
+| `NODE_ENV=production bun scripts/seed.ts` (AC8) | PASS — exit 1, no DB writes |
 | DB row-count verification (AC3/AC5/AC6) | PASS — leads 25, activities 17, history 3; unassigned 3, needs_review 2; all 6 stages present (new:11 contacted:7 replied:2 in_discussion:3 won:1 lost:1) |
 
 Live dev Postgres at default `DATABASE_URL` was reachable, so all Hybrid gates ran and passed (not deferred).

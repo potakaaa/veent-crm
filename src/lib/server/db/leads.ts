@@ -461,25 +461,20 @@ export async function getTodayQueue(userId: string): Promise<Lead[]> {
 
 	if (rows.length === 0) return [];
 
-	// Batch-fetch the latest follow_up_at per lead from activities.
+	// Batch-fetch the follow_up_at from each lead's most recent activity that has one scheduled.
+	// DISTINCT ON (lead_id) ordered by occurred_at DESC picks the latest touch's follow-up,
+	// so a rep's newest scheduling decision wins over older ones.
 	const leadIds = rows.map((r) => r.id);
 	const followUps = await db
-		.select({
+		.selectDistinctOn([crmActivities.leadId], {
 			leadId: crmActivities.leadId,
-			followUpAt: sql<Date | null>`MAX(${crmActivities.followUpAt})`
+			followUpAt: crmActivities.followUpAt
 		})
 		.from(crmActivities)
 		.where(and(inArray(crmActivities.leadId, leadIds), isNotNull(crmActivities.followUpAt)))
-		.groupBy(crmActivities.leadId);
+		.orderBy(crmActivities.leadId, desc(crmActivities.occurredAt));
 
-	// postgres-js returns MAX() aggregate results as strings even for timestamp columns;
-	// coerce explicitly so dbRowToLead receives a real Date.
-	const followUpMap = new Map(
-		followUps.map((f) => [
-			f.leadId,
-			f.followUpAt ? new Date(f.followUpAt as unknown as string) : null
-		])
-	);
+	const followUpMap = new Map(followUps.map((f) => [f.leadId, f.followUpAt ?? null]));
 
 	return rows.map((row) => dbRowToLead(row, followUpMap.get(row.id) ?? undefined));
 }
@@ -501,11 +496,14 @@ export async function logLeadTouch(
 	const now = new Date();
 
 	return db.transaction(async (tx) => {
+		// Lock the row so a concurrent soft-delete can't sneak in between the existence
+		// check and the subsequent activity/history inserts.
 		const [existing] = await tx
 			.select({ id: crmLeads.id, stage: crmLeads.stage })
 			.from(crmLeads)
 			.where(and(eq(crmLeads.id, id), isNull(crmLeads.deletedAt)))
-			.limit(1);
+			.limit(1)
+			.for('update');
 
 		if (!existing) return null;
 
@@ -597,31 +595,29 @@ export async function snoozeLead(
 	followUpAt: Date,
 	notes?: string
 ): Promise<Lead | null> {
-	const [existing] = await db
-		.select({ id: crmLeads.id })
-		.from(crmLeads)
-		.where(and(eq(crmLeads.id, id), isNull(crmLeads.deletedAt)))
-		.limit(1);
+	return db.transaction(async (tx) => {
+		// Lock the lead row so a concurrent soft-delete can't orphan the activity insert.
+		const [existing] = await tx
+			.select()
+			.from(crmLeads)
+			.where(and(eq(crmLeads.id, id), isNull(crmLeads.deletedAt)))
+			.limit(1)
+			.for('update');
 
-	if (!existing) return null;
+		if (!existing) return null;
 
-	// Snooze inserts a scheduling-only activity.  We do NOT update lastActivityAt
-	// so the lead's staleness timer is not reset by a snooze.
-	await db.insert(crmActivities).values({
-		leadId: id,
-		repId,
-		channel: 'other',
-		outcome: 'other',
-		followUpAt,
-		notes: notes ?? 'Snoozed — deferred follow-up',
-		occurredAt: new Date()
+		// Snooze inserts a scheduling-only activity.  We do NOT update lastActivityAt
+		// so the lead's staleness timer is not reset by a snooze.
+		await tx.insert(crmActivities).values({
+			leadId: id,
+			repId,
+			channel: 'other',
+			outcome: 'other',
+			followUpAt,
+			notes: notes ?? 'Snoozed — deferred follow-up',
+			occurredAt: new Date()
+		});
+
+		return dbRowToLead(existing, followUpAt);
 	});
-
-	const [row] = await db
-		.select()
-		.from(crmLeads)
-		.where(and(eq(crmLeads.id, id), isNull(crmLeads.deletedAt)))
-		.limit(1);
-
-	return row ? dbRowToLead(row, followUpAt) : null;
 }

@@ -1,10 +1,10 @@
 import type { PageServerLoad } from './$types';
-import { error } from '@sveltejs/kit';
+import { redirect } from '@sveltejs/kit';
 import { getTodayQueue } from '$lib/server/db/leads';
 import type { User } from '$lib/types';
 
 export const load: PageServerLoad = async ({ locals }) => {
-	if (!locals.user) throw error(401, 'Unauthorized');
+	if (!locals.user) throw redirect(303, '/login');
 
 	const leads = await getTodayQueue(locals.user.id);
 

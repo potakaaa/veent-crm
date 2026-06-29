@@ -206,7 +206,7 @@ L022/L023 owner: assign a NON-NULL owner (ELAY above). MUST NOT be null — `get
 | Manual: magic-link login as john.sabuga@veent.io → inspect Today buckets, Pipeline columns, Unassigned/Review badges | Agent-Probe (judgment: visual bucket/stage/badge correctness) | AC4, AC5, AC6 — seeded data renders in the right surfaces with correct urgency |
 
 Failing stub (AC9 / typecheck gate):
-```
+```ts
 test("should typecheck scripts/seed.ts against drizzle $inferInsert", () => {
   throw new Error("NOT IMPLEMENTED — TDD stub for: bun run check passes on rewritten seed.ts")
 })

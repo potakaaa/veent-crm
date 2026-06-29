@@ -113,12 +113,13 @@ describe('computeAge urgency grouping', () => {
 		expect(age.type).toBe('fresh');
 	});
 
-	it('replied stage always maps to replied age type', () => {
+	it('replied stage returns normal age type (urgency mapping is in dbRowToLead, not computeAge)', () => {
+		// makeLead defaults: lastActivityAt 4 days ago, no followUpAt.
+		// computeAge: not won/lost, no followUpAt, idle=4d (>1, ≤30) → 'normal'.
+		// The 'replied' urgency bucket is applied in dbRowToLead after computeAge.
 		const lead = makeLead({ stage: 'replied' });
 		const age = computeAge(lead, NOW);
-		// replied stage → urgency 'replied' — computeAge just needs to not return overdue/due
-		// (urgency mapping is done in dbRowToLead; here we just confirm stage is respected)
-		expect(['replied', 'fresh', 'normal']).toContain(age.type);
+		expect(age.type).toBe('normal');
 	});
 });
 

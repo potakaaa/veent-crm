@@ -91,18 +91,22 @@ await check('review badge (/review)', () =>
 await check('listUsers (/team)', () => db.select().from(crmUsers).orderBy(crmUsers.name));
 
 // source_ref column (added by migration 0006)
-await check('source_ref column exists on crm_leads', () =>
-	client`SELECT source_ref FROM crm_leads LIMIT 1`
+await check(
+	'source_ref column exists on crm_leads',
+	() => client`SELECT source_ref FROM crm_leads LIMIT 1`
 );
 
 // scraped_event enum value (added by migration 0004)
-await check("scraped_event enum value in crm_activity_channel", () =>
-	client`SELECT 'scraped_event'::crm_activity_channel`
+await check(
+	'scraped_event enum value in crm_activity_channel',
+	() => client`SELECT 'scraped_event'::crm_activity_channel`
 );
 
 // scraper columns on crm_activities (added by migration 0004)
-await check('scraper columns on crm_activities (event_name, event_url, etc)', () =>
-	client`SELECT event_name, event_date, event_url, event_category, event_source FROM crm_activities LIMIT 1`
+await check(
+	'scraper columns on crm_activities (event_name, event_url, etc)',
+	() =>
+		client`SELECT event_name, event_date, event_url, event_category, event_source FROM crm_activities LIMIT 1`
 );
 
 await client.end();

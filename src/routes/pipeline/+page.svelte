@@ -19,7 +19,10 @@
 			</div>
 			<div class="space-y-2">
 				{#each col.leads as lead}
-					<a href={`/leads/${lead.id}`} class="block rounded border border-gray-200 bg-white p-2 text-sm hover:border-gray-400">
+					<a
+						href={`/leads/${lead.id}`}
+						class="block rounded border border-gray-200 bg-white p-2 text-sm hover:border-gray-400"
+					>
 						<div class="font-medium">{lead.name}</div>
 						<div class="text-xs text-gray-500">{lead.ownerName ?? 'Unassigned'}</div>
 					</a>

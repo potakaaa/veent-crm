@@ -6,7 +6,7 @@ through a pipeline to a Won/Lost outcome. **Completely standalone** — it does 
 to any external system. Its only input is a one-time import of a TSV export of the sheet.
 
 - **Goal:** convert event organizers into Veent ticketing clients, and make the pipeline visible/measurable instead of a flat, error-prone sheet.
-- **Primary success metric:** **count of Won** + per-rep activity (touches / replies / wins) — both reliably captured by stage. `deal_value` is a **bonus signal only** (manual, often unfilled — the funnel never depends on it). Targets/quotas deferred. *Automatic GMV attribution is out of scope* (would require Veent data — forbidden by the standalone rule).
+- **Primary success metric:** **count of Won** + per-rep activity (touches / replies / wins) — both reliably captured by stage. `deal_value` is a **bonus signal only** (manual, often unfilled — the funnel never depends on it). Targets/quotas deferred. _Automatic GMV attribution is out of scope_ (would require Veent data — forbidden by the standalone rule).
 - **Architecture in one line:** a self-contained SvelteKit app (Bun) with its **own PostgreSQL DB** (direct SQL via Drizzle), on a single self-managed **DigitalOcean droplet** (Docker Compose), in its **own repo**.
 - **Scale:** ~2,032 leads from ~2,064 sheet rows; internal-only traffic.
 - **Team:** **5 active reps** (Jonna, Ethyl, Meybelle, Shane, Elay) + manager(s). 4 former reps (Angel, Fatima, Divine, Dhen) are record-only. Flat access among reps; `owner` is a field + reporting axis.
@@ -20,11 +20,11 @@ to any external system. Its only input is a one-time import of a TSV export of t
 
 ## Background — the source sheet (authoritative TSV export, 2026-06-24)
 
-> An earlier profile from the Google Drive connector's *rendering* was truncated to ~360 rows and is superseded. All figures below are from the real TSV export (`~/Downloads/Copy of Centralized List of Events - Events.tsv`).
+> An earlier profile from the Google Drive connector's _rendering_ was truncated to ~360 rows and is superseded. All figures below are from the real TSV export (`~/Downloads/Copy of Centralized List of Events - Events.tsv`).
 
 - **~2,064 outreach rows** to FB/IG event-organizer pages (file = 2,285 lines incl. date-divider rows, the "SEARCH FOR…" banner, and a **right-side summary legend** the importer must ignore).
-- Identifier = the **Facebook/Instagram page** ("Page Name" / "Link"). The sheet's own header says *"SEARCH FOR EVENT AND PAGE NAME BEFORE REACHING OUT"* → dedup is the #1 pain.
-- **9 rep names** appear: **active** = Jonna, Ethyl, Meybelle, Shane, Elay; **former** = Angel, Fatima, Divine, Dhen (Dhen only ever *added* leads, never did outreach).
+- Identifier = the **Facebook/Instagram page** ("Page Name" / "Link"). The sheet's own header says _"SEARCH FOR EVENT AND PAGE NAME BEFORE REACHING OUT"_ → dedup is the #1 pain.
+- **9 rep names** appear: **active** = Jonna, Ethyl, Meybelle, Shane, Elay; **former** = Angel, Fatima, Divine, Dhen (Dhen only ever _added_ leads, never did outreach).
 - Columns: `(#), Category, Page Name, Location, Event, Link, Event Date, Notes, Added By, Reached Out By, Status, Date Reached Out, Platform`.
 - **Data quality:** ~79 un-numbered rows (recoverable), Category heavily polluted (~450 non-canonical), status/date noise leaking into owner columns, ~55 rows with unicode/entity junk, event dates 89% blank.
 
@@ -32,25 +32,26 @@ to any external system. Its only input is a one-time import of a TSV export of t
 
 **Completely standalone SvelteKit app + its own PostgreSQL DB (direct SQL via Drizzle).** No external backend, no cross-system reads/writes. The sheet import is the only data ingress and runs once. Trades away automatic GMV (accepted) for total independence, zero coupling to any shared backend, and no chance of the prospect list leaking into other systems.
 
-**Model is deliberately flat** (the data is 92% one-event-per-organizer): a **lead = one organizer-page outreach** (with its event folded in). No separate events table; dedup is *advisory* (search-warns), not a hard merge.
+**Model is deliberately flat** (the data is 92% one-event-per-organizer): a **lead = one organizer-page outreach** (with its event folded in). No separate events table; dedup is _advisory_ (search-warns), not a hard merge.
 
 ## Stack (decided)
 
-| Layer | Choice |
-|---|---|
-| Language / runtime / pkg mgr | TypeScript on **Bun** |
-| Framework | **SvelteKit 2 / Svelte 5** (SSR) |
-| Styling / components | **Tailwind CSS + shadcn-svelte** |
-| Data grids / tables | **SVAR Svelte** *(dual GPLv3/commercial; fine for this internal, non-distributed app)* |
-| Charts | **Apache ECharts** |
-| Forms / validation | **Superforms + Zod** (Zod schemas double as import validators) |
-| Database / ORM | **PostgreSQL** (own) · **Drizzle + drizzle-kit** |
-| Auth | **Better Auth** — magic link now → Authentik (OIDC) later |
-| Email · Automation · Errors | **Resend** · **n8n** · **Sentry** (`@sentry/sveltekit`) |
-| Testing | **Vitest** (import transform) + **Playwright** (e2e) |
-| DevOps | **DigitalOcean only** — single **Droplet**, Docker Compose (Bun app + self-managed Postgres + Caddy) |
+| Layer                        | Choice                                                                                               |
+| ---------------------------- | ---------------------------------------------------------------------------------------------------- |
+| Language / runtime / pkg mgr | TypeScript on **Bun**                                                                                |
+| Framework                    | **SvelteKit 2 / Svelte 5** (SSR)                                                                     |
+| Styling / components         | **Tailwind CSS + shadcn-svelte**                                                                     |
+| Data grids / tables          | **SVAR Svelte** _(dual GPLv3/commercial; fine for this internal, non-distributed app)_               |
+| Charts                       | **Apache ECharts**                                                                                   |
+| Forms / validation           | **Superforms + Zod** (Zod schemas double as import validators)                                       |
+| Database / ORM               | **PostgreSQL** (own) · **Drizzle + drizzle-kit**                                                     |
+| Auth                         | **Better Auth** — magic link now → Authentik (OIDC) later                                            |
+| Email · Automation · Errors  | **Resend** · **n8n** · **Sentry** (`@sentry/sveltekit`)                                              |
+| Testing                      | **Vitest** (import transform) + **Playwright** (e2e)                                                 |
+| DevOps                       | **DigitalOcean only** — single **Droplet**, Docker Compose (Bun app + self-managed Postgres + Caddy) |
 
 ### Deployment & runtime notes
+
 - Single **DO droplet**, **Docker Compose**: Bun/SvelteKit app (`svelte-adapter-bun` in a Dockerfile) + self-managed Postgres + **Caddy** (auto-TLS). A conventional Bun-on-DigitalOcean Docker setup. **Adapter fallback:** `@sveltejs/adapter-node` under Bun (validate in Phase 1).
 - App → Postgres via a **bounded pg pool** (max ~10); one long-running process, so no PgBouncer needed at this scale.
 - **Backups self-managed:** nightly `pg_dump` → **DO Spaces** (offsite) with a **tested restore**, plus DO's weekly droplet-backup add-on (the prospect DB has no other copy).
@@ -72,6 +73,7 @@ to any external system. Its only input is a one-time import of a TSV export of t
 Snake-case tables in the CRM's own DB. UUID PKs, `created_at`/`updated_at` everywhere.
 
 ### `crm_users` (reps & managers — 9 seeded: 5 active + 4 former)
+
 - `id` (uuid, pk); `name` (text, not null)
 - `email` (text, **unique, nullable**) — the login + Better Auth link key; **null for former reps** (record-only, no login)
 - `role` (text/enum: rep, manager); `active` (boolean, default true) — former reps are `active=false` (no login), never deleted
@@ -80,6 +82,7 @@ Snake-case tables in the CRM's own DB. UUID PKs, `created_at`/`updated_at` every
 > Plus **Better Auth's** `user/account/session/verification` tables in the same DB; `crm_users` is the domain record, linked by **verified email** (so the Authentik swap is a no-rewrite).
 
 ### `crm_leads` (one organizer-page outreach — the lead & advisory-dedup unit)
+
 - `id` (uuid, pk); `name` (text, not null) — page / organizer name
 - `category` (text/enum: Sports, Workshop, Church, Theater, Bar/DJ, Conference, Music Fest, Fan Fair, School, Concert, Live Band, Expo, Screening, Camp, Competition, Convention, Film, Modelling, Resort, Other) — unknown/org-name values → `Other` + `needs_review`
 - `location` (text); `platform` (text/enum: Facebook, Instagram, Twitter/X, TikTok, Other)
@@ -97,6 +100,7 @@ Snake-case tables in the CRM's own DB. UUID PKs, `created_at`/`updated_at` every
 - `notes` (text)
 
 ### `crm_activities` (each outreach touch — the relationship history)
+
 - `id` (uuid, pk); `lead_id` (uuid → crm_leads, **indexed**, on delete cascade)
 - `rep_id` (uuid → crm_users, **nullable**, `ON DELETE SET NULL`) — keeps the original rep even when the lead's owner differs/leaves
 - `channel` (text/enum: fb_dm, fb_comment, ig_dm, email, call, meeting, other); `occurred_at` (timestamptz); `outcome` (text/enum: sent, replied, no_response, rejected, other)
@@ -105,6 +109,7 @@ Snake-case tables in the CRM's own DB. UUID PKs, `created_at`/`updated_at` every
 - **Unique:** `(lead_id, rep_id, occurred_at, channel)` — guard against accidental double-load
 
 ### `crm_lead_history` (audit — append-only)
+
 - `id` (uuid, pk); `lead_id` (uuid → crm_leads, **indexed**); `actor_user_id` (uuid → crm_users, nullable)
 - `field` (text: stage | owner_id | deal_value_cents | won_org_name | lost_reason | …); `old_value`, `new_value` (text); `at` (timestamptz)
 - Written by the app via a shared update helper on every stage/owner/deal/lost change.
@@ -113,26 +118,27 @@ Snake-case tables in the CRM's own DB. UUID PKs, `created_at`/`updated_at` every
 
 Stages: **new → contacted → replied → in discussion → won** (+ **lost**). `in discussion` (calls / meetings / pricing — the close phase) has **no sheet equivalent**: it imports empty; reps move leads into it as deals progress. `following_up` is **not** a stage — "needs follow-up" is the reminder mechanism (`follow_up_at` + Today queue). Each lead is one row, so **stage = that row's mapped status** (no multi-touch resolution). Counts approximate (exact via dry-run).
 
-| Sheet status (~count) | → Stage / reason |
-|---|---|
-| Not Yet Reached Out (99), blank (253) | new |
-| Reached Out (~807) | contacted |
-| Replied (309), Processing (15) | replied |
-| To Follow Up (38), Followed Up (13) | replied + a `follow_up_at` reminder |
-| **On Boarded (3)** — #361 USWAG, #411 DAC, Sayaw | **won** |
-| Did Not Respond (362) | lost / no_response |
-| Closed Chat (84) | lost / no_response |
-| Rejected (66) | lost / rejected |
-| Disregard (85) | lost / not_a_fit |
+| Sheet status (~count)                                          | → Stage / reason                                                               |
+| -------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| Not Yet Reached Out (99), blank (253)                          | new                                                                            |
+| Reached Out (~807)                                             | contacted                                                                      |
+| Replied (309), Processing (15)                                 | replied                                                                        |
+| To Follow Up (38), Followed Up (13)                            | replied + a `follow_up_at` reminder                                            |
+| **On Boarded (3)** — #361 USWAG, #411 DAC, Sayaw               | **won**                                                                        |
+| Did Not Respond (362)                                          | lost / no_response                                                             |
+| Closed Chat (84)                                               | lost / no_response                                                             |
+| Rejected (66)                                                  | lost / rejected                                                                |
+| Disregard (85)                                                 | lost / not_a_fit                                                               |
 | ~79 un-numbered rows (Status slot reads as Facebook/Instagram) | **layout-detect** (offset −2), re-map real status; category→Other+needs_review |
 
 ## Won tracking (self-contained, manual)
 
-Moving a lead to **Won** prompts for `won_org_name`, optional `deal_value_cents` + `currency` (default PHP; the Singapore cluster uses SGD), and `signed_at` — typed into the CRM. **Win credit = the current owner** at time of Won (the activity log preserves who did every earlier touch, incl. former reps); the leaderboard shows **wins *and* activity** so cherry-picking warm leads is visible. Reporting rolls these up per rep; **deal value shown per-currency**, never summed across currencies.
+Moving a lead to **Won** prompts for `won_org_name`, optional `deal_value_cents` + `currency` (default PHP; the Singapore cluster uses SGD), and `signed_at` — typed into the CRM. **Win credit = the current owner** at time of Won (the activity log preserves who did every earlier touch, incl. former reps); the leaderboard shows **wins _and_ activity** so cherry-picking warm leads is visible. Reporting rolls these up per rep; **deal value shown per-currency**, never summed across currencies.
 
 ## Migration — one-time TSV import (single load)
 
 **Source rules validated against the real TSV (2026-06-24):**
+
 - **Layout-detect per row** — numbered rows = 13-col layout; rows whose `col0` isn't an integer / whose Status slot holds a platform value = the **−2 offset** (missing index + category) → re-map, `category` → `Other` + `needs_review`. ~79 rows; recoverable, not stubs.
 - **Rep allowlist.** 9 names get a `crm_users` record (attribution); only the **5 active** (Jonna, Ethyl, Meybelle, Shane, Elay) get an email + login. `Added By`/`Reached Out By` are polluted with statuses/dates → **junk values ignored** (no user, no flag).
 - **3 Won** (`On Boarded`) — matches the sheet's legend.
@@ -151,7 +157,7 @@ Pipeline (standalone TypeScript + Drizzle script; reads the TSV, touches no Veen
 3. **Layout-detect** each row (standard vs −2 offset).
 4. **Normalize** — strip unicode junk; build `normalized_handle` (IG/FB handle from URLs, else slugify) for advisory dedup/search.
 5. **Build leads** — one lead per row; **collapse exact page+event duplicates** (~30 groups) into one lead, merging their rows as separate activities; same-page/different-event rows stay **sibling leads**.
-6. **Map & assign** — `Status`→`stage`/`lost_reason` (incl. On Boarded→won); seed 9 `crm_users` (5 active +email, 4 former no-login); **owner = `Added By`→`Reached Out By`** *only if an active rep*, else **unassigned** (`owner_id=null`); **`activity.rep` = `Reached Out By`** (keeps former reps on history); parse dates; set `last_activity_at`.
+6. **Map & assign** — `Status`→`stage`/`lost_reason` (incl. On Boarded→won); seed 9 `crm_users` (5 active +email, 4 former no-login); **owner = `Added By`→`Reached Out By`** _only if an active rep_, else **unassigned** (`owner_id=null`); **`activity.rep` = `Reached Out By`** (keeps former reps on history); parse dates; set `last_activity_at`.
 7. **Dry-run reconciliation report (no writes)** — leads created, exact-dup collapses, recovered un-numbered rows, **unassigned-pool size (~506)**, per-rep totals (5 active), **exactly 3 Won**, `needs_review` count, category→Other count.
 8. **Load** — production = single load into empty tables (post-freeze); **dev = truncate-and-reload** the `sheet_import` rows. Child unique key guards against accidental double-load.
 9. **Verify** — row-count reconciliation; exactly 3 Won; ~506 unassigned; spot-check recovered rows + exact-dup merges.
@@ -163,10 +169,10 @@ Pipeline (standalone TypeScript + Drizzle script; reads the TSV, touches no Veen
 A separate, independent **social-media lead scraper** (FB/IG/etc. — your own scraper repo) can feed prospects in continuously. This is **not** a coupling to any external system — it's another standalone source — so it doesn't touch the standalone rule. **Designed, not in the v1 build.**
 
 - **Ingest endpoint (no DB creds).** The scraper POSTs batches to a **secret-authed** `POST /api/leads/ingest` (`INGEST_SECRET`). The CRM owns validation + dedup; the scraper never gets `DATABASE_URL`. Same clean boundary as `n8n → /api/reminders/due`.
-- **Dedup gate (the cardinal rule, at the door).** Each incoming page is matched on `normalized_handle` against existing leads → **match = skip or attach as an advisory sibling; never blindly create.** The scraper *will* re-find pages already in the CRM (~2,000), so without this the pool floods with duplicates.
+- **Dedup gate (the cardinal rule, at the door).** Each incoming page is matched on `normalized_handle` against existing leads → **match = skip or attach as an advisory sibling; never blindly create.** The scraper _will_ re-find pages already in the CRM (~2,000), so without this the pool floods with duplicates.
 - **Validate + normalize** to the lead shape (name=page, social handles, category, location, event, platform). Low-confidence / ambiguous rows → the **Review queue** (`needs_review`) — reuses the existing surface.
 - **Source-tagged pool.** Clean new prospects land as `source='scraper'`, `stage='new'`, `owner_id=null` → the **Unassigned "up for grabs"** pool, **filterable by source** ("scraped / new" vs "orphaned from import") so a rep knows the context before claiming. Same claim / bulk-assign flow.
-- **Default:** auto-into-pool after dedup; ambiguous → Review. *(Alternative if the scraper is noisy: hold all scraped leads in Review for manager qualification before they reach the pool.)*
+- **Default:** auto-into-pool after dedup; ambiguous → Review. _(Alternative if the scraper is noisy: hold all scraped leads in Review for manager qualification before they reach the pool.)_
 - **Ingest contract:** define the ingest JSON (page name, handle(s)/URL, platform, optional category/location/event, source ref) as a **Zod schema reused as the endpoint validator**.
 
 ## Access & auth
@@ -177,15 +183,16 @@ App-owned, pluggable login — simple now, swappable to an IdP later with no rew
 - **Closed door (security-critical):** magic-link **issuance is allowlisted** to `active` `crm_users` (the 5 reps + manager); **no auto-provisioning** of unknown emails; **rate-limited**. It's a prospect list.
 - **Session gate:** `hooks.server.ts` rejects any session whose verified email isn't an `active` `crm_users` row, on every route.
 - **Later — Authentik (OIDC):** enable Better Auth's SSO plugin → store the IdP `sub` in `auth_subject`; existing reps keep their data.
-- **Authorization:** **see-all, edit-own, claim-from-unassigned.** Every rep *sees* all leads (transparency + dedup), but edits/logs/restages **only leads they own**; **claiming from Unassigned transfers ownership → edit rights**. `role=manager` can edit/reassign/bulk-assign **anything** + full reporting.
+- **Authorization:** **see-all, edit-own, claim-from-unassigned.** Every rep _sees_ all leads (transparency + dedup), but edits/logs/restages **only leads they own**; **claiming from Unassigned transfers ownership → edit rights**. `role=manager` can edit/reassign/bulk-assign **anything** + full reporting.
 - **Former reps:** `active=false` (no login) but keep owning dead/won history; the manager reassigns any workable leads via team management.
 
 ### Security & privacy (prospect DB)
+
 - **Sentry** `sendDefaultPii:false` + scrub bodies/emails. **Resend** sending domain SPF/DKIM verified (or magic links spam-filter). Session cookie `httpOnly`+`secure`+`sameSite=lax`, bounded length. `/api/reminders/due` is secret-authed (not cookie) → not CSRF-exposed.
 
 ## Surfaces (SvelteKit app)
 
-*Desktop-first; the daily loop (Today · Log touch · Search) is fully usable on mobile — responsive, not native.*
+_Desktop-first; the daily loop (Today · Log touch · Search) is fully usable on mobile — responsive, not native._
 
 - **Login** + rep gate.
 - **Lead list** (SVAR DataGrid) — search, filter by stage/owner/category/platform; **default sort = fresh-first (`last_activity_at` desc)**; **"stale" filter** (>30d no touch); the search box also does **advisory dedup — fuzzy (`pg_trgm`) match** on name/handle/socials, ranked candidates with stage + owner ("ENHYPEN-Philippines · lost · Angel"); default view excludes `lost`. **Bulk-select → claim / reassign / mark-lost** (stage moves stay per-lead). Edits use an `updated_at` optimistic check (warn "changed — reload").
@@ -195,7 +202,7 @@ App-owned, pluggable login — simple now, swappable to an IdP later with no rew
 - **Lead detail** — event fields + activity timeline (SVAR) + add-touch.
 - **Reminders view** — `follow_up_at` due/overdue (Asia/Manila day boundary).
 - **Reports** (ECharts) — funnel by stage (conversion %), per-rep leaderboard (**wins · touches · replies** side-by-side, so cherry-picking is visible; win credited to current owner), deal value where filled (per currency). **Export current view → CSV** (+ won-deals export for finance).
-- **Team management (manager-only)** — add/deactivate reps, set role, **bulk reassign** (this *is* the magic-link allowlist).
+- **Team management (manager-only)** — add/deactivate reps, set role, **bulk reassign** (this _is_ the magic-link allowlist).
 - **Review queue** — `needs_review=true` leads to clean up post-import.
 
 ## Reminders

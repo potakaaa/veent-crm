@@ -65,26 +65,29 @@ Unless the task clearly needs a different path:
 
 ## Commands
 
-| Runner | Command | Notes |
-|---|---|---|
-| Type check | `bun run check` | svelte-check + tsc — run first |
-| Vitest (unit) | `bun run test:unit` | Runs `vitest --run` |
-| Playwright (e2e) | `bun run test:e2e` | Installs browsers first, then runs |
-| All tests | `bun run test` | unit + e2e (sequential) |
-| Lint | `bun run lint` | Prettier + ESLint |
-| Format | `bun run format` | Prettier write |
+| Runner           | Command             | Notes                              |
+| ---------------- | ------------------- | ---------------------------------- |
+| Type check       | `bun run check`     | svelte-check + tsc — run first     |
+| Vitest (unit)    | `bun run test:unit` | Runs `vitest --run`                |
+| Playwright (e2e) | `bun run test:e2e`  | Installs browsers first, then runs |
+| All tests        | `bun run test`      | unit + e2e (sequential)            |
+| Lint             | `bun run lint`      | Prettier + ESLint                  |
+| Format           | `bun run format`    | Prettier write                     |
 
 **Single file (vitest):**
+
 ```bash
 bun run test:unit -- src/tests/schemas.spec.ts
 ```
 
 **Watch mode (vitest):**
+
 ```bash
 bun run test:unit -- --watch
 ```
 
 **DB commands (need live Postgres):**
+
 ```bash
 bun run db:generate   # regenerate Drizzle migration from schema (no DB needed)
 bun run db:push       # push schema directly (dev only)

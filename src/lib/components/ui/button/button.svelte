@@ -7,7 +7,8 @@
 			variant: {
 				default: 'bg-primary text-primary-foreground hover:bg-primary/90 shadow-xs',
 				destructive: 'bg-destructive text-destructive-foreground hover:bg-destructive/90 shadow-xs',
-				outline: 'border-border bg-background hover:bg-accent hover:text-accent-foreground border shadow-xs',
+				outline:
+					'border-border bg-background hover:bg-accent hover:text-accent-foreground border shadow-xs',
 				secondary: 'bg-secondary text-secondary-foreground hover:bg-secondary/80 shadow-xs',
 				success: 'bg-fresh text-white hover:brightness-95 shadow-xs',
 				ghost: 'hover:bg-accent hover:text-accent-foreground',
@@ -54,12 +55,17 @@
 		bind:this={ref}
 		class={cn(buttonVariants({ variant, size }), className)}
 		{href}
-		{...(restProps as Record<string, unknown>)}
+		{...restProps as Record<string, unknown>}
 	>
 		{@render children?.()}
 	</a>
 {:else}
-	<button bind:this={ref} class={cn(buttonVariants({ variant, size }), className)} {type} {...restProps}>
+	<button
+		bind:this={ref}
+		class={cn(buttonVariants({ variant, size }), className)}
+		{type}
+		{...restProps}
+	>
 		{@render children?.()}
 	</button>
 {/if}

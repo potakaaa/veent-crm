@@ -1,7 +1,11 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 	import type { HTMLButtonAttributes } from 'svelte/elements';
-	import { Button as UiButton, type ButtonVariant, type ButtonSize } from '$lib/components/ui/button';
+	import {
+		Button as UiButton,
+		type ButtonVariant,
+		type ButtonSize
+	} from '$lib/components/ui/button';
 
 	// Backwards-compatible wrapper around shadcn ui/button. Existing call sites keep
 	// their semantic variant names; we map them to the shadcn variants.

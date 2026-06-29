@@ -8,8 +8,18 @@
 	let { data } = $props();
 
 	const groupDefs: { key: Urgency; title: string; color: string; hint: string }[] = [
-		{ key: 'overdue', title: 'Overdue', color: '#e11d48', hint: 'past their booked follow-up date' },
-		{ key: 'due', title: 'Due today', color: '#c0362c', hint: 'follow-ups booked for today (Manila)' },
+		{
+			key: 'overdue',
+			title: 'Overdue',
+			color: '#e11d48',
+			hint: 'past their booked follow-up date'
+		},
+		{
+			key: 'due',
+			title: 'Due today',
+			color: '#c0362c',
+			hint: 'follow-ups booked for today (Manila)'
+		},
 		{ key: 'cold', title: 'Going cold', color: '#c2710c', hint: 're-touch before they lapse' }
 	];
 	const groups = $derived(
@@ -30,7 +40,11 @@
 	/>
 
 	{#if total === 0}
-		<EmptyState title="Nothing due" hint="Every follow-up is booked for later. Go prospect or check Up for grabs." tone="success" />
+		<EmptyState
+			title="Nothing due"
+			hint="Every follow-up is booked for later. Go prospect or check Up for grabs."
+			tone="success"
+		/>
 	{:else}
 		{#each groups as g (g.key)}
 			{#if g.rows.length}
@@ -38,7 +52,10 @@
 					<div class="mb-2.5 flex items-center gap-2.5">
 						<span class="h-2 w-2 rounded-full" style="background:{g.color}"></span>
 						<h2 class="font-serif text-[15px] font-semibold text-ink">{g.title}</h2>
-						<span class="rounded-[5px] bg-panel-sunken px-[7px] py-0.5 font-mono text-[11px] text-ink-300">{g.rows.length}</span>
+						<span
+							class="rounded-[5px] bg-panel-sunken px-[7px] py-0.5 font-mono text-[11px] text-ink-300"
+							>{g.rows.length}</span
+						>
 						<span class="text-[12px] text-ink-200">{g.hint}</span>
 					</div>
 					<div class="overflow-hidden rounded-control border border-hairline bg-panel">

@@ -23,7 +23,9 @@
 		<div class="flex items-center gap-[7px] text-[13.5px] font-semibold text-ink">
 			{lead.name}
 			{#if lead.siblings}
-				<span class="rounded-[4px] bg-[rgba(194,113,12,0.1)] px-[5px] py-px font-mono text-[10px] text-stale">
+				<span
+					class="rounded-[4px] bg-[rgba(194,113,12,0.1)] px-[5px] py-px font-mono text-[10px] text-stale"
+				>
 					{lead.siblings} events
 				</span>
 			{/if}

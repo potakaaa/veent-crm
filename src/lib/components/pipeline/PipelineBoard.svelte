@@ -39,11 +39,15 @@
 			<div class="flex items-center gap-2 px-1 pb-2.5">
 				<span class="h-[9px] w-[9px] rounded-full" style="background:{col.color}"></span>
 				<span class="text-[13px] font-bold tracking-[-0.2px]">{stageLabel(col.stage)}</span>
-				<span class="rounded-[5px] bg-panel-sunken px-[7px] py-px font-mono text-[11px] text-ink-300">
+				<span
+					class="rounded-[5px] bg-panel-sunken px-[7px] py-px font-mono text-[11px] text-ink-300"
+				>
 					{col.cards.length}
 				</span>
 			</div>
-			<div class="flex min-h-[120px] flex-1 flex-col gap-2 overflow-y-auto rounded-control border border-hairline bg-[#f4f2ed] p-2">
+			<div
+				class="flex min-h-[120px] flex-1 flex-col gap-2 overflow-y-auto rounded-control border border-hairline bg-[#f4f2ed] p-2"
+			>
 				{#each col.cards as c (c.id)}
 					<a
 						href="/leads/{c.id}"
@@ -70,11 +74,18 @@
 	{/each}
 
 	<!-- collapsed lost column -->
-	<div class="flex w-14 shrink-0 flex-col items-center gap-2.5 rounded-control border border-hairline bg-[#f4f2ed] py-3">
-		<span class="rounded-[5px] border border-hairline bg-panel px-[7px] py-px font-mono text-[11px] text-[#71717a]">
+	<div
+		class="flex w-14 shrink-0 flex-col items-center gap-2.5 rounded-control border border-hairline bg-[#f4f2ed] py-3"
+	>
+		<span
+			class="rounded-[5px] border border-hairline bg-panel px-[7px] py-px font-mono text-[11px] text-[#71717a]"
+		>
 			{lostCount}
 		</span>
-		<div class="text-[12px] font-semibold tracking-[0.5px] text-[#71717a]" style="writing-mode:vertical-rl;transform:rotate(180deg)">
+		<div
+			class="text-[12px] font-semibold tracking-[0.5px] text-[#71717a]"
+			style="writing-mode:vertical-rl;transform:rotate(180deg)"
+		>
 			lost — collapsed
 		</div>
 	</div>

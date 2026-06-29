@@ -28,7 +28,9 @@
 				<div class="flex items-center gap-1.5 text-[13px] font-semibold">
 					<span class="truncate">{l.name}</span>
 					{#if l.siblings}
-						<span class="shrink-0 rounded-[4px] bg-[rgba(194,113,12,0.1)] px-[5px] py-px font-mono text-[9.5px] text-stale">
+						<span
+							class="shrink-0 rounded-[4px] bg-[rgba(194,113,12,0.1)] px-[5px] py-px font-mono text-[9.5px] text-stale"
+						>
 							{l.siblings} events
 						</span>
 					{/if}
@@ -42,6 +44,9 @@
 			<div><PlatformBadge platform={l.platform} /></div>
 		</a>
 	{:else}
-		<EmptyState title="Nothing here yet" hint="No leads match this view — go prospect, or check Up for grabs." />
+		<EmptyState
+			title="Nothing here yet"
+			hint="No leads match this view — go prospect, or check Up for grabs."
+		/>
 	{/each}
 </div>

@@ -10,6 +10,11 @@
 	}: WithElementRef<HTMLTdAttributes, HTMLTableCellElement> = $props();
 </script>
 
-<td bind:this={ref} data-slot="table-cell" class={cn('p-3 align-middle whitespace-nowrap', className)} {...restProps}>
+<td
+	bind:this={ref}
+	data-slot="table-cell"
+	class={cn('p-3 align-middle whitespace-nowrap', className)}
+	{...restProps}
+>
 	{@render children?.()}
 </td>

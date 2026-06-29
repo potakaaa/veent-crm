@@ -3,8 +3,10 @@
 	import { Button } from '$lib/components/ui/button';
 	import type { ActivityChannel, ActivityOutcome, AddActivityInput } from '$lib/types';
 
-	let { onSubmit, disabled = false }: { onSubmit: (input: AddActivityInput) => void; disabled?: boolean } =
-		$props();
+	let {
+		onSubmit,
+		disabled = false
+	}: { onSubmit: (input: AddActivityInput) => void; disabled?: boolean } = $props();
 
 	const channelOpts: { key: ActivityChannel; label: string }[] = [
 		{ key: 'fb_dm', label: 'FB DM' },
@@ -41,7 +43,9 @@
 			<div class="mb-1.5 text-[11px] text-ink-300">Channel</div>
 			<div class="flex flex-wrap gap-1.5">
 				{#each channelOpts as c}
-					<button class={pill(channel === c.key)} onclick={() => (channel = c.key)}>{c.label}</button>
+					<button class={pill(channel === c.key)} onclick={() => (channel = c.key)}
+						>{c.label}</button
+					>
 				{/each}
 			</div>
 		</div>
@@ -49,7 +53,9 @@
 			<div class="mb-1.5 text-[11px] text-ink-300">Outcome</div>
 			<div class="flex flex-wrap gap-1.5">
 				{#each outcomeOpts as o}
-					<button class={pill(outcome === o.key)} onclick={() => (outcome = o.key)}>{o.label}</button>
+					<button class={pill(outcome === o.key)} onclick={() => (outcome = o.key)}
+						>{o.label}</button
+					>
 				{/each}
 			</div>
 		</div>

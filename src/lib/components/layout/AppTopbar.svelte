@@ -27,8 +27,19 @@
 >
 	<!-- command / dedup search: "Search a page before reaching out" -->
 	<div class="relative max-w-[560px] flex-1">
-		<div class="flex h-10 items-center gap-2.5 rounded-control border border-hairline bg-panel-subtle px-3">
-			<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9c8a86" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+		<div
+			class="flex h-10 items-center gap-2.5 rounded-control border border-hairline bg-panel-subtle px-3"
+		>
+			<svg
+				width="16"
+				height="16"
+				viewBox="0 0 24 24"
+				fill="none"
+				stroke="#9c8a86"
+				stroke-width="2"
+				stroke-linecap="round"
+				aria-hidden="true"
+			>
 				<circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" />
 			</svg>
 			<input
@@ -36,14 +47,18 @@
 				placeholder="Search a page before reaching out…"
 				class="flex-1 border-none bg-transparent font-mono text-[13.5px] text-ink outline-none"
 			/>
-			<div class="flex shrink-0 items-center gap-1.5 rounded-[5px] border border-fresh/30 bg-fresh/10 px-[7px] py-[3px]">
+			<div
+				class="flex shrink-0 items-center gap-1.5 rounded-[5px] border border-fresh/30 bg-fresh/10 px-[7px] py-[3px]"
+			>
 				<span class="h-1.5 w-1.5 rounded-full bg-fresh"></span>
 				<span class="font-mono text-[10px] font-semibold text-fresh">dedup on</span>
 			</div>
 		</div>
 
 		{#if matches.length > 0}
-			<div class="absolute left-0 right-0 top-12 z-40 rounded-control border border-hairline bg-panel p-2 shadow-pop">
+			<div
+				class="absolute left-0 right-0 top-12 z-40 rounded-control border border-hairline bg-panel p-2 shadow-pop"
+			>
 				<div class="flex items-center gap-2 px-2 pb-2 pt-1.5">
 					<Icon name="alert" size={14} stroke={2} />
 					<span class="text-[11.5px] font-semibold text-stale">
@@ -78,7 +93,9 @@
 		>
 			<Icon name="alert" size={18} />
 			{#if reviewCount > 0}
-				<span class="absolute -right-1.5 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-lg bg-overdue px-1 font-mono text-[9.5px] font-semibold text-white">
+				<span
+					class="absolute -right-1.5 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-lg bg-overdue px-1 font-mono text-[9.5px] font-semibold text-white"
+				>
 					{reviewCount}
 				</span>
 			{/if}

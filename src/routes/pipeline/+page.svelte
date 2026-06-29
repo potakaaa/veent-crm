@@ -45,17 +45,30 @@
 <div class="flex h-full flex-col px-7 pb-7 pt-6">
 	<PageHeader title="Pipeline">
 		{#snippet actions()}
-			<span class="rounded-control border border-primary/25 bg-[rgba(192,54,44,0.1)] px-2.5 py-[5px] font-mono text-[11.5px] text-primary">
+			<span
+				class="rounded-control border border-primary/25 bg-[rgba(192,54,44,0.1)] px-2.5 py-[5px] font-mono text-[11.5px] text-primary"
+			>
 				scope: my active leads
 			</span>
 		{/snippet}
 	</PageHeader>
 	<p class="-mt-2 mb-4 text-[13.5px] text-ink-500">
-		Drag a card to move stages. Dropping into <span class="font-semibold text-fresh">won</span> opens win capture.
+		Drag a card to move stages. Dropping into <span class="font-semibold text-fresh">won</span> opens
+		win capture.
 	</p>
 
 	<PipelineBoard leads={data.leads} users={data.users} {onMove} />
 </div>
 
-<WonCaptureModal open={!!wonLead} leadName={wonLead?.name ?? ''} onclose={() => (wonLead = null)} onconfirm={confirmWon} />
-<LostReasonModal open={!!lostLead} leadName={lostLead?.name ?? ''} onclose={() => (lostLead = null)} onconfirm={confirmLost} />
+<WonCaptureModal
+	open={!!wonLead}
+	leadName={wonLead?.name ?? ''}
+	onclose={() => (wonLead = null)}
+	onconfirm={confirmWon}
+/>
+<LostReasonModal
+	open={!!lostLead}
+	leadName={lostLead?.name ?? ''}
+	onclose={() => (lostLead = null)}
+	onconfirm={confirmLost}
+/>

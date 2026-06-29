@@ -1,6 +1,12 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
-	import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogFooter } from '$lib/components/ui/dialog';
+	import {
+		Dialog,
+		DialogContent,
+		DialogTitle,
+		DialogDescription,
+		DialogFooter
+	} from '$lib/components/ui/dialog';
 
 	// Convenience wrapper over shadcn ui/dialog. Public API is unchanged so all
 	// existing modal call sites keep working.
@@ -31,7 +37,11 @@
 
 <Dialog {open} {onOpenChange}>
 	<DialogContent class="gap-0 overflow-hidden p-0" style="max-width:{width}px">
-		<div class={tone === 'success' ? 'bg-fresh px-[22px] py-[18px] text-white' : 'border-b border-border px-[22px] py-[18px]'}>
+		<div
+			class={tone === 'success'
+				? 'bg-fresh px-[22px] py-[18px] text-white'
+				: 'border-b border-border px-[22px] py-[18px]'}
+		>
 			<DialogTitle class={tone === 'success' ? 'text-white' : 'text-ink'}>{title}</DialogTitle>
 			{#if subtitle}
 				<DialogDescription class={tone === 'success' ? 'mt-1 text-white/90' : 'mt-1 text-ink-400'}>

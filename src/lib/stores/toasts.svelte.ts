@@ -16,9 +16,15 @@ let seq = 0;
 class ToastStore {
 	items = $state<Toast[]>([]);
 
-	push(message: string, opts: { tone?: Toast['tone']; action?: Toast['action']; timeout?: number } = {}) {
+	push(
+		message: string,
+		opts: { tone?: Toast['tone']; action?: Toast['action']; timeout?: number } = {}
+	) {
 		const id = ++seq;
-		this.items = [...this.items, { id, message, tone: opts.tone ?? 'default', action: opts.action }];
+		this.items = [
+			...this.items,
+			{ id, message, tone: opts.tone ?? 'default', action: opts.action }
+		];
 		const timeout = opts.timeout ?? 4000;
 		if (timeout > 0 && typeof window !== 'undefined') {
 			setTimeout(() => this.dismiss(id), timeout);

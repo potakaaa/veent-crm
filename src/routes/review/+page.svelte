@@ -47,7 +47,10 @@
 		<Card class="mb-3 gap-0 rounded-control py-4">
 			<CardContent>
 				<div class="mb-3 flex items-center gap-2.5">
-					<Badge variant="outline" class="border-overdue/25 bg-[rgba(225,29,72,0.1)] font-mono text-[10.5px] text-overdue">
+					<Badge
+						variant="outline"
+						class="border-overdue/25 bg-[rgba(225,29,72,0.1)] font-mono text-[10.5px] text-overdue"
+					>
 						{r.issue}
 					</Badge>
 					<span class="truncate font-mono text-[11.5px] text-ink-200">{r.raw}</span>
@@ -55,7 +58,9 @@
 				</div>
 				<div class="grid grid-cols-1 items-end gap-2.5 sm:grid-cols-[1.4fr_1fr_1fr_auto]">
 					<div class="grid gap-1">
-						<Label for="rev-name-{r.id}" class="text-[11px] text-ink-300">Page / organizer name</Label>
+						<Label for="rev-name-{r.id}" class="text-[11px] text-ink-300"
+							>Page / organizer name</Label
+						>
 						<Input
 							id="rev-name-{r.id}"
 							bind:value={r.name}
@@ -65,7 +70,11 @@
 					</div>
 					<div class="grid gap-1">
 						<Label class="text-[11px] text-ink-300">Category</Label>
-						<Select type="single" value={r.category} onValueChange={(v) => (r.category = v as Category)}>
+						<Select
+							type="single"
+							value={r.category}
+							onValueChange={(v) => (r.category = v as Category)}
+						>
 							<SelectTrigger class="w-full">{r.category}</SelectTrigger>
 							<SelectContent>
 								<SelectItem value="Uncategorized" label="Uncategorized">Uncategorized</SelectItem>
@@ -75,7 +84,11 @@
 					</div>
 					<div class="grid gap-1">
 						<Label class="text-[11px] text-ink-300">Platform</Label>
-						<Select type="single" value={r.platform} onValueChange={(v) => (r.platform = v as Platform)}>
+						<Select
+							type="single"
+							value={r.platform}
+							onValueChange={(v) => (r.platform = v as Platform)}
+						>
 							<SelectTrigger class="w-full">{r.platform}</SelectTrigger>
 							<SelectContent>
 								{#each LEAD_PLATFORMS as p}<SelectItem value={p} label={p}>{p}</SelectItem>{/each}
@@ -86,12 +99,18 @@
 						<Button variant="success" size="sm" class="h-9" onclick={() => resolve(r)}>
 							{r.name.trim() ? 'Resolve' : 'Fix & resolve'}
 						</Button>
-						<Button variant="outline" size="sm" class="h-9" onclick={() => discard(r)}>Discard</Button>
+						<Button variant="outline" size="sm" class="h-9" onclick={() => discard(r)}
+							>Discard</Button
+						>
 					</div>
 				</div>
 			</CardContent>
 		</Card>
 	{:else}
-		<EmptyState title="Queue clear" hint="Every imported row has a name and a home. Nothing to review." tone="success" />
+		<EmptyState
+			title="Queue clear"
+			hint="Every imported row has a name and a home. Nothing to review."
+			tone="success"
+		/>
 	{/each}
 </div>

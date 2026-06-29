@@ -5,7 +5,14 @@
 	import Modal from '$lib/components/shared/Modal.svelte';
 	import Icon from '$lib/components/shared/Icon.svelte';
 	import { Card } from '$lib/components/ui/card';
-	import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '$lib/components/ui/table';
+	import {
+		Table,
+		TableHeader,
+		TableBody,
+		TableRow,
+		TableHead,
+		TableCell
+	} from '$lib/components/ui/table';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
@@ -50,7 +57,10 @@
 <svelte:head><title>Team · Veent CRM</title></svelte:head>
 
 <div class="mx-auto max-w-[940px] px-7 pb-16 pt-6">
-	<PageHeader title="Team management" subtitle="This list is the magic-link allowlist. Add a rep here and they can sign in.">
+	<PageHeader
+		title="Team management"
+		subtitle="This list is the magic-link allowlist. Add a rep here and they can sign in."
+	>
 		{#snippet actions()}
 			{#if canManage}
 				<Button onclick={() => (addOpen = true)}>
@@ -61,8 +71,11 @@
 	</PageHeader>
 
 	{#if !canManage}
-		<div class="mb-4 rounded-control border border-border bg-panel-subtle px-4 py-2.5 text-[12.5px] text-ink-500">
-			Team management is manager-only. You can view the roster, but adding or deactivating reps needs a manager.
+		<div
+			class="mb-4 rounded-control border border-border bg-panel-subtle px-4 py-2.5 text-[12.5px] text-ink-500"
+		>
+			Team management is manager-only. You can view the roster, but adding or deactivating reps
+			needs a manager.
 		</div>
 	{/if}
 
@@ -92,7 +105,9 @@
 							<Badge
 								variant="outline"
 								class="font-mono text-[11px]"
-								style={u.role === 'manager' ? 'color:#c0362c;background:rgba(192,54,44,0.1);border-color:transparent' : 'color:#5a4a48;background:#f5ecea;border-color:transparent'}
+								style={u.role === 'manager'
+									? 'color:#c0362c;background:rgba(192,54,44,0.1);border-color:transparent'
+									: 'color:#5a4a48;background:#f5ecea;border-color:transparent'}
 							>
 								{u.role}
 							</Badge>
@@ -101,7 +116,9 @@
 							<Badge
 								variant="outline"
 								class="font-mono text-[11px]"
-								style={u.active ? 'color:#0e9f6e;background:rgba(14,159,110,0.1);border-color:transparent' : 'color:#a89490;background:#f5ecea;border-color:transparent'}
+								style={u.active
+									? 'color:#0e9f6e;background:rgba(14,159,110,0.1);border-color:transparent'
+									: 'color:#a89490;background:#f5ecea;border-color:transparent'}
 							>
 								{u.active ? 'active' : 'inactive'}
 							</Badge>
@@ -127,7 +144,13 @@
 	</div>
 </div>
 
-<Modal open={addOpen} title="Add a rep" subtitle="They join the allowlist and can sign in via magic link." width={420} onclose={() => (addOpen = false)}>
+<Modal
+	open={addOpen}
+	title="Add a rep"
+	subtitle="They join the allowlist and can sign in via magic link."
+	width={420}
+	onclose={() => (addOpen = false)}
+>
 	<div class="flex flex-col gap-3">
 		<div class="grid gap-1.5">
 			<Label for="rep-name">Name</Label>

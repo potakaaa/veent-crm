@@ -223,9 +223,7 @@ class MockCrmClient implements CrmClient {
 				];
 			})();
 		// newest first
-		return delay(
-			list.slice().sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt))
-		);
+		return delay(list.slice().sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt)));
 	}
 
 	async addActivity(leadId: string, input: AddActivityInput): Promise<Activity> {
@@ -237,7 +235,9 @@ class MockCrmClient implements CrmClient {
 			outcome: input.outcome,
 			note: input.note,
 			createdAt: NOW.toISOString(),
-			followUpAt: input.followUpInDays ? addDays(NOW.toISOString(), input.followUpInDays) : undefined
+			followUpAt: input.followUpInDays
+				? addDays(NOW.toISOString(), input.followUpInDays)
+				: undefined
 		};
 		(activities[leadId] ??= []).push(activity);
 

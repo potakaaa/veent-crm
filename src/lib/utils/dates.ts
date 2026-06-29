@@ -21,7 +21,12 @@ export function formatDate(iso: string | undefined, opts: Intl.DateTimeFormatOpt
 }
 
 export const todayLabel = (): string =>
-	NOW.toLocaleDateString('en-PH', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+	NOW.toLocaleDateString('en-PH', {
+		weekday: 'short',
+		day: 'numeric',
+		month: 'short',
+		year: 'numeric'
+	});
 
 /** Human "2h ago" / "3d ago" relative to NOW. */
 export function relativeFromNow(iso: string | undefined): string {

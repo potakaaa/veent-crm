@@ -11,19 +11,42 @@
 		counts: { overdue: number; unassigned: number; review: number };
 	} = $props();
 
-	type NavItem = { href: string; label: string; icon: IconName; badge?: number; badgeColor?: string };
+	type NavItem = {
+		href: string;
+		label: string;
+		icon: IconName;
+		badge?: number;
+		badgeColor?: string;
+	};
 
 	const work: NavItem[] = $derived([
-		{ href: '/', label: 'Today', icon: 'today', badge: counts.overdue || undefined, badgeColor: '#e11d48' },
+		{
+			href: '/',
+			label: 'Today',
+			icon: 'today',
+			badge: counts.overdue || undefined,
+			badgeColor: '#e11d48'
+		},
 		{ href: '/leads', label: 'My Leads', icon: 'leads' },
 		{ href: '/pipeline', label: 'Pipeline', icon: 'pipeline' },
-		{ href: '/unassigned', label: 'Up for grabs', icon: 'unassigned', badge: counts.unassigned || undefined },
+		{
+			href: '/unassigned',
+			label: 'Up for grabs',
+			icon: 'unassigned',
+			badge: counts.unassigned || undefined
+		},
 		{ href: '/reminders', label: 'Reminders', icon: 'reminders' }
 	]);
 	const manager: NavItem[] = $derived([
 		{ href: '/reports', label: 'Reports', icon: 'reports' },
 		{ href: '/team', label: 'Team', icon: 'team' },
-		{ href: '/review', label: 'Review queue', icon: 'review', badge: counts.review || undefined, badgeColor: '#e11d48' }
+		{
+			href: '/review',
+			label: 'Review queue',
+			icon: 'review',
+			badge: counts.review || undefined,
+			badgeColor: '#e11d48'
+		}
 	]);
 
 	const isActive = (href: string) => {
@@ -57,32 +80,39 @@
 	</a>
 {/snippet}
 
-<aside
-	data-rail
-	class="flex w-[224px] shrink-0 flex-col bg-ink text-white max-[880px]:hidden"
->
+<aside data-rail class="flex w-[224px] shrink-0 flex-col bg-ink text-white max-[880px]:hidden">
 	<!-- brand -->
 	<div class="flex items-center gap-2.5 border-b border-[#3a2122] px-[18px] pb-[14px] pt-[18px]">
-		<div class="flex h-[30px] w-[30px] items-center justify-center rounded-[7px] bg-primary text-[15px] font-bold">
+		<div
+			class="flex h-[30px] w-[30px] items-center justify-center rounded-[7px] bg-primary text-[15px] font-bold"
+		>
 			V
 		</div>
 		<div>
 			<div class="text-[13.5px] font-bold tracking-[-0.2px]">Veent CRM</div>
-			<div class="font-mono text-[9px] uppercase tracking-[1px] text-[#8a7270]">Outreach Console</div>
+			<div class="font-mono text-[9px] uppercase tracking-[1px] text-[#8a7270]">
+				Outreach Console
+			</div>
 		</div>
 	</div>
 
 	<!-- nav -->
 	<nav class="flex-1 overflow-y-auto px-3 py-[14px]">
-		<div class="px-2 pb-2 font-mono text-[9.5px] uppercase tracking-[1.2px] text-[#7a6260]">Work</div>
+		<div class="px-2 pb-2 font-mono text-[9.5px] uppercase tracking-[1.2px] text-[#7a6260]">
+			Work
+		</div>
 		{#each work as item (item.href)}{@render navButton(item)}{/each}
 
-		<div class="px-2 pb-2 pt-[18px] font-mono text-[9.5px] uppercase tracking-[1.2px] text-[#7a6260]">
+		<div
+			class="px-2 pb-2 pt-[18px] font-mono text-[9.5px] uppercase tracking-[1.2px] text-[#7a6260]"
+		>
 			Manager
 		</div>
 		{#each manager as item (item.href)}{@render navButton(item)}{/each}
 
-		<div class="px-2 pb-2 pt-[18px] font-mono text-[9.5px] uppercase tracking-[1.2px] text-[#7a6260]">
+		<div
+			class="px-2 pb-2 pt-[18px] font-mono text-[9.5px] uppercase tracking-[1.2px] text-[#7a6260]"
+		>
 			System
 		</div>
 		<a
@@ -100,7 +130,9 @@
 
 	<!-- user footer -->
 	<div class="flex items-center gap-2.5 border-t border-[#3a2122] px-[14px] py-3">
-		<div class="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-full bg-primary text-[12px] font-semibold">
+		<div
+			class="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-full bg-primary text-[12px] font-semibold"
+		>
 			{user?.name?.[0] ?? '?'}
 		</div>
 		<div class="min-w-0 flex-1">

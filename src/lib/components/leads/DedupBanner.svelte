@@ -13,7 +13,9 @@
 		{message}
 		{#if link}<span class="font-semibold text-stale underline">{link}</span>{/if}
 	</div>
-	<span class="rounded-[5px] bg-[rgba(194,113,12,0.12)] px-2 py-[3px] font-mono text-[10.5px] text-stale">
+	<span
+		class="rounded-[5px] bg-[rgba(194,113,12,0.12)] px-2 py-[3px] font-mono text-[10.5px] text-stale"
+	>
 		advisory — never merged
 	</span>
 </div>

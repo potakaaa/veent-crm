@@ -4,7 +4,11 @@
 
 	let { platform, size = 'sm' }: { platform: Platform; size?: 'sm' | 'lg' } = $props();
 	const token = $derived(platformToken(platform));
-	const dim = $derived(size === 'lg' ? 'h-[34px] w-[34px] text-[12px] rounded-control' : 'h-6 w-6 text-[10px] rounded-chip');
+	const dim = $derived(
+		size === 'lg'
+			? 'h-[34px] w-[34px] text-[12px] rounded-control'
+			: 'h-6 w-6 text-[10px] rounded-chip'
+	);
 </script>
 
 <span

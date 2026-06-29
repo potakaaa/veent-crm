@@ -27,11 +27,36 @@
 	];
 
 	const typeScale = [
-		{ label: 'Screen title', spec: 'Spectral 26 / 600', cls: 'font-serif text-[26px] font-semibold', sample: 'Today' },
-		{ label: 'Group head', spec: 'Spectral 15 / 600', cls: 'font-serif text-[15px] font-semibold', sample: 'Overdue follow-ups' },
-		{ label: 'Row name', spec: 'Inter 13 / 600', cls: 'font-sans text-[13px] font-semibold', sample: 'Christian Concerts PH' },
-		{ label: 'Body / secondary', spec: 'Inter 13 / 400', cls: 'font-sans text-[13px] font-normal text-ink-600', sample: 'Strike while the reply is warm.' },
-		{ label: 'Data / meta', spec: 'IBM Plex Mono', cls: 'font-mono text-[12px] text-ink-400', sample: '@christianconcertsph · 3d overdue' }
+		{
+			label: 'Screen title',
+			spec: 'Spectral 26 / 600',
+			cls: 'font-serif text-[26px] font-semibold',
+			sample: 'Today'
+		},
+		{
+			label: 'Group head',
+			spec: 'Spectral 15 / 600',
+			cls: 'font-serif text-[15px] font-semibold',
+			sample: 'Overdue follow-ups'
+		},
+		{
+			label: 'Row name',
+			spec: 'Inter 13 / 600',
+			cls: 'font-sans text-[13px] font-semibold',
+			sample: 'Christian Concerts PH'
+		},
+		{
+			label: 'Body / secondary',
+			spec: 'Inter 13 / 400',
+			cls: 'font-sans text-[13px] font-normal text-ink-600',
+			sample: 'Strike while the reply is warm.'
+		},
+		{
+			label: 'Data / meta',
+			spec: 'IBM Plex Mono',
+			cls: 'font-mono text-[12px] text-ink-400',
+			sample: '@christianconcertsph · 3d overdue'
+		}
 	];
 </script>
 
@@ -43,12 +68,10 @@
 		<p class="font-mono text-[11px] font-semibold uppercase tracking-[0.6px] text-ink-300">
 			Moodboard · imported from Claude Design
 		</p>
-		<h1 class="font-serif text-[32px] font-bold leading-tight text-ink">
-			Veent Outreach Console
-		</h1>
+		<h1 class="font-serif text-[32px] font-bold leading-tight text-ink">Veent Outreach Console</h1>
 		<p class="max-w-xl text-[14px] text-ink-600">
-			Warm, editorial wine-on-cream system for event-organizer outreach. Spectral sets the
-			voice, Inter carries the work, IBM Plex Mono marks every piece of data.
+			Warm, editorial wine-on-cream system for event-organizer outreach. Spectral sets the voice,
+			Inter carries the work, IBM Plex Mono marks every piece of data.
 		</p>
 	</header>
 
@@ -79,7 +102,9 @@
 			</h2>
 			<div class="flex flex-wrap gap-3">
 				{#each signals as s}
-					<div class="flex items-center gap-2 rounded-control border border-hairline bg-panel px-3 py-2 shadow-frame">
+					<div
+						class="flex items-center gap-2 rounded-control border border-hairline bg-panel px-3 py-2 shadow-frame"
+					>
 						<span class="size-3.5 rounded-full" style="background:var({s.var})"></span>
 						<span class="text-[13px] font-medium text-ink">{s.name}</span>
 						<span class="font-mono text-[11px] uppercase text-ink-400">{s.hex}</span>
@@ -106,7 +131,9 @@
 		<h2 class="font-mono text-[11px] font-semibold uppercase tracking-[0.6px] text-ink-300">
 			Type scale
 		</h2>
-		<div class="divide-y divide-hairline overflow-hidden rounded-frame border border-hairline bg-panel shadow-frame">
+		<div
+			class="divide-y divide-hairline overflow-hidden rounded-frame border border-hairline bg-panel shadow-frame"
+		>
 			{#each typeScale as t}
 				<div class="flex flex-col gap-1 p-4 sm:flex-row sm:items-baseline sm:gap-6">
 					<div class="w-40 shrink-0">

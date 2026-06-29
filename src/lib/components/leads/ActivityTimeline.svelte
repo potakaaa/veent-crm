@@ -22,7 +22,9 @@
 
 <div class="rounded-control border border-hairline bg-panel p-4">
 	<div class="mb-3.5 flex items-center justify-between">
-		<div class="font-mono text-[11px] uppercase tracking-[0.5px] text-ink-300">Activity timeline</div>
+		<div class="font-mono text-[11px] uppercase tracking-[0.5px] text-ink-300">
+			Activity timeline
+		</div>
 		<span class="font-mono text-[11px] text-ink-300">{activities.length} touches</span>
 	</div>
 	{#each activities as a (a.id)}
@@ -30,14 +32,18 @@
 			<div class="flex flex-col items-center">
 				<span
 					class="mt-1 h-[9px] w-[9px] rounded-full border-2 border-panel"
-					style="background:{OUTCOME_TOKENS[a.outcome]?.hex};box-shadow:0 0 0 1px {OUTCOME_TOKENS[a.outcome]?.hex}"
+					style="background:{OUTCOME_TOKENS[a.outcome]?.hex};box-shadow:0 0 0 1px {OUTCOME_TOKENS[
+						a.outcome
+					]?.hex}"
 				></span>
 				<span class="mt-1 w-px flex-1 bg-hairline"></span>
 			</div>
 			<div class="flex-1">
 				<div class="flex flex-wrap items-center gap-2">
 					<span class="text-[12.5px] font-semibold">{repName(a.repId)}</span>
-					<span class="rounded-[4px] bg-panel-sunken px-1.5 py-px font-mono text-[10.5px] text-ink-600">
+					<span
+						class="rounded-[4px] bg-panel-sunken px-1.5 py-px font-mono text-[10.5px] text-ink-600"
+					>
 						{CHANNEL_LABEL[a.channel] ?? a.channel}
 					</span>
 					<OutcomeChip outcome={a.outcome} />

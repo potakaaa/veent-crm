@@ -34,7 +34,10 @@
 		{ label: 'Platform', value: lead.platform },
 		{ label: 'Page URL', value: lead.pageUrl ?? `facebook.com/${lead.handle.replace('@', '')}` },
 		{ label: 'Contact email', value: lead.email ?? '—' },
-		{ label: 'Event', value: lead.eventDate ? `${lead.eventName} · ${lead.eventDate}` : (lead.eventName ?? '—') }
+		{
+			label: 'Event',
+			value: lead.eventDate ? `${lead.eventName} · ${lead.eventDate}` : (lead.eventName ?? '—')
+		}
 	]);
 
 	async function logTouch(input: AddActivityInput) {
@@ -78,7 +81,10 @@
 <svelte:head><title>{lead.name} · Veent CRM</title></svelte:head>
 
 <div class="mx-auto max-w-[1080px] px-7 pb-16 pt-5">
-	<a href="/leads" class="mb-3.5 flex items-center gap-1.5 text-[12.5px] text-ink-400 hover:text-ink">
+	<a
+		href="/leads"
+		class="mb-3.5 flex items-center gap-1.5 text-[12.5px] text-ink-400 hover:text-ink"
+	>
 		<Icon name="back" size={14} stroke={2} /> Back to leads
 	</a>
 
@@ -107,8 +113,11 @@
 	{/if}
 
 	{#if !canEdit}
-		<div class="mb-4 rounded-control border border-hairline bg-panel-subtle px-4 py-2.5 text-[12.5px] text-ink-500">
-			You don't own this lead. Viewing is open to everyone; only the owner (or a manager) can edit it.
+		<div
+			class="mb-4 rounded-control border border-hairline bg-panel-subtle px-4 py-2.5 text-[12.5px] text-ink-500"
+		>
+			You don't own this lead. Viewing is open to everyone; only the owner (or a manager) can edit
+			it.
 		</div>
 	{/if}
 
@@ -116,7 +125,9 @@
 		<!-- LEFT -->
 		<div>
 			<div class="mb-4 rounded-control border border-hairline bg-panel p-4">
-				<div class="mb-3 font-mono text-[11px] uppercase tracking-[0.5px] text-ink-300">Lead &amp; event</div>
+				<div class="mb-3 font-mono text-[11px] uppercase tracking-[0.5px] text-ink-300">
+					Lead &amp; event
+				</div>
 				<div class="grid grid-cols-2 gap-x-6 gap-y-3">
 					{#each fields as f}
 						<div>
@@ -176,8 +187,14 @@
 			<div class="rounded-control border border-hairline bg-panel p-4">
 				<div class="mb-3 font-mono text-[11px] uppercase tracking-[0.5px] text-ink-300">Meta</div>
 				<div class="flex flex-col gap-2 font-mono text-[11.5px]">
-					<div class="flex justify-between"><span class="text-ink-300">created</span><span>{formatDate(lead.createdAt)}</span></div>
-					<div class="flex justify-between"><span class="text-ink-300">last activity</span><span>{formatDate(lead.lastActivityAt)}</span></div>
+					<div class="flex justify-between">
+						<span class="text-ink-300">created</span><span>{formatDate(lead.createdAt)}</span>
+					</div>
+					<div class="flex justify-between">
+						<span class="text-ink-300">last activity</span><span
+							>{formatDate(lead.lastActivityAt)}</span
+						>
+					</div>
 					<div class="flex justify-between">
 						<span class="text-ink-300">needs review</span>
 						<span style="color:{lead.needsReview ? '#e11d48' : '#0e9f6e'}">
@@ -190,8 +207,18 @@
 	</div>
 </div>
 
-<WonCaptureModal open={wonOpen} leadName={lead.name} onclose={() => (wonOpen = false)} onconfirm={confirmWon} />
-<LostReasonModal open={lostOpen} leadName={lead.name} onclose={() => (lostOpen = false)} onconfirm={confirmLost} />
+<WonCaptureModal
+	open={wonOpen}
+	leadName={lead.name}
+	onclose={() => (wonOpen = false)}
+	onconfirm={confirmWon}
+/>
+<LostReasonModal
+	open={lostOpen}
+	leadName={lead.name}
+	onclose={() => (lostOpen = false)}
+	onconfirm={confirmLost}
+/>
 <ReassignModal
 	open={reassignOpen}
 	users={data.users}

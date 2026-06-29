@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { invalidateAll } from '$app/navigation';
 	import PageHeader from '$lib/components/shared/PageHeader.svelte';
-	import PlatformBadge from '$lib/components/shared/PlatformBadge.svelte';
 	import StageChip from '$lib/components/shared/StageChip.svelte';
 	import ReassignModal from '$lib/components/leads/ReassignModal.svelte';
 	import Icon from '$lib/components/shared/Icon.svelte';
@@ -58,11 +57,17 @@
 		{#snippet actions()}
 			{#if selectedIds.length}
 				<span class="font-mono text-[12px] text-primary">{selectedIds.length} selected</span>
-				<button onclick={bulkClaim} class="h-[34px] rounded-control bg-primary px-3.5 text-[12.5px] font-semibold text-white">
+				<button
+					onclick={bulkClaim}
+					class="h-[34px] rounded-control bg-primary px-3.5 text-[12.5px] font-semibold text-white"
+				>
 					Claim {selectedIds.length}
 				</button>
 				{#if canReassign(data.currentUser)}
-					<button onclick={() => (assignOpen = true)} class="h-[34px] rounded-control border border-hairline bg-panel px-3.5 text-[12.5px] font-medium text-ink-600">
+					<button
+						onclick={() => (assignOpen = true)}
+						class="h-[34px] rounded-control border border-hairline bg-panel px-3.5 text-[12.5px] font-medium text-ink-600"
+					>
 						Assign to rep ▾
 					</button>
 				{/if}
@@ -71,15 +76,23 @@
 	</PageHeader>
 
 	<div class="overflow-hidden rounded-control border border-hairline bg-panel">
-		<div class="{grid} items-center border-b border-hairline bg-[#fdf7f5] px-4 py-[9px] font-mono text-[10.5px] uppercase tracking-[0.4px] text-ink-300">
-			<span></span><span>Organizer / page</span><span>Event</span><span>Stage</span><span>Last owner</span><span></span>
+		<div
+			class="{grid} items-center border-b border-hairline bg-[#fdf7f5] px-4 py-[9px] font-mono text-[10.5px] uppercase tracking-[0.4px] text-ink-300"
+		>
+			<span></span><span>Organizer / page</span><span>Event</span><span>Stage</span><span
+				>Last owner</span
+			><span></span>
 		</div>
 		{#each data.leads as l (l.id)}
-			<div class="{grid} min-h-11 items-center border-b border-panel-sunken px-4 last:border-b-0 hover:bg-[#fdf7f5]">
+			<div
+				class="{grid} min-h-11 items-center border-b border-panel-sunken px-4 last:border-b-0 hover:bg-[#fdf7f5]"
+			>
 				<button
 					onclick={() => toggle(l.id)}
 					aria-label="Select {l.name}"
-					class="flex h-[18px] w-[18px] items-center justify-center rounded-[5px] border-[1.5px] {selected[l.id]
+					class="flex h-[18px] w-[18px] items-center justify-center rounded-[5px] border-[1.5px] {selected[
+						l.id
+					]
 						? 'border-primary bg-primary'
 						: 'border-hairline-strong bg-panel'}"
 				>
@@ -88,7 +101,10 @@
 				<a href="/leads/{l.id}" class="min-w-0">
 					<div class="flex items-center gap-1.5 text-[13px] font-semibold">
 						{l.name}
-						{#if l.siblings}<span class="rounded-[4px] bg-[rgba(194,113,12,0.1)] px-[5px] py-px font-mono text-[9.5px] text-stale">{l.siblings} events</span>{/if}
+						{#if l.siblings}<span
+								class="rounded-[4px] bg-[rgba(194,113,12,0.1)] px-[5px] py-px font-mono text-[9.5px] text-stale"
+								>{l.siblings} events</span
+							>{/if}
 					</div>
 					<div class="font-mono text-[11px] text-ink-400">{l.handle} · {l.category}</div>
 				</a>
@@ -96,13 +112,18 @@
 				<div><StageChip stage={l.stage} /></div>
 				<div class="font-mono text-[12px] text-ink-400">{formerOwner(l.formerOwnerId)}</div>
 				<div>
-					<button onclick={() => claim(l)} class="h-[30px] w-full rounded-[7px] bg-primary text-[12.5px] font-semibold text-white hover:bg-primary-strong">
+					<button
+						onclick={() => claim(l)}
+						class="h-[30px] w-full rounded-[7px] bg-primary text-[12.5px] font-semibold text-white hover:bg-primary-strong"
+					>
 						Claim
 					</button>
 				</div>
 			</div>
 		{:else}
-			<div class="p-12 text-center text-[13px] text-ink-200">No leads up for grabs — queue clear.</div>
+			<div class="p-12 text-center text-[13px] text-ink-200">
+				No leads up for grabs — queue clear.
+			</div>
 		{/each}
 	</div>
 
@@ -112,4 +133,9 @@
 	</div>
 </div>
 
-<ReassignModal open={assignOpen} users={data.users} onclose={() => (assignOpen = false)} onconfirm={assignTo} />
+<ReassignModal
+	open={assignOpen}
+	users={data.users}
+	onclose={() => (assignOpen = false)}
+	onconfirm={assignTo}
+/>

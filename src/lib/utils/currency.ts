@@ -19,7 +19,9 @@ export function formatMoney(value: number | undefined, currency: Currency = 'PHP
 }
 
 /** Sum won-deal values bucketed by currency — never a single cross-currency total. */
-export function groupByCurrency(leads: Lead[]): { currency: Currency; total: number; deals: number }[] {
+export function groupByCurrency(
+	leads: Lead[]
+): { currency: Currency; total: number; deals: number }[] {
 	const buckets = new Map<Currency, { total: number; deals: number }>();
 	for (const l of leads) {
 		if (l.stage !== 'won' || !l.dealValue || !l.currency) continue;

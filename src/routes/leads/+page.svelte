@@ -67,7 +67,9 @@
 		subtitle="Sorted by last activity — freshest first. Search the command bar before adding a page."
 	>
 		{#snippet actions()}
-			<span class="font-mono text-[12px] text-ink-300">{filtered.length} shown · last activity ↓</span>
+			<span class="font-mono text-[12px] text-ink-300"
+				>{filtered.length} shown · last activity ↓</span
+			>
 			<Button variant="outline" size="sm" onclick={exportCsv}>Export CSV</Button>
 		{/snippet}
 	</PageHeader>
@@ -92,7 +94,9 @@
 			<SelectTrigger size="sm">{stage ? stageLabel(stage as Stage) : 'Stage'}</SelectTrigger>
 			<SelectContent>
 				<SelectItem value="" label="All stages">All stages</SelectItem>
-				{#each LEAD_STAGES as s}<SelectItem value={s} label={stageLabel(s)}>{stageLabel(s)}</SelectItem>{/each}
+				{#each LEAD_STAGES as s}<SelectItem value={s} label={stageLabel(s)}
+						>{stageLabel(s)}</SelectItem
+					>{/each}
 			</SelectContent>
 		</Select>
 		<Select type="single" bind:value={platform}>

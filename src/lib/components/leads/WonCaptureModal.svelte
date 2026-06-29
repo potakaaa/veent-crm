@@ -37,16 +37,24 @@
 </script>
 
 <Modal {open} {onclose} tone="success" title="Mark won — capture the deal" subtitle={leadName}>
-	<div class="mb-[18px] flex items-start gap-2 rounded-control border border-primary/20 bg-[rgba(192,54,44,0.07)] px-3 py-2.5">
+	<div
+		class="mb-[18px] flex items-start gap-2 rounded-control border border-primary/20 bg-[rgba(192,54,44,0.07)] px-3 py-2.5"
+	>
 		<span class="mt-px shrink-0 text-primary"><Icon name="info" size={15} stroke={2} /></span>
 		<div class="text-[12px] leading-relaxed text-[#7a2a24]">
-			Everything here is <strong>typed in, never looked up in Veent.</strong> The console is standalone — it doesn't read GMV or org records from ticketing.
+			Everything here is <strong>typed in, never looked up in Veent.</strong> The console is standalone
+			— it doesn't read GMV or org records from ticketing.
 		</div>
 	</div>
 
 	<div class="mb-3.5 grid gap-1.5">
 		<Label for="won-org">Signed organization name</Label>
-		<Input id="won-org" bind:value={signedOrg} placeholder="e.g. Christian Concerts Productions Inc." class="font-mono" />
+		<Input
+			id="won-org"
+			bind:value={signedOrg}
+			placeholder="e.g. Christian Concerts Productions Inc."
+			class="font-mono"
+		/>
 	</div>
 	<div class="mb-3.5 flex gap-3">
 		<div class="grid flex-1 gap-1.5">

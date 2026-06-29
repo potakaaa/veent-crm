@@ -39,7 +39,9 @@
 		{#each LOST_REASONS as r}
 			<Button
 				variant={reason === r ? 'secondary' : 'outline'}
-				class="h-10 justify-start {reason === r ? 'border-primary bg-[rgba(192,54,44,0.06)] text-ink' : ''}"
+				class="h-10 justify-start {reason === r
+					? 'border-primary bg-[rgba(192,54,44,0.06)] text-ink'
+					: ''}"
 				onclick={() => (reason = r)}
 			>
 				{REASON_LABEL[r]}

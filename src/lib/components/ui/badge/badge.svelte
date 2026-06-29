@@ -30,6 +30,11 @@
 	}: WithElementRef<HTMLAttributes<HTMLSpanElement>> & { variant?: BadgeVariant } = $props();
 </script>
 
-<span bind:this={ref} data-slot="badge" class={cn(badgeVariants({ variant }), className)} {...restProps}>
+<span
+	bind:this={ref}
+	data-slot="badge"
+	class={cn(badgeVariants({ variant }), className)}
+	{...restProps}
+>
 	{@render children?.()}
 </span>

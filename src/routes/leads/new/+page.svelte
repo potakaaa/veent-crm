@@ -67,18 +67,28 @@
 <svelte:head><title>New lead · Veent CRM</title></svelte:head>
 
 <div class="mx-auto max-w-[680px] px-7 pb-16 pt-6">
-	<a href="/leads" class="mb-3.5 flex items-center gap-1.5 text-[12.5px] text-ink-400 hover:text-ink">
+	<a
+		href="/leads"
+		class="mb-3.5 flex items-center gap-1.5 text-[12.5px] text-ink-400 hover:text-ink"
+	>
 		<Icon name="back" size={14} stroke={2} /> Back to leads
 	</a>
-	<PageHeader title="New lead" subtitle="Search the command bar first — dedup is advisory, but two reps shouldn't DM the same page." />
+	<PageHeader
+		title="New lead"
+		subtitle="Search the command bar first — dedup is advisory, but two reps shouldn't DM the same page."
+	/>
 
 	{#if dupes.length}
 		<div class="mb-4 rounded-control border border-stale/30 bg-[rgba(194,113,12,0.08)] p-3">
 			<div class="mb-2 flex items-center gap-2 text-[12px] font-semibold text-[#92560b]">
-				<Icon name="alert" size={14} stroke={2} /> Possible duplicate — review before creating (you can still create anyway).
+				<Icon name="alert" size={14} stroke={2} /> Possible duplicate — review before creating (you can
+				still create anyway).
 			</div>
 			{#each dupes as d (d.id)}
-				<a href="/leads/{d.id}" class="flex items-center gap-2.5 rounded-[7px] px-2 py-1.5 hover:bg-panel">
+				<a
+					href="/leads/{d.id}"
+					class="flex items-center gap-2.5 rounded-[7px] px-2 py-1.5 hover:bg-panel"
+				>
 					<PlatformBadge platform={d.platform} />
 					<span class="flex-1 text-[13px] font-semibold">{d.name}</span>
 					<span class="font-mono text-[11px] text-ink-400">{d.handle}</span>
@@ -106,7 +116,8 @@
 			<div class="grid gap-1.5">
 				<Label for="platform">Platform</Label>
 				<Select type="single" bind:value={platform}>
-					<SelectTrigger id="platform" class="w-full">{platform || 'Select platform'}</SelectTrigger>
+					<SelectTrigger id="platform" class="w-full">{platform || 'Select platform'}</SelectTrigger
+					>
 					<SelectContent>
 						{#each LEAD_PLATFORMS as p}<SelectItem value={p} label={p}>{p}</SelectItem>{/each}
 					</SelectContent>

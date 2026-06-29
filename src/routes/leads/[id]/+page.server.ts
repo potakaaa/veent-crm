@@ -4,6 +4,8 @@ import { getLead, listUsers, listActivities } from '$lib/server/db/leads';
 import type { User } from '$lib/types';
 
 export const load: PageServerLoad = async ({ params, locals }) => {
+	if (!locals.user) throw error(401, 'Unauthorized');
+
 	const [lead, users] = await Promise.all([getLead(params.id), listUsers()]);
 
 	if (!lead) throw error(404, 'Lead not found');
@@ -11,10 +13,10 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 	const activities = await listActivities(lead.id);
 
 	const me: User = {
-		id: locals.user!.id,
-		email: locals.user!.email,
-		name: locals.user!.name,
-		role: locals.user!.role,
+		id: locals.user.id,
+		email: locals.user.email,
+		name: locals.user.name,
+		role: locals.user.role,
 		active: true
 	};
 

@@ -4,7 +4,7 @@
  */
 import { db } from './index';
 import { crmLeads, crmUsers, crmActivities } from './schema';
-import { eq, isNull, desc, and } from 'drizzle-orm';
+import { eq, isNull, desc, and, sql } from 'drizzle-orm';
 import type { Lead, User, Activity, Stage, Urgency } from '$lib/types';
 import { computeAge } from '$lib/utils/dates';
 
@@ -101,7 +101,7 @@ export async function listLeads(): Promise<Lead[]> {
 		.select()
 		.from(crmLeads)
 		.where(isNull(crmLeads.deletedAt))
-		.orderBy(desc(crmLeads.lastActivityAt));
+		.orderBy(desc(sql`coalesce(${crmLeads.lastActivityAt}, ${crmLeads.createdAt})`));
 	return rows.map(dbRowToLead);
 }
 

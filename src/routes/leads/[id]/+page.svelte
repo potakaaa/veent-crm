@@ -43,11 +43,12 @@
 	async function logTouch(input: AddActivityInput) {
 		try {
 			await crm.addActivity(lead.id, input);
-			await invalidateAll();
-			toasts.success('Touch logged · follow-up booked');
 		} catch {
 			toasts.push('Activity logging will be wired in Phase 6.');
+			return;
 		}
+		await invalidateAll();
+		toasts.success('Touch logged · follow-up booked');
 	}
 
 	async function selectStage(stage: Stage) {
@@ -56,48 +57,52 @@
 		if (stage === 'lost') return void (lostOpen = true);
 		try {
 			await crm.moveLeadStage(lead.id, stage);
-			await invalidateAll();
-			toasts.push(`Moved to ${stage}`);
 		} catch {
 			toasts.push('Stage transitions will be wired in Phase 5.');
+			return;
 		}
+		await invalidateAll();
+		toasts.push(`Moved to ${stage}`);
 	}
 
 	async function confirmWon(payload: MoveStagePayload) {
 		try {
 			await crm.moveLeadStage(lead.id, 'won', payload);
-			wonOpen = false;
-			await invalidateAll();
-			toasts.success('Deal won — captured 🎉');
 		} catch {
 			wonOpen = false;
 			toasts.push('Won capture will be wired in Phase 5.');
+			return;
 		}
+		wonOpen = false;
+		await invalidateAll();
+		toasts.success('Deal won — captured 🎉');
 	}
 
 	async function confirmLost(reason: LostReason, note?: string) {
 		void note;
 		try {
 			await crm.moveLeadStage(lead.id, 'lost', { lostReason: reason });
-			lostOpen = false;
-			await invalidateAll();
-			toasts.push('Marked lost — still searchable');
 		} catch {
 			lostOpen = false;
 			toasts.push('Lost marking will be wired in Phase 5.');
+			return;
 		}
+		lostOpen = false;
+		await invalidateAll();
+		toasts.push('Marked lost — still searchable');
 	}
 
 	async function confirmReassign(ownerId: string) {
 		try {
 			await crm.reassignLeads([lead.id], ownerId);
-			reassignOpen = false;
-			await invalidateAll();
-			toasts.success('Lead reassigned');
 		} catch {
 			reassignOpen = false;
 			toasts.push('Reassign will be wired in Phase 5.');
+			return;
 		}
+		reassignOpen = false;
+		await invalidateAll();
+		toasts.success('Lead reassigned');
 	}
 </script>
 

@@ -89,6 +89,11 @@ describe('leadFormSchema (create-lead validation)', () => {
 		expect(r.success).toBe(false);
 	});
 
+	it('rejects a whitespace-only name', () => {
+		const r = leadFormSchema.safeParse({ name: '   ' });
+		expect(r.success).toBe(false);
+	});
+
 	it('accepts all valid platforms', () => {
 		for (const platform of ['Facebook', 'Instagram', 'Twitter/X', 'TikTok', 'Other']) {
 			const r = leadFormSchema.safeParse({ name: 'Org', platform });
@@ -289,17 +294,4 @@ describe('dbActivityToActivity mapper', () => {
 	});
 });
 
-// ---------------------------------------------------------------------------
-// 404 behaviour (unit-level contract test — no DB)
-// ---------------------------------------------------------------------------
-
-describe('getLead 404 contract', () => {
-	it('null return from getLead causes a 404 in the loader', async () => {
-		// The +page.server.ts loader calls: if (!lead) throw error(404, 'Lead not found')
-		// We verify that contract by confirming getLead returns null for a nonsense id
-		// when connected to a real DB. Here we just assert the null-checks exist in the mapper.
-		// A null row never passes through dbRowToLead — getLead returns null directly.
-		// (Integration test with real DB: run `bun test:e2e` when DB is available.)
-		expect(true).toBe(true); // Documented placeholder — see e2e tests
-	});
-});
+// 404 path covered by leads-db.spec.ts: "getLead returns null for a nonexistent UUID"

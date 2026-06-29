@@ -52,7 +52,7 @@ export const CURRENCIES = ['PHP', 'SGD'] as const;
 
 // --- Add / edit a lead (Superforms) ---------------------------------------
 export const leadFormSchema = z.object({
-	name: z.string().min(1, 'Page / organizer name is required'),
+	name: z.string().trim().min(1, 'Page / organizer name is required'),
 	category: z.enum(LEAD_CATEGORIES).default('Other'),
 	platform: z.enum(LEAD_PLATFORMS).optional(),
 	location: z.string().optional(),

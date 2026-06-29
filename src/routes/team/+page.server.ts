@@ -1,8 +1,14 @@
 import type { PageServerLoad } from './$types';
-import { MOCK_REPS } from '$lib/server/mock';
+import { error } from '@sveltejs/kit';
+import { db } from '$lib/server/db/index';
+import { crmUsers } from '$lib/server/db/schema';
+import { asc } from 'drizzle-orm';
 
-// STUB (manager-only): add/deactivate reps, set role, bulk reassign. This list IS the
-// magic-link allowlist (active + email). Real impl gates on locals.user.role === 'manager'.
-export const load: PageServerLoad = async () => {
-	return { reps: MOCK_REPS };
+// Manager-only: this roster doubles as the magic-link allowlist (active reps with email).
+export const load: PageServerLoad = async ({ locals }) => {
+	if (locals.user?.role !== 'manager') {
+		error(403, 'Manager only');
+	}
+	const users = await db.select().from(crmUsers).orderBy(asc(crmUsers.active), asc(crmUsers.name));
+	return { users };
 };

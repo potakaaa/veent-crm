@@ -11,16 +11,76 @@ const client = postgres(url, { max: 1 });
 const db = drizzle(client);
 
 const users: (typeof crmUsers.$inferInsert)[] = [
-	{ id: '00000000-0000-0000-0000-000000000001', name: 'John Sabuga',  email: 'john.sabuga@veent.io', role: 'manager', active: true  },
-	{ id: '00000000-0000-0000-0000-000000000002', name: 'Jonna',        email: 'jonna@veent.io',       role: 'rep',     active: true  },
-	{ id: '00000000-0000-0000-0000-000000000003', name: 'Ethyl',        email: 'ethyl@veent.io',       role: 'rep',     active: true  },
-	{ id: '00000000-0000-0000-0000-000000000004', name: 'Meybelle',     email: 'meybelle@veent.io',    role: 'rep',     active: true  },
-	{ id: '00000000-0000-0000-0000-000000000005', name: 'Shane',        email: 'shane@veent.io',       role: 'rep',     active: true  },
-	{ id: '00000000-0000-0000-0000-000000000006', name: 'Elay',         email: 'elay@veent.io',        role: 'rep',     active: true  },
-	{ id: '00000000-0000-0000-0000-000000000007', name: 'Angel',        email: null,                   role: 'rep',     active: false },
-	{ id: '00000000-0000-0000-0000-000000000008', name: 'Fatima',       email: null,                   role: 'rep',     active: false },
-	{ id: '00000000-0000-0000-0000-000000000009', name: 'Divine',       email: null,                   role: 'rep',     active: false },
-	{ id: '00000000-0000-0000-0000-000000000010', name: 'Dhen',         email: null,                   role: 'rep',     active: false },
+	{
+		id: '00000000-0000-0000-0000-000000000001',
+		name: 'John Sabuga',
+		email: 'john.sabuga@veent.io',
+		role: 'manager',
+		active: true
+	},
+	{
+		id: '00000000-0000-0000-0000-000000000002',
+		name: 'Jonna',
+		email: 'jonna@veent.io',
+		role: 'rep',
+		active: true
+	},
+	{
+		id: '00000000-0000-0000-0000-000000000003',
+		name: 'Ethyl',
+		email: 'ethyl@veent.io',
+		role: 'rep',
+		active: true
+	},
+	{
+		id: '00000000-0000-0000-0000-000000000004',
+		name: 'Meybelle',
+		email: 'meybelle@veent.io',
+		role: 'rep',
+		active: true
+	},
+	{
+		id: '00000000-0000-0000-0000-000000000005',
+		name: 'Shane',
+		email: 'shane@veent.io',
+		role: 'rep',
+		active: true
+	},
+	{
+		id: '00000000-0000-0000-0000-000000000006',
+		name: 'Elay',
+		email: 'elay@veent.io',
+		role: 'rep',
+		active: true
+	},
+	{
+		id: '00000000-0000-0000-0000-000000000007',
+		name: 'Angel',
+		email: null,
+		role: 'rep',
+		active: false
+	},
+	{
+		id: '00000000-0000-0000-0000-000000000008',
+		name: 'Fatima',
+		email: null,
+		role: 'rep',
+		active: false
+	},
+	{
+		id: '00000000-0000-0000-0000-000000000009',
+		name: 'Divine',
+		email: null,
+		role: 'rep',
+		active: false
+	},
+	{
+		id: '00000000-0000-0000-0000-000000000010',
+		name: 'Dhen',
+		email: null,
+		role: 'rep',
+		active: false
+	}
 ];
 
 try {

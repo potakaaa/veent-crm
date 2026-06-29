@@ -28,7 +28,11 @@
 					<Table.Cell class="text-muted-foreground">{u.email ?? '— record only'}</Table.Cell>
 					<Table.Cell>{u.role}</Table.Cell>
 					<Table.Cell>
-						<span class="rounded px-2 py-0.5 text-xs {u.active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}">
+						<span
+							class="rounded px-2 py-0.5 text-xs {u.active
+								? 'bg-green-100 text-green-700'
+								: 'bg-gray-100 text-gray-500'}"
+						>
 							{u.active ? 'active' : 'former'}
 						</span>
 					</Table.Cell>

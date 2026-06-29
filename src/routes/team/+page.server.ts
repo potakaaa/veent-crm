@@ -10,9 +10,6 @@ export const load: PageServerLoad = async ({ locals }) => {
 	if (locals.user?.role !== 'manager') {
 		error(403, 'Manager only');
 	}
-	const rows = await db
-		.select()
-		.from(crmUsers)
-		.orderBy(desc(crmUsers.active), asc(crmUsers.name));
+	const rows = await db.select().from(crmUsers).orderBy(desc(crmUsers.active), asc(crmUsers.name));
 	return { users: rows.map(dbUserToUser) };
 };

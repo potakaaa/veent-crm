@@ -475,7 +475,10 @@ export async function getTodayQueue(userId: string): Promise<Lead[]> {
 	// postgres-js returns MAX() aggregate results as strings even for timestamp columns;
 	// coerce explicitly so dbRowToLead receives a real Date.
 	const followUpMap = new Map(
-		followUps.map((f) => [f.leadId, f.followUpAt ? new Date(f.followUpAt as unknown as string) : null])
+		followUps.map((f) => [
+			f.leadId,
+			f.followUpAt ? new Date(f.followUpAt as unknown as string) : null
+		])
 	);
 
 	return rows.map((row) => dbRowToLead(row, followUpMap.get(row.id) ?? undefined));

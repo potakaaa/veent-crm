@@ -45,10 +45,12 @@ export async function sendReminderDigest({
 	}
 
 	try {
+		const escHtml = (s: string) =>
+			s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 		const items = reminders
 			.map(
 				(r) =>
-					`<li>${r.leadName} — follow up ${r.followUpAt}${r.overdue ? ' <strong>(overdue)</strong>' : ''}</li>`
+					`<li>${escHtml(r.leadName)} — follow up ${r.followUpAt}${r.overdue ? ' <strong>(overdue)</strong>' : ''}</li>`
 			)
 			.join('');
 		const html = `<p>You have ${reminders.length} follow-up(s) due:</p><ul>${items}</ul>`;

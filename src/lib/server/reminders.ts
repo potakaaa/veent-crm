@@ -4,7 +4,7 @@
 
 import { db } from './db/index';
 import { crmActivities, crmLeads, crmUsers } from './db/schema';
-import { and, asc, eq, isNotNull, isNull, lte } from 'drizzle-orm';
+import { and, asc, eq, isNotNull, isNull, lte, or } from 'drizzle-orm';
 
 export const REMINDER_TZ = 'Asia/Manila';
 
@@ -47,7 +47,8 @@ export async function getDueReminders(): Promise<DueReminder[]> {
 			and(
 				isNotNull(crmActivities.followUpAt),
 				lte(crmActivities.followUpAt, new Date()),
-				isNull(crmLeads.deletedAt)
+				isNull(crmLeads.deletedAt),
+				or(isNull(crmUsers.id), eq(crmUsers.active, true))
 			)
 		)
 		.orderBy(asc(crmActivities.followUpAt));

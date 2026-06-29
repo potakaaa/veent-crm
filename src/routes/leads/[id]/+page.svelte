@@ -40,6 +40,7 @@
 	]);
 
 	async function logTouch(input: AddActivityInput) {
+		const occurredAt = new Date().toISOString();
 		let res: Response;
 		try {
 			res = await fetch(`/api/leads/${lead.id}/activities`, {
@@ -49,22 +50,23 @@
 					leadId: lead.id,
 					channel: input.channel,
 					outcome: input.outcome,
+					occurredAt,
 					followUpInDays: input.followUpInDays,
 					notes: input.note
 				})
 			});
 		} catch {
 			toasts.push('Touch logging failed — server error');
-			return;
+			throw new Error('network');
 		}
 
 		if (res.status === 409) {
 			toasts.push('Already logged — touch already recorded for this channel/time');
-			return;
+			throw new Error('duplicate');
 		}
 		if (!res.ok) {
 			toasts.push('Touch logging failed — please try again');
-			return;
+			throw new Error('http');
 		}
 
 		await invalidateAll();

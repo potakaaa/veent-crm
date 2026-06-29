@@ -34,12 +34,12 @@ export const todayLabel = (): string =>
 		year: 'numeric'
 	});
 
-/** Human "2h ago" / "3d ago" relative to NOW. */
-export function relativeFromNow(iso: string | undefined): string {
+/** Human "2h ago" / "3d ago" relative to `now` (defaults to the frozen NOW anchor for display helpers). */
+export function relativeFromNow(iso: string | undefined, now: Date = NOW): string {
 	if (!iso) return '—';
 	const d = new Date(iso);
 	if (Number.isNaN(d.getTime())) return iso;
-	const diff = NOW.getTime() - d.getTime();
+	const diff = now.getTime() - d.getTime();
 	if (diff < 0) return formatDate(iso);
 	const hours = Math.floor(diff / 3_600_000);
 	if (hours < 1) return 'just now';
@@ -70,7 +70,7 @@ export function computeAge(
 	}
 	const idle = daysBetween(new Date(lead.lastActivityAt), now);
 	if (idle > 30) return { label: `${idle}d cold`, type: 'stale' };
-	if (idle <= 1) return { label: relativeFromNow(lead.lastActivityAt), type: 'fresh' };
+	if (idle <= 1) return { label: relativeFromNow(lead.lastActivityAt, now), type: 'fresh' };
 	return { label: `${idle}d`, type: 'normal' };
 }
 

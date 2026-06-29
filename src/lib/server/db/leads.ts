@@ -254,7 +254,10 @@ export async function insertActivity(input: {
 
 		await tx
 			.update(crmLeads)
-			.set({ lastActivityAt: ts, updatedAt: new Date() })
+			.set({
+				lastActivityAt: sql`GREATEST(COALESCE(${crmLeads.lastActivityAt}, ${ts}), ${ts})`,
+				updatedAt: new Date()
+			})
 			.where(eq(crmLeads.id, input.leadId));
 
 		return dbActivityToActivity(inserted[0]);

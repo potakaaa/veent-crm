@@ -44,6 +44,8 @@
 		try {
 			await onSubmit({ channel, outcome, followUpInDays, note: note.trim() || undefined });
 			note = '';
+		} catch {
+			// errors already surfaced as toasts by the onSubmit handler
 		} finally {
 			submitting = false;
 		}

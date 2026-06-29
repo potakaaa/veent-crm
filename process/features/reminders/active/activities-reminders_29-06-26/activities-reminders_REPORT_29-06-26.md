@@ -41,6 +41,7 @@ New tests: `src/tests/reminders.spec.ts` (VE-A1, VE-B1, VE-C2).
 - **Hybrid gates VE-A1b / VE-A2 / VE-A2b / VE-C1** — require a running app + live Postgres; no integration-DB harness exists. Not executed in this session (manual). Pre-existing known infra gap.
 - **Agent-Probe gates VE-A3 / VE-A4 / VE-B2** — UI/visual judgment; need a running app + seeded DB. Not run here.
 - **Live n8n dispatch + Viber/Telegram** — Known-Gap, backlog `process/features/reminders/backlog/n8n-reminders-dispatch_NOTE_29-06-26.md` (already present).
+- **Acceptance #5 (future follow-ups visible in reminders page) — DEFERRED OPEN GAP:** `reminders/+page.svelte` only renders `overdue`/`due`/`cold` urgency groups. Future follow-ups (urgency `normal`) are returned by B2 but never displayed. Fixing this requires adding a "Upcoming" group to the reminders page; deferred to a follow-up task. Until then, the reminders page shows only today's and overdue follow-ups.
 
 ## Plan Deviations
 

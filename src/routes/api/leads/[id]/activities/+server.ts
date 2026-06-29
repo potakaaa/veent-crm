@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { activityFormSchema } from '$lib/zod/schemas';
-import { insertActivity } from '$lib/server/db/leads';
+import { getLead, insertActivity } from '$lib/server/db/leads';
 
 // POST /api/leads/[id]/activities — log an outreach touch.
 // Cookie clients are redirected (303) by hooks.server.ts before this runs; the in-handler
@@ -29,11 +29,37 @@ export const POST: RequestHandler = async ({ request, params, locals }) => {
 		);
 	}
 
+	// Ownership check: only the lead owner or a manager may log activities.
+	const lead = await getLead(params.id);
+	if (!lead) return json({ error: 'not found' }, { status: 404 });
+	if (locals.user.role !== 'manager' && lead.ownerId !== locals.user.id) {
+		return json({ error: 'forbidden' }, { status: 403 });
+	}
+
 	// `followUpInDays` is sent by the client but is NOT part of activityFormSchema —
 	// validate it from the raw body before passing through.
 	const rawDays = (body as Record<string, unknown>).followUpInDays;
-	const followUpInDays =
-		typeof rawDays === 'number' && Number.isFinite(rawDays) ? rawDays : undefined;
+	if (rawDays != null && !(typeof rawDays === 'number' && Number.isFinite(rawDays))) {
+		return json(
+			{ error: 'invalid', issues: [{ message: 'followUpInDays must be a finite number' }] },
+			{ status: 400 }
+		);
+	}
+	const followUpInDays = rawDays as number | undefined;
+
+	// Validate optional date strings before constructing Date objects.
+	if (parsed.data.occurredAt && Number.isNaN(new Date(parsed.data.occurredAt).getTime())) {
+		return json(
+			{ error: 'invalid', issues: [{ message: 'occurredAt is not a valid date' }] },
+			{ status: 400 }
+		);
+	}
+	if (parsed.data.followUpAt && Number.isNaN(new Date(parsed.data.followUpAt).getTime())) {
+		return json(
+			{ error: 'invalid', issues: [{ message: 'followUpAt is not a valid date' }] },
+			{ status: 400 }
+		);
+	}
 
 	const activity = await insertActivity({
 		leadId: parsed.data.leadId,

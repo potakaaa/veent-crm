@@ -1,12 +1,20 @@
 import type { PageServerLoad } from './$types';
-import { MOCK_LEADS } from '$lib/server/mock';
+import { error } from '@sveltejs/kit';
+import { listLeads, listUsers } from '$lib/server/db/leads';
+import type { User } from '$lib/types';
 
-// STUB: default view = fresh-first, excludes lost. Real impl: Drizzle query + pg_trgm search +
-// stage/owner/category/platform filters + stale (>30d) filter. SVAR DataGrid renders this.
-export const load: PageServerLoad = async ({ url }) => {
-	const q = (url.searchParams.get('q') ?? '').toLowerCase();
-	let leads = MOCK_LEADS.filter((l) => l.stage !== 'lost');
-	if (q) leads = leads.filter((l) => l.name.toLowerCase().includes(q));
-	leads = [...leads].sort((a, b) => (b.lastActivityAt ?? '').localeCompare(a.lastActivityAt ?? ''));
-	return { leads, q };
+export const load: PageServerLoad = async ({ locals }) => {
+	if (!locals.user) throw error(401, 'Unauthorized');
+
+	const [leads, users] = await Promise.all([listLeads(), listUsers()]);
+
+	const me: User = {
+		id: locals.user.id,
+		email: locals.user.email,
+		name: locals.user.name,
+		role: locals.user.role,
+		active: true
+	};
+
+	return { leads, users, me };
 };

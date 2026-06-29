@@ -1,12 +1,9 @@
 import type { PageServerLoad } from './$types';
-import { MOCK_LEADS } from '$lib/server/mock';
-import { LEAD_STAGES } from '$lib/zod/schemas';
+import { error } from '@sveltejs/kit';
+import { listLeads, listUsers } from '$lib/server/db/leads';
 
-// STUB: kanban columns by stage. Real impl supports drag-to-move + quick-assign + Won prompt.
-export const load: PageServerLoad = async () => {
-	const columns = LEAD_STAGES.map((stage) => ({
-		stage,
-		leads: MOCK_LEADS.filter((l) => l.stage === stage)
-	}));
-	return { columns };
+export const load: PageServerLoad = async ({ locals }) => {
+	if (!locals.user) throw error(401, 'Unauthorized');
+	const [leads, users] = await Promise.all([listLeads(), listUsers()]);
+	return { leads, users };
 };

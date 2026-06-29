@@ -1,0 +1,118 @@
+/*
+ * Veent Outreach Console — design tokens
+ * Source of truth for the moodboard imported from Claude Design
+ * ("Veent Outreach Console - Board"). Warm, editorial wine-on-cream palette:
+ * Spectral (serif display) + Inter (sans body) + IBM Plex Mono (data/labels).
+ *
+ * Tailwind v4 reads `@theme` and generates utilities:
+ *   --color-primary   -> bg-primary / text-primary / border-primary ...
+ *   --font-serif      -> font-serif
+ *   --radius-frame    -> rounded-frame
+ *   --shadow-frame    -> shadow-frame
+ */
+
+@theme {
+	/* Typefaces */
+	--font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+	--font-serif: 'Spectral', Georgia, 'Times New Roman', serif;
+	--font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, monospace;
+
+	/* Brand */
+	--color-primary: #c0362c;
+	--color-primary-strong: #7a2a24;
+	--color-primary-foreground: #ffffff;
+
+	/* Surfaces */
+	--color-canvas: #f3e9e6;
+	--color-panel: #ffffff;
+	--color-panel-subtle: #fbf5f3;
+	--color-panel-sunken: #f5ecea;
+	--color-selected: #f2e6e4;
+
+	/* Lines */
+	--color-hairline: #efe2e0;
+	--color-hairline-strong: #e0cfcc;
+
+	/* Ink — warm wine neutral ramp (text, from darkest to faintest) */
+	--color-ink: #261617;
+	--color-ink-800: #3a2122;
+	--color-ink-700: #43282a;
+	--color-ink-600: #5a4a48;
+	--color-ink-500: #6e5c5a;
+	--color-ink-400: #8e7c78;
+	--color-ink-300: #9c8a86;
+	--color-ink-200: #a89490;
+	--color-ink-100: #bca6a2;
+
+	/* Signal / lead age */
+	--color-overdue: #e11d48;
+	--color-stale: #c2710c;
+	--color-fresh: #0e9f6e;
+
+	/* Pipeline stage accents */
+	--color-stage-new: #64748b;
+	--color-stage-contacted: #2563eb;
+	--color-stage-replied: #7c3aed;
+	--color-stage-discussion: #c2710c;
+	--color-stage-won: #0e9f6e;
+	--color-stage-lost: #71717a;
+
+	/* Radii */
+	--radius-chip: 6px;
+	--radius-control: 8px;
+	--radius-frame: 12px;
+	--radius-panel: 16px;
+
+	/* shadcn-svelte radius scale (aligned to our control/frame radii) */
+	--radius-sm: 6px;
+	--radius-md: 8px;
+	--radius-lg: 12px;
+	--radius-xl: 16px;
+
+	/*
+	 * shadcn-svelte semantic tokens, bridged to the warm Veent palette so every
+	 * `ui/` primitive (bg-background, text-foreground, border-border, bg-card,
+	 * bg-muted, ring-ring, bg-destructive, …) renders on-brand by default.
+	 */
+	--color-background: #f3e9e6;
+	--color-foreground: #261617;
+	--color-card: #ffffff;
+	--color-card-foreground: #261617;
+	--color-popover: #ffffff;
+	--color-popover-foreground: #261617;
+	--color-primary-foreground: #ffffff;
+	--color-secondary: #f5ecea;
+	--color-secondary-foreground: #261617;
+	--color-muted: #f5ecea;
+	--color-muted-foreground: #6e5c5a;
+	--color-accent: #f2e6e4;
+	--color-accent-foreground: #261617;
+	--color-destructive: #c0362c;
+	--color-destructive-foreground: #ffffff;
+	--color-border: #efe2e0;
+	--color-input: #efe2e0;
+	--color-ring: #c0362c;
+
+	/* Elevation — warm wine-tinted shadows */
+	--shadow-frame: 0 1px 3px rgba(38, 22, 23, 0.06);
+	--shadow-raised: 0 2px 8px rgba(38, 22, 23, 0.08);
+	--shadow-pop: 0 8px 30px rgba(38, 22, 23, 0.18);
+}
+
+@layer base {
+	html {
+		-webkit-font-smoothing: antialiased;
+		text-rendering: optimizeLegibility;
+	}
+
+	body {
+		background-color: var(--color-canvas);
+		color: var(--color-ink);
+		font-family: var(--font-sans);
+	}
+
+	/* Tabular, monospace numerals everywhere data appears */
+	.tnum {
+		font-variant-numeric: tabular-nums;
+	}
+}

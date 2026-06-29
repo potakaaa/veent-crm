@@ -28,7 +28,8 @@
 
 	{#if sent}
 		<div class="rounded border border-green-300 bg-green-50 px-3 py-2 text-sm text-green-800">
-			Check your email — we sent a sign-in link to <strong>{email}</strong>. It expires in 5 minutes.
+			Check your email — we sent a sign-in link to <strong>{email}</strong>. It expires in 5
+			minutes.
 		</div>
 	{:else}
 		<form class="space-y-3" onsubmit={submit}>

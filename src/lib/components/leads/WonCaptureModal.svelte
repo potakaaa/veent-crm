@@ -1,0 +1,75 @@
+<script lang="ts">
+	import Modal from '$lib/components/shared/Modal.svelte';
+	import Icon from '$lib/components/shared/Icon.svelte';
+	import { Input } from '$lib/components/ui/input';
+	import { Label } from '$lib/components/ui/label';
+	import { Button } from '$lib/components/ui/button';
+	import { Select, SelectTrigger, SelectContent, SelectItem } from '$lib/components/ui/select';
+	import { NOW } from '$lib/utils/dates';
+	import { CURRENCIES } from '$lib/zod/schemas';
+	import type { Currency, MoveStagePayload } from '$lib/types';
+
+	let {
+		open,
+		leadName,
+		onclose,
+		onconfirm
+	}: {
+		open: boolean;
+		leadName: string;
+		onclose: () => void;
+		onconfirm: (payload: MoveStagePayload) => void;
+	} = $props();
+
+	let signedOrg = $state('');
+	let dealValue = $state('');
+	let currency = $state<string>('PHP');
+	let signedDate = $state(NOW.toISOString().slice(0, 10));
+
+	function confirm() {
+		onconfirm({
+			signedOrg: signedOrg.trim() || undefined,
+			dealValue: dealValue ? Number(dealValue.replace(/[^0-9.]/g, '')) : undefined,
+			currency: currency as Currency,
+			signedDate
+		});
+	}
+</script>
+
+<Modal {open} {onclose} tone="success" title="Mark won — capture the deal" subtitle={leadName}>
+	<div class="mb-[18px] flex items-start gap-2 rounded-control border border-primary/20 bg-[rgba(192,54,44,0.07)] px-3 py-2.5">
+		<span class="mt-px shrink-0 text-primary"><Icon name="info" size={15} stroke={2} /></span>
+		<div class="text-[12px] leading-relaxed text-[#7a2a24]">
+			Everything here is <strong>typed in, never looked up in Veent.</strong> The console is standalone — it doesn't read GMV or org records from ticketing.
+		</div>
+	</div>
+
+	<div class="mb-3.5 grid gap-1.5">
+		<Label for="won-org">Signed organization name</Label>
+		<Input id="won-org" bind:value={signedOrg} placeholder="e.g. Christian Concerts Productions Inc." class="font-mono" />
+	</div>
+	<div class="mb-3.5 flex gap-3">
+		<div class="grid flex-1 gap-1.5">
+			<Label for="won-value">Deal value</Label>
+			<Input id="won-value" bind:value={dealValue} placeholder="85,000" class="font-mono" />
+		</div>
+		<div class="grid w-[120px] gap-1.5">
+			<Label for="won-cur">Currency</Label>
+			<Select type="single" bind:value={currency}>
+				<SelectTrigger id="won-cur" class="w-full font-mono">{currency}</SelectTrigger>
+				<SelectContent>
+					{#each CURRENCIES as c}<SelectItem value={c} label={c}>{c}</SelectItem>{/each}
+				</SelectContent>
+			</Select>
+		</div>
+	</div>
+	<div class="grid gap-1.5">
+		<Label for="won-date">Signed date</Label>
+		<Input id="won-date" type="date" bind:value={signedDate} class="font-mono" />
+	</div>
+
+	{#snippet footer()}
+		<Button variant="outline" class="flex-1" onclick={onclose}>Cancel</Button>
+		<Button variant="success" class="flex-[2]" onclick={confirm}>Mark won</Button>
+	{/snippet}
+</Modal>

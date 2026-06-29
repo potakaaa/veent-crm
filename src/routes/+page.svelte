@@ -1,30 +1,72 @@
 <script lang="ts">
-	import StubNote from '$lib/components/StubNote.svelte';
+	import PageHeader from '$lib/components/shared/PageHeader.svelte';
+	import Stat from '$lib/components/shared/Stat.svelte';
+	import LeadListRow from '$lib/components/leads/LeadListRow.svelte';
+	import { toasts } from '$lib/stores/toasts.svelte';
+	import { todayLabel } from '$lib/utils/dates';
+	import type { Lead, Urgency } from '$lib/types';
 
 	let { data } = $props();
+
+	type Group = { key: Urgency; title: string; color: string; hint: string; empty: string };
+	const groupDefs: Group[] = [
+		{ key: 'overdue', title: 'Overdue follow-ups', color: '#e11d48', hint: 'past their booked follow-up date', empty: 'Nothing overdue — nice.' },
+		{ key: 'due', title: 'Due today', color: '#c0362c', hint: 'follow-ups booked for today (Manila)', empty: 'Nothing due — go prospect.' },
+		{ key: 'replied', title: 'Replied — strike while warm', color: '#7c3aed', hint: 'they answered; reply before it cools', empty: 'No fresh replies right now.' },
+		{ key: 'cold', title: 'Going cold (>30d no reply)', color: '#c2710c', hint: "don't auto-lose these — re-touch", empty: 'Nothing going cold.' }
+	];
+
+	const groups = $derived(
+		groupDefs.map((g) => ({ ...g, rows: data.leads.filter((l: Lead) => l.urgency === g.key) }))
+	);
+	const count = (k: Urgency) => data.leads.filter((l: Lead) => l.urgency === k).length;
+
+	const snooze = (l: Lead) => toasts.push(`Snoozed ${l.name} — booked a new follow-up`);
+	const nudge = (l: Lead) => toasts.success(`Nudge sent to ${l.name}`);
 </script>
 
 <svelte:head><title>Today · Veent CRM</title></svelte:head>
 
-<StubNote />
+<div class="mx-auto max-w-[940px] px-7 pb-16 pt-6">
+	<PageHeader
+		title="Today"
+		subtitle={`Good morning, ${data.me?.name ?? 'there'}. Your queue is sorted by urgency — clear the top first.`}
+	>
+		{#snippet meta()}
+			{todayLabel()}<br /><span class="text-ink-100">Asia/Manila</span>
+		{/snippet}
+	</PageHeader>
 
-<h1 class="mb-1 text-2xl font-semibold">Today</h1>
-<p class="mb-6 text-gray-600">
-	The daily loop home — due/overdue follow-ups (Asia/Manila), quick log-touch, and search.
-</p>
+	<div class="my-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+		<Stat value={count('due')} label="due today" accent="#c0362c" />
+		<Stat value={count('overdue')} label="overdue" accent="#e11d48" emphasize />
+		<Stat value={count('cold')} label="going cold" accent="#c2710c" emphasize />
+		<Stat value={count('replied')} label="replied — strike while warm" accent="#0e9f6e" emphasize />
+	</div>
 
-<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-	{#each data.tiles as tile}
-		<div class="rounded-lg border border-gray-200 bg-white p-4">
-			<div class="text-sm text-gray-500">{tile.label}</div>
-			<div class="mt-1 text-3xl font-semibold">{tile.value}</div>
+	{#each groups as g (g.key)}
+		<div class="mb-5">
+			<div class="mb-2.5 flex items-center gap-2.5">
+				<span class="h-2 w-2 rounded-full" style="background:{g.color}"></span>
+				<h2 class="font-serif text-[15px] font-semibold text-ink">{g.title}</h2>
+				<span class="rounded-[5px] bg-panel-sunken px-[7px] py-0.5 font-mono text-[11px] text-ink-300">
+					{g.rows.length}
+				</span>
+				<span class="text-[12px] text-ink-200">{g.hint}</span>
+			</div>
+			<div class="overflow-hidden rounded-control border border-hairline bg-panel">
+				{#each g.rows as lead (lead.id)}
+					<LeadListRow {lead} onSnooze={snooze} onNudge={nudge} />
+				{:else}
+					<div class="p-[22px] text-center text-[13px] text-ink-200">{g.empty}</div>
+				{/each}
+			</div>
 		</div>
 	{/each}
-</div>
 
-<section class="mt-8">
-	<h2 class="mb-3 text-lg font-medium">Due &amp; overdue follow-ups</h2>
-	<div class="rounded-lg border border-gray-200 bg-white p-4 text-sm text-gray-500">
-		No reminders wired yet — see <code>/reminders</code> and <code>/api/reminders/due</code>.
+	<div class="mt-2 flex flex-wrap items-center gap-3.5 font-mono text-[11px] text-ink-200">
+		{#each [['j k', 'move'], ['↵', 'open'], ['e', 'log touch'], ['s', 'snooze']] as [key, label]}
+			<span><kbd class="rounded-[4px] bg-panel-sunken px-1.5 py-0.5 text-ink-600">{key}</kbd> {label}</span>
+		{/each}
 	</div>
-</section>
+</div>

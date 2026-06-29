@@ -8,3 +8,9 @@ bun.lockb
 # Miscellaneous
 /static/
 /drizzle/
+
+# Harness and tooling (not app code)
+.claude/
+.codex/
+process/
+docs/

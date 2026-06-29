@@ -21,15 +21,19 @@ export const POST: RequestHandler = async ({ request, params, locals }) => {
 
 	// Cross-check the route id matches the body's leadId.
 	if (parsed.data.leadId !== params.id) {
-		return json({ error: 'invalid', issues: [{ message: 'leadId does not match route' }] }, {
-			status: 400
-		});
+		return json(
+			{ error: 'invalid', issues: [{ message: 'leadId does not match route' }] },
+			{
+				status: 400
+			}
+		);
 	}
 
 	// `followUpInDays` is sent by the client but is NOT part of activityFormSchema —
 	// validate it from the raw body before passing through.
 	const rawDays = (body as Record<string, unknown>).followUpInDays;
-	const followUpInDays = typeof rawDays === 'number' && Number.isFinite(rawDays) ? rawDays : undefined;
+	const followUpInDays =
+		typeof rawDays === 'number' && Number.isFinite(rawDays) ? rawDays : undefined;
 
 	const activity = await insertActivity({
 		leadId: parsed.data.leadId,

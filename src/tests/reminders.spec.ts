@@ -48,7 +48,6 @@ function makeLeadRow(overrides: Partial<Parameters<typeof dbRowToLead>[0]> = {})
 		currency: 'PHP',
 		signedAt: null,
 		notes: null,
-		sourceRef: null,
 		createdAt: now,
 		updatedAt: now,
 		...overrides

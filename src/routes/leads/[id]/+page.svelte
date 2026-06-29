@@ -41,40 +41,63 @@
 	]);
 
 	async function logTouch(input: AddActivityInput) {
-		await crm.addActivity(lead.id, input);
-		await invalidateAll();
-		toasts.success('Touch logged · follow-up booked');
+		try {
+			await crm.addActivity(lead.id, input);
+			await invalidateAll();
+			toasts.success('Touch logged · follow-up booked');
+		} catch {
+			toasts.push('Activity logging will be wired in Phase 6.');
+		}
 	}
 
 	async function selectStage(stage: Stage) {
 		if (stage === lead.stage) return;
 		if (stage === 'won') return void (wonOpen = true);
 		if (stage === 'lost') return void (lostOpen = true);
-		await crm.moveLeadStage(lead.id, stage);
-		await invalidateAll();
-		toasts.push(`Moved to ${stage}`);
+		try {
+			await crm.moveLeadStage(lead.id, stage);
+			await invalidateAll();
+			toasts.push(`Moved to ${stage}`);
+		} catch {
+			toasts.push('Stage transitions will be wired in Phase 5.');
+		}
 	}
 
 	async function confirmWon(payload: MoveStagePayload) {
-		await crm.moveLeadStage(lead.id, 'won', payload);
-		wonOpen = false;
-		await invalidateAll();
-		toasts.success('Deal won — captured 🎉');
+		try {
+			await crm.moveLeadStage(lead.id, 'won', payload);
+			wonOpen = false;
+			await invalidateAll();
+			toasts.success('Deal won — captured 🎉');
+		} catch {
+			wonOpen = false;
+			toasts.push('Won capture will be wired in Phase 5.');
+		}
 	}
 
 	async function confirmLost(reason: LostReason, note?: string) {
-		await crm.moveLeadStage(lead.id, 'lost', { lostReason: reason });
 		void note;
-		lostOpen = false;
-		await invalidateAll();
-		toasts.push('Marked lost — still searchable');
+		try {
+			await crm.moveLeadStage(lead.id, 'lost', { lostReason: reason });
+			lostOpen = false;
+			await invalidateAll();
+			toasts.push('Marked lost — still searchable');
+		} catch {
+			lostOpen = false;
+			toasts.push('Lost marking will be wired in Phase 5.');
+		}
 	}
 
 	async function confirmReassign(ownerId: string) {
-		await crm.reassignLeads([lead.id], ownerId);
-		reassignOpen = false;
-		await invalidateAll();
-		toasts.success('Lead reassigned');
+		try {
+			await crm.reassignLeads([lead.id], ownerId);
+			reassignOpen = false;
+			await invalidateAll();
+			toasts.success('Lead reassigned');
+		} catch {
+			reassignOpen = false;
+			toasts.push('Reassign will be wired in Phase 5.');
+		}
 	}
 </script>
 

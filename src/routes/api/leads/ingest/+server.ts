@@ -30,24 +30,17 @@ export const POST: RequestHandler = async ({ request }) => {
 
 		// Dedup: if scraper provides a sourceRef (event ID), use it as the unique key.
 		// Otherwise fall back to normalizedHandle (covers manually-created leads).
-		let duplicate = false;
-		if (lead.sourceRef) {
-			const hit = await db
-				.select({ id: crmLeads.id })
-				.from(crmLeads)
-				.where(and(eq(crmLeads.sourceRef, lead.sourceRef), isNull(crmLeads.deletedAt)))
-				.limit(1);
-			duplicate = hit.length > 0;
-		} else {
-			const hit = await db
-				.select({ id: crmLeads.id })
-				.from(crmLeads)
-				.where(and(eq(crmLeads.normalizedHandle, normalizedHandle), isNull(crmLeads.deletedAt)))
-				.limit(1);
-			duplicate = hit.length > 0;
-		}
+		const dupHit = await db
+			.select({ id: crmLeads.id })
+			.from(crmLeads)
+			.where(
+				lead.sourceRef
+					? and(eq(crmLeads.sourceRef, lead.sourceRef), isNull(crmLeads.deletedAt))
+					: and(eq(crmLeads.normalizedHandle, normalizedHandle), isNull(crmLeads.deletedAt))
+			)
+			.limit(1);
 
-		if (duplicate) {
+		if (dupHit.length) {
 			skipped++;
 			continue;
 		}

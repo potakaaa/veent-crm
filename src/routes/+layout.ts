@@ -1,10 +1,18 @@
 import type { LayoutLoad } from './$types';
 import { crm } from '$lib/services';
 
-// Universal load: works on server (SSR) and client. Sources the signed-in user,
-// the roster, the full lead set (for the command-bar dedup search), and nav
-// counts — all through the service interface, never raw mock arrays.
-export const load: LayoutLoad = async () => {
+export const ssr = false;
+
+export const load: LayoutLoad = async ({ url }) => {
+	if (url.pathname === '/login') {
+		return {
+			currentUser: null,
+			users: [],
+			leads: [],
+			counts: { overdue: 0, unassigned: 0, review: 0 }
+		};
+	}
+
 	const [currentUser, users, leads, mine, unassigned, review] = await Promise.all([
 		crm.getCurrentUser(),
 		crm.listUsers(),

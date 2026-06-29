@@ -48,19 +48,25 @@
 		}
 		error = '';
 		saving = true;
-		const lead = await crm.createLead({
-			name,
-			category: category as Category,
-			platform: (platform || undefined) as Platform | undefined,
-			location: location || undefined,
-			pageUrl: pageUrl || undefined,
-			email: email || undefined,
-			eventName: eventName || undefined,
-			eventDate: eventDate || undefined,
-			source: 'manual'
-		});
-		toasts.success(`Created ${lead.name}`);
-		goto(`/leads/${lead.id}`);
+		try {
+			const lead = await crm.createLead({
+				name,
+				category: category as Category,
+				platform: (platform || undefined) as Platform | undefined,
+				location: location || undefined,
+				pageUrl: pageUrl || undefined,
+				email: email || undefined,
+				eventName: eventName || undefined,
+				eventDate: eventDate || undefined,
+				source: 'manual'
+			});
+			toasts.success(`Created ${lead.name}`);
+			await goto(`/leads/${lead.id}`);
+		} catch {
+			error = 'Could not create lead. Please try again.';
+		} finally {
+			saving = false;
+		}
 	}
 </script>
 

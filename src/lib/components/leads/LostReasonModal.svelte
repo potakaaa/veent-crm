@@ -26,6 +26,13 @@
 
 	let reason = $state<LostReason | ''>('');
 	let note = $state('');
+
+	$effect(() => {
+		if (open) {
+			reason = '';
+			note = '';
+		}
+	});
 </script>
 
 <Modal

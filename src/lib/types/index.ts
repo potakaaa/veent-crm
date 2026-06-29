@@ -170,14 +170,14 @@ export interface CreateLeadInput {
 	source?: LeadSource;
 }
 
-export type UpdateLeadInput = Partial<Omit<Lead, 'id' | 'createdAt'>>;
+export type UpdateLeadInput = Partial<Omit<Lead, 'id' | 'createdAt' | 'age' | 'urgency' | 'siblings'>>;
 
 export interface MoveStagePayload {
 	// Required when moving to `won`
-	signedOrg?: string;
-	dealValue?: number;
+	wonOrgName?: string;
+	dealValueCents?: number;
 	currency?: Currency;
-	signedDate?: string;
+	signedAt?: string;
 	// Required when moving to `lost`
 	lostReason?: LostReason;
 }
@@ -196,4 +196,4 @@ export interface CreateUserInput {
 	active?: boolean;
 }
 
-export type UpdateUserInput = Partial<Omit<User, 'id'>>;
+export type UpdateUserInput = Partial<Omit<User, 'id' | 'leadCount'>>;

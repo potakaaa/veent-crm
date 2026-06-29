@@ -7,13 +7,17 @@
 	let submitting = $state(false);
 
 	async function sendMagic() {
-		if (!email.trim()) {
+		const normalizedEmail = email.trim();
+		if (!normalizedEmail) {
 			error = 'Enter your work email.';
 			return;
 		}
 		error = '';
 		submitting = true;
-		const { error: err } = await authClient.signIn.magicLink({ email, callbackURL: '/' });
+		const { error: err } = await authClient.signIn.magicLink({
+			email: normalizedEmail,
+			callbackURL: '/'
+		});
 		submitting = false;
 		if (err) {
 			error = err.message ?? 'Could not send the link. Try again.';

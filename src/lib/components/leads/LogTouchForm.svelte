@@ -6,7 +6,7 @@
 	let {
 		onSubmit,
 		disabled = false
-	}: { onSubmit: (input: AddActivityInput) => void; disabled?: boolean } = $props();
+	}: { onSubmit: (input: AddActivityInput) => void | Promise<void>; disabled?: boolean } = $props();
 
 	const channelOpts: { key: ActivityChannel; label: string }[] = [
 		{ key: 'fb_dm', label: 'FB DM' },
@@ -26,13 +26,19 @@
 	let outcome = $state<ActivityOutcome>('replied');
 	let followUpInDays = $state(3);
 	let note = $state('');
+	let submitting = $state(false);
 
 	const pill = (active: boolean, mono = false) =>
 		`h-7 px-2.5 rounded-[7px] text-[12px] ${mono ? 'font-mono' : ''} ${active ? 'font-semibold' : 'font-medium'} border ${active ? 'border-primary bg-[rgba(192,54,44,0.08)] text-primary' : 'border-hairline bg-panel text-ink-600'}`;
 
-	function submit() {
-		onSubmit({ channel, outcome, followUpInDays, note: note.trim() || undefined });
-		note = '';
+	async function submit() {
+		submitting = true;
+		try {
+			await onSubmit({ channel, outcome, followUpInDays, note: note.trim() || undefined });
+			note = '';
+		} finally {
+			submitting = false;
+		}
 	}
 </script>
 
@@ -79,6 +85,6 @@
 		<span class="text-[12px] text-ink-200">
 			Logs a touch and books a follow-up reminder (Asia/Manila).
 		</span>
-		<Button {disabled} onclick={submit}>Log touch</Button>
+		<Button disabled={disabled || submitting} onclick={submit}>Log touch</Button>
 	</div>
 </div>

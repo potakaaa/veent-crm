@@ -19,11 +19,16 @@
 	let rows = $state<ReviewItem[]>(untrack(() => structuredClone(data.items)));
 
 	async function resolve(item: ReviewItem) {
-		if (!item.name.trim()) {
+		const name = item.name.trim();
+		if (!name) {
 			toasts.push('Give the row a name before resolving', { tone: 'warn' });
 			return;
 		}
-		await crm.resolveReviewItem(item.id);
+		if (item.category === 'Uncategorized') {
+			toasts.push('Pick a category before resolving', { tone: 'warn' });
+			return;
+		}
+		await crm.resolveReviewItem(item.id, { name, category: item.category, platform: item.platform });
 		rows = rows.filter((r) => r.id !== item.id);
 		toasts.success('Resolved — rejoined the pool');
 	}

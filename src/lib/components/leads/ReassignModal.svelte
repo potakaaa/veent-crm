@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { untrack } from 'svelte';
 	import Modal from '$lib/components/shared/Modal.svelte';
 	import Avatar from '$lib/components/shared/Avatar.svelte';
 	import { Button } from '$lib/components/ui/button';
@@ -19,8 +18,13 @@
 		onconfirm: (ownerId: string) => void;
 	} = $props();
 
-	// Seeded once from the prop; user clicks override it (no reactive mirror).
-	let selected = $state(untrack(() => currentOwnerId ?? ''));
+	let selected = $state('');
+
+	$effect(() => {
+		if (open) {
+			selected = currentOwnerId ?? '';
+		}
+	});
 
 	const reps = $derived(users.filter((u) => u.active));
 </script>

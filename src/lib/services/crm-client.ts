@@ -36,7 +36,7 @@ export interface CrmClient {
 	// Ownership
 	claimLead(id: string): Promise<Lead>;
 	bulkClaim(ids: string[]): Promise<Lead[]>;
-	reassignLeads(ids: string[], ownerId: string): Promise<Lead[]>;
+	reassignLeads(ids: string[], ownerId: string | null): Promise<Lead[]>;
 	markLost(ids: string[], reason: LostReason): Promise<Lead[]>;
 
 	// Activities
@@ -50,7 +50,10 @@ export interface CrmClient {
 
 	// Review queue (sheet-import rows needing a human)
 	listReviewItems(): Promise<ReviewItem[]>;
-	resolveReviewItem(id: string): Promise<void>;
+	resolveReviewItem(
+		id: string,
+		fields?: { name?: string; category?: ReviewItem['category']; platform?: ReviewItem['platform'] }
+	): Promise<void>;
 
 	// Reports
 	getReports(filters?: { from?: string; to?: string }): Promise<ReportData>;

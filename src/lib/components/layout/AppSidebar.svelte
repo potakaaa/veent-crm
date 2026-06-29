@@ -110,12 +110,14 @@
 		</div>
 		{#each work as item (item.href)}{@render navButton(item)}{/each}
 
-		<div
-			class="px-2 pb-2 pt-[18px] font-mono text-[9.5px] uppercase tracking-[1.2px] text-[#7a6260]"
-		>
-			Manager
-		</div>
-		{#each manager as item (item.href)}{@render navButton(item)}{/each}
+		{#if user?.role === 'manager'}
+			<div
+				class="px-2 pb-2 pt-[18px] font-mono text-[9.5px] uppercase tracking-[1.2px] text-[#7a6260]"
+			>
+				Manager
+			</div>
+			{#each manager as item (item.href)}{@render navButton(item)}{/each}
+		{/if}
 
 		<div
 			class="px-2 pb-2 pt-[18px] font-mono text-[9.5px] uppercase tracking-[1.2px] text-[#7a6260]"

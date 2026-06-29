@@ -26,12 +26,25 @@
 	let currency = $state<string>('PHP');
 	let signedDate = $state(NOW.toISOString().slice(0, 10));
 
+	$effect(() => {
+		if (open) {
+			signedOrg = '';
+			dealValue = '';
+			currency = 'PHP';
+			signedDate = NOW.toISOString().slice(0, 10);
+		}
+	});
+
 	function confirm() {
+		const normalized = dealValue.replace(/[^0-9.]/g, '');
+		const parsedDealValue = normalized === '' ? undefined : Number(normalized);
+		if (parsedDealValue !== undefined && !Number.isFinite(parsedDealValue)) return;
+
 		onconfirm({
-			signedOrg: signedOrg.trim() || undefined,
-			dealValue: dealValue ? Number(dealValue.replace(/[^0-9.]/g, '')) : undefined,
+			wonOrgName: signedOrg.trim() || undefined,
+			dealValueCents: parsedDealValue !== undefined ? Math.round(parsedDealValue * 100) : undefined,
 			currency: currency as Currency,
-			signedDate
+			signedAt: signedDate
 		});
 	}
 </script>

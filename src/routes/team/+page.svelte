@@ -39,18 +39,44 @@
 			formError = parsed.error.issues[0]?.message ?? 'Check the form.';
 			return;
 		}
-		await crm.createUser({ name, email, role: role as Role });
-		addOpen = false;
-		name = email = formError = '';
-		role = 'rep';
-		await invalidateAll();
-		toasts.success('Rep added to the allowlist');
+		try {
+			await crm.createUser({ name, email, role: role as Role });
+			addOpen = false;
+			name = email = formError = '';
+			role = 'rep';
+			await invalidateAll();
+			toasts.success('Rep added to the allowlist');
+		} catch (err) {
+			formError = err instanceof Error ? err.message : 'Unable to add rep.';
+		}
 	}
 
 	async function toggleActive(u: User) {
-		await crm.updateUser(u.id, { active: !u.active });
-		await invalidateAll();
-		toasts.push(u.active ? `Deactivated ${u.name}` : `Reactivated ${u.name}`);
+		try {
+			if (u.active) {
+				// Deactivating: move their workable leads to Up for grabs first
+				const theirLeads = data.leads.filter(
+					(l) => l.ownerId === u.id && l.stage !== 'won' && l.stage !== 'lost'
+				);
+				if (theirLeads.length) {
+					await crm.reassignLeads(
+						theirLeads.map((l) => l.id),
+						null
+					);
+				}
+				await crm.updateUser(u.id, { active: false });
+				await invalidateAll();
+				toasts.push(`Deactivated ${u.name} — ${theirLeads.length} lead(s) moved to Up for grabs`);
+			} else {
+				await crm.updateUser(u.id, { active: true });
+				await invalidateAll();
+				toasts.push(`Reactivated ${u.name}`);
+			}
+		} catch (err) {
+			toasts.push(err instanceof Error ? err.message : `Unable to update ${u.name}`, {
+				tone: 'warn'
+			});
+		}
 	}
 </script>
 
@@ -127,7 +153,7 @@
 						<TableCell class="text-right">
 							{#if canManage && u.role !== 'manager'}
 								<Button variant="outline" size="sm" onclick={() => toggleActive(u)}>
-									{u.active ? 'Deactivate' : 'Reassign leads'}
+									{u.active ? 'Deactivate' : 'Reactivate'}
 								</Button>
 							{/if}
 						</TableCell>

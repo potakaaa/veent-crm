@@ -17,11 +17,12 @@ export function formatDate(iso: string | undefined, opts: Intl.DateTimeFormatOpt
 	if (!iso) return '—';
 	const d = new Date(iso);
 	if (Number.isNaN(d.getTime())) return iso;
-	return d.toLocaleDateString('en-PH', { month: 'short', day: 'numeric', ...opts });
+	return d.toLocaleDateString('en-PH', { month: 'short', day: 'numeric', ...opts, timeZone: TIMEZONE });
 }
 
 export const todayLabel = (): string =>
 	NOW.toLocaleDateString('en-PH', {
+		timeZone: TIMEZONE,
 		weekday: 'short',
 		day: 'numeric',
 		month: 'short',

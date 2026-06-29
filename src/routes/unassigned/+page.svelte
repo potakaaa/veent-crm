@@ -13,7 +13,7 @@
 
 	let selected = $state<Record<string, boolean>>({});
 	let assignOpen = $state(false);
-	const selectedIds = $derived(Object.keys(selected).filter((id) => selected[id]));
+	const selectedIds = $derived(data.leads.filter((lead) => selected[lead.id]).map((lead) => lead.id));
 
 	const formerOwner = (id: string | null | undefined) =>
 		id ? `was ${data.users.find((u) => u.id === id)?.name ?? id}` : 'never assigned';

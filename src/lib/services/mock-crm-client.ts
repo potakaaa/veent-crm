@@ -147,10 +147,11 @@ class MockCrmClient implements CrmClient {
 		if (!lead) throw new Error(`Lead ${id} not found`);
 		lead.stage = stage;
 		if (stage === 'won') {
-			lead.signedOrg = payload.signedOrg;
-			lead.dealValue = payload.dealValue;
+			lead.signedOrg = payload.wonOrgName;
+			lead.dealValue =
+				payload.dealValueCents !== undefined ? payload.dealValueCents / 100 : undefined;
 			lead.currency = payload.currency ?? 'PHP';
-			lead.signedDate = payload.signedDate ?? NOW.toISOString();
+			lead.signedDate = payload.signedAt ?? NOW.toISOString();
 		}
 		if (stage === 'lost') {
 			lead.lostReason = payload.lostReason;
@@ -179,11 +180,12 @@ class MockCrmClient implements CrmClient {
 		return delay(out);
 	}
 
-	async reassignLeads(ids: string[], ownerId: string): Promise<Lead[]> {
+	async reassignLeads(ids: string[], ownerId: string | null): Promise<Lead[]> {
 		const out: Lead[] = [];
 		for (const id of ids) {
 			const lead = leads.find((l) => l.id === id);
 			if (lead) {
+				if (ownerId === null) lead.formerOwnerId = lead.ownerId;
 				lead.ownerId = ownerId;
 				out.push(lead);
 			}
@@ -208,7 +210,7 @@ class MockCrmClient implements CrmClient {
 	async listActivities(leadId: string): Promise<Activity[]> {
 		const list =
 			activities[leadId] ??
-			(() => {
+			(activities[leadId] = (() => {
 				const lead = leads.find((l) => l.id === leadId);
 				return [
 					{
@@ -221,7 +223,7 @@ class MockCrmClient implements CrmClient {
 						note: 'First outreach logged.'
 					} satisfies Activity
 				];
-			})();
+			})());
 		// newest first
 		return delay(list.slice().sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt)));
 	}
@@ -253,7 +255,12 @@ class MockCrmClient implements CrmClient {
 	}
 
 	async listUsers(): Promise<User[]> {
-		return delay(users);
+		return delay(
+			users.map((u) => ({
+				...u,
+				leadCount: leads.filter((l) => l.ownerId === u.id).length
+			}))
+		);
 	}
 
 	async createUser(input: CreateUserInput): Promise<User> {
@@ -280,9 +287,15 @@ class MockCrmClient implements CrmClient {
 		return delay(reviewItems);
 	}
 
-	async resolveReviewItem(id: string): Promise<void> {
+	async resolveReviewItem(
+		id: string,
+		fields?: { name?: string; category?: ReviewItem['category']; platform?: ReviewItem['platform'] }
+	): Promise<void> {
 		const i = reviewItems.findIndex((r) => r.id === id);
-		if (i >= 0) reviewItems.splice(i, 1);
+		if (i >= 0) {
+			if (fields) Object.assign(reviewItems[i], fields);
+			reviewItems.splice(i, 1);
+		}
 		return Promise.resolve();
 	}
 

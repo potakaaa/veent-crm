@@ -1,9 +1,12 @@
 import type { LayoutLoad } from './$types';
-import { crm } from '$lib/services';
+import { crm, mockCrmClient } from '$lib/services';
 
 export const ssr = false;
 
-export const load: LayoutLoad = async ({ url }) => {
+export const load: LayoutLoad = async ({ url, data }) => {
+	if (data?.user) {
+		mockCrmClient.setCurrentUser(data.user);
+	}
 	if (url.pathname === '/login') {
 		return {
 			currentUser: null,

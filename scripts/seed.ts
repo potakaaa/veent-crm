@@ -5,6 +5,7 @@
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import { crmUsers } from '../src/lib/server/db/schema.ts';
+import { sql } from 'drizzle-orm';
 
 const url = process.env.DATABASE_URL ?? 'postgres://crm:crm@127.0.0.1:5432/veent_crm';
 const client = postgres(url, { max: 1 });
@@ -14,42 +15,49 @@ const users: (typeof crmUsers.$inferInsert)[] = [
 	{
 		id: '00000000-0000-0000-0000-000000000001',
 		name: 'John Sabuga',
-		email: 'john.sabuga@veent.io',
+		email: 'john.sabuga@test.com',
+		role: 'manager',
+		active: true
+	},
+	{
+		id: '00068e3d-13ba-4251-96f9-947ed18c64b5',
+		name: 'Hans Matthew Del Mundo',
+		email: 'delmundo.hansmatthew@gmail.com',
 		role: 'manager',
 		active: true
 	},
 	{
 		id: '00000000-0000-0000-0000-000000000002',
 		name: 'Jonna',
-		email: 'jonna@veent.io',
+		email: 'jonna@test.com',
 		role: 'rep',
 		active: true
 	},
 	{
 		id: '00000000-0000-0000-0000-000000000003',
 		name: 'Ethyl',
-		email: 'ethyl@veent.io',
+		email: 'ethyl@test.com',
 		role: 'rep',
 		active: true
 	},
 	{
 		id: '00000000-0000-0000-0000-000000000004',
 		name: 'Meybelle',
-		email: 'meybelle@veent.io',
+		email: 'meybelle@test.com',
 		role: 'rep',
 		active: true
 	},
 	{
 		id: '00000000-0000-0000-0000-000000000005',
 		name: 'Shane',
-		email: 'shane@veent.io',
+		email: 'shane@test.com',
 		role: 'rep',
 		active: true
 	},
 	{
 		id: '00000000-0000-0000-0000-000000000006',
 		name: 'Elay',
-		email: 'elay@veent.io',
+		email: 'elay@test.com',
 		role: 'rep',
 		active: true
 	},
@@ -84,7 +92,18 @@ const users: (typeof crmUsers.$inferInsert)[] = [
 ];
 
 try {
-	await db.insert(crmUsers).values(users).onConflictDoNothing();
+	await db
+		.insert(crmUsers)
+		.values(users)
+		.onConflictDoUpdate({
+			target: crmUsers.id,
+			set: {
+				name: sql`EXCLUDED.name`,
+				email: sql`EXCLUDED.email`,
+				role: sql`EXCLUDED.role`,
+				active: sql`EXCLUDED.active`
+			}
+		});
 	console.log(`Seeded ${users.length} users`);
 } finally {
 	await client.end();

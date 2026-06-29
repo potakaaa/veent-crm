@@ -12,7 +12,7 @@ export const mockUsers: User[] = [
 	{
 		id: 'jonna',
 		name: 'Jonna',
-		email: 'jonna@veent.io',
+		email: 'jonna@test.com',
 		role: 'rep',
 		active: true,
 		location: 'Manila',
@@ -21,7 +21,7 @@ export const mockUsers: User[] = [
 	{
 		id: 'ethyl',
 		name: 'Ethyl',
-		email: 'ethyl@veent.io',
+		email: 'ethyl@test.com',
 		role: 'rep',
 		active: true,
 		leadCount: 168
@@ -29,19 +29,19 @@ export const mockUsers: User[] = [
 	{
 		id: 'meybelle',
 		name: 'Meybelle',
-		email: 'meybelle@veent.io',
+		email: 'meybelle@test.com',
 		role: 'rep',
 		active: true,
 		leadCount: 121
 	},
-	{ id: 'shane', name: 'Shane', email: 'shane@veent.io', role: 'rep', active: true, leadCount: 97 },
-	{ id: 'elay', name: 'Elay', email: 'elay@veent.io', role: 'rep', active: true, leadCount: 110 },
-	{ id: 'rafa', name: 'Rafa', email: 'rafa@veent.io', role: 'manager', active: true },
-	{ id: 'angel', name: 'Angel', email: 'angel@veent.io', role: 'rep', active: false, leadCount: 0 },
+	{ id: 'shane', name: 'Shane', email: 'shane@test.com', role: 'rep', active: true, leadCount: 97 },
+	{ id: 'elay', name: 'Elay', email: 'elay@test.com', role: 'rep', active: true, leadCount: 110 },
+	{ id: 'rafa', name: 'Rafa', email: 'rafa@test.com', role: 'manager', active: true },
+	{ id: 'angel', name: 'Angel', email: 'angel@test.com', role: 'rep', active: false, leadCount: 0 },
 	{
 		id: 'fatima',
 		name: 'Fatima',
-		email: 'fatima@veent.io',
+		email: 'fatima@test.com',
 		role: 'rep',
 		active: false,
 		leadCount: 0
@@ -49,7 +49,7 @@ export const mockUsers: User[] = [
 	{
 		id: 'divine',
 		name: 'Divine',
-		email: 'divine@veent.io',
+		email: 'divine@test.com',
 		role: 'rep',
 		active: false,
 		leadCount: 0

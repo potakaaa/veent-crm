@@ -1,12 +1,21 @@
-// Better Auth — STUB for v0. See sales-crm.md §Access & auth.
+// Better Auth — magic-link auth over the CRM's own Postgres.
 //
-// Target design (NOT wired yet — no Resend, no real magic link in this skeleton):
-//   - Better Auth owns its user/account/session/verification tables in the CRM's own Postgres.
-//   - Magic-link issuance is ALLOWLISTED to active crm_users (5 reps + manager); no auto-provision.
-//   - hooks.server.ts rejects any session whose verified email isn't an active crm_users row.
-//   - Later: enable the SSO plugin (Authentik/OIDC) and store the IdP `sub` in crm_users.auth_subject.
-//
-// For now this exports placeholders so the app compiles and the gate has a shape to call.
+// Design:
+//   - Better Auth owns its user/account/session/verification tables (table names
+//     user/account/session/verification — mapped via the drizzle adapter below).
+//   - Magic-link issuance + session signing happen here; email delivery via Resend (email.ts).
+//   - The crm_users allowlist (active row by email) is enforced in hooks.server.ts, which is
+//     also where SessionUser.role is resolved from crm_users (NOT from the Better Auth user).
+//   - BETTER_AUTH_API_KEY (dashboard) is env-only — not a betterAuth() option in this version.
+
+import { betterAuth } from 'better-auth';
+import { drizzleAdapter } from 'better-auth/adapters/drizzle';
+import { magicLink } from 'better-auth/plugins/magic-link';
+import { dash } from '@better-auth/infra';
+import { db } from '$lib/server/db/index';
+import { baUser, baAccount, baSession, baVerification } from '$lib/server/db/schema';
+import { sendEmail } from './email';
+import { env } from '$env/dynamic/private';
 
 export type SessionUser = {
 	id: string;
@@ -15,22 +24,30 @@ export type SessionUser = {
 	role: 'rep' | 'manager';
 };
 
-// TODO(better-auth): replace with the real Better Auth server instance + drizzle adapter.
-export const auth = {
-	/** Placeholder: validate the request's session cookie against Better Auth + the crm_users allowlist. */
-	async getSession(_request: Request): Promise<{ user: SessionUser } | null> {
-		// STUB: no real auth yet. hooks.server.ts injects a dev user instead.
-		return null;
-	},
-	/** Placeholder: issue an allowlisted magic link via Resend. */
-	async sendMagicLink(_email: string): Promise<void> {
-		// TODO(resend): wire Better Auth magicLink plugin -> email.ts
-		throw new Error('auth.sendMagicLink: not implemented (stub)');
-	}
-};
-
-/** The allowlist check the session gate will enforce: email must belong to an active crm_users row. */
-export async function isAllowlistedEmail(_email: string): Promise<boolean> {
-	// TODO: query crm_users WHERE email = ? AND active = true
-	return true; // STUB
-}
+export const auth = betterAuth({
+	secret: env.BETTER_AUTH_SECRET,
+	baseURL: env.BETTER_AUTH_URL,
+	database: drizzleAdapter(db, {
+		provider: 'pg',
+		schema: {
+			user: baUser,
+			account: baAccount,
+			session: baSession,
+			verification: baVerification
+		}
+	}),
+	plugins: [
+		magicLink({
+			sendMagicLink: async ({ email, url }) => {
+				await sendEmail({
+					to: email,
+					subject: 'Your Veent CRM login link',
+					html: `<p>Click to sign in: <a href="${url}">${url}</a></p><p>Link expires in 5 minutes.</p>`
+				});
+			}
+		}),
+		dash({
+			apiKey: env.BETTER_AUTH_API_KEY
+		})
+	]
+});

@@ -12,7 +12,6 @@
 	import WonCaptureModal from '$lib/components/leads/WonCaptureModal.svelte';
 	import LostReasonModal from '$lib/components/leads/LostReasonModal.svelte';
 	import ReassignModal from '$lib/components/leads/ReassignModal.svelte';
-	import { crm } from '$lib/services';
 	import { toasts } from '$lib/stores/toasts.svelte';
 	import { canEditLead, canReassign } from '$lib/utils/permissions';
 	import { formatDate } from '$lib/utils/dates';
@@ -41,12 +40,33 @@
 	]);
 
 	async function logTouch(input: AddActivityInput) {
+		let res: Response;
 		try {
-			await crm.addActivity(lead.id, input);
+			res = await fetch(`/api/leads/${lead.id}/activities`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					leadId: lead.id,
+					channel: input.channel,
+					outcome: input.outcome,
+					followUpInDays: input.followUpInDays,
+					notes: input.note
+				})
+			});
 		} catch {
-			toasts.push('Activity logging will be wired in Phase 6.');
+			toasts.push('Touch logging failed — server error');
 			return;
 		}
+
+		if (res.status === 409) {
+			toasts.push('Already logged — touch already recorded for this channel/time');
+			return;
+		}
+		if (!res.ok) {
+			toasts.push('Touch logging failed — please try again');
+			return;
+		}
+
 		await invalidateAll();
 		toasts.success('Touch logged · follow-up booked');
 	}

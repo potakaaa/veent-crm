@@ -47,8 +47,16 @@ export function relativeFromNow(iso: string | undefined): string {
 	return `${Math.floor(hours / 24)}d ago`;
 }
 
-/** Compute an age badge from a lead's follow-up / last-activity timestamps. */
-export function computeAge(lead: Pick<Lead, 'followUpAt' | 'lastActivityAt' | 'stage'>): {
+/**
+ * Compute an age badge from a lead's follow-up / last-activity timestamps.
+ *
+ * `now` defaults to live `new Date()` so server-side urgency matches SQL `now()`
+ * (C6 fix). Pass an explicit reference time for deterministic tests / mock data.
+ */
+export function computeAge(
+	lead: Pick<Lead, 'followUpAt' | 'lastActivityAt' | 'stage'>,
+	now: Date = new Date()
+): {
 	label: string;
 	type: AgeType;
 } {
@@ -56,11 +64,11 @@ export function computeAge(lead: Pick<Lead, 'followUpAt' | 'lastActivityAt' | 's
 	if (lead.stage === 'lost') return { label: 'lost', type: 'normal' };
 
 	if (lead.followUpAt) {
-		const due = daysBetween(NOW, new Date(lead.followUpAt));
+		const due = daysBetween(now, new Date(lead.followUpAt));
 		if (due < 0) return { label: `${Math.abs(due)}d overdue`, type: 'overdue' };
 		if (due === 0) return { label: 'due today', type: 'due' };
 	}
-	const idle = daysBetween(new Date(lead.lastActivityAt), NOW);
+	const idle = daysBetween(new Date(lead.lastActivityAt), now);
 	if (idle > 30) return { label: `${idle}d cold`, type: 'stale' };
 	if (idle <= 1) return { label: relativeFromNow(lead.lastActivityAt), type: 'fresh' };
 	return { label: `${idle}d`, type: 'normal' };

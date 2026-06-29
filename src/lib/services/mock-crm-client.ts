@@ -49,7 +49,7 @@ const clone = <T>(v: T): T => structuredClone(v);
 const delay = <T>(value: T): Promise<T> => Promise.resolve(clone(value));
 
 function refreshAge(lead: Lead): void {
-	lead.age = computeAge(lead);
+	lead.age = computeAge(lead, NOW);
 }
 
 class MockCrmClient implements CrmClient {

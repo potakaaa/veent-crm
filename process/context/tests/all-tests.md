@@ -107,8 +107,22 @@ bun run db:migrate    # apply migrations (needs DATABASE_URL)
 
 ## Known Gaps
 
-- Only one unit test file exists: `src/tests/schemas.spec.ts` (Zod schema validation)
-- No unit tests yet for `src/lib/server/` logic (auth stubs, reminders, mock data)
+- Unit test files: `src/tests/schemas.spec.ts` (Zod schema validation) + `src/tests/reminders.spec.ts` (VE-A1 resolveFollowUpAt, VE-B1 dbRowToLead urgency, VE-C2 sendReminderDigest no-key path). 62 unit tests total passing as of 2026-06-29.
+- No unit tests yet for auth stubs or mock data layer
 - No e2e test specs written yet — Playwright is configured but has no test files
-- No test coverage for Drizzle queries (all surfaces still on mock data)
-- Integration tests (real DB) are not set up — will be needed for v1 DB wiring
+- No test coverage for Drizzle queries (integration tests need a real DB harness)
+- Integration tests (real DB) not set up — 4 Hybrid gates for reminders/activities still manual (VE-A1b/A2/A2b/C1)
+
+## Test Patterns (from reminders implementation)
+
+**`$env/dynamic/private` mock in Vitest:**
+
+To test code paths gated on missing env keys without real environment setup:
+
+```ts
+vi.mock('$env/dynamic/private', () => ({ env: {} }));
+```
+
+This forces the `!env.RESEND_API_KEY` code path deterministically. Use in any test that exercises a "key not set" fallback in `src/lib/server/email.ts` or similar.
+
+**Vitest CI command:** `bun run test:unit:ci` (runs `vitest --run`). Do not use `bun test` — that invokes Bun's native runner, not Vitest.

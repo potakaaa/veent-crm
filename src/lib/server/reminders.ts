@@ -1,6 +1,10 @@
-// Reminders — STUB for v0. See sales-crm.md §Reminders.
+// Reminders — real impl. See sales-crm.md §Reminders.
 // follow_up_at drives the in-app "Today" due view; due/overdue computed in Asia/Manila.
 // An n8n workflow calls the secret-authed /api/reminders/due endpoint (n8n holds no DATABASE_URL).
+
+import { db } from './db/index';
+import { crmActivities, crmLeads, crmUsers } from './db/schema';
+import { and, asc, eq, isNotNull, isNull, lte } from 'drizzle-orm';
 
 export const REMINDER_TZ = 'Asia/Manila';
 
@@ -12,8 +16,47 @@ export type DueReminder = {
 	overdue: boolean;
 };
 
-// TODO: query crm_activities WHERE follow_up_at <= now() (Asia/Manila day boundary),
-// join leads + owner, group by rep.
+/**
+ * Start of "today" in Asia/Manila (UTC+8, fixed offset), returned as a UTC Date.
+ * Used as the boundary for the overdue (before today) vs due (today) distinction.
+ */
+export function startOfManilaDayUTC(): Date {
+	const now = new Date();
+	const manilaDateStr = now.toLocaleDateString('en-CA', { timeZone: REMINDER_TZ }); // 'YYYY-MM-DD'
+	return new Date(`${manilaDateStr}T00:00:00+08:00`);
+}
+
+/**
+ * All activities whose follow-up is due (<= now), joined to their lead + rep,
+ * sorted ascending by follow-up time. `overdue` = before today's Manila start-of-day.
+ */
 export async function getDueReminders(): Promise<DueReminder[]> {
-	return []; // STUB
+	const startOfToday = startOfManilaDayUTC();
+
+	const rows = await db
+		.select({
+			leadId: crmLeads.id,
+			leadName: crmLeads.name,
+			repEmail: crmUsers.email,
+			followUpAt: crmActivities.followUpAt
+		})
+		.from(crmActivities)
+		.innerJoin(crmLeads, eq(crmActivities.leadId, crmLeads.id))
+		.leftJoin(crmUsers, eq(crmActivities.repId, crmUsers.id))
+		.where(
+			and(
+				isNotNull(crmActivities.followUpAt),
+				lte(crmActivities.followUpAt, new Date()),
+				isNull(crmLeads.deletedAt)
+			)
+		)
+		.orderBy(asc(crmActivities.followUpAt));
+
+	return rows.map((r) => ({
+		leadId: r.leadId,
+		leadName: r.leadName,
+		repEmail: r.repEmail,
+		followUpAt: r.followUpAt!.toISOString(),
+		overdue: r.followUpAt! < startOfToday
+	}));
 }

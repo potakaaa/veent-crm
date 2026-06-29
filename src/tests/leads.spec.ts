@@ -33,6 +33,7 @@ function makeRow(overrides: Partial<Parameters<typeof dbRowToLead>[0]> = {}) {
 		eventDate: null,
 		eventDateRaw: null,
 		eventLink: null,
+		sourceRef: null,
 		stage: 'new' as const,
 		lostReason: null,
 		ownerId: 'owner-uuid',

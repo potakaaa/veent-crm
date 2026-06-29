@@ -6,6 +6,9 @@ import adapter from 'svelte-adapter-bun';
 import { sveltekit } from '@sveltejs/kit/vite';
 
 export default defineConfig({
+	server: {
+		allowedHosts: ['localhost', '.trycloudflare.com', '.ngrok-free.app']
+	},
 	plugins: [
 		tailwindcss(),
 		sveltekit({

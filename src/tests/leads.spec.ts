@@ -63,6 +63,11 @@ function makeActivityRow(overrides: Partial<Parameters<typeof dbActivityToActivi
 		outcome: 'sent' as const,
 		followUpAt: null,
 		notes: null,
+		eventName: null,
+		eventDate: null,
+		eventUrl: null,
+		eventCategory: null,
+		eventSource: null,
 		createdAt: now,
 		updatedAt: now,
 		...overrides

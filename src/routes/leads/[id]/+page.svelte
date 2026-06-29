@@ -41,7 +41,12 @@
 	]);
 
 	async function logTouch(input: AddActivityInput) {
-		await crm.addActivity(lead.id, input);
+		try {
+			await crm.addActivity(lead.id, input);
+		} catch {
+			toasts.push('Activity logging will be wired in Phase 6.');
+			return;
+		}
 		await invalidateAll();
 		toasts.success('Touch logged · follow-up booked');
 	}
@@ -50,28 +55,51 @@
 		if (stage === lead.stage) return;
 		if (stage === 'won') return void (wonOpen = true);
 		if (stage === 'lost') return void (lostOpen = true);
-		await crm.moveLeadStage(lead.id, stage);
+		try {
+			await crm.moveLeadStage(lead.id, stage);
+		} catch {
+			toasts.push('Stage transitions will be wired in Phase 5.');
+			return;
+		}
 		await invalidateAll();
 		toasts.push(`Moved to ${stage}`);
 	}
 
 	async function confirmWon(payload: MoveStagePayload) {
-		await crm.moveLeadStage(lead.id, 'won', payload);
+		try {
+			await crm.moveLeadStage(lead.id, 'won', payload);
+		} catch {
+			wonOpen = false;
+			toasts.push('Won capture will be wired in Phase 5.');
+			return;
+		}
 		wonOpen = false;
 		await invalidateAll();
 		toasts.success('Deal won — captured 🎉');
 	}
 
 	async function confirmLost(reason: LostReason, note?: string) {
-		await crm.moveLeadStage(lead.id, 'lost', { lostReason: reason });
 		void note;
+		try {
+			await crm.moveLeadStage(lead.id, 'lost', { lostReason: reason });
+		} catch {
+			lostOpen = false;
+			toasts.push('Lost marking will be wired in Phase 5.');
+			return;
+		}
 		lostOpen = false;
 		await invalidateAll();
 		toasts.push('Marked lost — still searchable');
 	}
 
 	async function confirmReassign(ownerId: string) {
-		await crm.reassignLeads([lead.id], ownerId);
+		try {
+			await crm.reassignLeads([lead.id], ownerId);
+		} catch {
+			reassignOpen = false;
+			toasts.push('Reassign will be wired in Phase 5.');
+			return;
+		}
 		reassignOpen = false;
 		await invalidateAll();
 		toasts.success('Lead reassigned');

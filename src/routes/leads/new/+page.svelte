@@ -9,11 +9,9 @@
 	import { Label } from '$lib/components/ui/label';
 	import { Button } from '$lib/components/ui/button';
 	import { Select, SelectTrigger, SelectContent, SelectItem } from '$lib/components/ui/select';
-	import { crm } from '$lib/services';
 	import { toasts } from '$lib/stores/toasts.svelte';
 	import { hasPotentialDuplicate } from '$lib/utils/dedup';
 	import { leadFormSchema, LEAD_CATEGORIES, LEAD_PLATFORMS } from '$lib/zod/schemas';
-	import type { Category, Platform } from '$lib/types';
 
 	let { data } = $props();
 
@@ -49,19 +47,18 @@
 		error = '';
 		saving = true;
 		try {
-			const lead = await crm.createLead({
-				name,
-				category: category as Category,
-				platform: (platform || undefined) as Platform | undefined,
-				location: location || undefined,
-				pageUrl: pageUrl || undefined,
-				email: email || undefined,
-				eventName: eventName || undefined,
-				eventDate: eventDate || undefined,
-				source: 'manual'
+			const res = await fetch('/api/leads', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(parsed.data)
 			});
-			toasts.success(`Created ${lead.name}`);
-			await goto(`/leads/${lead.id}`);
+			if (!res.ok) {
+				error = (await res.text().catch(() => '')) || 'Could not create lead.';
+				return;
+			}
+			const { id, name: leadName } = (await res.json()) as { id: string; name: string };
+			toasts.success(`Created ${leadName}`);
+			await goto(`/leads/${id}`);
 		} catch {
 			error = 'Could not create lead. Please try again.';
 		} finally {

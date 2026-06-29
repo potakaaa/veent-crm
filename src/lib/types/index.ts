@@ -170,7 +170,9 @@ export interface CreateLeadInput {
 	source?: LeadSource;
 }
 
-export type UpdateLeadInput = Partial<Omit<Lead, 'id' | 'createdAt' | 'age' | 'urgency' | 'siblings'>>;
+export type UpdateLeadInput = Partial<
+	Omit<Lead, 'id' | 'createdAt' | 'age' | 'urgency' | 'siblings'>
+>;
 
 export interface MoveStagePayload {
 	// Required when moving to `won`

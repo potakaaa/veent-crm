@@ -28,7 +28,11 @@
 			toasts.push('Pick a category before resolving', { tone: 'warn' });
 			return;
 		}
-		await crm.resolveReviewItem(item.id, { name, category: item.category, platform: item.platform });
+		await crm.resolveReviewItem(item.id, {
+			name,
+			category: item.category,
+			platform: item.platform
+		});
 		rows = rows.filter((r) => r.id !== item.id);
 		toasts.success('Resolved — rejoined the pool');
 	}

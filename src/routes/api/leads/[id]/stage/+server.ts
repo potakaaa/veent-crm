@@ -1,7 +1,7 @@
 import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { moveStageSchema } from '$lib/zod/schemas';
-import { getLead, moveLeadStage } from '$lib/server/db/leads';
+import { moveLeadStage } from '$lib/server/db/leads';
 
 export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 	if (!locals.user) throw error(401, 'Unauthorized');
@@ -19,16 +19,11 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 		throw error(400, msg);
 	}
 
-	// Authorization: managers can edit any lead; reps can only edit leads they own.
-	const existing = await getLead(params.id);
-	if (!existing) throw error(404, 'Lead not found');
-	if (locals.user.role !== 'manager' && existing.ownerId !== locals.user.id) {
-		throw error(403, 'Forbidden');
-	}
-
 	const { stage, ...payload } = parsed.data;
-	const lead = await moveLeadStage(params.id, stage, payload, locals.user.id);
-	if (!lead) throw error(404, 'Lead not found');
+	// Auth is evaluated atomically with the mutation inside moveLeadStage's transaction.
+	const result = await moveLeadStage(params.id, stage, payload, locals.user.id, locals.user.role);
+	if (result === 'forbidden') throw error(403, 'Forbidden');
+	if (result === null) throw error(404, 'Lead not found');
 
-	return json(lead);
+	return json(result);
 };

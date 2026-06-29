@@ -188,27 +188,32 @@ export async function moveLeadStage(
 	id: string,
 	stage: Stage,
 	payload: MoveStagePayload,
-	actorId: string
-): Promise<Lead | null> {
-	// Read the full current state so history rows can carry real old values.
-	const [existing] = await db
-		.select({
-			stage: crmLeads.stage,
-			ownerId: crmLeads.ownerId,
-			wonOrgName: crmLeads.wonOrgName,
-			dealValueCents: crmLeads.dealValueCents,
-			lostReason: crmLeads.lostReason
-		})
-		.from(crmLeads)
-		.where(and(eq(crmLeads.id, id), isNull(crmLeads.deletedAt)))
-		.limit(1);
-
-	if (!existing) return null;
-
+	actorId: string,
+	actorRole: 'rep' | 'manager'
+): Promise<Lead | null | 'forbidden'> {
 	const now = new Date();
 
-	// Wrap the update + history insert in a transaction so they succeed or fail together.
-	const updated = await db.transaction(async (tx) => {
+	// SELECT, auth check, update, and history insert all run inside one transaction
+	// so the authorization predicate is evaluated atomically with the mutation.
+	const result = await db.transaction(async (tx) => {
+		const [existing] = await tx
+			.select({
+				stage: crmLeads.stage,
+				ownerId: crmLeads.ownerId,
+				wonOrgName: crmLeads.wonOrgName,
+				dealValueCents: crmLeads.dealValueCents,
+				lostReason: crmLeads.lostReason
+			})
+			.from(crmLeads)
+			.where(and(eq(crmLeads.id, id), isNull(crmLeads.deletedAt)))
+			.limit(1);
+
+		if (!existing) return null;
+
+		if (actorRole !== 'manager' && existing.ownerId !== actorId) {
+			return 'forbidden' as const;
+		}
+
 		let rows: DbLead[];
 
 		if (stage === 'won') {
@@ -305,8 +310,9 @@ export async function moveLeadStage(
 		return rows[0];
 	});
 
-	if (!updated) return null;
-	return dbRowToLead(updated);
+	if (result === null || result === undefined) return null;
+	if (result === 'forbidden') return 'forbidden';
+	return dbRowToLead(result);
 }
 
 export async function reassignLead(

@@ -14,6 +14,7 @@ import { createLead, getLead, moveLeadStage, reassignLead } from '$lib/server/db
 import { db } from '$lib/server/db/index';
 import { crmLeads, crmLeadHistory } from '$lib/server/db/schema';
 import { eq } from 'drizzle-orm';
+import type { Lead } from '$lib/types';
 
 // Skip when no DATABASE_URL is configured (no postgres service available).
 const SKIP_DB = !process.env.DATABASE_URL;
@@ -43,9 +44,9 @@ describe.skipIf(SKIP_DB)('moveLeadStage — regular transitions', () => {
 		);
 		createdIds.push(lead.id);
 
-		const updated = await moveLeadStage(lead.id, 'contacted', {}, MANAGER_UUID);
+		const updated = await moveLeadStage(lead.id, 'contacted', {}, MANAGER_UUID, 'manager');
 		expect(updated).not.toBeNull();
-		expect(updated!.stage).toBe('contacted');
+		expect((updated as Lead).stage).toBe('contacted');
 
 		const fetched = await getLead(lead.id);
 		expect(fetched!.stage).toBe('contacted');
@@ -56,7 +57,8 @@ describe.skipIf(SKIP_DB)('moveLeadStage — regular transitions', () => {
 			'00000000-0000-0000-0000-ffffffffffff',
 			'contacted',
 			{},
-			MANAGER_UUID
+			MANAGER_UUID,
+			'manager'
 		);
 		expect(result).toBeNull();
 	});
@@ -69,7 +71,7 @@ describe.skipIf(SKIP_DB)('moveLeadStage — regular transitions', () => {
 		createdIds.push(lead.id);
 		await db.update(crmLeads).set({ deletedAt: new Date() }).where(eq(crmLeads.id, lead.id));
 
-		const result = await moveLeadStage(lead.id, 'contacted', {}, MANAGER_UUID);
+		const result = await moveLeadStage(lead.id, 'contacted', {}, MANAGER_UUID, 'manager');
 		expect(result).toBeNull();
 	});
 
@@ -80,7 +82,7 @@ describe.skipIf(SKIP_DB)('moveLeadStage — regular transitions', () => {
 		);
 		createdIds.push(lead.id);
 
-		await moveLeadStage(lead.id, 'replied', {}, MANAGER_UUID);
+		await moveLeadStage(lead.id, 'replied', {}, MANAGER_UUID, 'manager');
 
 		const history = await db
 			.select()
@@ -116,14 +118,15 @@ describe.skipIf(SKIP_DB)('moveLeadStage — won capture', () => {
 				currency: 'PHP',
 				signedAt: '2026-06-29'
 			},
-			MANAGER_UUID
+			MANAGER_UUID,
+			'manager'
 		);
 
 		expect(updated).not.toBeNull();
-		expect(updated!.stage).toBe('won');
-		expect(updated!.signedOrg).toBe('Big Events Co.');
-		expect(updated!.dealValue).toBe(50000); // 5000000 cents / 100
-		expect(updated!.currency).toBe('PHP');
+		expect((updated as Lead).stage).toBe('won');
+		expect((updated as Lead).signedOrg).toBe('Big Events Co.');
+		expect((updated as Lead).dealValue).toBe(50000); // 5000000 cents / 100
+		expect((updated as Lead).currency).toBe('PHP');
 	});
 
 	it('writes stage + won_org_name + deal_value_cents history rows', async () => {
@@ -137,7 +140,8 @@ describe.skipIf(SKIP_DB)('moveLeadStage — won capture', () => {
 			lead.id,
 			'won',
 			{ wonOrgName: 'Org A', dealValueCents: 1000000 },
-			MANAGER_UUID
+			MANAGER_UUID,
+			'manager'
 		);
 
 		const history = await db
@@ -157,10 +161,10 @@ describe.skipIf(SKIP_DB)('moveLeadStage — won capture', () => {
 		);
 		createdIds.push(lead.id);
 
-		const updated = await moveLeadStage(lead.id, 'won', {}, MANAGER_UUID);
+		const updated = await moveLeadStage(lead.id, 'won', {}, MANAGER_UUID, 'manager');
 		expect(updated).not.toBeNull();
-		expect(updated!.stage).toBe('won');
-		expect(updated!.dealValue).toBeUndefined();
+		expect((updated as Lead).stage).toBe('won');
+		expect((updated as Lead).dealValue).toBeUndefined();
 	});
 });
 
@@ -180,11 +184,12 @@ describe.skipIf(SKIP_DB)('moveLeadStage — lost', () => {
 			lead.id,
 			'lost',
 			{ lostReason: 'no_response' },
-			MANAGER_UUID
+			MANAGER_UUID,
+			'manager'
 		);
 		expect(updated).not.toBeNull();
-		expect(updated!.stage).toBe('lost');
-		expect(updated!.lostReason).toBe('no_response');
+		expect((updated as Lead).stage).toBe('lost');
+		expect((updated as Lead).lostReason).toBe('no_response');
 	});
 
 	it('writes stage + lost_reason history rows', async () => {
@@ -194,7 +199,7 @@ describe.skipIf(SKIP_DB)('moveLeadStage — lost', () => {
 		);
 		createdIds.push(lead.id);
 
-		await moveLeadStage(lead.id, 'lost', { lostReason: 'rejected' }, MANAGER_UUID);
+		await moveLeadStage(lead.id, 'lost', { lostReason: 'rejected' }, MANAGER_UUID, 'manager');
 
 		const history = await db
 			.select()

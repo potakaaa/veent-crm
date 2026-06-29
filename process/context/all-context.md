@@ -8,6 +8,7 @@ metadata:
   required: true
   read_when: any substantial planning, research, review, or implementation task
 ---
+
 # veent-crm - All Context
 
 Last updated: 2026-06-25
@@ -60,44 +61,46 @@ For most substantial tasks:
 ## Current Root Entry Points
 
 <!-- GENERATED:routing -->
-| File | Read when |
-|---|---|
-| `process/context/all-context.md` | any substantial planning, research, review, or implementation task |
+
+| File                                       | Read when                                                                                       |
+| ------------------------------------------ | ----------------------------------------------------------------------------------------------- |
+| `process/context/all-context.md`           | any substantial planning, research, review, or implementation task                              |
 | `process/context/planning/all-planning.md` | creating a new plan, calibrating SIMPLE vs COMPLEX plan shape, or checking planning conventions |
-| `process/context/tests/all-tests.md` | task involves testing, verification, running tests, or debugging test failures |
+| `process/context/tests/all-tests.md`       | task involves testing, verification, running tests, or debugging test failures                  |
 
 ## Current Context Groups
 
-| Group | Entry point | Scope |
-|---|---|---|
-| `planning/` | `process/context/planning/all-planning.md` | Plan shape calibration and planning conventions for veent-crm |
-| `tests/` | `process/context/tests/all-tests.md` | Test runner selection, commands, and verification guide for veent-crm |
+| Group       | Entry point                                | Scope                                                                 |
+| ----------- | ------------------------------------------ | --------------------------------------------------------------------- |
+| `planning/` | `process/context/planning/all-planning.md` | Plan shape calibration and planning conventions for veent-crm         |
+| `tests/`    | `process/context/tests/all-tests.md`       | Test runner selection, commands, and verification guide for veent-crm |
+
 <!-- /GENERATED:routing -->
 
 ## Task Routing Table
 
-| If the task involves... | Start with |
-|---|---|
-| architecture or stack questions | this file |
-| testing or verification | `process/context/tests/all-tests.md` |
-| creating a new plan | `process/context/planning/all-planning.md` |
-| auth / Better Auth wiring | this file + `process/features/auth/_GUIDE.md` |
-| leads CRUD, pipeline, stage transitions | this file + relevant feature `_GUIDE.md` |
-| DB schema changes (Drizzle) | this file — see Key Patterns §Drizzle conventions |
-| import / ingest pipeline | `process/features/import/_GUIDE.md` |
-| reminders / n8n | `process/features/reminders/_GUIDE.md` |
-| reports / ECharts | `process/features/reports/_GUIDE.md` |
+| If the task involves...                 | Start with                                        |
+| --------------------------------------- | ------------------------------------------------- |
+| architecture or stack questions         | this file                                         |
+| testing or verification                 | `process/context/tests/all-tests.md`              |
+| creating a new plan                     | `process/context/planning/all-planning.md`        |
+| auth / Better Auth wiring               | this file + `process/features/auth/_GUIDE.md`     |
+| leads CRUD, pipeline, stage transitions | this file + relevant feature `_GUIDE.md`          |
+| DB schema changes (Drizzle)             | this file — see Key Patterns §Drizzle conventions |
+| import / ingest pipeline                | `process/features/import/_GUIDE.md`               |
+| reminders / n8n                         | `process/features/reminders/_GUIDE.md`            |
+| reports / ECharts                       | `process/features/reports/_GUIDE.md`              |
 
 ## Feature Folders
 
-| Feature | Guide | Status |
-|---|---|---|
-| auth | `process/features/auth/_GUIDE.md` | not-started (v0 stub, DEV_BYPASS active) |
-| leads | `process/features/leads/_GUIDE.md` | not-started (mock data only) |
-| pipeline | `process/features/pipeline/_GUIDE.md` | not-started (mock data only) |
-| import | `process/features/import/_GUIDE.md` | not-started (stub pipeline) |
-| reminders | `process/features/reminders/_GUIDE.md` | not-started (stub) |
-| reports | `process/features/reports/_GUIDE.md` | not-started (mock data only) |
+| Feature   | Guide                                  | Status                                   |
+| --------- | -------------------------------------- | ---------------------------------------- |
+| auth      | `process/features/auth/_GUIDE.md`      | not-started (v0 stub, DEV_BYPASS active) |
+| leads     | `process/features/leads/_GUIDE.md`     | not-started (mock data only)             |
+| pipeline  | `process/features/pipeline/_GUIDE.md`  | not-started (mock data only)             |
+| import    | `process/features/import/_GUIDE.md`    | not-started (stub pipeline)              |
+| reminders | `process/features/reminders/_GUIDE.md` | not-started (stub)                       |
+| reports   | `process/features/reports/_GUIDE.md`   | not-started (mock data only)             |
 
 ---
 
@@ -217,7 +220,7 @@ veent-crm/
 
 ### Drizzle conventions
 
-- Table naming: snake_case, prefixed with `crm_` (e.g., `crm_leads`, `crm_activities`)
+- Table naming: snake*case, prefixed with `crm*`(e.g.,`crm_leads`, `crm_activities`)
 - All PKs: `uuid().primaryKey().defaultRandom()`
 - All tables: `createdAt` + `updatedAt` timestamps with timezone
 - **Never write Drizzle migrations for Better Auth tables** (`user`, `account`, `session`, `verification`) — those are managed by Better Auth's own migration system
@@ -247,6 +250,7 @@ veent-crm/
 **Config files:** `drizzle.config.ts`, `vite.config.ts`, `playwright.config.ts`, `tsconfig.json`, `.env` (git-ignored)
 
 **Env var groups (names only — never values):**
+
 - Database: `DATABASE_URL`
 - API secrets: `INGEST_SECRET` (scraper ingest endpoint), `REMINDERS_ENDPOINT_SECRET` (n8n reminders)
 - Email: `RESEND_API_KEY`
@@ -260,6 +264,7 @@ veent-crm/
 **v0 (current):** All 10 route surfaces render mock data from `src/lib/server/mock.ts`. Auth is bypassed via `DEV_BYPASS`. No real DB queries. No real email. No real Sentry.
 
 **v1 target (in priority order):**
+
 1. Better Auth magic-link login — real sessions replacing DEV_BYPASS
 2. Full leads CRUD — Drizzle queries replacing all mock data (leads list, detail, create, unassigned, review)
 3. Pipeline stage transitions — real DB writes + `crm_lead_history` audit trail

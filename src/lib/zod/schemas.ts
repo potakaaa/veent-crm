@@ -3,14 +3,7 @@
 
 import { z } from 'zod';
 
-export const LEAD_STAGES = [
-	'new',
-	'contacted',
-	'replied',
-	'in_discussion',
-	'won',
-	'lost'
-] as const;
+export const LEAD_STAGES = ['new', 'contacted', 'replied', 'in_discussion', 'won', 'lost'] as const;
 
 export const LEAD_PLATFORMS = ['Facebook', 'Instagram', 'Twitter/X', 'TikTok', 'Other'] as const;
 

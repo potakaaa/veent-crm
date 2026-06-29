@@ -1,0 +1,2 @@
+# No default overrides. See docker-compose.local.yml for host-port exposure
+# (opt-in for drizzle-kit / seed scripts run from outside the compose network).

@@ -74,6 +74,7 @@ the orchestrator MUST output a formatted /goal copy-paste block in chat.
 This is NOT a skill — it is a required orchestrator behavior.
 
 /goal block format:
+
 ```
 SESSION GOAL: [session goal title from the plan]
 Charter + umbrella plan: [the main plan file for the whole program, or "N/A — single plan"]
@@ -87,13 +88,14 @@ Execute start: [fully-auto commands] | [e2e spec] | [probe scenario] | high-risk
 ```
 
 Rules:
+
 - Keep the block under 4000 characters (it is pasted into a persistent /goal).
 - Name the charter/umbrella plan path or state "N/A" explicitly.
 - List hard stop conditions verbatim from the charter or validate-contract.
 - If the program has a standing /goal already, emit the block as an update,
   not a replacement.
 
-**Note:** This is the post-VALIDATE `/goal` block emitted by the orchestrator before EXECUTE. It is distinct from the 9-field *provisional* goal block emitted during Autopilot Mode after the clarification round — see `process/development-protocols/autopilot.md §Provisional Goal Block Format` for that variant.
+**Note:** This is the post-VALIDATE `/goal` block emitted by the orchestrator before EXECUTE. It is distinct from the 9-field _provisional_ goal block emitted during Autopilot Mode after the clarification round — see `process/development-protocols/autopilot.md §Provisional Goal Block Format` for that variant.
 
 ### Strategy-Compare at Every Phase Transition
 
@@ -119,6 +121,7 @@ Important: autonomy removes approval pauses ONLY. Subagent delegation (no-inline
 Before ANY multi-file edit spawn, the orchestrator MUST surface a strategy recommendation. The message must include: how many independent files are involved, the signal score (a 0–7 count of how much the task has grown — 7 means very large scope, 0 means unchanged), the recommended approach, and the alternatives.
 
 Example format:
+
 > "This involves [N] independent files. Signal score: [N]/7 (how much this task has grown — 7 = very large, 0 = unchanged). Recommended: [strategy] — [N] agents, [rationale]. Alternatives: [other options]. Proceed with recommended strategy?"
 
 Then wait for confirmation (or auto-proceed under /goal if not irreversible).
@@ -174,15 +177,15 @@ The complete RIPER-5 protocol is defined in the agent files at `.claude/agents/`
 
 **RIPER-5 Phase Table:**
 
-| Phase | Agent | Trigger | Artifact produced | Skip condition |
-|---|---|---|---|---|
-| RESEARCH | vc-research-agent | "ENTER RESEARCH MODE" or feature request detected | Research findings in chat | Trivial fix / existing plan found |
-| SPEC | vc-spec-agent | "ENTER SPEC MODE" or "go" after RESEARCH | Product-discovery requirements doc (`*_SPEC_*.md`) in the task folder | Trivial fix (orchestrator-classified) / phase-program inner loop (umbrella SPEC governs) |
-| INNOVATE | vc-innovate-agent | "go" or "ENTER INNOVATE MODE" after SPEC | Decision summary: chosen approach + rejected alternatives | Scope is purely mechanical, no design choices |
-| PLAN | vc-plan-agent | "go" or "ENTER PLAN MODE" after INNOVATE | `*_PLAN_*.md` file inside a task folder under `process/features/*/active/{slug}_{date}/` or `process/general-plans/active/{slug}_{date}/` | None — plan is always required before EXECUTE for non-trivial work |
-| VALIDATE | vc-validate-agent | "ENTER VALIDATE MODE" or auto-suggested after PLAN | Validate-contract section appended to plan file | Trivial fix with no plan file AND no schema/auth/API/billing surface changes |
-| EXECUTE | vc-execute-agent | Explicit "ENTER EXECUTE MODE" after VALIDATE (or PLAN for trivial) | Modified source files, test results | None — explicit approval always required |
-| UPDATE PROCESS | vc-update-process-agent | "ENTER UPDATE PROCESS MODE" after EXECUTE | Archived plan, updated context docs, memory notes | Skippable but not recommended for non-trivial sessions |
+| Phase          | Agent                   | Trigger                                                            | Artifact produced                                                                                                                         | Skip condition                                                                           |
+| -------------- | ----------------------- | ------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| RESEARCH       | vc-research-agent       | "ENTER RESEARCH MODE" or feature request detected                  | Research findings in chat                                                                                                                 | Trivial fix / existing plan found                                                        |
+| SPEC           | vc-spec-agent           | "ENTER SPEC MODE" or "go" after RESEARCH                           | Product-discovery requirements doc (`*_SPEC_*.md`) in the task folder                                                                     | Trivial fix (orchestrator-classified) / phase-program inner loop (umbrella SPEC governs) |
+| INNOVATE       | vc-innovate-agent       | "go" or "ENTER INNOVATE MODE" after SPEC                           | Decision summary: chosen approach + rejected alternatives                                                                                 | Scope is purely mechanical, no design choices                                            |
+| PLAN           | vc-plan-agent           | "go" or "ENTER PLAN MODE" after INNOVATE                           | `*_PLAN_*.md` file inside a task folder under `process/features/*/active/{slug}_{date}/` or `process/general-plans/active/{slug}_{date}/` | None — plan is always required before EXECUTE for non-trivial work                       |
+| VALIDATE       | vc-validate-agent       | "ENTER VALIDATE MODE" or auto-suggested after PLAN                 | Validate-contract section appended to plan file                                                                                           | Trivial fix with no plan file AND no schema/auth/API/billing surface changes             |
+| EXECUTE        | vc-execute-agent        | Explicit "ENTER EXECUTE MODE" after VALIDATE (or PLAN for trivial) | Modified source files, test results                                                                                                       | None — explicit approval always required                                                 |
+| UPDATE PROCESS | vc-update-process-agent | "ENTER UPDATE PROCESS MODE" after EXECUTE                          | Archived plan, updated context docs, memory notes                                                                                         | Skippable but not recommended for non-trivial sessions                                   |
 
 **Key Requirements**:
 
@@ -207,15 +210,14 @@ multi-intent precedence, and Gather/Route/Monitor: `process/development-protocol
 ### QUICK FIX Lane (lighter than FAST MODE)
 
 For small, low-risk fixes where heavyweight RIPER-5 ceremony is disproportionate — the band
-*above* a trivial single-file edit but *below* "needs a plan." Trigger: `ENTER QUICK FIX MODE`, or
+_above_ a trivial single-file edit but _below_ "needs a plan." Trigger: `ENTER QUICK FIX MODE`, or
 intent keywords ("quick fix", "hotfix", "small fix", "just patch"). The orchestrator runs a thin
 protocol — it does NOT skip the no-inline-execution rule (the spawned agent still does the editing):
 
 1. **Read-only scout** — orchestrator locates the gap with Grep/Read/Glob (reading is allowed inline;
-   only *editing* and gate-running are not) and drafts the exact edit. This is the "find gaps"
+   only _editing_ and gate-running are not) and drafts the exact edit. This is the "find gaps"
    research, done cheaply without a full `vc-research-agent` spawn.
-2. **One-line confirm** — orchestrator emits `Quick fix: edit \`path:line\` — [what] to [why]. Proceed?`
-   and waits for confirmation. Under a standing `/goal`, auto-proceed.
+2. **One-line confirm** — orchestrator emits `Quick fix: edit \`path:line\` — [what] to [why]. Proceed?`and waits for confirmation. Under a standing`/goal`, auto-proceed.
 3. **One spawn** — spawn `vc-quick-fix-agent` (opus) with the exact target. It applies the edit and
    runs a **scoped check on touched files only** (typecheck + the covering test file — NOT the full
    suite, NOT a `vc-tester`/EVL spawn), then returns a short report.
@@ -305,16 +307,16 @@ unchanged and are not part of the Codex skill compatibility surface.
 Each subagent has a separate context window, tool restrictions, and phase-locked responsibilities.
 Full prompts, invoked-skill lists, and tool grants live in each agent's `.claude/agents/{agent}.md`.
 
-| Agent | Trigger | Role |
-|---|---|---|
-| vc-research-agent | "ENTER RESEARCH MODE" / feature request | Read-only info gathering: codebase, context, plan discovery, library docs |
-| vc-spec-agent | "ENTER SPEC MODE" / "go" after RESEARCH | Product-discovery requirements doc for user review |
-| vc-innovate-agent | "go" / "ENTER INNOVATE MODE" after SPEC | Compare approaches; Decision Summary (chosen + rejected) |
-| vc-plan-agent | "go" / "ENTER PLAN MODE" after INNOVATE | Write SIMPLE/COMPLEX plan artifact (touchpoints, blast radius, evidence, handoff) |
-| vc-validate-agent | "ENTER VALIDATE MODE" / after PLAN | Convert plan to executable contract (V1–V7); write validate-contract |
-| vc-execute-agent | Explicit "ENTER EXECUTE MODE" only after contract | Implement the approved plan exactly; no creative deviation |
-| vc-fast-mode-agent | "ENTER FAST MODE" | Compressed R→S→I→P→V→PAUSE→E; mandatory pause after VALIDATE |
-| vc-update-process-agent | "ENTER UPDATE PROCESS MODE" after EXECUTE | Archive plans, update context, memory, closeout packet |
+| Agent                   | Trigger                                           | Role                                                                              |
+| ----------------------- | ------------------------------------------------- | --------------------------------------------------------------------------------- |
+| vc-research-agent       | "ENTER RESEARCH MODE" / feature request           | Read-only info gathering: codebase, context, plan discovery, library docs         |
+| vc-spec-agent           | "ENTER SPEC MODE" / "go" after RESEARCH           | Product-discovery requirements doc for user review                                |
+| vc-innovate-agent       | "go" / "ENTER INNOVATE MODE" after SPEC           | Compare approaches; Decision Summary (chosen + rejected)                          |
+| vc-plan-agent           | "go" / "ENTER PLAN MODE" after INNOVATE           | Write SIMPLE/COMPLEX plan artifact (touchpoints, blast radius, evidence, handoff) |
+| vc-validate-agent       | "ENTER VALIDATE MODE" / after PLAN                | Convert plan to executable contract (V1–V7); write validate-contract              |
+| vc-execute-agent        | Explicit "ENTER EXECUTE MODE" only after contract | Implement the approved plan exactly; no creative deviation                        |
+| vc-fast-mode-agent      | "ENTER FAST MODE"                                 | Compressed R→S→I→P→V→PAUSE→E; mandatory pause after VALIDATE                      |
+| vc-update-process-agent | "ENTER UPDATE PROCESS MODE" after EXECUTE         | Archive plans, update context, memory, closeout packet                            |
 
 **Specialist agents** (callable within phases, invoked by orchestrator/execute-agent): `vc-tester`
 (diff-aware test verification), `vc-debugger` (evidence-first root cause), `vc-code-reviewer`
@@ -352,14 +354,14 @@ When a user makes a request:
 Outer order: `RESEARCH → SPEC → INNOVATE → PLAN → VALIDATE → EXECUTE → UPDATE PROCESS`. The
 phase-program INNER loop skips SPEC (`R → I → P → PVL → E → EVL → UP`).
 
-| Transition | Gate to advance |
-|---|---|
-| RESEARCH → SPEC | Context gathered; "go"/"ENTER SPEC MODE". SPEC always runs for non-trivial work (user-review checkpoint) |
-| SPEC → INNOVATE | Locked SPEC written; "go". Skippable when the "how" is mechanical — route straight to vc-plan-agent with the SPEC |
-| INNOVATE → PLAN | Decision Summary (chosen + rejected + rationale) produced; "go" |
-| PLAN → VALIDATE | Plan file written; invoke vc-validate-agent before EXECUTE |
-| VALIDATE → EXECUTE | validate-contract written; explicit "ENTER EXECUTE MODE"; orchestrator emits the /goal block (see §/goal Block) first |
-| EXECUTE → UPDATE PROCESS | Implementation complete; surface cleanup checkpoint; explicit user command |
+| Transition               | Gate to advance                                                                                                       |
+| ------------------------ | --------------------------------------------------------------------------------------------------------------------- |
+| RESEARCH → SPEC          | Context gathered; "go"/"ENTER SPEC MODE". SPEC always runs for non-trivial work (user-review checkpoint)              |
+| SPEC → INNOVATE          | Locked SPEC written; "go". Skippable when the "how" is mechanical — route straight to vc-plan-agent with the SPEC     |
+| INNOVATE → PLAN          | Decision Summary (chosen + rejected + rationale) produced; "go"                                                       |
+| PLAN → VALIDATE          | Plan file written; invoke vc-validate-agent before EXECUTE                                                            |
+| VALIDATE → EXECUTE       | validate-contract written; explicit "ENTER EXECUTE MODE"; orchestrator emits the /goal block (see §/goal Block) first |
+| EXECUTE → UPDATE PROCESS | Implementation complete; surface cleanup checkpoint; explicit user command                                            |
 
 Full per-transition rules, fan-out scoring, and gate semantics:
 `process/development-protocols/orchestration.md` (§VALIDATE Gate, §Parallel Fan-Out Checkpoints,
@@ -393,7 +395,6 @@ implementation; EXECUTE implements the approved plan only; UPDATE PROCESS docume
 **Efficiency** — context isolation rules: `process/development-protocols/orchestration.md` §Context Isolation.
 
 ---
-
 
 ## Quick Start
 

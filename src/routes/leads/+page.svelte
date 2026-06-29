@@ -19,7 +19,9 @@
 
 <div class="mb-4 flex items-center gap-3">
 	<h1 class="text-2xl font-semibold">Leads</h1>
-	<a href="/leads/new" class="ml-auto rounded bg-gray-900 px-3 py-1.5 text-sm text-white">+ Add lead</a>
+	<a href="/leads/new" class="ml-auto rounded bg-gray-900 px-3 py-1.5 text-sm text-white"
+		>+ Add lead</a
+	>
 </div>
 
 <form class="mb-4" method="get">
@@ -51,7 +53,9 @@
 							{lead.name}
 						</a>
 						{#if lead.needsReview}
-							<span class="ml-1 rounded bg-amber-100 px-1.5 py-0.5 text-xs text-amber-800">review</span>
+							<span class="ml-1 rounded bg-amber-100 px-1.5 py-0.5 text-xs text-amber-800"
+								>review</span
+							>
 						{/if}
 					</td>
 					<td class="px-3 py-2 text-gray-600">{lead.category}</td>

@@ -6,7 +6,9 @@
 
 <svelte:head><title>{data.lead.name} · Veent CRM</title></svelte:head>
 
-<StubNote>Event fields + SVAR activity timeline + add-touch composer + Won/Lost actions go here.</StubNote>
+<StubNote
+	>Event fields + SVAR activity timeline + add-touch composer + Won/Lost actions go here.</StubNote
+>
 
 <a href="/leads" class="text-sm text-blue-600 hover:underline">← Leads</a>
 
@@ -17,11 +19,26 @@
 
 <div class="grid gap-6 lg:grid-cols-3">
 	<dl class="space-y-2 rounded-lg border border-gray-200 bg-white p-4 text-sm lg:col-span-1">
-		<div class="flex justify-between"><dt class="text-gray-500">Category</dt><dd>{data.lead.category}</dd></div>
-		<div class="flex justify-between"><dt class="text-gray-500">Platform</dt><dd>{data.lead.platform}</dd></div>
-		<div class="flex justify-between"><dt class="text-gray-500">Location</dt><dd>{data.lead.location || '—'}</dd></div>
-		<div class="flex justify-between"><dt class="text-gray-500">Owner</dt><dd>{data.lead.ownerName ?? 'Unassigned'}</dd></div>
-		<div class="flex justify-between"><dt class="text-gray-500">Source</dt><dd>{data.lead.source}</dd></div>
+		<div class="flex justify-between">
+			<dt class="text-gray-500">Category</dt>
+			<dd>{data.lead.category}</dd>
+		</div>
+		<div class="flex justify-between">
+			<dt class="text-gray-500">Platform</dt>
+			<dd>{data.lead.platform}</dd>
+		</div>
+		<div class="flex justify-between">
+			<dt class="text-gray-500">Location</dt>
+			<dd>{data.lead.location || '—'}</dd>
+		</div>
+		<div class="flex justify-between">
+			<dt class="text-gray-500">Owner</dt>
+			<dd>{data.lead.ownerName ?? 'Unassigned'}</dd>
+		</div>
+		<div class="flex justify-between">
+			<dt class="text-gray-500">Source</dt>
+			<dd>{data.lead.source}</dd>
+		</div>
 	</dl>
 
 	<div class="rounded-lg border border-gray-200 bg-white p-4 lg:col-span-2">

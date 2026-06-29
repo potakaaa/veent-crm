@@ -15,5 +15,11 @@ export const POST: RequestHandler = async ({ request }) => {
 	if (!parsed.success) throw error(400, 'invalid payload');
 
 	// STUB: real impl runs the dedup gate, validate+normalize, then route to pool or review queue.
-	return json({ received: parsed.data.leads.length, created: 0, skipped: 0, review: 0, stub: true });
+	return json({
+		received: parsed.data.leads.length,
+		created: 0,
+		skipped: 0,
+		review: 0,
+		stub: true
+	});
 };

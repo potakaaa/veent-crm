@@ -450,9 +450,7 @@ async function load(groups: LeadGroup[], report: ReconciliationReport): Promise<
 				const existing = await tx
 					.select({ id: crmLeads.id })
 					.from(crmLeads)
-					.where(
-						and(eq(crmLeads.normalizedHandle, group.handle), isNull(crmLeads.deletedAt))
-					)
+					.where(and(eq(crmLeads.normalizedHandle, group.handle), isNull(crmLeads.deletedAt)))
 					.limit(1);
 
 				if (existing.length) {

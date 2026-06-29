@@ -32,20 +32,31 @@ function makeRow(o: Partial<TsvRow>): TsvRow {
 describe('normalizeHandle', () => {
 	it('prefers the Facebook URL', () => {
 		expect(
-			normalizeHandle('https://facebook.com/ManilaMarathon', 'https://instagram.com/ig', 'https://site.ph/x', 'Some Name')
+			normalizeHandle(
+				'https://facebook.com/ManilaMarathon',
+				'https://instagram.com/ig',
+				'https://site.ph/x',
+				'Some Name'
+			)
 		).toBe('manilamarathon');
 	});
 	it('falls back to Instagram when no FB', () => {
-		expect(normalizeHandle(undefined, 'https://instagram.com/CebuFest', 'https://site.ph/x', 'N')).toBe('cebufest');
+		expect(
+			normalizeHandle(undefined, 'https://instagram.com/CebuFest', 'https://site.ph/x', 'N')
+		).toBe('cebufest');
 	});
 	it('falls back to the website path segment when no FB/IG', () => {
-		expect(normalizeHandle(undefined, undefined, 'https://example.com/IloiloExpo', 'N')).toBe('iloiloexpo');
+		expect(normalizeHandle(undefined, undefined, 'https://example.com/IloiloExpo', 'N')).toBe(
+			'iloiloexpo'
+		);
 	});
 	it('falls back to slugified name when no usable URL', () => {
 		expect(normalizeHandle(undefined, undefined, undefined, 'Pop Up Bazaar')).toBe('pop-up-bazaar');
 	});
 	it('falls back to name when website has no path segment', () => {
-		expect(normalizeHandle(undefined, undefined, 'https://iloilofoodexpo.ph', 'Iloilo Food Expo')).toBe('iloilo-food-expo');
+		expect(
+			normalizeHandle(undefined, undefined, 'https://iloilofoodexpo.ph', 'Iloilo Food Expo')
+		).toBe('iloilo-food-expo');
 	});
 });
 

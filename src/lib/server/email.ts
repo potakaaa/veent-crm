@@ -9,11 +9,11 @@ export type EmailMessage = {
 	html: string;
 };
 
-const resend = new Resend(env.RESEND_API_KEY);
-
 export async function sendEmail(msg: EmailMessage): Promise<void> {
 	const from = env.RESEND_FROM;
 	if (!from) throw new Error('RESEND_FROM env var is not set');
+	if (!env.RESEND_API_KEY) throw new Error('RESEND_API_KEY env var is not set');
+	const resend = new Resend(env.RESEND_API_KEY);
 	const { error } = await resend.emails.send({
 		from,
 		to: msg.to,

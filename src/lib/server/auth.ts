@@ -24,31 +24,47 @@ export type SessionUser = {
 	role: 'rep' | 'manager';
 };
 
-export const auth = betterAuth({
-	secret: env.BETTER_AUTH_SECRET,
-	baseURL: env.BETTER_AUTH_URL,
-	database: drizzleAdapter(db, {
-		provider: 'pg',
-		schema: {
-			user: baUser,
-			account: baAccount,
-			session: baSession,
-			verification: baVerification
-		}
-	}),
-	plugins: [
-		magicLink({
-			sendMagicLink: async ({ email, url }) => {
-				console.log(`\n[DEV] Magic link for ${email}:\n${url}\n`);
-				await sendEmail({
-					to: email,
-					subject: 'Your Veent CRM login link',
-					html: `<p>Click to sign in: <a href="${url}">${url}</a></p><p>Link expires in 5 minutes.</p>`
-				});
+function createAuth() {
+	return betterAuth({
+		secret: env.BETTER_AUTH_SECRET,
+		baseURL: env.BETTER_AUTH_URL,
+		database: drizzleAdapter(db, {
+			provider: 'pg',
+			schema: {
+				user: baUser,
+				account: baAccount,
+				session: baSession,
+				verification: baVerification
 			}
 		}),
-		dash({
-			apiKey: env.BETTER_AUTH_API_KEY
-		})
-	]
+		plugins: [
+			magicLink({
+				sendMagicLink: async ({ email, url }) => {
+					console.log(`\n[DEV] Magic link for ${email}:\n${url}\n`);
+					await sendEmail({
+						to: email,
+						subject: 'Your Veent CRM login link',
+						html: `<p>Click to sign in: <a href="${url}">${url}</a></p><p>Link expires in 5 minutes.</p>`
+					});
+				}
+			}),
+			dash({
+				apiKey: env.BETTER_AUTH_API_KEY
+			})
+		]
+	});
+}
+
+let _auth: ReturnType<typeof createAuth> | undefined;
+export function getAuth() {
+	if (!_auth) _auth = createAuth();
+	return _auth;
+}
+
+// Convenience proxy so existing callers (`auth.api.getSession`, `toSvelteKitHandler(auth)`)
+// keep working without changes.
+export const auth = new Proxy({} as ReturnType<typeof createAuth>, {
+	get(_target, prop) {
+		return getAuth()[prop as keyof ReturnType<typeof createAuth>];
+	}
 });

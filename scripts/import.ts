@@ -413,7 +413,18 @@ function buildReport(
 // Pure transform: file text → built lead groups + report. No DB access.
 function plan(content: string): { groups: LeadGroup[]; report: ReconciliationReport } {
 	const allRows = parseTsv(content);
-	const dataRows = allRows.slice(1); // drop header
+	if (!allRows.length) throw new Error('TSV file is empty');
+
+	// Validate header row matches expected column names and order before processing data rows.
+	const headerRow = allRows[0].map((h) => h.trim());
+	const mismatches = (COLUMNS as readonly string[]).flatMap((expected, i) =>
+		headerRow[i] !== expected
+			? [`col ${i}: expected "${expected}", got "${headerRow[i] ?? '(missing)'}"`]
+			: []
+	);
+	if (mismatches.length) throw new Error(`TSV header mismatch:\n${mismatches.join('\n')}`);
+
+	const dataRows = allRows.slice(1); // drop validated header
 	const { valid, skipped } = validateRows(dataRows);
 	const grouped = groupByHandle(valid);
 	const groups = Array.from(grouped.entries()).map(([handle, events]) =>

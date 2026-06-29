@@ -2,8 +2,15 @@
 	import './layout.css';
 	import favicon from '$lib/assets/favicon.svg';
 	import { page } from '$app/state';
+	import { authClient } from '$lib/auth-client';
+	import { goto } from '$app/navigation';
 
 	let { children, data } = $props();
+
+	async function logout() {
+		await authClient.signOut();
+		goto('/login');
+	}
 
 	const nav = [
 		{ href: '/', label: 'Today' },
@@ -41,9 +48,10 @@
 					</a>
 				{/each}
 			</nav>
-			<div class="ml-auto text-sm text-gray-500">
+			<div class="ml-auto flex items-center gap-3 text-sm text-gray-500">
 				{#if data?.user}
-					{data.user.name} · {data.user.role}
+					<span>{data.user.name} · {data.user.role}</span>
+					<button onclick={logout} class="text-gray-400 hover:text-gray-700">Log out</button>
 				{:else}
 					<a href="/login" class="text-blue-600 hover:underline">Log in</a>
 				{/if}

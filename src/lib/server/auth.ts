@@ -39,6 +39,7 @@ export const auth = betterAuth({
 	plugins: [
 		magicLink({
 			sendMagicLink: async ({ email, url }) => {
+				console.log(`\n[DEV] Magic link for ${email}:\n${url}\n`);
 				await sendEmail({
 					to: email,
 					subject: 'Your Veent CRM login link',

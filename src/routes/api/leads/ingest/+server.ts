@@ -12,8 +12,9 @@ import { normalizeHandle } from '$lib/server/import-utils';
 // All ingested leads land unassigned (owner_id NULL), source='scraper', needs_review=true.
 export const POST: RequestHandler = async ({ request }) => {
 	const secret = env.INGEST_SECRET;
+	if (!secret) throw error(500, 'server misconfigured');
 	const provided = request.headers.get('authorization')?.replace(/^Bearer\s+/i, '');
-	if (secret && provided !== secret) throw error(401, 'unauthorized');
+	if (provided !== secret) throw error(401, 'unauthorized');
 
 	const parsed = ingestBatchSchema.safeParse(await request.json().catch(() => null));
 	if (!parsed.success) throw error(400, 'invalid payload');
@@ -63,13 +64,14 @@ export const POST: RequestHandler = async ({ request }) => {
 			eventLink: lead.eventLink ?? null,
 			source: 'scraper',
 			stage: 'new',
-			needsReview: true,
+			// Flag for review when category fell back to Other or no social URL is present.
+			needsReview: !lead.category || lead.category === 'Other' || (!lead.url && !lead.facebookUrl),
 			ownerId: null,
 			createdAt: now,
 			updatedAt: now
 		});
 		created++;
-		review++; // every newly ingested scraper lead needs human review
+		if (!lead.category || lead.category === 'Other' || (!lead.url && !lead.facebookUrl)) review++;
 	}
 
 	return json({ received: parsed.data.leads.length, created, skipped, review });

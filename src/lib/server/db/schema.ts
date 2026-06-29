@@ -172,7 +172,7 @@ export const crmLeads = pgTable(
 		index('crm_leads_last_activity_idx').on(t.lastActivityAt),
 		uniqueIndex('crm_leads_source_ref_uq')
 			.on(t.sourceRef)
-			.where(sql`source_ref IS NOT NULL`)
+			.where(sql`source_ref IS NOT NULL AND deleted_at IS NULL`)
 	]
 );
 

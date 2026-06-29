@@ -903,7 +903,7 @@
             }
           ],
           "isUnique": true,
-          "where": "source_ref IS NOT NULL",
+          "where": "source_ref IS NOT NULL AND deleted_at IS NULL",
           "concurrently": false,
           "method": "btree",
           "with": {}

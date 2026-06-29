@@ -190,8 +190,15 @@ export async function moveLeadStage(
 	payload: MoveStagePayload,
 	actorId: string
 ): Promise<Lead | null> {
+	// Read the full current state so history rows can carry real old values.
 	const [existing] = await db
-		.select({ stage: crmLeads.stage, ownerId: crmLeads.ownerId })
+		.select({
+			stage: crmLeads.stage,
+			ownerId: crmLeads.ownerId,
+			wonOrgName: crmLeads.wonOrgName,
+			dealValueCents: crmLeads.dealValueCents,
+			lostReason: crmLeads.lostReason
+		})
 		.from(crmLeads)
 		.where(and(eq(crmLeads.id, id), isNull(crmLeads.deletedAt)))
 		.limit(1);
@@ -199,76 +206,106 @@ export async function moveLeadStage(
 	if (!existing) return null;
 
 	const now = new Date();
-	let updated: DbLead;
 
-	if (stage === 'won') {
-		[updated] = await db
-			.update(crmLeads)
-			.set({
-				stage: 'won',
-				wonOrgName: payload.wonOrgName ?? null,
-				dealValueCents: payload.dealValueCents ?? null,
-				currency: payload.currency ?? 'PHP',
-				signedAt: payload.signedAt ? new Date(payload.signedAt) : now,
-				lastActivityAt: now,
-				updatedAt: now
-			})
-			.where(eq(crmLeads.id, id))
-			.returning();
-	} else if (stage === 'lost') {
-		[updated] = await db
-			.update(crmLeads)
-			.set({
-				stage: 'lost',
-				lostReason: (payload.lostReason ?? null) as LostReason | null,
-				lastActivityAt: now,
-				updatedAt: now
-			})
-			.where(eq(crmLeads.id, id))
-			.returning();
-	} else {
-		[updated] = await db
-			.update(crmLeads)
-			.set({ stage, updatedAt: now })
-			.where(eq(crmLeads.id, id))
-			.returning();
-	}
+	// Wrap the update + history insert in a transaction so they succeed or fail together.
+	const updated = await db.transaction(async (tx) => {
+		let rows: DbLead[];
 
-	// Audit trail — always record the stage change
-	const historyRows: (typeof crmLeadHistory.$inferInsert)[] = [
-		{ leadId: id, actorUserId: actorId, field: 'stage', oldValue: existing.stage, newValue: stage }
-	];
-	if (stage === 'won') {
-		if (payload.wonOrgName) {
+		if (stage === 'won') {
+			rows = await tx
+				.update(crmLeads)
+				.set({
+					stage: 'won',
+					wonOrgName: payload.wonOrgName ?? null,
+					dealValueCents: payload.dealValueCents ?? null,
+					currency: payload.currency ?? 'PHP',
+					signedAt: payload.signedAt ? new Date(payload.signedAt) : now,
+					lostReason: null, // clear stale lost metadata
+					lastActivityAt: now,
+					updatedAt: now
+				})
+				.where(and(eq(crmLeads.id, id), isNull(crmLeads.deletedAt)))
+				.returning();
+		} else if (stage === 'lost') {
+			rows = await tx
+				.update(crmLeads)
+				.set({
+					stage: 'lost',
+					lostReason: payload.lostReason as LostReason,
+					wonOrgName: null, // clear stale won metadata
+					dealValueCents: null,
+					currency: null,
+					signedAt: null,
+					lastActivityAt: now,
+					updatedAt: now
+				})
+				.where(and(eq(crmLeads.id, id), isNull(crmLeads.deletedAt)))
+				.returning();
+		} else {
+			rows = await tx
+				.update(crmLeads)
+				.set({
+					stage,
+					wonOrgName: null, // clear stale won/lost metadata when moving back to active
+					dealValueCents: null,
+					currency: null,
+					signedAt: null,
+					lostReason: null,
+					updatedAt: now
+				})
+				.where(and(eq(crmLeads.id, id), isNull(crmLeads.deletedAt)))
+				.returning();
+		}
+
+		if (rows.length === 0) return null;
+
+		const historyRows: (typeof crmLeadHistory.$inferInsert)[] = [
+			{
+				leadId: id,
+				actorUserId: actorId,
+				field: 'stage',
+				oldValue: existing.stage,
+				newValue: stage
+			}
+		];
+
+		if (stage === 'won') {
+			if (payload.wonOrgName !== undefined) {
+				historyRows.push({
+					leadId: id,
+					actorUserId: actorId,
+					field: 'won_org_name',
+					oldValue: existing.wonOrgName,
+					newValue: payload.wonOrgName ?? null
+				});
+			}
+			if (payload.dealValueCents !== undefined) {
+				historyRows.push({
+					leadId: id,
+					actorUserId: actorId,
+					field: 'deal_value_cents',
+					oldValue: existing.dealValueCents !== null ? String(existing.dealValueCents) : null,
+					newValue: String(payload.dealValueCents)
+				});
+			}
+		}
+
+		if (stage === 'lost' && payload.lostReason !== undefined) {
 			historyRows.push({
 				leadId: id,
 				actorUserId: actorId,
-				field: 'won_org_name',
-				oldValue: null,
-				newValue: payload.wonOrgName
+				field: 'lost_reason',
+				oldValue: existing.lostReason ?? null,
+				newValue: payload.lostReason
 			});
 		}
-		if (payload.dealValueCents !== undefined) {
-			historyRows.push({
-				leadId: id,
-				actorUserId: actorId,
-				field: 'deal_value_cents',
-				oldValue: null,
-				newValue: String(payload.dealValueCents)
-			});
-		}
-	}
-	if (stage === 'lost' && payload.lostReason) {
-		historyRows.push({
-			leadId: id,
-			actorUserId: actorId,
-			field: 'lost_reason',
-			oldValue: null,
-			newValue: payload.lostReason
-		});
-	}
-	await db.insert(crmLeadHistory).values(historyRows);
 
+		await tx.insert(crmLeadHistory).values(historyRows);
+
+		return rows[0];
+	});
+
+	if (!updated) return null;
 	return dbRowToLead(updated);
 }
 
@@ -286,19 +323,27 @@ export async function reassignLead(
 	if (!existing) return null;
 
 	const now = new Date();
-	const [updated] = await db
-		.update(crmLeads)
-		.set({ ownerId, updatedAt: now })
-		.where(eq(crmLeads.id, id))
-		.returning();
 
-	await db.insert(crmLeadHistory).values({
-		leadId: id,
-		actorUserId: actorId,
-		field: 'owner_id',
-		oldValue: existing.ownerId,
-		newValue: ownerId
+	const updated = await db.transaction(async (tx) => {
+		const rows = await tx
+			.update(crmLeads)
+			.set({ ownerId, updatedAt: now })
+			.where(and(eq(crmLeads.id, id), isNull(crmLeads.deletedAt)))
+			.returning();
+
+		if (rows.length === 0) return null;
+
+		await tx.insert(crmLeadHistory).values({
+			leadId: id,
+			actorUserId: actorId,
+			field: 'owner_id',
+			oldValue: existing.ownerId,
+			newValue: ownerId
+		});
+
+		return rows[0];
 	});
 
+	if (!updated) return null;
 	return dbRowToLead(updated);
 }

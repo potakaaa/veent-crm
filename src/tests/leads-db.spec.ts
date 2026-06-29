@@ -14,9 +14,9 @@ import { db } from '$lib/server/db/index';
 import { crmLeads } from '$lib/server/db/schema';
 import { eq } from 'drizzle-orm';
 
-// Skip the entire file in CI where no postgres service is configured.
-// Locally (docker compose up -d db), CI is not set so all 8 tests run normally.
-const SKIP_DB = process.env.CI === 'true';
+// Skip when DATABASE_URL is not set (no postgres service available).
+// Locally (docker compose up -d db + DATABASE_URL in .env), all tests run normally.
+const SKIP_DB = !process.env.DATABASE_URL;
 
 // Seeded manager UUID (from scripts/seed.ts — must be present for FK to pass)
 const MANAGER_UUID = '00000000-0000-0000-0000-000000000001';

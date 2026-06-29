@@ -9,6 +9,9 @@ import { crmUsers } from '$lib/server/db/schema';
 export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 	if (!locals.user) throw error(401, 'Unauthorized');
 
+	// Authorization: only managers may reassign leads.
+	if (locals.user.role !== 'manager') throw error(403, 'Forbidden');
+
 	let body: unknown;
 	try {
 		body = await request.json();

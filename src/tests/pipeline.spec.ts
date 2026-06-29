@@ -104,18 +104,7 @@ describe('ownerUpdateSchema (owner reassignment validator)', () => {
 // ---------------------------------------------------------------------------
 
 describe('BOARD_STAGES (pipeline column order)', () => {
-	it('includes the four active pipeline stages', () => {
-		expect(BOARD_STAGES).toContain('new');
-		expect(BOARD_STAGES).toContain('contacted');
-		expect(BOARD_STAGES).toContain('replied');
-		expect(BOARD_STAGES).toContain('in_discussion');
-	});
-
-	it('includes won as the closing stage', () => {
-		expect(BOARD_STAGES).toContain('won');
-	});
-
-	it('does not include lost (collapsed separately)', () => {
-		expect(BOARD_STAGES).not.toContain('lost');
+	it('matches the expected ordered columns (new → contacted → replied → in_discussion → won)', () => {
+		expect(BOARD_STAGES).toEqual(['new', 'contacted', 'replied', 'in_discussion', 'won']);
 	});
 });

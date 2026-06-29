@@ -1,7 +1,13 @@
 /**
  * DB integration tests for Phase 5 — moveLeadStage and reassignLead.
- * Requires docker postgres: docker compose up -d db
- * Skipped automatically in CI (process.env.CI === 'true').
+ *
+ * Prerequisites:
+ *   1. docker compose up -d db   (postgres service)
+ *   2. bun run db:push            (apply schema migrations)
+ *   3. bun run db:seed            (insert crm_users rows — provides MANAGER_UUID + REP_UUID)
+ *
+ * Tests are skipped when DATABASE_URL is not set (CI without a postgres service).
+ * To run locally: ensure DATABASE_URL is in .env, then: bun run test:unit -- --run
  */
 import { describe, it, expect, afterAll } from 'vitest';
 import { createLead, getLead, moveLeadStage, reassignLead } from '$lib/server/db/leads';
@@ -9,9 +15,10 @@ import { db } from '$lib/server/db/index';
 import { crmLeads, crmLeadHistory } from '$lib/server/db/schema';
 import { eq } from 'drizzle-orm';
 
-const SKIP_DB = process.env.CI === 'true';
+// Skip when no DATABASE_URL is configured (no postgres service available).
+const SKIP_DB = !process.env.DATABASE_URL;
 
-// Seeded manager + rep UUIDs (from scripts/seed.ts)
+// Seeded manager + rep UUIDs — inserted by scripts/seed.ts (db:seed).
 const MANAGER_UUID = '00000000-0000-0000-0000-000000000001';
 const REP_UUID = '00000000-0000-0000-0000-000000000002';
 

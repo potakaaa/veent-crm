@@ -119,7 +119,10 @@ export const moveStageSchema = z.discriminatedUnion('stage', [
 		wonOrgName: z.string().optional(),
 		dealValueCents: z.number().int().nonnegative().optional(),
 		currency: z.enum(CURRENCIES).default('PHP'),
-		signedAt: z.string().optional()
+		signedAt: z
+			.string()
+			.regex(/^\d{4}-\d{2}-\d{2}$/, 'signedAt must be YYYY-MM-DD')
+			.optional()
 	}),
 	z.object({
 		stage: z.literal('lost'),

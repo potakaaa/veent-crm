@@ -2,6 +2,9 @@
  * DB integration tests for Phase 4 — requires the docker postgres container to be running.
  * Run: docker compose up -d db && bun run test:unit:ci
  *
+ * Skipped automatically in CI (process.env.CI === 'true') because GitHub Actions has no
+ * postgres service. To run locally: docker compose up -d db && bun run test:unit:ci
+ *
  * Tests the actual Drizzle query layer (createLead / getLead / listLeads).
  * Auth is bypassed — these tests call DB functions directly, not via HTTP.
  */
@@ -10,6 +13,10 @@ import { createLead, getLead, listLeads } from '$lib/server/db/leads';
 import { db } from '$lib/server/db/index';
 import { crmLeads } from '$lib/server/db/schema';
 import { eq } from 'drizzle-orm';
+
+// Skip the entire file in CI where no postgres service is configured.
+// Locally (docker compose up -d db), CI is not set so all 8 tests run normally.
+const SKIP_DB = process.env.CI === 'true';
 
 // Seeded manager UUID (from scripts/seed.ts — must be present for FK to pass)
 const MANAGER_UUID = '00000000-0000-0000-0000-000000000001';
@@ -25,7 +32,7 @@ afterAll(async () => {
 	}
 });
 
-describe('createLead + getLead roundtrip (DB)', () => {
+describe.skipIf(SKIP_DB)('createLead + getLead roundtrip (DB)', () => {
 	it('creates a lead and reads it back by ID', async () => {
 		const lead = await createLead(
 			{ name: `${TEST_PREFIX} Roundtrip Org`, category: 'Sports' },
@@ -68,7 +75,7 @@ describe('createLead + getLead roundtrip (DB)', () => {
 	});
 });
 
-describe('listLeads (DB)', () => {
+describe.skipIf(SKIP_DB)('listLeads (DB)', () => {
 	it('returns the created lead in the list', async () => {
 		const lead = await createLead(
 			{
@@ -113,7 +120,7 @@ describe('listLeads (DB)', () => {
 	});
 });
 
-describe('createLead field mapping (DB roundtrip)', () => {
+describe.skipIf(SKIP_DB)('createLead field mapping (DB roundtrip)', () => {
 	it('stores and maps all optional fields correctly', async () => {
 		const lead = await createLead(
 			{

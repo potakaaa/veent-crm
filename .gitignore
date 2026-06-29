@@ -31,3 +31,6 @@ test-results
 .vibecode-backup*/
 
 .jsrl
+
+# Claude hook logs
+.claude/hooks/.logs/

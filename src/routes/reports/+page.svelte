@@ -3,10 +3,58 @@
 	import Avatar from '$lib/components/shared/Avatar.svelte';
 	import { formatMoney } from '$lib/utils/currency';
 	import type { FunnelStage } from '$lib/types';
+	import * as echarts from 'echarts/core';
+	import { BarChart } from 'echarts/charts';
+	import { GridComponent, TooltipComponent, LegendComponent } from 'echarts/components';
+	import { CanvasRenderer } from 'echarts/renderers';
+
+	echarts.use([BarChart, GridComponent, TooltipComponent, LegendComponent, CanvasRenderer]);
 
 	let { data } = $props();
 	const report = $derived(data.report);
 	const maxCount = $derived(Math.max(...report.funnel.map((f: FunnelStage) => f.count), 1));
+
+	let chartEl: HTMLDivElement | undefined = $state();
+	let chart: echarts.ECharts | undefined;
+
+	$effect(() => {
+		if (!chartEl) return;
+		chart = echarts.init(chartEl);
+		const names = report.leaderboard.map((r) => r.name);
+		chart.setOption({
+			tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+			legend: { data: ['Wins', 'Touches', 'Replies'] },
+			grid: { left: 16, right: 16, top: 32, bottom: 8, containLabel: true },
+			xAxis: { type: 'value' },
+			yAxis: { type: 'category', data: names },
+			series: [
+				{
+					name: 'Wins',
+					type: 'bar',
+					data: report.leaderboard.map((r) => r.wins),
+					itemStyle: { color: '#22c55e' }
+				},
+				{
+					name: 'Touches',
+					type: 'bar',
+					data: report.leaderboard.map((r) => r.touches),
+					itemStyle: { color: '#6366f1' }
+				},
+				{
+					name: 'Replies',
+					type: 'bar',
+					data: report.leaderboard.map((r) => r.replies),
+					itemStyle: { color: '#3b82f6' }
+				}
+			]
+		});
+		const observer = new ResizeObserver(() => chart?.resize());
+		observer.observe(chartEl);
+		return () => {
+			observer.disconnect();
+			chart?.dispose();
+		};
+	});
 </script>
 
 <svelte:head><title>Reports · Veent CRM</title></svelte:head>
@@ -17,6 +65,20 @@
 		subtitle="Pipeline health and rep activity. Deal value is shown per currency — never summed across PHP and SGD."
 	>
 		{#snippet actions()}
+			<a
+				href="/api/reports/export?type=won"
+				class="inline-flex h-[34px] items-center rounded-control border border-hairline bg-panel px-3 font-mono text-[12.5px] text-ink-600"
+				download
+			>
+				Won deals CSV
+			</a>
+			<a
+				href="/api/reports/export?type=view"
+				class="inline-flex h-[34px] items-center rounded-control border border-hairline bg-panel px-3 font-mono text-[12.5px] text-ink-600"
+				download
+			>
+				Export view CSV
+			</a>
 			<button
 				class="h-[34px] rounded-control border border-hairline bg-panel px-3 font-mono text-[12.5px] text-ink-600"
 			>
@@ -53,6 +115,9 @@
 		<!-- leaderboard -->
 		<div class="rounded-control border border-hairline bg-panel p-5">
 			<div class="mb-4 text-[14px] font-bold">Rep leaderboard</div>
+			{#if report.leaderboard.length > 0}
+				<div bind:this={chartEl} class="mb-4 h-[220px] w-full"></div>
+			{/if}
 			<div
 				class="grid grid-cols-[1.4fr_1fr_1fr_0.8fr] gap-2 border-b border-hairline pb-2.5 font-mono text-[10px] uppercase tracking-[0.4px] text-ink-300"
 			>

@@ -40,6 +40,7 @@ function makeLeadRow(overrides: Partial<Parameters<typeof dbRowToLead>[0]> = {})
 		lostReason: null,
 		ownerId: 'owner-uuid',
 		source: 'manual' as const,
+		sourceRef: null,
 		needsReview: false,
 		lastActivityAt: now,
 		deletedAt: null,

@@ -22,7 +22,8 @@
 		"db:studio": "drizzle-kit studio",
 		"import": "bun run scripts/import.ts",
 		"seed": "bun scripts/seed.ts",
-		"db:seed": "bun scripts/seed.ts"
+		"db:seed": "bun scripts/seed.ts",
+		"db:verify": "bun scripts/verify-routes.ts"
 	},
 	"devDependencies": {
 		"@eslint/js": "^10.0.1",

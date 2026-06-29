@@ -32,8 +32,9 @@
 ## Overview
 
 Convert both the Reports page (`/reports`) and the Review Queue page (`/review`) from mock data
-to real Drizzle-backed data. Wire ECharts for the funnel and leaderboard, add server-side CSV
-export for finance, and make the review queue actionable (resolve flag clears `needs_review`).
+to real Drizzle-backed data. The funnel is rendered as HTML bars; ECharts is used only for the
+leaderboard. Add server-side CSV export for finance, and make the review queue actionable
+(resolve flag clears `needs_review`).
 
 **Why this matters:**
 - Funnel and rep-leaderboard are already fully designed in `+page.svelte` — they just receive mock
@@ -171,8 +172,9 @@ REMOVE:  src/routes/review/+page.ts
 ADD:     src/routes/review/+page.server.ts    (server load + actions.resolve)
 ```
 
-`+page.svelte` files are unchanged — they already consume `data.report` and `data.items`
-which is exactly what the server loader will provide.
+`/reports` `+page.svelte` is unchanged — it already consumes `data.report` which is exactly
+what the server loader provides. `/review` `+page.svelte` must be updated to consume `data.leads`
+(not `data.items` from the old mock loader) per RFC-004.
 
 ### Drizzle query patterns
 
@@ -449,23 +451,12 @@ File: `src/routes/reports/+page.svelte`
 Add `<div bind:this={chartEl} class="h-[220px] w-full mb-4"></div>` inside the leaderboard card,
 above the existing grid table.
 
-### Stage 3: Currency totals section
+### Stage 3: Currency totals verification
 
-Below the leaderboard, add a row of currency cards using `report.currencyTotals`:
-
-```svelte
-{#if report.currencyTotals.length > 0}
-  <div class="mt-[18px] grid grid-cols-2 gap-[18px] md:grid-cols-4">
-    {#each report.currencyTotals as ct (ct.currency)}
-      <div class="rounded-control border border-hairline bg-panel p-4">
-        <div class="font-mono text-[10px] uppercase tracking-wider text-ink-300 mb-1">{ct.label}</div>
-        <div class="text-[18px] font-bold">{formatMoney(ct.total, ct.currency)}</div>
-        <div class="font-mono text-[11px] text-ink-500">{ct.deals} deal{ct.deals !== 1 ? 's' : ''}</div>
-      </div>
-    {/each}
-  </div>
-{/if}
-```
+The currency cards block already exists in `+page.svelte` and iterates `report.currencyTotals`.
+No new UI block is needed — verify that `report.currencyTotals` is populated correctly from the
+server load and that the existing cards render with real data (currency label, formatted total,
+deal count).
 
 ### Verification checklist — RFC-002
 - [ ] ECharts grouped bar renders without console errors

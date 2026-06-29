@@ -3,8 +3,14 @@ import { db } from '$lib/server/db';
 import { crmLeads, crmUsers } from '$lib/server/db/schema';
 import { eq, isNull, and } from 'drizzle-orm';
 
+const WON_HEADERS = ['Lead Name', 'Org (Won)', 'Deal Value', 'Currency', 'Signed At', 'Rep', 'Category'] as const;
+const VIEW_HEADERS = ['Name', 'Category', 'Platform', 'Stage', 'Location', 'Page URL', 'Source', 'Created At'] as const;
+
 export const GET: RequestHandler = async ({ url }) => {
-	const type = url.searchParams.get('type') ?? 'view';
+	const type = url.searchParams.get('type');
+	if (type !== 'won' && type !== 'view') {
+		return new Response('Invalid export type. Use ?type=won or ?type=view', { status: 400 });
+	}
 
 	let rows: Record<string, unknown>[];
 
@@ -67,7 +73,7 @@ export const GET: RequestHandler = async ({ url }) => {
 		}));
 	}
 
-	const headers = rows.length > 0 ? Object.keys(rows[0]) : [];
+	const headers: readonly string[] = type === 'won' ? WON_HEADERS : VIEW_HEADERS;
 	const csvRows = [
 		headers.join(','),
 		...rows.map((r) => headers.map((h) => `"${String(r[h] ?? '').replace(/"/g, '""')}"`).join(','))

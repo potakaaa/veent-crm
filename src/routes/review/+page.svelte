@@ -15,7 +15,7 @@
 	{#if leads.length === 0}
 		<EmptyState title="All clear" hint="No leads flagged for review." tone="success" />
 	{:else}
-		<div class="overflow-hidden rounded-control border border-hairline bg-panel">
+		<div class="overflow-x-auto rounded-control border border-hairline bg-panel">
 			<table class="w-full text-[13px]">
 				<thead>
 					<tr
@@ -27,7 +27,7 @@
 						<th class="px-4 py-2.5 text-left">Stage</th>
 						<th class="px-4 py-2.5 text-left">Source</th>
 						<th class="px-4 py-2.5 text-left">Added</th>
-						<th class="px-4 py-2.5"></th>
+						<th class="px-4 py-2.5 text-left" scope="col"><span class="sr-only">Actions</span></th>
 					</tr>
 				</thead>
 				<tbody>
@@ -39,13 +39,14 @@
 							<td class="px-4 py-2.5"><StageChip stage={lead.stage} /></td>
 							<td class="px-4 py-2.5 font-mono text-[11px] text-ink-500">{lead.source}</td>
 							<td class="px-4 py-2.5 font-mono text-[11px] text-ink-500">
-								{new Date(lead.createdAt).toLocaleDateString()}
+								{new Date(lead.createdAt).toISOString().split('T')[0]}
 							</td>
 							<td class="px-4 py-2.5 text-right">
 								<form method="POST" action="?/resolve">
 									<input type="hidden" name="leadId" value={lead.id} />
 									<button
 										class="h-[28px] rounded-control border border-hairline px-2.5 font-mono text-[11px] text-ink-600 hover:border-fresh hover:text-fresh"
+									aria-label="Resolve {lead.name}"
 									>
 										Resolve
 									</button>

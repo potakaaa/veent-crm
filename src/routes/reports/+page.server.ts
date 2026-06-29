@@ -51,6 +51,8 @@ export const load: PageServerLoad = async () => {
 			replies: sql<number>`SUM(CASE WHEN ${crmActivities.outcome} = 'replied' THEN 1 ELSE 0 END)`
 		})
 		.from(crmActivities)
+		.leftJoin(crmLeads, eq(crmActivities.leadId, crmLeads.id))
+		.where(isNull(crmLeads.deletedAt))
 		.groupBy(crmActivities.repId);
 
 	const winRows = await db
@@ -91,7 +93,7 @@ export const load: PageServerLoad = async () => {
 		.groupBy(crmLeads.currency);
 
 	const currencyTotals = currencyRows
-		.filter((r) => r.currency && r.total)
+		.filter((r) => r.currency)
 		.map((r) => ({
 			currency: r.currency as Currency,
 			label: r.currency as Currency,

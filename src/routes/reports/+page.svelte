@@ -48,7 +48,12 @@
 				}
 			]
 		});
-		return () => chart?.dispose();
+		const observer = new ResizeObserver(() => chart?.resize());
+		observer.observe(chartEl);
+		return () => {
+			observer.disconnect();
+			chart?.dispose();
+		};
 	});
 </script>
 

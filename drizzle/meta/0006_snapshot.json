@@ -1,6 +1,6 @@
 {
-  "id": "c2f08d6d-87af-4d5b-8213-d4d990d20914",
-  "prevId": "a4689f0c-5e4c-4d12-8bed-e3be675b88a7",
+  "id": "d1abbc0e-f86d-4017-b617-e442250e1b5f",
+  "prevId": "8e89d660-9de7-4eac-a9f8-04f91d6e8db0",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -92,15 +92,15 @@
         "account_user_id_user_id_fk": {
           "name": "account_user_id_user_id_fk",
           "tableFrom": "account",
+          "tableTo": "user",
           "columnsFrom": [
             "user_id"
           ],
-          "tableTo": "user",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -167,25 +167,25 @@
         "session_user_id_user_id_fk": {
           "name": "session_user_id_user_id_fk",
           "tableFrom": "session",
+          "tableTo": "user",
           "columnsFrom": [
             "user_id"
           ],
-          "tableTo": "user",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "session_token_unique": {
           "name": "session_token_unique",
+          "nullsNotDistinct": false,
           "columns": [
             "token"
-          ],
-          "nullsNotDistinct": false
+          ]
         }
       },
       "policies": {},
@@ -245,10 +245,10 @@
       "uniqueConstraints": {
         "user_email_unique": {
           "name": "user_email_unique",
+          "nullsNotDistinct": false,
           "columns": [
             "email"
-          ],
-          "nullsNotDistinct": false
+          ]
         }
       },
       "policies": {},
@@ -360,6 +360,36 @@
           "primaryKey": false,
           "notNull": false
         },
+        "event_name": {
+          "name": "event_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "event_date": {
+          "name": "event_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "event_url": {
+          "name": "event_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "event_category": {
+          "name": "event_category",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "event_source": {
+          "name": "event_source",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp with time zone",
@@ -387,9 +417,9 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "crm_activities_dedupe_uq": {
           "name": "crm_activities_dedupe_uq",
@@ -420,9 +450,9 @@
             }
           ],
           "isUnique": true,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "crm_activities_follow_up_idx": {
           "name": "crm_activities_follow_up_idx",
@@ -435,38 +465,60 @@
             }
           ],
           "isUnique": false,
-          "with": {},
-          "method": "btree",
           "where": "\"crm_activities\".\"follow_up_at\" IS NOT NULL",
-          "concurrently": false
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "crm_activities_scraped_event_uq": {
+          "name": "crm_activities_scraped_event_uq",
+          "columns": [
+            {
+              "expression": "lead_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "event_url",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"crm_activities\".\"event_url\" IS NOT NULL",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
       "foreignKeys": {
         "crm_activities_lead_id_crm_leads_id_fk": {
           "name": "crm_activities_lead_id_crm_leads_id_fk",
           "tableFrom": "crm_activities",
+          "tableTo": "crm_leads",
           "columnsFrom": [
             "lead_id"
           ],
-          "tableTo": "crm_leads",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
         "crm_activities_rep_id_crm_users_id_fk": {
           "name": "crm_activities_rep_id_crm_users_id_fk",
           "tableFrom": "crm_activities",
+          "tableTo": "crm_users",
           "columnsFrom": [
             "rep_id"
           ],
-          "tableTo": "crm_users",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "set null"
+          "onDelete": "set null",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -536,37 +588,37 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "crm_lead_history_lead_id_crm_leads_id_fk": {
           "name": "crm_lead_history_lead_id_crm_leads_id_fk",
           "tableFrom": "crm_lead_history",
+          "tableTo": "crm_leads",
           "columnsFrom": [
             "lead_id"
           ],
-          "tableTo": "crm_leads",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
         "crm_lead_history_actor_user_id_crm_users_id_fk": {
           "name": "crm_lead_history_actor_user_id_crm_users_id_fk",
           "tableFrom": "crm_lead_history",
+          "tableTo": "crm_users",
           "columnsFrom": [
             "actor_user_id"
           ],
-          "tableTo": "crm_users",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "set null"
+          "onDelete": "set null",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -752,6 +804,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "source_ref": {
+          "name": "source_ref",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
         "notes": {
           "name": "notes",
           "type": "text",
@@ -785,9 +843,9 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "crm_leads_stage_idx": {
           "name": "crm_leads_stage_idx",
@@ -800,9 +858,9 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "crm_leads_owner_idx": {
           "name": "crm_leads_owner_idx",
@@ -815,9 +873,9 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "crm_leads_last_activity_idx": {
           "name": "crm_leads_last_activity_idx",
@@ -830,24 +888,40 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
+        },
+        "crm_leads_source_ref_uq": {
+          "name": "crm_leads_source_ref_uq",
+          "columns": [
+            {
+              "expression": "source_ref",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "source_ref IS NOT NULL AND deleted_at IS NULL",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
       "foreignKeys": {
         "crm_leads_owner_id_crm_users_id_fk": {
           "name": "crm_leads_owner_id_crm_users_id_fk",
           "tableFrom": "crm_leads",
+          "tableTo": "crm_users",
           "columnsFrom": [
             "owner_id"
           ],
-          "tableTo": "crm_users",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "set null"
+          "onDelete": "set null",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -927,9 +1001,9 @@
             }
           ],
           "isUnique": true,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "crm_users_auth_subject_uq": {
           "name": "crm_users_auth_subject_uq",
@@ -942,9 +1016,9 @@
             }
           ],
           "isUnique": true,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {},
@@ -966,7 +1040,8 @@
         "email",
         "call",
         "meeting",
-        "other"
+        "other",
+        "scraped_event"
       ]
     },
     "public.crm_activity_outcome": {
@@ -1058,10 +1133,10 @@
     }
   },
   "schemas": {},
-  "views": {},
   "sequences": {},
   "roles": {},
   "policies": {},
+  "views": {},
   "_meta": {
     "columns": {},
     "schemas": {},

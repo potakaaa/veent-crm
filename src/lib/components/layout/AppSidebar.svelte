@@ -1,7 +1,14 @@
 <script lang="ts">
 	import { page } from '$app/state';
+	import { goto } from '$app/navigation';
 	import Icon, { type IconName } from '$lib/components/shared/Icon.svelte';
+	import { authClient } from '$lib/auth-client';
 	import type { User } from '$lib/types';
+
+	async function signOut() {
+		await authClient.signOut();
+		goto('/login');
+	}
 
 	let {
 		user,
@@ -141,8 +148,8 @@
 				{user?.role ?? '—'}{user?.location ? ` · ${user.location}` : ''}
 			</div>
 		</div>
-		<a href="/login" title="Sign out" class="p-1 text-[#8a7270] hover:text-white">
+		<button onclick={signOut} title="Sign out" class="p-1 text-[#8a7270] hover:text-white">
 			<Icon name="logout" size={16} />
-		</a>
+		</button>
 	</div>
 </aside>

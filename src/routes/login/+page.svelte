@@ -1,10 +1,25 @@
 <script lang="ts">
+	import { authClient } from '$lib/auth-client';
+
 	let sent = $state(false);
 	let email = $state('');
+	let error = $state('');
+	let submitting = $state(false);
 
-	function sendMagic() {
+	async function sendMagic() {
+		if (!email.trim()) {
+			error = 'Enter your work email.';
+			return;
+		}
+		error = '';
+		submitting = true;
+		const { error: err } = await authClient.signIn.magicLink({ email, callbackURL: '/' });
+		submitting = false;
+		if (err) {
+			error = err.message ?? 'Could not send the link. Try again.';
+			return;
+		}
 		sent = true;
-		if (!email) email = 'jonna@veent.io';
 	}
 </script>
 
@@ -61,10 +76,14 @@
 				/>
 				<button
 					onclick={sendMagic}
-					class="mt-3.5 h-11 w-full rounded-[9px] bg-primary text-[14px] font-semibold text-white hover:bg-primary-strong"
+					disabled={submitting}
+					class="mt-3.5 h-11 w-full rounded-[9px] bg-primary text-[14px] font-semibold text-white hover:bg-primary-strong disabled:opacity-60"
 				>
-					Send magic link
+					{submitting ? 'Sending…' : 'Send magic link'}
 				</button>
+				{#if error}
+					<div class="mt-3 text-[12px] text-[#e08a82]">{error}</div>
+				{/if}
 				<div class="mt-[18px] text-[11.5px] leading-relaxed text-[#8a7270]">
 					Not on the team yet? Ask a manager to add you in Team management — that list is the
 					allowlist.

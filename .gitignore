@@ -26,6 +26,7 @@ test-results
 
 # Sheet snapshot is PII — never commit (see sales-crm.md §Deployment). Store private.
 *.tsv
+!src/tests/fixtures/*.tsv
 /data/snapshots
 
 .vibecode-backup*/

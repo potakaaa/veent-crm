@@ -53,9 +53,19 @@ function refreshAge(lead: Lead): void {
 }
 
 class MockCrmClient implements CrmClient {
-	/** Test/demo hook — lets the UI flip the active role to showcase permissions. */
-	setCurrentUser(id: string): void {
-		if (users.some((u) => u.id === id)) currentUserId = id;
+	setCurrentUser(userOrId: string | User): void {
+		if (typeof userOrId === 'string') {
+			if (users.some((u) => u.id === userOrId)) currentUserId = userOrId;
+		} else {
+			const uIndex = users.findIndex((u) => u.id === userOrId.id || u.email === userOrId.email);
+			if (uIndex >= 0) {
+				users[uIndex] = { ...users[uIndex], ...userOrId };
+				currentUserId = users[uIndex].id;
+			} else {
+				users.push({ ...userOrId });
+				currentUserId = userOrId.id;
+			}
+		}
 	}
 
 	async getCurrentUser(): Promise<User> {

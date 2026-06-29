@@ -75,7 +75,7 @@
 				<input
 					id="email"
 					bind:value={email}
-					placeholder="jonna@veent.io"
+					placeholder="jonna@test.com"
 					class="h-11 w-full rounded-[9px] border border-[#43282a] bg-[#2e1a1b] px-3.5 font-mono text-[14px] text-white outline-none"
 				/>
 				<button

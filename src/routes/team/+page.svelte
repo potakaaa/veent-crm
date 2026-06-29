@@ -184,7 +184,7 @@
 		</div>
 		<div class="grid gap-1.5">
 			<Label for="rep-email">Work email</Label>
-			<Input id="rep-email" bind:value={email} placeholder="marites@veent.io" class="font-mono" />
+			<Input id="rep-email" bind:value={email} placeholder="marites@test.com" class="font-mono" />
 		</div>
 		<div class="grid gap-1.5">
 			<Label for="rep-role">Role</Label>

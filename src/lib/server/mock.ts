@@ -23,7 +23,7 @@ export const MOCK_REPS: MockRep[] = [
 	{
 		id: 'u-manager',
 		name: 'John (Manager)',
-		email: 'john.sabuga@veent.io',
+		email: 'john.sabuga@test.com',
 		role: 'manager',
 		active: true
 	}

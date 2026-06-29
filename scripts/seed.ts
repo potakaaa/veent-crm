@@ -61,12 +61,19 @@ const todayEndManila = new Date(todayManila + 'T23:59:00+08:00');
 // Users (unchanged): 1 manager + 5 active reps + 4 former reps (no login)
 // ---------------------------------------------------------------------------
 const users: (typeof crmUsers.$inferInsert)[] = [
-	{ id: U.JOHN, name: 'John Sabuga', email: 'john.sabuga@veent.io', role: 'manager', active: true },
-	{ id: U.JONNA, name: 'Jonna', email: 'jonna@veent.io', role: 'rep', active: true },
-	{ id: U.ETHYL, name: 'Ethyl', email: 'ethyl@veent.io', role: 'rep', active: true },
-	{ id: U.MEYBELLE, name: 'Meybelle', email: 'meybelle@veent.io', role: 'rep', active: true },
-	{ id: U.SHANE, name: 'Shane', email: 'shane@veent.io', role: 'rep', active: true },
-	{ id: U.ELAY, name: 'Elay', email: 'elay@veent.io', role: 'rep', active: true },
+	{ id: U.JOHN, name: 'John Sabuga', email: 'john.sabuga@test.com', role: 'manager', active: true },
+	{
+		id: '00068e3d-13ba-4251-96f9-947ed18c64b5',
+		name: 'Hans Matthew Del Mundo',
+		email: 'delmundo.hansmatthew@gmail.com',
+		role: 'manager',
+		active: true
+	},
+	{ id: U.JONNA, name: 'Jonna', email: 'jonna@test.com', role: 'rep', active: true },
+	{ id: U.ETHYL, name: 'Ethyl', email: 'ethyl@test.com', role: 'rep', active: true },
+	{ id: U.MEYBELLE, name: 'Meybelle', email: 'meybelle@test.com', role: 'rep', active: true },
+	{ id: U.SHANE, name: 'Shane', email: 'shane@test.com', role: 'rep', active: true },
+	{ id: U.ELAY, name: 'Elay', email: 'elay@test.com', role: 'rep', active: true },
 	{
 		id: '00000000-0000-0000-0000-000000000007',
 		name: 'Angel',
@@ -647,7 +654,7 @@ Routes to visit after logging in:
   /review        Badge: 2 needs-review leads (page content still mock-backed)
   /team          All users
 
-Login: magic-link to john.sabuga@veent.io or jonna@veent.io
+Login: magic-link to john.sabuga@test.com or jonna@test.com
 NOTE: /unassigned and /review page content is still mock-backed — only badge counts are real DB.`);
 } finally {
 	await client.end();

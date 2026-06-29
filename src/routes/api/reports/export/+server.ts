@@ -3,8 +3,25 @@ import { db } from '$lib/server/db';
 import { crmLeads, crmUsers } from '$lib/server/db/schema';
 import { eq, isNull, and } from 'drizzle-orm';
 
-const WON_HEADERS = ['Lead Name', 'Org (Won)', 'Deal Value', 'Currency', 'Signed At', 'Rep', 'Category'] as const;
-const VIEW_HEADERS = ['Name', 'Category', 'Platform', 'Stage', 'Location', 'Page URL', 'Source', 'Created At'] as const;
+const WON_HEADERS = [
+	'Lead Name',
+	'Org (Won)',
+	'Deal Value',
+	'Currency',
+	'Signed At',
+	'Rep',
+	'Category'
+] as const;
+const VIEW_HEADERS = [
+	'Name',
+	'Category',
+	'Platform',
+	'Stage',
+	'Location',
+	'Page URL',
+	'Source',
+	'Created At'
+] as const;
 
 export const GET: RequestHandler = async ({ url }) => {
 	const type = url.searchParams.get('type');

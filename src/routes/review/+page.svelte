@@ -46,7 +46,7 @@
 									<input type="hidden" name="leadId" value={lead.id} />
 									<button
 										class="h-[28px] rounded-control border border-hairline px-2.5 font-mono text-[11px] text-ink-600 hover:border-fresh hover:text-fresh"
-									aria-label="Resolve {lead.name}"
+										aria-label="Resolve {lead.name}"
 									>
 										Resolve
 									</button>

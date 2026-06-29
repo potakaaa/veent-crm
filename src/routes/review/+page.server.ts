@@ -34,7 +34,9 @@ export const actions: Actions = {
 		const [updated] = await db
 			.update(crmLeads)
 			.set({ needsReview: false, updatedAt: new Date() })
-			.where(and(eq(crmLeads.id, leadId), isNull(crmLeads.deletedAt), eq(crmLeads.needsReview, true)))
+			.where(
+				and(eq(crmLeads.id, leadId), isNull(crmLeads.deletedAt), eq(crmLeads.needsReview, true))
+			)
 			.returning({ id: crmLeads.id });
 
 		if (!updated) return fail(404, { error: 'Lead not found or already resolved' });

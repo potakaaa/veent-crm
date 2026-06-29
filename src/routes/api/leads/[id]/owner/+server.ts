@@ -1,6 +1,6 @@
 import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import { ownerUpdateSchema } from '$lib/zod/schemas';
 import { reassignLead } from '$lib/server/db/leads';
 import { db } from '$lib/server/db/index';
@@ -27,13 +27,13 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 
 	const { ownerId } = parsed.data;
 
-	// Verify the owner exists and is active
+	// Verify the owner exists and is active — inactive reps cannot receive new leads.
 	const [owner] = await db
 		.select({ id: crmUsers.id })
 		.from(crmUsers)
-		.where(eq(crmUsers.id, ownerId))
+		.where(and(eq(crmUsers.id, ownerId), eq(crmUsers.active, true)))
 		.limit(1);
-	if (!owner) throw error(422, 'Owner not found');
+	if (!owner) throw error(422, 'Owner not found or inactive');
 
 	const lead = await reassignLead(params.id, ownerId, locals.user.id);
 	if (!lead) throw error(404, 'Lead not found');

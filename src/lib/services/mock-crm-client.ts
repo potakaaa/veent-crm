@@ -32,7 +32,7 @@ import type {
 	User
 } from '$lib/types';
 import type { CrmClient } from './crm-client';
-import { addDays, computeAge, NOW } from '$lib/utils/dates';
+import { addDays, computeAge } from '$lib/utils/dates';
 import { leadsToCsv } from '$lib/utils/csv';
 
 // Working copies so we never mutate the seed arrays.
@@ -49,7 +49,7 @@ const clone = <T>(v: T): T => structuredClone(v);
 const delay = <T>(value: T): Promise<T> => Promise.resolve(clone(value));
 
 function refreshAge(lead: Lead): void {
-	lead.age = computeAge(lead, NOW);
+	lead.age = computeAge(lead);
 }
 
 class MockCrmClient implements CrmClient {
@@ -125,8 +125,8 @@ class MockCrmClient implements CrmClient {
 			source: input.source ?? 'manual',
 			needsReview: false,
 			notes: input.notes,
-			createdAt: NOW.toISOString(),
-			lastActivityAt: NOW.toISOString(),
+			createdAt: new Date().toISOString(),
+			lastActivityAt: new Date().toISOString(),
 			age: { label: 'new', type: 'normal' },
 			urgency: 'normal'
 		};
@@ -151,12 +151,12 @@ class MockCrmClient implements CrmClient {
 			lead.dealValue =
 				payload.dealValueCents !== undefined ? payload.dealValueCents / 100 : undefined;
 			lead.currency = payload.currency ?? 'PHP';
-			lead.signedDate = payload.signedAt ?? NOW.toISOString();
+			lead.signedDate = payload.signedAt ?? new Date().toISOString();
 		}
 		if (stage === 'lost') {
 			lead.lostReason = payload.lostReason;
 		}
-		lead.lastActivityAt = NOW.toISOString();
+		lead.lastActivityAt = new Date().toISOString();
 		refreshAge(lead);
 		return delay(lead);
 	}
@@ -219,7 +219,7 @@ class MockCrmClient implements CrmClient {
 						repId: lead?.ownerId ?? currentUserId,
 						channel: 'fb_dm',
 						outcome: 'sent',
-						createdAt: lead?.createdAt ?? NOW.toISOString(),
+						createdAt: lead?.createdAt ?? new Date().toISOString(),
 						note: 'First outreach logged.'
 					} satisfies Activity
 				];
@@ -236,9 +236,9 @@ class MockCrmClient implements CrmClient {
 			channel: input.channel,
 			outcome: input.outcome,
 			note: input.note,
-			createdAt: NOW.toISOString(),
+			createdAt: new Date().toISOString(),
 			followUpAt: input.followUpInDays
-				? addDays(NOW.toISOString(), input.followUpInDays)
+				? addDays(new Date().toISOString(), input.followUpInDays)
 				: undefined
 		};
 		(activities[leadId] ??= []).push(activity);

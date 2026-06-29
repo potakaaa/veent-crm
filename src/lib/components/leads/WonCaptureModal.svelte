@@ -5,7 +5,6 @@
 	import { Label } from '$lib/components/ui/label';
 	import { Button } from '$lib/components/ui/button';
 	import { Select, SelectTrigger, SelectContent, SelectItem } from '$lib/components/ui/select';
-	import { NOW } from '$lib/utils/dates';
 	import { CURRENCIES } from '$lib/zod/schemas';
 	import type { Currency, MoveStagePayload } from '$lib/types';
 
@@ -24,14 +23,15 @@
 	let signedOrg = $state('');
 	let dealValue = $state('');
 	let currency = $state<string>('PHP');
-	let signedDate = $state(NOW.toISOString().slice(0, 10));
+	const manilaDate = () => new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Manila' });
+	let signedDate = $state(manilaDate());
 
 	$effect(() => {
 		if (open) {
 			signedOrg = '';
 			dealValue = '';
 			currency = 'PHP';
-			signedDate = NOW.toISOString().slice(0, 10);
+			signedDate = manilaDate();
 		}
 	});
 

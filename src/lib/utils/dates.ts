@@ -1,12 +1,10 @@
 /**
- * Date helpers. The prototype anchors "now" to the design's reference moment
- * (Tue 24 Jun 2026, Asia/Manila) so computed ages match the mock data.
- * Swap NOW for `new Date()` once the backend supplies live timestamps.
+ * Date helpers for the Veent CRM. All time-sensitive computations accept an
+ * optional `now` parameter so tests can inject a fixed reference point.
  */
 import type { AgeType, Lead } from '$lib/types';
 
 export const TIMEZONE = 'Asia/Manila';
-export const NOW = new Date('2026-06-24T09:00:00+08:00');
 
 const DAY = 86_400_000;
 
@@ -26,7 +24,7 @@ export function formatDate(iso: string | undefined, opts: Intl.DateTimeFormatOpt
 }
 
 export const todayLabel = (): string =>
-	NOW.toLocaleDateString('en-PH', {
+	new Date().toLocaleDateString('en-PH', {
 		timeZone: TIMEZONE,
 		weekday: 'short',
 		day: 'numeric',
@@ -34,8 +32,8 @@ export const todayLabel = (): string =>
 		year: 'numeric'
 	});
 
-/** Human "2h ago" / "3d ago" relative to `now` (defaults to the frozen NOW anchor for display helpers). */
-export function relativeFromNow(iso: string | undefined, now: Date = NOW): string {
+/** Human "2h ago" / "3d ago" relative to a reference point (defaults to now). */
+export function relativeFromNow(iso: string | undefined, now = new Date()): string {
 	if (!iso) return '—';
 	const d = new Date(iso);
 	if (Number.isNaN(d.getTime())) return iso;

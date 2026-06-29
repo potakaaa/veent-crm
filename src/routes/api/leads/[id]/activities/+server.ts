@@ -3,9 +3,7 @@ import type { RequestHandler } from './$types';
 import { activityFormSchema } from '$lib/zod/schemas';
 import { getLead, insertActivity } from '$lib/server/db/leads';
 
-// POST /api/leads/[id]/activities — log an outreach touch.
-// Cookie clients are redirected (303) by hooks.server.ts before this runs; the in-handler
-// 401 is a defense-in-depth fallback. See VALIDATE concern C5.
+// POST /api/leads/[id]/activities -- log an outreach touch.
 export const POST: RequestHandler = async ({ request, params, locals }) => {
 	if (!locals.user) return json({ error: 'unauthorized' }, { status: 401 });
 
@@ -19,25 +17,19 @@ export const POST: RequestHandler = async ({ request, params, locals }) => {
 		return json({ error: 'invalid', issues: parsed.error.issues }, { status: 400 });
 	}
 
-	// Cross-check the route id matches the body's leadId.
 	if (parsed.data.leadId !== params.id) {
 		return json(
 			{ error: 'invalid', issues: [{ message: 'leadId does not match route' }] },
-			{
-				status: 400
-			}
+			{ status: 400 }
 		);
 	}
 
-	// Ownership check: only the lead owner or a manager may log activities.
 	const lead = await getLead(params.id);
 	if (!lead) return json({ error: 'not found' }, { status: 404 });
 	if (locals.user.role !== 'manager' && lead.ownerId !== locals.user.id) {
 		return json({ error: 'forbidden' }, { status: 403 });
 	}
 
-	// `followUpInDays` is sent by the client but is NOT part of activityFormSchema —
-	// validate it from the raw body before passing through.
 	const rawDays = (body as Record<string, unknown>).followUpInDays;
 	if (rawDays != null && !(typeof rawDays === 'number' && Number.isFinite(rawDays))) {
 		return json(
@@ -47,7 +39,6 @@ export const POST: RequestHandler = async ({ request, params, locals }) => {
 	}
 	const followUpInDays = rawDays as number | undefined;
 
-	// Validate optional date strings before constructing Date objects.
 	if (parsed.data.occurredAt && Number.isNaN(new Date(parsed.data.occurredAt).getTime())) {
 		return json(
 			{ error: 'invalid', issues: [{ message: 'occurredAt is not a valid date' }] },

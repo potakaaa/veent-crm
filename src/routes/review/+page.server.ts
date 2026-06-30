@@ -1,10 +1,47 @@
 import type { Actions, PageServerLoad } from './$types';
 import { db } from '$lib/server/db';
 import { crmLeads } from '$lib/server/db/schema';
-import { eq, isNull, and } from 'drizzle-orm';
+import { eq, isNull, and, asc, desc, sql } from 'drizzle-orm';
 import { fail, redirect } from '@sveltejs/kit';
 
-export const load: PageServerLoad = async () => {
+const SORT_COLS = [
+	'name',
+	'category',
+	'platform',
+	'stage',
+	'source',
+	'createdAt',
+	'event'
+] as const;
+type SortCol = (typeof SORT_COLS)[number];
+
+const COL_MAP = {
+	name: crmLeads.name,
+	category: crmLeads.category,
+	platform: crmLeads.platform,
+	stage: crmLeads.stage,
+	source: crmLeads.source,
+	createdAt: crmLeads.createdAt
+} satisfies Record<Exclude<SortCol, 'event'>, unknown>;
+
+function buildOrder(sort: SortCol, dir: 'asc' | 'desc') {
+	if (sort === 'event') {
+		// Upcoming events first (asc), no-date rows always last regardless of direction.
+		return dir === 'asc'
+			? [sql`${crmLeads.eventDate} ASC NULLS LAST`, asc(crmLeads.id)]
+			: [sql`${crmLeads.eventDate} DESC NULLS LAST`, asc(crmLeads.id)];
+	}
+	const fn = dir === 'asc' ? asc : desc;
+	return [fn(COL_MAP[sort]), asc(crmLeads.id)];
+}
+
+export const load: PageServerLoad = async ({ url }) => {
+	const rawSort = url.searchParams.get('sort') ?? 'createdAt';
+	const sort: SortCol = (SORT_COLS as readonly string[]).includes(rawSort)
+		? (rawSort as SortCol)
+		: 'createdAt';
+	const dir = url.searchParams.get('dir') === 'desc' ? ('desc' as const) : ('asc' as const);
+
 	const leads = await db
 		.select({
 			id: crmLeads.id,
@@ -13,13 +50,15 @@ export const load: PageServerLoad = async () => {
 			platform: crmLeads.platform,
 			stage: crmLeads.stage,
 			source: crmLeads.source,
-			createdAt: crmLeads.createdAt
+			createdAt: crmLeads.createdAt,
+			eventDate: crmLeads.eventDate,
+			eventName: crmLeads.eventName
 		})
 		.from(crmLeads)
 		.where(and(isNull(crmLeads.deletedAt), eq(crmLeads.needsReview, true)))
-		.orderBy(crmLeads.createdAt);
+		.orderBy(...buildOrder(sort, dir));
 
-	return { leads };
+	return { leads, sort, dir };
 };
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;

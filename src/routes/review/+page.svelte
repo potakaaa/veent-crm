@@ -5,6 +5,14 @@
 
 	let { data } = $props();
 	const leads = $derived(data.leads);
+
+	function sortHref(col: string) {
+		const nextDir = data.sort === col && data.dir === 'asc' ? 'desc' : 'asc';
+		return `?sort=${col}&dir=${nextDir}`;
+	}
+	function sortInd(col: string) {
+		return data.sort === col ? (data.dir === 'asc' ? ' ↑' : ' ↓') : '';
+	}
 </script>
 
 <svelte:head><title>Review queue · Veent CRM</title></svelte:head>
@@ -21,12 +29,32 @@
 					<tr
 						class="border-b border-hairline font-mono text-[10px] uppercase tracking-wider text-ink-300"
 					>
-						<th class="px-4 py-2.5 text-left">Name</th>
-						<th class="px-4 py-2.5 text-left">Category</th>
-						<th class="px-4 py-2.5 text-left">Platform</th>
-						<th class="px-4 py-2.5 text-left">Stage</th>
-						<th class="px-4 py-2.5 text-left">Source</th>
-						<th class="px-4 py-2.5 text-left">Added</th>
+						<th class="px-4 py-2.5 text-left"
+							><a href={sortHref('name')} class="hover:text-ink">Name{sortInd('name')}</a></th
+						>
+						<th class="px-4 py-2.5 text-left"
+							><a href={sortHref('category')} class="hover:text-ink"
+								>Category{sortInd('category')}</a
+							></th
+						>
+						<th class="px-4 py-2.5 text-left"
+							><a href={sortHref('platform')} class="hover:text-ink"
+								>Platform{sortInd('platform')}</a
+							></th
+						>
+						<th class="px-4 py-2.5 text-left"
+							><a href={sortHref('stage')} class="hover:text-ink">Stage{sortInd('stage')}</a></th
+						>
+						<th class="px-4 py-2.5 text-left"
+							><a href={sortHref('source')} class="hover:text-ink">Source{sortInd('source')}</a></th
+						>
+						<th class="px-4 py-2.5 text-left"
+							><a href={sortHref('event')} class="hover:text-ink">Event{sortInd('event')}</a></th
+						>
+						<th class="px-4 py-2.5 text-left"
+							><a href={sortHref('createdAt')} class="hover:text-ink">Added{sortInd('createdAt')}</a
+							></th
+						>
 						<th class="px-4 py-2.5 text-left" scope="col"><span class="sr-only">Actions</span></th>
 					</tr>
 				</thead>
@@ -38,6 +66,13 @@
 							<td class="px-4 py-2.5 text-ink-600">{lead.platform ?? '—'}</td>
 							<td class="px-4 py-2.5"><StageChip stage={lead.stage} /></td>
 							<td class="px-4 py-2.5 font-mono text-[11px] text-ink-500">{lead.source}</td>
+							<td class="px-4 py-2.5 font-mono text-[11px] text-ink-500">
+								{#if lead.eventDate}
+									<span title={lead.eventName ?? undefined}>{lead.eventDate}</span>
+								{:else}
+									—
+								{/if}
+							</td>
 							<td class="px-4 py-2.5 font-mono text-[11px] text-ink-500">
 								{new Date(lead.createdAt).toISOString().split('T')[0]}
 							</td>

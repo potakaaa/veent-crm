@@ -27,6 +27,14 @@
 	let { data } = $props();
 	const canManage = $derived(canManageUsers(data.currentUser));
 
+	function sortHref(col: string) {
+		const nextDir = data.sort === col && data.dir === 'asc' ? 'desc' : 'asc';
+		return `?sort=${col}&dir=${nextDir}`;
+	}
+	function sortInd(col: string) {
+		return data.sort === col ? (data.dir === 'asc' ? ' ↑' : ' ↓') : '';
+	}
+
 	let addOpen = $state(false);
 	let name = $state('');
 	let email = $state('');
@@ -121,10 +129,20 @@
 		<Table>
 			<TableHeader>
 				<TableRow class="bg-[#fdf7f5] hover:bg-[#fdf7f5]">
-					<TableHead>Name</TableHead>
-					<TableHead>Email</TableHead>
-					<TableHead>Role</TableHead>
-					<TableHead>Status</TableHead>
+					<TableHead
+						><a href={sortHref('name')} class="hover:text-ink">Name{sortInd('name')}</a></TableHead
+					>
+					<TableHead
+						><a href={sortHref('email')} class="hover:text-ink">Email{sortInd('email')}</a
+						></TableHead
+					>
+					<TableHead
+						><a href={sortHref('role')} class="hover:text-ink">Role{sortInd('role')}</a></TableHead
+					>
+					<TableHead
+						><a href={sortHref('active')} class="hover:text-ink">Status{sortInd('active')}</a
+						></TableHead
+					>
 					<TableHead class="text-right">Leads</TableHead>
 					<TableHead></TableHead>
 				</TableRow>

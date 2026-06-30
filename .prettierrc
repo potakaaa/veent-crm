@@ -10,6 +10,12 @@
 			"options": {
 				"parser": "svelte"
 			}
+		},
+		{
+			"files": "*.svelte.ts",
+			"options": {
+				"parser": "typescript"
+			}
 		}
 	],
 	"tailwindStylesheet": "./src/routes/layout.css"

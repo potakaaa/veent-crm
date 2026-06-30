@@ -231,11 +231,18 @@ export async function listLeadsFiltered(
 		);
 	}
 
-	// Search: case-insensitive against name and normalizedHandle
+	// Search: case-insensitive against name and normalizedHandle.
+	// Ingest stores handles without '@' (e.g. 'acmefb'); manual creation stores with '@'.
+	// Strip a leading '@' so "copied handle" queries match both storage formats.
 	if (search) {
-		const like = `%${search}%`;
+		const nameLike = `%${search}%`;
+		const handleSearch = search.startsWith('@') ? search.slice(1) : search;
+		const handleLike = `%${handleSearch}%`;
 		conditions.push(
-			or(ilike(crmLeads.name, like), ilike(sql`COALESCE(${crmLeads.normalizedHandle}, '')`, like))!
+			or(
+				ilike(crmLeads.name, nameLike),
+				ilike(sql`COALESCE(${crmLeads.normalizedHandle}, '')`, handleLike)
+			)!
 		);
 	}
 
@@ -726,11 +733,19 @@ export async function getRemindersQueue(
 
 	const overdue = queue
 		.filter((l) => l.urgency === 'overdue')
-		.sort((a, b) => new Date(a.followUpAt!).getTime() - new Date(b.followUpAt!).getTime());
+		.sort(
+			(a, b) =>
+				new Date(a.followUpAt!).getTime() - new Date(b.followUpAt!).getTime() ||
+				a.id.localeCompare(b.id)
+		);
 
 	const cold = queue
 		.filter((l) => l.urgency === 'cold')
-		.sort((a, b) => new Date(a.lastActivityAt).getTime() - new Date(b.lastActivityAt).getTime());
+		.sort(
+			(a, b) =>
+				new Date(a.lastActivityAt).getTime() - new Date(b.lastActivityAt).getTime() ||
+				a.id.localeCompare(b.id)
+		);
 
 	return { overdue, cold };
 }

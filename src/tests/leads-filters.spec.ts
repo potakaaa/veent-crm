@@ -42,7 +42,7 @@ async function mkLead(
 }
 
 describe.skipIf(SKIP_DB)('getLeadCountries (DB)', () => {
-	it('returns distinct non-null locations', async () => {
+	it('returns distinct non-null locations in A→Z order', async () => {
 		await mkLead('Loc A', { location: '__TEST_COUNTRY_A__' });
 		await mkLead('Loc B', { location: '__TEST_COUNTRY_A__' }); // duplicate
 		await mkLead('Loc C', { location: '__TEST_COUNTRY_B__' });
@@ -52,6 +52,12 @@ describe.skipIf(SKIP_DB)('getLeadCountries (DB)', () => {
 		// no duplicates
 		const unique = new Set(countries);
 		expect(unique.size).toBe(countries.length);
+		// A→Z order: __TEST_COUNTRY_A__ must appear before __TEST_COUNTRY_B__
+		const idxA = countries.indexOf('__TEST_COUNTRY_A__');
+		const idxB = countries.indexOf('__TEST_COUNTRY_B__');
+		expect(idxA).toBeGreaterThanOrEqual(0);
+		expect(idxB).toBeGreaterThanOrEqual(0);
+		expect(idxA).toBeLessThan(idxB);
 	});
 
 	it('excludes null locations', async () => {

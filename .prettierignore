@@ -9,6 +9,9 @@ bun.lockb
 /static/
 /drizzle/
 
+# Svelte runes files — prettier-plugin-svelte formats .svelte.ts differently on Linux vs Windows
+*.svelte.ts
+
 # Harness and tooling (not app code)
 .claude/
 .codex/

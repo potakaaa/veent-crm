@@ -212,17 +212,23 @@ describe('reminder grouping (VE-R1)', () => {
 
 	// — determinism ---
 
-	it('two overdue leads with identical followUpAt sort stably (no NaN)', () => {
+	it('two overdue leads with identical followUpAt sort deterministically by id', () => {
 		// Use a clearly past timestamp so both leads are definitively overdue.
 		const ts = new Date(Date.now() - DAY);
 		const a = dbRowToLead(makeLeadRow({ id: 'x' }), ts);
 		const b = dbRowToLead(makeLeadRow({ id: 'y' }), ts);
 
-		const sorted = [a, b].sort(
-			(x: Lead, y: Lead) => new Date(x.followUpAt!).getTime() - new Date(y.followUpAt!).getTime()
+		// Mirror the tiebreaker used in getRemindersQueue: primary followUpAt ASC, secondary id ASC.
+		const sorted = [b, a].sort(
+			(x: Lead, y: Lead) =>
+				new Date(x.followUpAt!).getTime() - new Date(y.followUpAt!).getTime() ||
+				x.id.localeCompare(y.id)
 		);
 
 		expect(sorted).toHaveLength(2);
 		expect(sorted.every((l) => l.urgency === 'overdue')).toBe(true);
+		// 'x' < 'y' alphabetically, so 'x' must come first
+		expect(sorted[0].id).toBe('x');
+		expect(sorted[1].id).toBe('y');
 	});
 });

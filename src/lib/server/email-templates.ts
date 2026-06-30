@@ -15,7 +15,11 @@
 export const pendingWelcomeEmails = new Set<string>();
 
 function esc(s: string): string {
-	return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+	return s
+		.replace(/&/g, '&amp;')
+		.replace(/</g, '&lt;')
+		.replace(/>/g, '&gt;')
+		.replace(/"/g, '&quot;');
 }
 
 // --- Veent design system palette (warm wine-on-cream) ----------------------

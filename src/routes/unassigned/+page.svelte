@@ -173,8 +173,9 @@
 				<div><StageChip stage={l.stage} /></div>
 				<div>
 					<span
-						class="rounded-[5px] px-[6px] py-[2px] font-mono text-[10.5px] font-medium {(sourceLabel[l.source] ?? sourceLabel.other).class}"
-						>{(sourceLabel[l.source] ?? sourceLabel.other).label}</span
+						class="rounded-[5px] px-[6px] py-[2px] font-mono text-[10.5px] font-medium {(
+							sourceLabel[l.source] ?? sourceLabel.other
+						).class}">{(sourceLabel[l.source] ?? sourceLabel.other).label}</span
 					>
 				</div>
 				<div class="font-mono text-[12px] text-ink-400">{formerOwner(l.formerOwnerId)}</div>

@@ -12,9 +12,7 @@ export const toasts = {
 		const options = {
 			id: message,
 			duration: opts.timeout ?? 4000,
-			...(opts.action
-				? { action: { label: opts.action.label, onClick: opts.action.run } }
-				: {})
+			...(opts.action ? { action: { label: opts.action.label, onClick: opts.action.run } } : {})
 		};
 		if (opts.tone === 'success') {
 			toast.success(message, options);

@@ -17,12 +17,43 @@ Vitest + Playwright · `svelte-adapter-bun` (adapter-node fallback) · Docker Co
 ## Develop
 
 ```sh
-bun install
+bun install          # also installs git pre-commit hooks via `prepare`
 bun run dev          # http://localhost:5173 — boots with no live DB (lazy pool)
 ```
 
 The dev session gate (`src/hooks.server.ts`) injects a fake manager so every surface is reachable;
 flip `DEV_BYPASS = false` once Better Auth is wired.
+
+## Pre-commit hooks
+
+[Lefthook](https://github.com/evilmartians/lefthook) runs the same checks locally that CI enforces
+(`.github/workflows/ci.yml`). Hooks are installed automatically by `bun install` via the `prepare`
+script — no extra setup needed.
+
+**What runs on every `git commit`:**
+
+| Step  | Command                | What it checks                             |
+| ----- | ---------------------- | ------------------------------------------ |
+| lint  | `bun run lint`         | Prettier format + ESLint                   |
+| check | `bun run check`        | TypeScript + Svelte types (`svelte-check`) |
+| test  | `bun run test:unit:ci` | Vitest unit tests                          |
+| build | `bun run build`        | SvelteKit production build                 |
+
+> E2E tests (Playwright) are excluded from the pre-commit hook — they require browser installation
+> and take too long for a commit gate. They still run in CI.
+
+**Common commands:**
+
+```sh
+bun run ci:check          # run all pre-commit checks manually (same order as the hook)
+git commit --no-verify    # skip hooks for a WIP commit
+```
+
+**First-time or hook-not-running fix** (if you cloned before hooks were added):
+
+```sh
+bun run prepare           # re-installs git hooks
+```
 
 ## Useful scripts
 

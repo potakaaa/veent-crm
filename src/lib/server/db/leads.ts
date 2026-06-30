@@ -189,16 +189,16 @@ export async function listPipelineLeads(): Promise<{ leads: Lead[]; lostCount: n
 }
 
 /**
- * Distinct non-null lead locations ("countries"), alphabetically sorted.
+ * Distinct non-null normalized lead countries, alphabetically sorted.
  * Powers the country filter dropdown on the leads page.
  */
 export async function getLeadCountries(): Promise<string[]> {
 	const rows = await db
-		.selectDistinct({ location: crmLeads.location })
+		.selectDistinct({ country: crmLeads.country })
 		.from(crmLeads)
-		.where(and(isNull(crmLeads.deletedAt), isNotNull(crmLeads.location)))
-		.orderBy(asc(crmLeads.location));
-	return rows.map((r) => r.location as string);
+		.where(and(isNull(crmLeads.deletedAt), isNotNull(crmLeads.country)))
+		.orderBy(asc(crmLeads.country));
+	return rows.map((r) => r.country as string);
 }
 
 export interface ListLeadsParams {
@@ -251,8 +251,8 @@ export async function listLeadsFiltered(
 	// Platform filter
 	if (platform) conditions.push(sql`${crmLeads.platform} = ${platform}`);
 
-	// Country filter (location column)
-	if (country) conditions.push(eq(crmLeads.location, country));
+	// Country filter (normalized country column)
+	if (country) conditions.push(eq(crmLeads.country, country));
 
 	// Stale only: no activity for > 30 days
 	if (staleOnly) {

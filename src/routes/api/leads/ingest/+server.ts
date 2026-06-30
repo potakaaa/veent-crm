@@ -5,7 +5,15 @@ import { and, eq, isNull } from 'drizzle-orm';
 import { ingestBatchSchema } from '$lib/zod/schemas';
 import { db } from '$lib/server/db';
 import { crmLeads } from '$lib/server/db/schema';
-import { normalizeHandle, normalizePlatform } from '$lib/server/import-utils';
+import { normalizeHandle, normalizePlatform, normalizeCountry } from '$lib/server/import-utils';
+
+// Derive a country segment from the free-text location field: take the last comma-separated
+// segment (e.g. "Makati, Philippines" → "Philippines"), or the whole string if no comma.
+function parseCountryFromLocation(location?: string | null): string | null {
+	if (!location) return null;
+	const parts = location.split(',');
+	return parts.length > 1 ? parts[parts.length - 1].trim() : location.trim();
+}
 
 // Scraper intake. Secret-authed (INGEST_SECRET); the scraper never gets DATABASE_URL. The CRM
 // owns validation + dedup-at-the-door (normalized_handle): match = skip, never blind-create.
@@ -21,6 +29,7 @@ export const POST: RequestHandler = async ({ request }) => {
 
 	let created = 0;
 	let skipped = 0;
+	let patched = 0;
 	let review = 0;
 
 	for (const lead of parsed.data.leads) {
@@ -32,7 +41,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		// Dedup: if scraper provides a sourceRef (event ID), use it as the unique key.
 		// Otherwise fall back to normalizedHandle (covers manually-created leads).
 		const dupHit = await db
-			.select({ id: crmLeads.id })
+			.select({ id: crmLeads.id, country: crmLeads.country })
 			.from(crmLeads)
 			.where(
 				lead.sourceRef
@@ -42,7 +51,17 @@ export const POST: RequestHandler = async ({ request }) => {
 			.limit(1);
 
 		if (dupHit.length) {
-			skipped++;
+			// Backfill country on existing leads that pre-date the country column.
+			const incomingCountry = normalizeCountry(parseCountryFromLocation(lead.location));
+			if (incomingCountry && dupHit[0].country == null) {
+				await db
+					.update(crmLeads)
+					.set({ country: incomingCountry, updatedAt: new Date() })
+					.where(eq(crmLeads.id, dupHit[0].id));
+				patched++;
+			} else {
+				skipped++;
+			}
 			continue;
 		}
 
@@ -63,6 +82,7 @@ export const POST: RequestHandler = async ({ request }) => {
 						normalizePlatform(undefined, undefined, lead.url ?? undefined) ??
 						null),
 			location: lead.location ?? null,
+			country: normalizeCountry(parseCountryFromLocation(lead.location)),
 			pageUrl: lead.url ?? null,
 			socialFacebook: lead.facebookUrl ?? null,
 			socialInstagram: lead.instagramUrl ?? null,
@@ -91,5 +111,5 @@ export const POST: RequestHandler = async ({ request }) => {
 			review++;
 	}
 
-	return json({ received: parsed.data.leads.length, created, skipped, review });
+	return json({ received: parsed.data.leads.length, created, skipped, patched, review });
 };

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { normalizeHandle, mapCategory, slugify } from '../../scripts/lib/import-utils';
+import { normalizeHandle, mapCategory, slugify, normalizeCountry } from '../../scripts/lib/import-utils';
 import {
 	parseTsv,
 	hygiene,
@@ -72,6 +72,42 @@ describe('mapCategory', () => {
 	});
 	it('trims surrounding whitespace before mapping', () => {
 		expect(mapCategory('  Concert  ')).toEqual({ category: 'Concert', needsReview: false });
+	});
+});
+
+describe('normalizeCountry', () => {
+	it('passes through the canonical Philippines name', () => {
+		expect(normalizeCountry('Philippines')).toBe('Philippines');
+	});
+	it('maps PH to Philippines', () => {
+		expect(normalizeCountry('PH')).toBe('Philippines');
+	});
+	it('maps Pilipinas to Philippines', () => {
+		expect(normalizeCountry('Pilipinas')).toBe('Philippines');
+	});
+	it('maps "the Philippines" to Philippines', () => {
+		expect(normalizeCountry('the Philippines')).toBe('Philippines');
+	});
+	it('maps lowercase philippines to Philippines', () => {
+		expect(normalizeCountry('philippines')).toBe('Philippines');
+	});
+	it('passes through the canonical Singapore name', () => {
+		expect(normalizeCountry('Singapore')).toBe('Singapore');
+	});
+	it('maps SG to Singapore', () => {
+		expect(normalizeCountry('SG')).toBe('Singapore');
+	});
+	it('maps lowercase sg to Singapore', () => {
+		expect(normalizeCountry('sg')).toBe('Singapore');
+	});
+	it('returns null for countries other than Philippines / Singapore', () => {
+		expect(normalizeCountry('United States')).toBeNull();
+		expect(normalizeCountry('Malaysia')).toBeNull();
+	});
+	it('returns null for undefined / null / empty input', () => {
+		expect(normalizeCountry(undefined)).toBeNull();
+		expect(normalizeCountry(null)).toBeNull();
+		expect(normalizeCountry('')).toBeNull();
 	});
 });
 

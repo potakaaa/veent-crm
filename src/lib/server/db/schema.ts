@@ -119,6 +119,7 @@ export const crmLeads = pgTable(
 		name: text('name').notNull(), // page / organizer name
 		category: leadCategory('category').notNull().default('Other'),
 		location: text('location'),
+		country: text('country'),
 		platform: leadPlatform('platform'),
 
 		// socials
@@ -173,6 +174,7 @@ export const crmLeads = pgTable(
 		index('crm_leads_stage_idx').on(t.stage),
 		index('crm_leads_owner_idx').on(t.ownerId),
 		index('crm_leads_last_activity_idx').on(t.lastActivityAt),
+		index('crm_leads_country_idx').on(t.country),
 		uniqueIndex('crm_leads_source_ref_uq')
 			.on(t.sourceRef)
 			.where(sql`source_ref IS NOT NULL AND deleted_at IS NULL`)

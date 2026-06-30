@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { invalidateAll } from '$app/navigation';
+	import { invalidateAll, goto } from '$app/navigation';
 	import { navigating } from '$app/state';
 	import Icon from '$lib/components/shared/Icon.svelte';
 	import { DetailSkeleton } from '$lib/components/shared/skeletons';
@@ -15,9 +15,11 @@
 	import WonCaptureModal from '$lib/components/leads/WonCaptureModal.svelte';
 	import LostReasonModal from '$lib/components/leads/LostReasonModal.svelte';
 	import ReassignModal from '$lib/components/leads/ReassignModal.svelte';
+	import DiscardIssueModal from '$lib/components/leads/DiscardIssueModal.svelte';
 	import { toasts } from '$lib/stores/toasts.svelte';
 	import { canEditLead, canReassign } from '$lib/utils/permissions';
 	import { formatDate, followUpDate } from '$lib/utils/dates';
+	import { stageLabel } from '$lib/utils/stages';
 	import type { AddActivityInput, LostReason, MoveStagePayload, Stage } from '$lib/types';
 
 	let { data } = $props();
@@ -32,6 +34,7 @@
 	let wonOpen = $state(false);
 	let lostOpen = $state(false);
 	let reassignOpen = $state(false);
+	let discardOpen = $state(false);
 
 	// Single shared mutation guard — prevents any two actions from running concurrently.
 	let mutating = $state(false);
@@ -133,7 +136,7 @@
 			mutating = false;
 		}
 		await invalidateAll(); // $effect reconciles shadow with server truth
-		toasts.push(`Moved to ${stage}`);
+		toasts.push(`Moved to ${stageLabel(stage)}`);
 	}
 
 	async function confirmWon(payload: MoveStagePayload) {
@@ -196,6 +199,26 @@
 		lostOpen = false; // close modal only on success
 		await invalidateAll();
 		toasts.push('Marked lost — still searchable');
+	}
+
+	async function confirmDiscard() {
+		if (mutating) return;
+		mutating = true;
+		try {
+			const res = await fetch(`/api/leads/${lead.id}/discard`, { method: 'DELETE' });
+			if (!res.ok) {
+				const msg = await res.text().catch(() => 'Server error');
+				toasts.push(`Discard failed: ${msg}`);
+				return;
+			}
+		} catch {
+			toasts.push('Discard failed — server error');
+			return;
+		} finally {
+			mutating = false;
+		}
+		discardOpen = false; // close modal only on success
+		await goto('/leads');
 	}
 
 	async function confirmReassign(ownerId: string) {
@@ -264,6 +287,13 @@
 					>
 						Edit
 					</a>
+					<button
+						disabled={mutating}
+						onclick={() => (discardOpen = true)}
+						class="rounded-control border border-hairline bg-panel px-3 py-1.5 text-[12.5px] font-medium text-red-500 hover:border-red-300 hover:bg-red-50 disabled:opacity-50"
+					>
+						Discard
+					</button>
 				{/if}
 				<div class="flex items-center gap-2 text-[12.5px] text-ink-500">
 					owner <Avatar name={ownerName} />
@@ -411,5 +441,14 @@
 		currentOwnerId={lead.ownerId}
 		onclose={() => (reassignOpen = false)}
 		onconfirm={confirmReassign}
+	/>
+{/if}
+{#if discardOpen}
+	<DiscardIssueModal
+		open={true}
+		leadName={lead.name}
+		saving={mutating}
+		onclose={() => (discardOpen = false)}
+		onconfirm={confirmDiscard}
 	/>
 {/if}

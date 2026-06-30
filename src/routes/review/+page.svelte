@@ -1,25 +1,43 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
-	import { goto, invalidateAll } from '$app/navigation';
-	import { navigating } from '$app/state';
+	import { goto, afterNavigate, invalidateAll } from '$app/navigation';
+	import { navigating, page } from '$app/state';
+	import { SvelteURLSearchParams } from 'svelte/reactivity';
 	import type { SubmitFunction } from '@sveltejs/kit';
 	import { makeSortTable } from '$lib/utils/tableSort';
 	import { Skeleton } from '$lib/components/ui/skeleton';
+	import { Button } from '$lib/components/ui/button';
 	import PageHeader from '$lib/components/shared/PageHeader.svelte';
 	import EmptyState from '$lib/components/shared/EmptyState.svelte';
 	import StageChip from '$lib/components/shared/StageChip.svelte';
+	import DiscardIssueModal from '$lib/components/leads/DiscardIssueModal.svelte';
 	import { toasts } from '$lib/stores/toasts.svelte';
 	import { removeFromList } from '$lib/utils/optimistic';
+	import { sourceLabel } from '$lib/utils/sources';
 
 	let { data } = $props();
 
-	// E1: writable $derived auto-resyncs to server truth after invalidateAll().
 	let shadowLeads = $derived(data.leads);
-
-	// Per-lead resolve pending state (also the duplicate-submit guard).
 	let resolving = $state<Record<string, boolean>>({});
+	let paging = $state(false);
 
-	const navLoading = $derived(navigating.to?.url.pathname === '/review');
+	let discardTarget = $state<{ id: string; name: string } | null>(null);
+	let discarding = $state<Record<string, boolean>>({});
+
+	const navLoading = $derived(paging || navigating.to?.url.pathname === '/review');
+
+	afterNavigate(() => {
+		paging = false;
+	});
+
+	function navigate(patch: Record<string, string | number | undefined>) {
+		const params = new SvelteURLSearchParams(page.url.searchParams);
+		for (const [k, v] of Object.entries(patch)) {
+			if (v === undefined) params.delete(k);
+			else params.set(k, String(v));
+		}
+		goto(`?${params}`, { keepFocus: true });
+	}
 
 	const table = $derived(
 		makeSortTable({
@@ -37,7 +55,7 @@
 			sort: data.sort ?? '',
 			dir: data.dir,
 			onToggle(id, desc) {
-				goto(`?sort=${id}&dir=${desc ? 'desc' : 'asc'}`, { keepFocus: true });
+				navigate({ sort: id, dir: desc ? 'desc' : 'asc', page: undefined });
 			}
 		})
 	);
@@ -61,6 +79,30 @@
 				}
 			};
 		};
+	}
+
+	async function confirmDiscard() {
+		const target = discardTarget;
+		if (!target) return;
+		if (discarding[target.id]) return;
+
+		discarding = { ...discarding, [target.id]: true };
+		const failedLead = shadowLeads.find((l) => l.id === target.id);
+		shadowLeads = removeFromList(shadowLeads, target.id);
+
+		try {
+			const res = await fetch(`/api/leads/${target.id}/discard`, { method: 'DELETE' });
+			if (!res.ok) throw new Error();
+			discardTarget = null;
+			await invalidateAll();
+		} catch {
+			if (failedLead && !shadowLeads.some((l) => l.id === failedLead.id)) {
+				shadowLeads = [...shadowLeads, failedLead];
+			}
+			toasts.push('Could not discard — please try again');
+		} finally {
+			discarding = { ...discarding, [target.id]: false };
+		}
 	}
 </script>
 
@@ -130,7 +172,13 @@
 								<td class="px-4 py-2.5 text-ink-600">{lead.category}</td>
 								<td class="px-4 py-2.5 text-ink-600">{lead.platform ?? '—'}</td>
 								<td class="px-4 py-2.5"><StageChip stage={lead.stage} /></td>
-								<td class="px-4 py-2.5 font-mono text-[11px] text-ink-500">{lead.source}</td>
+								<td class="px-4 py-2.5">
+									<span
+										class="rounded-[5px] px-[6px] py-[2px] font-mono text-[10.5px] font-medium {sourceLabel(
+											lead.source
+										).class}">{sourceLabel(lead.source).label}</span
+									>
+								</td>
 								<td class="px-4 py-2.5 font-mono text-[11px] text-ink-500">
 									{#if lead.eventDate}
 										<span title={lead.eventName ?? undefined}>{lead.eventDate}</span>
@@ -142,16 +190,27 @@
 									{new Date(lead.createdAt).toISOString().split('T')[0]}
 								</td>
 								<td class="px-4 py-2.5 text-right">
-									<form method="POST" action="?/resolve" use:enhance={resolveEnhance(lead.id)}>
-										<input type="hidden" name="leadId" value={lead.id} />
+									<div class="flex items-center justify-end gap-2">
+										<form method="POST" action="?/resolve" use:enhance={resolveEnhance(lead.id)}>
+											<input type="hidden" name="leadId" value={lead.id} />
+											<input type="hidden" name="page" value={data.pagination.page} />
+											<button
+												disabled={resolving[lead.id] || discarding[lead.id]}
+												class="h-[28px] rounded-control border border-hairline px-2.5 font-mono text-[11px] text-ink-600 hover:border-fresh hover:text-fresh disabled:opacity-50"
+												aria-label="Resolve {lead.name}"
+											>
+												{resolving[lead.id] ? 'Saving…' : 'Resolve'}
+											</button>
+										</form>
 										<button
-											disabled={resolving[lead.id]}
-											class="h-[28px] rounded-control border border-hairline px-2.5 font-mono text-[11px] text-ink-600 hover:border-fresh hover:text-fresh disabled:opacity-50"
-											aria-label="Resolve {lead.name}"
+											disabled={resolving[lead.id] || discarding[lead.id]}
+											onclick={() => (discardTarget = { id: lead.id, name: lead.name })}
+											class="h-[28px] rounded-control border border-hairline px-2.5 font-mono text-[11px] text-ink-600 hover:border-red-400 hover:text-red-500 disabled:opacity-50"
+											aria-label="Discard {lead.name}"
 										>
-											{resolving[lead.id] ? 'Saving…' : 'Resolve'}
+											{discarding[lead.id] ? 'Discarding…' : 'Discard'}
 										</button>
-									</form>
+									</div>
 								</td>
 							</tr>
 						{/each}
@@ -159,5 +218,45 @@
 				</tbody>
 			</table>
 		</div>
+
+		{#if data.pagination.totalPages > 1}
+			{@const { page: pg, pageSize, total, totalPages } = data.pagination}
+			{@const start = (pg - 1) * pageSize + 1}
+			{@const end = Math.min(pg * pageSize, total)}
+			<div class="mt-5 flex items-center justify-between text-[13px] text-ink-300">
+				<span class="font-mono">{start}–{end} of {total}</span>
+				<div class="flex items-center gap-2">
+					<Button
+						variant="outline"
+						size="sm"
+						disabled={pg <= 1 || paging}
+						onclick={() => {
+							paging = true;
+							navigate({ page: pg - 1 });
+						}}>← Prev</Button
+					>
+					<span class="font-mono">Page {pg} of {totalPages}</span>
+					<Button
+						variant="outline"
+						size="sm"
+						disabled={pg >= totalPages || paging}
+						onclick={() => {
+							paging = true;
+							navigate({ page: pg + 1 });
+						}}>Next →</Button
+					>
+				</div>
+			</div>
+		{/if}
 	{/if}
 </div>
+
+{#if discardTarget}
+	<DiscardIssueModal
+		open={true}
+		leadName={discardTarget.name}
+		saving={discarding[discardTarget.id] ?? false}
+		onclose={() => (discardTarget = null)}
+		onconfirm={confirmDiscard}
+	/>
+{/if}

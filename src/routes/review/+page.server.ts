@@ -1,64 +1,35 @@
 import type { Actions, PageServerLoad } from './$types';
+import { listReviewLeads } from '$lib/server/db/leads';
 import { db } from '$lib/server/db';
 import { crmLeads } from '$lib/server/db/schema';
-import { eq, isNull, and, asc, desc, sql } from 'drizzle-orm';
+import { eq, isNull, and } from 'drizzle-orm';
 import { fail, redirect } from '@sveltejs/kit';
 
-const SORT_COLS = [
-	'name',
-	'category',
-	'platform',
-	'stage',
-	'source',
-	'createdAt',
-	'event'
-] as const;
-type SortCol = (typeof SORT_COLS)[number];
-
-const COL_MAP = {
-	name: crmLeads.name,
-	category: crmLeads.category,
-	platform: crmLeads.platform,
-	stage: crmLeads.stage,
-	source: crmLeads.source,
-	createdAt: crmLeads.createdAt
-} satisfies Record<Exclude<SortCol, 'event'>, unknown>;
-
-function buildOrder(sort: SortCol, dir: 'asc' | 'desc') {
-	if (sort === 'event') {
-		// Upcoming events first (asc), no-date rows always last regardless of direction.
-		return dir === 'asc'
-			? [sql`${crmLeads.eventDate} ASC NULLS LAST`, asc(crmLeads.id)]
-			: [sql`${crmLeads.eventDate} DESC NULLS LAST`, asc(crmLeads.id)];
-	}
-	const fn = dir === 'asc' ? asc : desc;
-	return [fn(COL_MAP[sort]), asc(crmLeads.id)];
-}
+const PAGE_SIZE = 25;
 
 export const load: PageServerLoad = async ({ url }) => {
-	const rawSort = url.searchParams.get('sort') ?? 'createdAt';
-	const sort: SortCol = (SORT_COLS as readonly string[]).includes(rawSort)
-		? (rawSort as SortCol)
-		: 'createdAt';
+	const rawPage = Math.max(1, parseInt(url.searchParams.get('page') ?? '1', 10) || 1);
+	const sort = url.searchParams.get('sort') ?? 'createdAt';
 	const dir = url.searchParams.get('dir') === 'desc' ? ('desc' as const) : ('asc' as const);
 
-	const leads = await db
-		.select({
-			id: crmLeads.id,
-			name: crmLeads.name,
-			category: crmLeads.category,
-			platform: crmLeads.platform,
-			stage: crmLeads.stage,
-			source: crmLeads.source,
-			createdAt: crmLeads.createdAt,
-			eventDate: crmLeads.eventDate,
-			eventName: crmLeads.eventName
-		})
-		.from(crmLeads)
-		.where(and(isNull(crmLeads.deletedAt), eq(crmLeads.needsReview, true)))
-		.orderBy(...buildOrder(sort, dir));
+	const result = await listReviewLeads(rawPage, PAGE_SIZE, sort, dir);
+	const totalPages = Math.max(1, Math.ceil(result.total / PAGE_SIZE));
 
-	return { leads, sort, dir };
+	if (rawPage > totalPages) {
+		redirect(307, totalPages > 1 ? `?page=${totalPages}` : '/review');
+	}
+
+	return {
+		leads: result.leads,
+		sort,
+		dir,
+		pagination: {
+			page: rawPage,
+			pageSize: PAGE_SIZE,
+			total: result.total,
+			totalPages
+		}
+	};
 };
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
@@ -70,6 +41,9 @@ export const actions: Actions = {
 		if (typeof leadId !== 'string' || !leadId) return fail(400, { error: 'Missing leadId' });
 		if (!UUID_RE.test(leadId)) return fail(400, { error: 'Invalid leadId' });
 
+		const rawPage = parseInt(data.get('page') as string, 10);
+		const page = Number.isFinite(rawPage) && rawPage > 1 ? rawPage : 1;
+
 		const [updated] = await db
 			.update(crmLeads)
 			.set({ needsReview: false, updatedAt: new Date() })
@@ -80,6 +54,6 @@ export const actions: Actions = {
 
 		if (!updated) return fail(404, { error: 'Lead not found or already resolved' });
 
-		redirect(303, '/review');
+		redirect(303, page > 1 ? `/review?page=${page}` : '/review');
 	}
 };

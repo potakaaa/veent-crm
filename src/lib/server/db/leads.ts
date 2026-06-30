@@ -338,6 +338,62 @@ export async function getLead(id: string): Promise<Lead | null> {
 	return row ? dbRowToLead(row) : null;
 }
 
+const REVIEW_SORT_COLS = [
+	'name',
+	'category',
+	'platform',
+	'stage',
+	'source',
+	'createdAt',
+	'event'
+] as const;
+type ReviewSortCol = (typeof REVIEW_SORT_COLS)[number];
+
+const REVIEW_COL_MAP = {
+	name: crmLeads.name,
+	category: crmLeads.category,
+	platform: crmLeads.platform,
+	stage: crmLeads.stage,
+	source: crmLeads.source,
+	createdAt: crmLeads.createdAt
+} satisfies Record<Exclude<ReviewSortCol, 'event'>, unknown>;
+
+export async function listReviewLeads(
+	page = 1,
+	pageSize = 25,
+	sort = 'createdAt',
+	dir: 'asc' | 'desc' = 'asc'
+): Promise<{ leads: Lead[]; total: number }> {
+	const where = and(isNull(crmLeads.deletedAt), eq(crmLeads.needsReview, true));
+	const validSort: ReviewSortCol = (REVIEW_SORT_COLS as readonly string[]).includes(sort)
+		? (sort as ReviewSortCol)
+		: 'createdAt';
+	const sortFn = dir === 'asc' ? asc : desc;
+
+	let order: SQL<unknown>[];
+	if (validSort === 'event') {
+		order =
+			dir === 'asc'
+				? [sql`${crmLeads.eventDate} ASC NULLS LAST`, asc(crmLeads.id)]
+				: [sql`${crmLeads.eventDate} DESC NULLS LAST`, asc(crmLeads.id)];
+	} else {
+		order = [sortFn(REVIEW_COL_MAP[validSort]), asc(crmLeads.id)];
+	}
+
+	const [rows, [{ total }]] = await Promise.all([
+		db
+			.select()
+			.from(crmLeads)
+			.where(where)
+			.orderBy(...order)
+			.limit(pageSize)
+			.offset((Math.max(1, page) - 1) * pageSize),
+		db.select({ total: count() }).from(crmLeads).where(where)
+	]);
+
+	return { leads: rows.map((row) => dbRowToLead(row)), total };
+}
+
 const UNASSIGNED_SORT_COLS = ['name', 'event', 'stage', 'source'] as const;
 type UnassignedSortCol = (typeof UNASSIGNED_SORT_COLS)[number];
 

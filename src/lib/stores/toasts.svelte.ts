@@ -1,44 +1,35 @@
-/**
- * Transient toast/undo notifications. Svelte 5 runes module-state store.
- *
- * Usage: `import { toasts } from '$lib/stores/toasts.svelte';`
- *        `toasts.push('Claimed lead', { action: { label: 'Undo', run: ... } })`
- */
-export interface Toast {
-	id: number;
-	message: string;
-	tone: 'default' | 'success' | 'warn';
-	action?: { label: string; run: () => void };
-}
+import { toast } from 'svelte-sonner';
 
-let seq = 0;
-
-class ToastStore {
-	items = $state<Toast[]>([]);
-
+export const toasts = {
 	push(
 		message: string,
-		opts: { tone?: Toast['tone']; action?: Toast['action']; timeout?: number } = {}
+		opts: {
+			tone?: 'default' | 'success' | 'warn';
+			action?: { label: string; run: () => void };
+			timeout?: number;
+		} = {}
 	) {
-		const id = ++seq;
-		this.items = [
-			...this.items,
-			{ id, message, tone: opts.tone ?? 'default', action: opts.action }
-		];
-		const timeout = opts.timeout ?? 4000;
-		if (timeout > 0 && typeof window !== 'undefined') {
-			setTimeout(() => this.dismiss(id), timeout);
+		const options = {
+			id: message,
+			duration: opts.timeout ?? 4000,
+			...(opts.action
+				? { action: { label: opts.action.label, onClick: opts.action.run } }
+				: {})
+		};
+		if (opts.tone === 'success') {
+			toast.success(message, options);
+		} else if (opts.tone === 'warn') {
+			toast.warning(message, options);
+		} else {
+			toast(message, options);
 		}
-		return id;
-	}
+	},
 
-	success(message: string, action?: Toast['action']) {
-		return this.push(message, { tone: 'success', action });
-	}
+	success(message: string, action?: { label: string; run: () => void }) {
+		this.push(message, { tone: 'success', action });
+	},
 
-	dismiss(id: number) {
-		this.items = this.items.filter((t) => t.id !== id);
+	dismiss(id: string | number) {
+		toast.dismiss(id);
 	}
-}
-
-export const toasts = new ToastStore();
+};

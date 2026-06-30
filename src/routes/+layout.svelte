@@ -7,7 +7,9 @@
 	let { children, data } = $props();
 
 	// The login screen is full-bleed and chrome-less; everything else gets the app shell.
-	const bare = $derived(page.url.pathname === '/login');
+	const bare = $derived(
+		page.url.pathname === '/login' || page.url.pathname.startsWith('/unauthorized')
+	);
 </script>
 
 <svelte:head><link rel="icon" href={favicon} /></svelte:head>

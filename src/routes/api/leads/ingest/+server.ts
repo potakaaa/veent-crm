@@ -59,19 +59,29 @@ export const POST: RequestHandler = async ({ request }) => {
 			location: lead.location ?? null,
 			pageUrl: lead.url ?? null,
 			socialFacebook: lead.facebookUrl ?? null,
+			socialInstagram: lead.instagramUrl ?? null,
 			contactEmail: lead.email ?? null,
+			contactPhone: lead.phone ?? null,
 			eventName: lead.eventName ?? null,
 			eventLink: lead.eventLink ?? null,
 			source: 'scraper',
 			stage: 'new',
-			// Flag for review when category fell back to Other or no social URL is present.
-			needsReview: !lead.category || lead.category === 'Other' || (!lead.url && !lead.facebookUrl),
+			// Flag for review when category fell back to Other or no contact method is present.
+			needsReview:
+				!lead.category ||
+				lead.category === 'Other' ||
+				(!lead.url && !lead.facebookUrl && !lead.instagramUrl && !lead.email && !lead.phone),
 			ownerId: null,
 			createdAt: now,
 			updatedAt: now
 		});
 		created++;
-		if (!lead.category || lead.category === 'Other' || (!lead.url && !lead.facebookUrl)) review++;
+		if (
+			!lead.category ||
+			lead.category === 'Other' ||
+			(!lead.url && !lead.facebookUrl && !lead.instagramUrl && !lead.email && !lead.phone)
+		)
+			review++;
 	}
 
 	return json({ received: parsed.data.leads.length, created, skipped, review });

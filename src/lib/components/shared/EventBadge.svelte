@@ -7,6 +7,7 @@
 
 	const info = $derived.by(() => {
 		if (!date) return null;
+		// eslint-disable-next-line svelte/prefer-svelte-reactivity
 		const today = new Date();
 		today.setHours(0, 0, 0, 0);
 		const eventDay = new Date(date + 'T00:00:00');

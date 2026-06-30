@@ -6,9 +6,12 @@
 
 	let { children, data } = $props();
 
-	// The login screen is full-bleed and chrome-less; everything else gets the app shell.
+	// Chrome-less routes: login, unauthorized (exact or sub-path), and error pages.
 	const bare = $derived(
-		page.url.pathname === '/login' || page.url.pathname.startsWith('/unauthorized')
+		page.url.pathname === '/login' ||
+			page.url.pathname === '/unauthorized' ||
+			page.url.pathname.startsWith('/unauthorized/') ||
+			!!page.error
 	);
 </script>
 

@@ -88,7 +88,7 @@ veent-crm has no global error page — unmatched routes show SvelteKit's generic
 | AC2 | 404 page has "Go home" (→`/`) + "Go back" | G2 |
 | AC3 | 404 renders without AppShell (no sidebar/topbar) | G3 |
 | AC4 | Non-404 errors show "Something went wrong" + status code | G4 |
-| AC5 | Unauthenticated hit on protected route → `/unauthorized?from=/leads` (not `/login`) | G5 |
+| AC5 | Unauthenticated hit on protected route → `/unauthorized?from=%2Fleads` (not `/login`); decoded `from` value at page load is `/leads` | G5 |
 | AC6 | `/unauthorized` shows "Sign in" CTA → `/login` | G6 |
 | AC7 | `/unauthorized` renders chrome-less | G7 |
 | AC8 | `from` validated server-side — only same-origin relative paths pass; absolute/off-origin stripped | G8 |
@@ -106,7 +106,7 @@ veent-crm has no global error page — unmatched routes show SvelteKit's generic
 | G2: 404 page shows "Go home" link to `/` + working "Go back" button | Agent-Probe | AC2 |
 | G3: 404 page has no sidebar/topbar (chrome-less) | Agent-Probe | AC3 |
 | G4: trigger a 500 (or thrown error route) → "Something went wrong" + status code shown | Hybrid | AC4 |
-| G5: with no session (DEV_BYPASS off / unauth), GET `/leads` → 303 to `/unauthorized?from=/leads` | Hybrid | AC5 |
+| G5: with no session (DEV_BYPASS off / unauth), GET `/leads` → 303 to `/unauthorized?from=%2Fleads`; after redirect, page `from` prop decodes to `/leads` | Hybrid | AC5 |
 | G6: `/unauthorized` shows "Sign in" CTA linking to `/login` | Agent-Probe | AC6 |
 | G7: `/unauthorized` renders without AppShell | Agent-Probe | AC7 |
 | G8: `from` sanitization — `?from=/leads` echoes; `?from=https://evil.com` and `?from=//evil.com` strip to none | Hybrid | AC8 |

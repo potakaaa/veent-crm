@@ -18,7 +18,7 @@
 
 ## User flow
 
-```
+```text
 /leads/[id]
   └── LogTouchForm
         ├── Channel chips   (FB DM / FB comment / IG DM / Email / Call / Meeting / Other)
@@ -141,7 +141,7 @@ export function followUpDate(days: number, now: Date = new Date()): string {
 | no reply | `no_response` |
 | rejected | `rejected` |
 
-`other` is a valid DB value but not shown in the form chips (reserved for snooze activities).
+`other` is a valid DB value and renders as the "Other" chip in `LogTouchForm`.
 
 ### Follow-up chips
 

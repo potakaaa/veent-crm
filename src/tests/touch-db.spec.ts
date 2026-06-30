@@ -227,6 +227,16 @@ describe('logTouchSchema validation (T-D6)', () => {
 		expect(result.success).toBe(false);
 	});
 
+	it('rejects a calendar-impossible date (2026-13-01, month 13)', () => {
+		// V8 rolls over day overflow (e.g. Feb 31 → Mar 3) but rejects month overflow as Invalid Date.
+		const result = logTouchSchema.safeParse({
+			channel: 'fb_dm',
+			outcome: 'sent',
+			followUpAt: '2026-13-01'
+		});
+		expect(result.success).toBe(false);
+	});
+
 	it('defaults outcome to sent when omitted', () => {
 		const result = logTouchSchema.safeParse({ channel: 'call' });
 		expect(result.success).toBe(true);

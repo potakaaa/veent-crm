@@ -19,6 +19,7 @@ const PUBLIC_PREFIXES = [
 	'/unauthorized',
 	'/health',
 	'/api/reminders/due',
+	'/api/reminders/notify',
 	'/api/leads/ingest',
 	'/api/auth'
 ];

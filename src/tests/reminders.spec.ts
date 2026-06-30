@@ -11,6 +11,8 @@ vi.mock('$env/dynamic/private', () => ({ env: {} }));
 
 import { resolveFollowUpAt, dbRowToLead } from '$lib/server/db/leads';
 import { sendReminderDigest } from '$lib/server/email';
+import { groupRemindersByRep, type DueReminder } from '$lib/server/reminders';
+import { buildReminderDigestHtml } from '$lib/server/email-templates/reminder';
 import type { Lead } from '$lib/types';
 
 const DAY = 86_400_000;
@@ -117,9 +119,9 @@ describe('dbRowToLead urgency (VE-B1)', () => {
 describe('sendReminderDigest (VE-C2)', () => {
 	it('no-ops (logs, does not throw) when RESEND_API_KEY is unset', async () => {
 		const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-		await expect(
-			sendReminderDigest({ repEmail: 'rep@example.com', reminders: [] })
-		).resolves.toBeUndefined();
+		await expect(sendReminderDigest({ repEmail: 'rep@example.com', reminders: [] })).resolves.toBe(
+			'skipped'
+		);
 		expect(warn).toHaveBeenCalled();
 		warn.mockRestore();
 	});
@@ -231,5 +233,67 @@ describe('reminder grouping (VE-R1)', () => {
 		// 'x' < 'y' alphabetically, so 'x' must come first
 		expect(sorted[0].id).toBe('x');
 		expect(sorted[1].id).toBe('y');
+	});
+});
+
+// ---------------------------------------------------------------------------
+// buildReminderDigestHtml — branded email template (pure)
+// ---------------------------------------------------------------------------
+
+function makeDueReminder(overrides: Partial<DueReminder> = {}): DueReminder {
+	return {
+		leadId: 'lead-uuid-001',
+		leadName: 'Acme Sports Club',
+		repEmail: 'rep@example.com',
+		followUpAt: '2026-06-30T09:00:00.000Z',
+		overdue: false,
+		...overrides
+	};
+}
+
+describe('buildReminderDigestHtml', () => {
+	it('renders lead name and CTA with leadId', () => {
+		const html = buildReminderDigestHtml({
+			appUrl: 'https://crm.veent.io',
+			reminders: [makeDueReminder({ leadId: 'lead-xyz', leadName: 'Acme Sports Club' })]
+		});
+		expect(html).toContain('Acme Sports Club');
+		expect(html).toContain('https://crm.veent.io/leads/lead-xyz');
+	});
+
+	it('places overdue reminders in Overdue section', () => {
+		const html = buildReminderDigestHtml({
+			appUrl: 'https://crm.veent.io',
+			reminders: [makeDueReminder({ overdue: true })]
+		});
+		expect(html).toContain('Overdue');
+	});
+
+	it('returns non-empty HTML for empty reminders list', () => {
+		const html = buildReminderDigestHtml({ appUrl: '', reminders: [] });
+		expect(html.length).toBeGreaterThan(0);
+		expect(html).toContain('Veent');
+	});
+});
+
+// ---------------------------------------------------------------------------
+// groupRemindersByRep — pure grouping helper
+// ---------------------------------------------------------------------------
+
+describe('groupRemindersByRep', () => {
+	it('groups by repEmail and drops null repEmail', () => {
+		const reminders: DueReminder[] = [
+			makeDueReminder({ leadId: 'a1', repEmail: 'rep-a@example.com' }),
+			makeDueReminder({ leadId: 'b1', repEmail: 'rep-b@example.com' }),
+			makeDueReminder({ leadId: 'a2', repEmail: 'rep-a@example.com' }),
+			makeDueReminder({ leadId: 'n1', repEmail: null })
+		];
+		const groups = groupRemindersByRep(reminders);
+		expect(groups).toHaveLength(2);
+		const repA = groups.find((g) => g.repEmail === 'rep-a@example.com');
+		const repB = groups.find((g) => g.repEmail === 'rep-b@example.com');
+		expect(repA?.reminders).toHaveLength(2);
+		expect(repB?.reminders).toHaveLength(1);
+		expect(groups.some((g) => g.reminders.some((r) => r.repEmail === null))).toBe(false);
 	});
 });

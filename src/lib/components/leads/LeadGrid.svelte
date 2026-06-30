@@ -45,7 +45,11 @@
 				</div>
 				{#if l.eventDate}
 					<div class="mt-px font-mono text-[11px] text-ink-400">
-						{new Date(l.eventDate + 'T00:00:00').toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}
+						{new Date(l.eventDate + 'T00:00:00').toLocaleDateString('en-PH', {
+							month: 'short',
+							day: 'numeric',
+							year: 'numeric'
+						})}
 					</div>
 				{/if}
 			</div>

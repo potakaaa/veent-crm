@@ -27,13 +27,15 @@
 
 	const COLORS: Record<Variant, { text: string; bg: string; border: string }> = {
 		urgent: { text: '#c0362c', bg: '#c0362c14', border: '#c0362c30' },
-		soon:   { text: '#c2710c', bg: '#c2710c14', border: '#c2710c30' },
-		later:  { text: '#0e7490', bg: '#0e749014', border: '#0e749030' },
-		past:   { text: '#71717a', bg: '#71717a0d', border: '#71717a25' },
+		soon: { text: '#c2710c', bg: '#c2710c14', border: '#c2710c30' },
+		later: { text: '#0e7490', bg: '#0e749014', border: '#0e749030' },
+		past: { text: '#71717a', bg: '#71717a0d', border: '#71717a25' }
 	};
 
 	const style = $derived(
-		info ? `color:${COLORS[info.variant].text};background:${COLORS[info.variant].bg};border-color:${COLORS[info.variant].border}` : ''
+		info
+			? `color:${COLORS[info.variant].text};background:${COLORS[info.variant].bg};border-color:${COLORS[info.variant].border}`
+			: ''
 	);
 </script>
 

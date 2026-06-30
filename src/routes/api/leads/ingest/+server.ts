@@ -57,8 +57,7 @@ export const POST: RequestHandler = async ({ request }) => {
 			scraperOrgId: lead.scraperOrgId ?? null,
 			category: lead.category ?? 'Other',
 			platform:
-				lead.platform ??
-				normalizePlatform(lead.facebookUrl, lead.instagramUrl, lead.eventLink),
+				lead.platform ?? normalizePlatform(lead.facebookUrl, lead.instagramUrl, lead.eventLink),
 			location: lead.location ?? null,
 			pageUrl: lead.url ?? null,
 			socialFacebook: lead.facebookUrl ?? null,

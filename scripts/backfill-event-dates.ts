@@ -91,9 +91,7 @@ for (const lead of leads) {
 		continue;
 	}
 
-	console.log(
-		`  ${lead.normalizedHandle}: org=${match.orgId} date=${match.eventDate ?? 'none'}`
-	);
+	console.log(`  ${lead.normalizedHandle}: org=${match.orgId} date=${match.eventDate ?? 'none'}`);
 
 	if (load) {
 		await db

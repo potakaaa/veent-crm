@@ -174,7 +174,10 @@ export const ingestLeadSchema = z.object({
 	category: z.enum(LEAD_CATEGORIES).optional(),
 	location: z.string().optional(),
 	eventName: z.string().optional(),
-	eventDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+	eventDate: z
+		.string()
+		.regex(/^\d{4}-\d{2}-\d{2}$/)
+		.optional(),
 	eventLink: z.string().url().optional(),
 	sourceRef: z.string().optional(),
 	scraperOrgId: z.number().int().positive().optional(),

@@ -40,9 +40,7 @@ const leads = await db
 		pageUrl: crmLeads.pageUrl
 	})
 	.from(crmLeads)
-	.where(
-		or(isNull(crmLeads.platform), eq(crmLeads.platform, 'Other'))
-	);
+	.where(or(isNull(crmLeads.platform), eq(crmLeads.platform, 'Other')));
 
 console.log(`Found ${leads.length} leads with null/Other platform`);
 
@@ -63,7 +61,9 @@ for (const lead of leads) {
 		continue;
 	}
 
-	console.log(`  ${lead.id}: ${lead.platform ?? 'null'} → ${derived}  (fb=${lead.socialFacebook} ig=${lead.socialInstagram} event=${lead.eventLink} page=${lead.pageUrl})`);
+	console.log(
+		`  ${lead.id}: ${lead.platform ?? 'null'} → ${derived}  (fb=${lead.socialFacebook} ig=${lead.socialInstagram} event=${lead.eventLink} page=${lead.pageUrl})`
+	);
 
 	if (load) {
 		await db
@@ -75,6 +75,8 @@ for (const lead of leads) {
 	updated++;
 }
 
-console.log(`\n${dryRun ? '[dry-run] would update' : 'Updated'}: ${updated}, unchanged/unresolvable: ${unchanged}`);
+console.log(
+	`\n${dryRun ? '[dry-run] would update' : 'Updated'}: ${updated}, unchanged/unresolvable: ${unchanged}`
+);
 
 await client.end();

@@ -1,10 +1,13 @@
 import type { PageServerLoad } from './$types';
 import { error } from '@sveltejs/kit';
 import { listLeadsFiltered, listUsers, getLeadCountries } from '$lib/server/db/leads';
+import { LEAD_STAGES, LEAD_PLATFORMS } from '$lib/zod/schemas';
 import type { LeadSegment, User } from '$lib/types';
 
 const PAGE_SIZE = 25;
 const VALID_SEGMENTS = new Set(['mine', 'all', 'unassigned', 'lost']);
+const VALID_STAGES = new Set<string>(LEAD_STAGES);
+const VALID_PLATFORMS = new Set<string>(LEAD_PLATFORMS);
 
 export const load: PageServerLoad = async ({ locals, url }) => {
 	if (!locals.user) throw error(401, 'Unauthorized');
@@ -13,8 +16,10 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	const segment: LeadSegment = VALID_SEGMENTS.has(rawSegment)
 		? (rawSegment as LeadSegment)
 		: 'mine';
-	const stage = url.searchParams.get('stage') ?? '';
-	const platform = url.searchParams.get('platform') ?? '';
+	const rawStage = url.searchParams.get('stage') ?? '';
+	const stage = VALID_STAGES.has(rawStage) ? rawStage : '';
+	const rawPlatform = url.searchParams.get('platform') ?? '';
+	const platform = VALID_PLATFORMS.has(rawPlatform) ? rawPlatform : '';
 	const country = url.searchParams.get('country') ?? '';
 	const staleOnly = url.searchParams.get('staleOnly') === '1';
 	const search = url.searchParams.get('q') ?? '';

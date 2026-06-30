@@ -8,7 +8,7 @@
  * To run locally: ensure DATABASE_URL is in .env, then bun run test:unit:ci
  */
 import { describe, it, expect, afterAll } from 'vitest';
-import { createLead, getRemindersQueue } from '$lib/server/db/leads';
+import { createLead, getRemindersQueue, snoozeLead } from '$lib/server/db/leads';
 import { db } from '$lib/server/db/index';
 import { crmLeads, crmActivities } from '$lib/server/db/schema';
 import { eq, inArray } from 'drizzle-orm';
@@ -87,8 +87,11 @@ describe.skipIf(SKIP_DB)('getRemindersQueue — overdue bucket (DB)', () => {
 		await bookFollowUp(newer.id, MANAGER_UUID, new Date(Date.now() - 2 * 86_400_000));
 
 		const { overdue } = await getRemindersQueue(MANAGER_UUID);
-		const idx = (id: string) => overdue.findIndex((l) => l.id === id);
-		expect(idx(older.id)).toBeLessThan(idx(newer.id));
+		const idxOlder = overdue.findIndex((l) => l.id === older.id);
+		const idxNewer = overdue.findIndex((l) => l.id === newer.id);
+		expect(idxOlder).toBeGreaterThanOrEqual(0);
+		expect(idxNewer).toBeGreaterThanOrEqual(0);
+		expect(idxOlder).toBeLessThan(idxNewer);
 	});
 });
 
@@ -121,10 +124,9 @@ describe.skipIf(SKIP_DB)('getRemindersQueue — cold bucket (DB)', () => {
 		const { cold } = await getRemindersQueue(MANAGER_UUID);
 		const idxColder = cold.findIndex((l) => l.id === colder.id);
 		const idxWarmer = cold.findIndex((l) => l.id === warmer.id);
-		// Both must be present before comparing order
-		if (idxColder !== -1 && idxWarmer !== -1) {
-			expect(idxColder).toBeLessThan(idxWarmer);
-		}
+		expect(idxColder).toBeGreaterThanOrEqual(0);
+		expect(idxWarmer).toBeGreaterThanOrEqual(0);
+		expect(idxColder).toBeLessThan(idxWarmer);
 	});
 });
 
@@ -170,18 +172,10 @@ describe.skipIf(SKIP_DB)('getRemindersQueue — exclusions (DB)', () => {
 		const before = await getRemindersQueue(MANAGER_UUID);
 		expect(before.overdue.find((l) => l.id === lead.id)).toBeDefined();
 
-		// Now snooze: insert a newer activity with a future follow-up.
-		// getTodayQueue uses DISTINCT ON lead_id ORDER BY occurred_at DESC — so
-		// inserting a newer activity with a future date wins over the old overdue one.
-		await db.insert(crmActivities).values({
-			leadId: lead.id,
-			repId: MANAGER_UUID,
-			channel: 'other',
-			outcome: 'other',
-			occurredAt: new Date(Date.now() + 1000), // 1 second after the first activity
-			followUpAt: new Date(Date.now() + 3 * 86_400_000),
-			notes: 'Snoozed'
-		});
+		// Use snoozeLead() — the production write path — to re-book 3 days ahead.
+		// getTodayQueue DISTINCT ON lead_id ORDER BY occurred_at DESC picks the newest
+		// activity, so the future followUpAt supersedes the old overdue one.
+		await snoozeLead(lead.id, MANAGER_UUID, new Date(Date.now() + 3 * 86_400_000));
 
 		const after = await getRemindersQueue(MANAGER_UUID);
 		expect(after.overdue.find((l) => l.id === lead.id)).toBeUndefined();

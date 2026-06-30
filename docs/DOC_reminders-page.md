@@ -19,7 +19,7 @@ Won, lost, and soft-deleted leads never appear. The rep can snooze an overdue le
 
 ## Architecture
 
-```
+```text
 /reminders
   +page.server.ts     ← auth gate; calls getRemindersQueue(userId)
   +page.svelte        ← renders two groups; snooze via fetch; nudge placeholder
@@ -93,7 +93,7 @@ The snooze API (`src/routes/api/leads/[id]/snooze/+server.ts`) calls `snoozeLead
 
 Nudge does nothing server-side. Clicking it shows a toast:
 
-```
+```text
 Nudge: no outbound messaging integration yet (LeadName)
 ```
 
@@ -111,7 +111,7 @@ This is intentional. There is no Viber/Telegram/email outbound integration. The 
 | `src/lib/utils/dates.ts` | `computeAge` — urgency classification |
 | `src/routes/api/leads/[id]/snooze/+server.ts` | POST snooze endpoint |
 | `src/tests/reminders.spec.ts` | Unit tests VE-A1, VE-B1, VE-C2, VE-R1 |
-| `src/tests/reminders-db.spec.ts` | DB integration tests (9 cases) |
+| `src/tests/reminders-db.spec.ts` | DB integration tests (10 cases) |
 
 ---
 

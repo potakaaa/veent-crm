@@ -143,3 +143,28 @@ export function normalizePlatform(
 	if (eventSourceUrl) return platformFromUrl(eventSourceUrl);
 	return null;
 }
+
+// Variant spellings → canonical country name. Lowercased keys; lookup is case-insensitive.
+// Covers Philippines and Singapore (the only two markets in v1); unknown inputs return null.
+const COUNTRY_MAP: Record<string, string> = {
+	// Philippines
+	philippines: 'Philippines',
+	ph: 'Philippines',
+	pilipinas: 'Philippines',
+	'the philippines': 'Philippines',
+	'republic of the philippines': 'Philippines',
+	phil: 'Philippines',
+	phils: 'Philippines',
+	rp: 'Philippines',
+	// Singapore
+	singapore: 'Singapore',
+	sg: 'Singapore',
+	singapura: 'Singapore',
+	'republic of singapore': 'Singapore'
+};
+
+export function normalizeCountry(raw?: string | null): string | null {
+	if (!raw) return null;
+	const key = raw.trim().toLowerCase();
+	return COUNTRY_MAP[key] ?? null;
+}

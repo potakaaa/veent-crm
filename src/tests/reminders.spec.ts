@@ -24,6 +24,7 @@ function makeLeadRow(overrides: Partial<Parameters<typeof dbRowToLead>[0]> = {})
 		name: 'Test Org',
 		category: 'Sports' as const,
 		location: 'Manila',
+		country: null,
 		platform: 'Facebook' as const,
 		socialFacebook: null,
 		socialInstagram: null,

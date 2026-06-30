@@ -1,7 +1,12 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { normalizeHandle, mapCategory, slugify } from '../../scripts/lib/import-utils';
+import {
+	normalizeHandle,
+	mapCategory,
+	slugify,
+	normalizeCountry
+} from '../../scripts/lib/import-utils';
 import {
 	parseTsv,
 	hygiene,
@@ -72,6 +77,57 @@ describe('mapCategory', () => {
 	});
 	it('trims surrounding whitespace before mapping', () => {
 		expect(mapCategory('  Concert  ')).toEqual({ category: 'Concert', needsReview: false });
+	});
+});
+
+describe('normalizeCountry', () => {
+	// Table-driven: every supported alias from COUNTRY_MAP
+	const PH_ALIASES = [
+		'Philippines',
+		'ph',
+		'PH',
+		'Pilipinas',
+		'pilipinas',
+		'the Philippines',
+		'the philippines',
+		'Republic of the Philippines',
+		'republic of the philippines',
+		'Phil',
+		'phil',
+		'Phils',
+		'phils',
+		'RP',
+		'rp'
+	];
+	const SG_ALIASES = [
+		'Singapore',
+		'sg',
+		'SG',
+		'Singapura',
+		'singapura',
+		'Republic of Singapore',
+		'republic of singapore'
+	];
+
+	for (const alias of PH_ALIASES) {
+		it(`maps "${alias}" → Philippines`, () => {
+			expect(normalizeCountry(alias)).toBe('Philippines');
+		});
+	}
+	for (const alias of SG_ALIASES) {
+		it(`maps "${alias}" → Singapore`, () => {
+			expect(normalizeCountry(alias)).toBe('Singapore');
+		});
+	}
+
+	it('returns null for countries other than Philippines / Singapore', () => {
+		expect(normalizeCountry('United States')).toBeNull();
+		expect(normalizeCountry('Malaysia')).toBeNull();
+	});
+	it('returns null for undefined / null / empty input', () => {
+		expect(normalizeCountry(undefined)).toBeNull();
+		expect(normalizeCountry(null)).toBeNull();
+		expect(normalizeCountry('')).toBeNull();
 	});
 });
 

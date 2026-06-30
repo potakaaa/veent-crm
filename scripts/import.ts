@@ -16,7 +16,12 @@
 
 import { readFileSync } from 'node:fs';
 import { tsvRowSchema, type TsvRow } from '../src/lib/zod/schemas';
-import { normalizeHandle, mapCategory, normalizePlatform } from './lib/import-utils';
+import {
+	normalizeHandle,
+	mapCategory,
+	normalizePlatform,
+	normalizeCountry
+} from './lib/import-utils';
 
 // --- CLI -------------------------------------------------------------------
 type Args = { file?: string; dryRun: boolean; load: boolean };
@@ -276,6 +281,7 @@ type LeadInsert = {
 	pageUrl: string | null;
 	contactEmail: string | null;
 	location: string | null;
+	country: string | null;
 	platform: ReturnType<typeof normalizePlatform>;
 	source: 'scraper';
 	stage: 'new';
@@ -349,6 +355,7 @@ function buildLeadGroup(handle: string, events: TsvRow[]): LeadGroup {
 		pageUrl: emptyToNull(website),
 		contactEmail: email ? email.toLowerCase() : null,
 		location,
+		country: normalizeCountry(rep.venue_country),
 		platform: normalizePlatform(
 			fb || undefined,
 			ig || undefined,

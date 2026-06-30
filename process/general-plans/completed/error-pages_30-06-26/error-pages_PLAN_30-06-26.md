@@ -13,7 +13,7 @@ phase: "SIMPLE"
 ---
 
 **Date**: 30-06-26
-**Status**: ACTIVE — plan written, pending VALIDATE
+**Status**: CODE DONE — implementation complete; VALIDATE skipped (user: UI-only, low-risk); `bun run check` green; visual gates G1-G8 pending browser confirmation. Archived to completed/.
 **Complexity**: SIMPLE
 
 ## Phase Completion Rules
@@ -157,4 +157,19 @@ veent-crm has no global error page — unmatched routes show SvelteKit's generic
 
 ## Validate Contract
 
-(placeholder — vc-validate-agent writes this section before EXECUTE)
+VALIDATE skipped — user explicitly approved skip before EXECUTE (stated: low-risk UI-only change; no schema/auth/API/billing surface changes; no new dependencies).
+
+## Implementation Outcome
+
+All 7 checklist steps completed in EXECUTE session (30-06-26):
+1. ✅ `src/routes/unauthorized/+page.server.ts` — `from` param sanitizer created
+2. ✅ `src/routes/unauthorized/+page.svelte` — branded unauthorized page created
+3. ✅ `src/routes/+error.svelte` — branded 404 + generic error page created
+4. ✅ `src/hooks.server.ts` — `/unauthorized` added to PUBLIC_PREFIXES; redirect target changed
+5. ✅ `src/routes/+layout.svelte` — `bare` extended to cover `/unauthorized`
+6. ✅ `bun run check` → 0 errors, 0 warnings (G-CHECK green)
+7. Manual nav verification: pending user browser confirmation (G1-G8 + G-VISUAL)
+
+Known adjacency items (not plan deviations — follow-up only):
+- `src/routes/+layout.ts` does not skip CRM data fetching for `/unauthorized` — harmless under v0 mock data; relevant post-auth-wiring (see backlog)
+- Per-route `redirect('/login')` guards in some `+page.server.ts` files are now dead code (hooks gate runs first) — left untouched per scope; see backlog

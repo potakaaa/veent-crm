@@ -92,8 +92,7 @@ export function welcomeEmail(name: string, url: string): { subject: string; html
 		subject: 'Welcome to Veent CRM — here’s your sign-in link',
 		html: shell({
 			heading: `Welcome to Veent CRM, ${name}`,
-			subhead:
-				'Your manager has added you to the team. Click below to sign in and get started.',
+			subhead: 'Your manager has added you to the team. Click below to sign in and get started.',
 			ctaLabel: 'Sign in to Veent',
 			url
 		})

@@ -37,7 +37,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	// Trigger Better Auth's magic-link flow. A send failure must NOT roll back the
 	// user creation — log and still return 201.
 	try {
-		await (await getAuth()).api.signInMagicLink({
+		await (
+			await getAuth()
+		).api.signInMagicLink({
 			body: { email, callbackURL: '/' },
 			headers: request.headers
 		});

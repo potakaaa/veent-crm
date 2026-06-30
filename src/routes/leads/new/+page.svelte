@@ -9,9 +9,13 @@
 	import { Label } from '$lib/components/ui/label';
 	import { Button } from '$lib/components/ui/button';
 	import { Select, SelectTrigger, SelectContent, SelectItem } from '$lib/components/ui/select';
+	import { Calendar } from '$lib/components/ui/calendar';
+	import * as Dialog from '$lib/components/ui/dialog';
 	import { toasts } from '$lib/stores/toasts.svelte';
 	import { hasPotentialDuplicate } from '$lib/utils/dedup';
+	import { formatEventDate } from '$lib/utils/dates';
 	import { leadFormSchema, LEAD_CATEGORIES, LEAD_PLATFORMS } from '$lib/zod/schemas';
+	import type { DateValue } from '@internationalized/date';
 
 	let { data } = $props();
 
@@ -22,9 +26,17 @@
 	let pageUrl = $state('');
 	let email = $state('');
 	let eventName = $state('');
-	let eventDate = $state('');
+	let selectedDate = $state<DateValue | undefined>(undefined);
+	let dateOpen = $state(false);
+	let tempDate = $state<DateValue | undefined>(undefined);
 	let error = $state('');
 	let saving = $state(false);
+
+	const eventDateDisplay = $derived(selectedDate ? formatEventDate(selectedDate) : '');
+
+	$effect(() => {
+		if (dateOpen) tempDate = selectedDate;
+	});
 
 	// Advisory only — duplicates are surfaced but never block "Create anyway".
 	const dupes = $derived(name.length > 1 ? hasPotentialDuplicate({ name }, data.leads) : []);
@@ -38,7 +50,7 @@
 			pageUrl: pageUrl || '',
 			contactEmail: email || '',
 			eventName: eventName || undefined,
-			eventDateRaw: eventDate || undefined
+			eventDateRaw: eventDateDisplay || undefined
 		});
 		if (!parsed.success) {
 			error = parsed.error.issues[0]?.message ?? 'Please check the form.';
@@ -144,7 +156,45 @@
 			</div>
 			<div class="grid gap-1.5 sm:col-span-2">
 				<Label for="eventDate">Event date</Label>
-				<Input id="eventDate" bind:value={eventDate} placeholder="12 Jul" />
+				<Dialog.Root bind:open={dateOpen}>
+					<Dialog.Trigger
+						id="eventDate"
+						class="flex h-9 w-full items-center justify-between rounded-control border border-hairline bg-panel px-3 py-2 text-left text-[13px] shadow-sm transition hover:bg-panel-sunken focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary {!eventDateDisplay
+							? 'text-ink-400'
+							: 'text-ink'}"
+					>
+						{eventDateDisplay || 'Pick a date'}
+						<Icon name="calendar" size={15} />
+					</Dialog.Trigger>
+					<Dialog.Content class="w-[min(92vw,400px)] gap-0 p-5" showCloseButton={false}>
+						<Dialog.Header class="mb-3 p-0">
+							<Dialog.Title>Select event date</Dialog.Title>
+						</Dialog.Header>
+						<div class="rounded-xl bg-panel-sunken p-3">
+							<Calendar
+								type="single"
+								bind:value={tempDate}
+								class="w-full [--cell-size:--spacing(9)]"
+							/>
+						</div>
+						<div class="mt-4 flex justify-end gap-2">
+							<Dialog.Close
+								class="rounded-control border border-hairline bg-panel px-3 py-1.5 text-[13px] font-medium text-ink hover:bg-panel-sunken"
+							>
+								Cancel
+							</Dialog.Close>
+							<button
+								onclick={() => {
+									selectedDate = tempDate;
+									dateOpen = false;
+								}}
+								class="rounded-control bg-primary px-3 py-1.5 text-[13px] font-semibold text-white hover:bg-primary-strong"
+							>
+								Done
+							</button>
+						</div>
+					</Dialog.Content>
+				</Dialog.Root>
 			</div>
 
 			{#if error}<p class="text-[12.5px] text-overdue sm:col-span-2">{error}</p>{/if}

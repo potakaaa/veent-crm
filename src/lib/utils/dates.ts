@@ -2,9 +2,20 @@
  * Date helpers for the Veent CRM. All time-sensitive computations accept an
  * optional `now` parameter so tests can inject a fixed reference point.
  */
+import { getLocalTimeZone, type DateValue } from '@internationalized/date';
 import type { AgeType, Lead } from '$lib/types';
 
 export const TIMEZONE = 'Asia/Manila';
+
+/**
+ * Format a calendar selection (a `DateValue` from `@internationalized/date`)
+ * as a human label like "12 Jul 2026" for the event-date field.
+ */
+export function formatEventDate(value: DateValue): string {
+	return value
+		.toDate(getLocalTimeZone())
+		.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+}
 
 const DAY = 86_400_000;
 

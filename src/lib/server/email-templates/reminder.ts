@@ -94,12 +94,14 @@ export function buildReminderDigestHtml({
 
 	const overdueRows =
 		overdue.length > 0
-			? sectionHeader('Overdue', COLOR.overdue) + overdue.map((r) => reminderCard(r, appUrl)).join('')
+			? sectionHeader('Overdue', COLOR.overdue) +
+				overdue.map((r) => reminderCard(r, appUrl)).join('')
 			: '';
 
 	const dueRows =
 		dueToday.length > 0
-			? sectionHeader('Due Today', COLOR.due) + dueToday.map((r) => reminderCard(r, appUrl)).join('')
+			? sectionHeader('Due Today', COLOR.due) +
+				dueToday.map((r) => reminderCard(r, appUrl)).join('')
 			: '';
 
 	return `<!DOCTYPE html>
@@ -133,12 +135,16 @@ export function buildReminderDigestHtml({
   </td></tr>
 
   <!-- Reminder cards -->
-  ${total > 0 ? `<tr><td style="padding:20px 36px 4px 36px;">
+  ${
+		total > 0
+			? `<tr><td style="padding:20px 36px 4px 36px;">
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
       ${overdueRows}
       ${dueRows}
     </table>
-  </td></tr>` : ''}
+  </td></tr>`
+			: ''
+	}
 
   <!-- Footer -->
   <tr><td style="padding:${total > 0 ? '16px' : '28px'} 36px 28px 36px;">

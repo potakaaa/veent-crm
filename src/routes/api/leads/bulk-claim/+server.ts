@@ -11,8 +11,10 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	const parsed = schema.safeParse(await request.json().catch(() => null));
 	if (!parsed.success) throw error(400, 'Invalid payload');
 
-	const results = await Promise.all(parsed.data.ids.map((id) => claimLead(id, locals.user!.id)));
+	const results = await Promise.allSettled(
+		parsed.data.ids.map((id) => claimLead(id, locals.user!.id))
+	);
 
-	const claimed = results.filter(Boolean).length;
+	const claimed = results.filter((r) => r.status === 'fulfilled' && r.value !== null).length;
 	return json({ claimed });
 };

@@ -52,6 +52,10 @@
 	}
 
 	async function bulkClaim() {
+		if (selectedIds.length > 200) {
+			toasts.push('Cannot bulk claim more than 200 leads at once');
+			return;
+		}
 		const res = await fetch('/api/leads/bulk-claim', {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
@@ -68,7 +72,7 @@
 	}
 
 	async function assignTo(ownerId: string) {
-		await Promise.all(
+		const responses = await Promise.all(
 			selectedIds.map((id) =>
 				fetch(`/api/leads/${id}/owner`, {
 					method: 'PATCH',
@@ -77,6 +81,10 @@
 				})
 			)
 		);
+		if (responses.some((r) => !r.ok)) {
+			toasts.push('Some assignments failed — refresh and try again');
+			return;
+		}
 		assignOpen = false;
 		const name = data.users.find((u) => u.id === ownerId)?.name ?? 'rep';
 		toasts.success(`Assigned ${selectedIds.length} to ${name}`);

@@ -21,8 +21,9 @@
 	import { crm } from '$lib/services';
 	import { toasts } from '$lib/stores/toasts.svelte';
 	import { canManageUsers } from '$lib/utils/permissions';
+	import { roleLabel, statusLabel } from '$lib/utils/roles';
 	import { userFormSchema, USER_ROLES } from '$lib/zod/schemas';
-	import type { User } from '$lib/types';
+	import type { Role, User } from '$lib/types';
 
 	let { data } = $props();
 	const canManage = $derived(canManageUsers(data.currentUser));
@@ -147,7 +148,7 @@
 									? 'color:#c0362c;background:rgba(192,54,44,0.1);border-color:transparent'
 									: 'color:#5a4a48;background:#f5ecea;border-color:transparent'}
 							>
-								{u.role}
+								{roleLabel(u.role)}
 							</Badge>
 						</TableCell>
 						<TableCell>
@@ -158,7 +159,7 @@
 									? 'color:#0e9f6e;background:rgba(14,159,110,0.1);border-color:transparent'
 									: 'color:#a89490;background:#f5ecea;border-color:transparent'}
 							>
-								{u.active ? 'active' : 'inactive'}
+								{statusLabel(u.active)}
 							</Badge>
 						</TableCell>
 						<TableCell class="text-right font-mono text-[13px]">{u.leadCount ?? '—'}</TableCell>
@@ -201,9 +202,11 @@
 		<div class="grid gap-1.5">
 			<Label for="rep-role">Role</Label>
 			<Select type="single" bind:value={role}>
-				<SelectTrigger id="rep-role" class="w-full">{role}</SelectTrigger>
+				<SelectTrigger id="rep-role" class="w-full">{roleLabel(role as Role)}</SelectTrigger>
 				<SelectContent>
-					{#each USER_ROLES as r}<SelectItem value={r} label={r}>{r}</SelectItem>{/each}
+					{#each USER_ROLES as r}<SelectItem value={r} label={roleLabel(r)}
+							>{roleLabel(r)}</SelectItem
+						>{/each}
 				</SelectContent>
 			</Select>
 		</div>

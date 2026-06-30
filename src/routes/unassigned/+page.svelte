@@ -9,6 +9,7 @@
 	import Icon from '$lib/components/shared/Icon.svelte';
 	import { toasts } from '$lib/stores/toasts.svelte';
 	import { canReassign } from '$lib/utils/permissions';
+	import { sourceLabel } from '$lib/utils/sources';
 	import { Button } from '$lib/components/ui/button';
 	import type { Lead } from '$lib/types';
 
@@ -35,7 +36,7 @@
 	);
 
 	const formerOwner = (id: string | null | undefined) =>
-		id ? `was ${data.users.find((u) => u.id === id)?.name ?? id}` : 'never assigned';
+		id ? `was ${data.users.find((u) => u.id === id)?.name ?? 'former rep'}` : 'never assigned';
 
 	function toggle(id: string) {
 		selected = { ...selected, [id]: !selected[id] };
@@ -93,13 +94,6 @@
 	}
 
 	const grid = 'grid grid-cols-[36px_2.2fr_1.8fr_1fr_90px_1.1fr_110px] gap-3';
-
-	const sourceLabel: Record<string, { label: string; class: string }> = {
-		scraper: { label: 'Scraped', class: 'bg-teal-50 text-teal-700' },
-		manual: { label: 'Manual', class: 'bg-ink-50 text-ink-500' },
-		sheet_import: { label: 'Import', class: 'bg-amber-50 text-amber-700' },
-		other: { label: 'Other', class: 'bg-ink-50 text-ink-400' }
-	};
 </script>
 
 <svelte:head><title>Up for grabs · Veent CRM</title></svelte:head>
@@ -181,9 +175,9 @@
 				<div><StageChip stage={l.stage} /></div>
 				<div>
 					<span
-						class="rounded-[5px] px-[6px] py-[2px] font-mono text-[10.5px] font-medium {(
-							sourceLabel[l.source] ?? sourceLabel.other
-						).class}">{(sourceLabel[l.source] ?? sourceLabel.other).label}</span
+						class="rounded-[5px] px-[6px] py-[2px] font-mono text-[10.5px] font-medium {sourceLabel(
+							l.source
+						).class}">{sourceLabel(l.source).label}</span
 					>
 				</div>
 				<div class="font-mono text-[12px] text-ink-400">{formerOwner(l.formerOwnerId)}</div>

@@ -5,6 +5,7 @@
 	import WonCaptureModal from '$lib/components/leads/WonCaptureModal.svelte';
 	import LostReasonModal from '$lib/components/leads/LostReasonModal.svelte';
 	import { toasts } from '$lib/stores/toasts.svelte';
+	import { stageLabel } from '$lib/utils/stages';
 	import type { Lead, LostReason, MoveStagePayload, Stage } from '$lib/types';
 
 	let { data } = $props();
@@ -34,7 +35,7 @@
 			return;
 		}
 		await invalidateAll();
-		toasts.push(`Moved ${lead.name} to ${stage}`);
+		toasts.push(`Moved ${lead.name} to ${stageLabel(stage)}`);
 	}
 
 	async function confirmWon(payload: MoveStagePayload) {
@@ -98,7 +99,7 @@
 		{/snippet}
 	</PageHeader>
 	<p class="-mt-2 mb-4 text-[13.5px] text-ink-500">
-		Drag a card to move stages. Dropping into <span class="font-semibold text-fresh">won</span> opens
+		Drag a card to move stages. Dropping into <span class="font-semibold text-fresh">Won</span> opens
 		win capture.
 	</p>
 

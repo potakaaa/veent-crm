@@ -1,25 +1,26 @@
 import type { Actions, PageServerLoad } from './$types';
+import { listReviewLeads } from '$lib/server/db/leads';
 import { db } from '$lib/server/db';
 import { crmLeads } from '$lib/server/db/schema';
 import { eq, isNull, and } from 'drizzle-orm';
 import { fail, redirect } from '@sveltejs/kit';
 
-export const load: PageServerLoad = async () => {
-	const leads = await db
-		.select({
-			id: crmLeads.id,
-			name: crmLeads.name,
-			category: crmLeads.category,
-			platform: crmLeads.platform,
-			stage: crmLeads.stage,
-			source: crmLeads.source,
-			createdAt: crmLeads.createdAt
-		})
-		.from(crmLeads)
-		.where(and(isNull(crmLeads.deletedAt), eq(crmLeads.needsReview, true)))
-		.orderBy(crmLeads.createdAt);
+const PAGE_SIZE = 25;
 
-	return { leads };
+export const load: PageServerLoad = async ({ url }) => {
+	const page = Math.max(1, parseInt(url.searchParams.get('page') ?? '1', 10) || 1);
+
+	const result = await listReviewLeads(page, PAGE_SIZE);
+
+	return {
+		leads: result.leads,
+		pagination: {
+			page,
+			pageSize: PAGE_SIZE,
+			total: result.total,
+			totalPages: Math.max(1, Math.ceil(result.total / PAGE_SIZE))
+		}
+	};
 };
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;

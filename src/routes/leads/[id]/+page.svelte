@@ -15,6 +15,7 @@
 	import { toasts } from '$lib/stores/toasts.svelte';
 	import { canEditLead, canReassign } from '$lib/utils/permissions';
 	import { formatDate, followUpDate } from '$lib/utils/dates';
+	import { stageLabel } from '$lib/utils/stages';
 	import type { AddActivityInput, LostReason, MoveStagePayload, Stage } from '$lib/types';
 
 	let { data } = $props();
@@ -113,7 +114,7 @@
 			return;
 		}
 		await invalidateAll();
-		toasts.push(`Moved to ${stage}`);
+		toasts.push(`Moved to ${stageLabel(stage)}`);
 	}
 
 	async function confirmWon(payload: MoveStagePayload) {
@@ -301,15 +302,15 @@
 				<div class="mb-3 font-mono text-[11px] uppercase tracking-[0.5px] text-ink-300">Meta</div>
 				<div class="flex flex-col gap-2 font-mono text-[11.5px]">
 					<div class="flex justify-between">
-						<span class="text-ink-300">created</span><span>{formatDate(lead.createdAt)}</span>
+						<span class="text-ink-300">Created</span><span>{formatDate(lead.createdAt)}</span>
 					</div>
 					<div class="flex justify-between">
-						<span class="text-ink-300">last activity</span><span
+						<span class="text-ink-300">Last activity</span><span
 							>{formatDate(lead.lastActivityAt)}</span
 						>
 					</div>
 					<div class="flex justify-between">
-						<span class="text-ink-300">needs review</span>
+						<span class="text-ink-300">Needs review</span>
 						<span style="color:{lead.needsReview ? '#e11d48' : '#0e9f6e'}">
 							{lead.needsReview ? 'flagged' : 'clear'}
 						</span>

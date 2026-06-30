@@ -23,10 +23,10 @@
 		label: channelLabels[key]
 	}));
 	const outcomeOpts: { key: ActivityOutcome; label: string }[] = [
-		{ key: 'sent', label: 'sent' },
-		{ key: 'replied', label: 'replied' },
-		{ key: 'no_response', label: 'no reply' },
-		{ key: 'rejected', label: 'rejected' }
+		{ key: 'sent', label: 'Sent' },
+		{ key: 'replied', label: 'Replied' },
+		{ key: 'no_response', label: 'No reply' },
+		{ key: 'rejected', label: 'Rejected' }
 	];
 	const followOpts = [1, 3, 7, 14];
 

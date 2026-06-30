@@ -122,7 +122,7 @@
 	{/if}
 
 	{#if navLoading}
-		<TableSkeleton rows={6} cols={5} />
+		<TableSkeleton rows={6} cols={6} />
 	{:else}
 		<Card class="gap-0 overflow-hidden rounded-control py-0">
 			<Table>

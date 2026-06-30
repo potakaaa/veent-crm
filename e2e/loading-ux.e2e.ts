@@ -59,10 +59,10 @@ test.describe('Loading UX', () => {
 		test.skip(btn === null, 'no unassigned leads seeded');
 
 		const rowCountBefore = await page.getByRole('button', { name: 'Claim' }).count();
-		await page.route(CLAIM_ENDPOINT, (route) => route.fulfill({ status: 200, body: '{}' }));
-
+		// No route mock — real endpoint runs so invalidateAll() reflects true server state,
+		// not just the transient optimistic-remove window.
 		await btn!.click();
-		// Optimistic remove + server reconcile → at least one fewer Claim button.
+		await page.waitForLoadState('networkidle'); // wait for invalidateAll() re-fetch to settle
 		await expect
 			.poll(() => page.getByRole('button', { name: 'Claim' }).count())
 			.toBeLessThan(rowCountBefore);

@@ -32,7 +32,7 @@
 		return ({ cancel }) => {
 			if (resolving[leadId]) return cancel(); // duplicate-submit guard
 			resolving = { ...resolving, [leadId]: true };
-			const snapshot = shadowLeads;
+			const failedLead = shadowLeads.find((l) => l.id === leadId); // capture before remove
 			shadowLeads = removeFromList(shadowLeads, leadId); // optimistic remove
 
 			return async ({ result }) => {
@@ -40,7 +40,10 @@
 				if (result.type === 'success' || result.type === 'redirect') {
 					await invalidateAll(); // reconcile shadow with server truth
 				} else {
-					shadowLeads = snapshot; // rollback on failure/error
+					// Targeted rollback: restore only the failed lead so concurrent resolves aren't undone.
+					if (failedLead && !shadowLeads.some((l) => l.id === failedLead.id)) {
+						shadowLeads = [...shadowLeads, failedLead];
+					}
 					toasts.push('Could not resolve — please try again');
 				}
 			};

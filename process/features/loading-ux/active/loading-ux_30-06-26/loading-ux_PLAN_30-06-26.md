@@ -117,7 +117,7 @@ No schema, no API route, no auth surface touched. Risk class: **UI-only, low**.
 
 ```
 // 1. shadow copy of the list/record
-let rows = $state(structuredClonish(data.items))   // local mutable copy
+let rows = $derived(data.items)   // writable $derived — auto-resyncs to server truth after invalidateAll()
 
 async function action(target) {
   if (pending) return                 // duplicate-submit guard

@@ -8,10 +8,13 @@
 	let { children, data } = $props();
 
 	// Chrome-less routes: login, unauthorized (exact or sub-path), and error pages.
+	// Use destination pathname during in-flight navigation so the shell doesn't flash
+	// on navigations TO bare routes (e.g. redirect to /login after session expiry).
+	const targetPath = $derived(navigating.to?.url.pathname ?? page.url.pathname);
 	const bare = $derived(
-		page.url.pathname === '/login' ||
-			page.url.pathname === '/unauthorized' ||
-			page.url.pathname.startsWith('/unauthorized/') ||
+		targetPath === '/login' ||
+			targetPath === '/unauthorized' ||
+			targetPath.startsWith('/unauthorized/') ||
 			!!page.error
 	);
 
@@ -24,9 +27,9 @@
 
 <svelte:head><link rel="icon" href={favicon} /></svelte:head>
 
-<!-- Global navigation progress bar: shows only during a real navigation. It is an
-     overlay strip and never covers/hides already-rendered content. -->
-{#if navigating.to}
+<!-- Global navigation progress bar: shows only during a cross-route navigation.
+     Same-route filter/pagination changes use per-page navLoading instead. -->
+{#if isRouteChange}
 	<div
 		class="bg-primary animate-pulse fixed left-0 right-0 top-0 z-50 h-0.5"
 		role="progressbar"

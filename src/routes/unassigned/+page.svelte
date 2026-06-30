@@ -58,17 +58,17 @@
 	async function claim(lead: Lead) {
 		if (claiming[lead.id]) return; // duplicate-submit guard
 		claiming = { ...claiming, [lead.id]: true };
-		const snapshot = shadowLeads;
 		shadowLeads = removeFromList(shadowLeads, lead.id); // optimistic remove
 		try {
 			const res = await fetch(`/api/leads/${lead.id}/claim`, { method: 'POST' });
 			if (!res.ok) {
-				shadowLeads = snapshot; // rollback
+				// Targeted rollback: restore only this lead so concurrent claims aren't undone.
+				if (!shadowLeads.some((l) => l.id === lead.id)) shadowLeads = [...shadowLeads, lead];
 				toasts.push(`Failed to claim ${lead.name}`);
 				return;
 			}
 		} catch {
-			shadowLeads = snapshot; // rollback on network error
+			if (!shadowLeads.some((l) => l.id === lead.id)) shadowLeads = [...shadowLeads, lead];
 			toasts.push(`Failed to claim ${lead.name} — server error`);
 			return;
 		} finally {
@@ -115,13 +115,16 @@
 	async function assignTo(ownerId: string) {
 		if (assignPending) return; // duplicate-submit guard
 		assignPending = true;
+		// Capture IDs BEFORE mutating shadowLeads — selectedIds is $derived and re-computes
+		// to [] immediately after the filter below, so using it later in Promise.all sends nothing.
+		const ids = selectedIds;
+		const count = ids.length;
 		const snapshot = shadowLeads;
-		const count = selectedIds.length;
 		shadowLeads = shadowLeads.filter((l) => !selected[l.id]); // optimistic remove
 		let responses: Response[];
 		try {
 			responses = await Promise.all(
-				selectedIds.map((id) =>
+				ids.map((id) =>
 					fetch(`/api/leads/${id}/owner`, {
 						method: 'PATCH',
 						headers: { 'Content-Type': 'application/json' },
@@ -130,14 +133,14 @@
 				)
 			);
 		} catch {
-			shadowLeads = snapshot; // rollback on network error
+			shadowLeads = snapshot; // rollback on network error (bulk op — all-or-nothing)
 			toasts.push('Some assignments failed — refresh and try again');
 			return;
 		} finally {
 			assignPending = false;
 		}
 		if (responses.some((r) => !r.ok)) {
-			shadowLeads = snapshot; // rollback
+			shadowLeads = snapshot; // rollback (bulk op — all-or-nothing)
 			toasts.push('Some assignments failed — refresh and try again');
 			return;
 		}

@@ -33,11 +33,8 @@
 	let lostOpen = $state(false);
 	let reassignOpen = $state(false);
 
-	// Pending guards (also block duplicate submissions).
-	let stageMoving = $state(false);
-	let savingWon = $state(false);
-	let savingLost = $state(false);
-	let reassigning = $state(false);
+	// Single shared mutation guard — prevents any two actions from running concurrently.
+	let mutating = $state(false);
 
 	// DetailSkeleton while navigating to any lead-detail route (incl. id → id switches).
 	const navLoading = $derived(navigating.to?.route?.id === '/leads/[id]');
@@ -112,8 +109,8 @@
 		if (stage === lead.stage) return;
 		if (stage === 'won') return void (wonOpen = true);
 		if (stage === 'lost') return void (lostOpen = true);
-		if (stageMoving) return; // duplicate-submit guard
-		stageMoving = true;
+		if (mutating) return; // duplicate-submit guard
+		mutating = true;
 		const snapshot = lead;
 		lead = patchRecord(lead, { stage }); // optimistic stage
 		try {
@@ -133,16 +130,19 @@
 			toasts.push('Stage update failed — server error');
 			return;
 		} finally {
-			stageMoving = false;
+			mutating = false;
 		}
 		await invalidateAll(); // $effect reconciles shadow with server truth
 		toasts.push(`Moved to ${stage}`);
 	}
 
 	async function confirmWon(payload: MoveStagePayload) {
-		if (savingWon) return;
-		savingWon = true;
-		wonOpen = false;
+		if (mutating) return;
+		mutating = true;
+		// Don't close wonOpen yet — modal stays open (showing "Saving…") so the user's
+		// input (org name, deal value, date) is preserved if the request fails.
+		const snapshot = lead;
+		lead = patchRecord(lead, { stage: 'won' }); // optimistic stage update
 		try {
 			const res = await fetch(`/api/leads/${lead.id}/stage`, {
 				method: 'PATCH',
@@ -151,24 +151,29 @@
 			});
 			if (!res.ok) {
 				const msg = await res.text().catch(() => 'Server error');
+				lead = snapshot; // rollback
 				toasts.push(`Won capture failed: ${msg}`);
-				return;
+				return; // wonOpen stays true → modal remains with user's data intact
 			}
 		} catch {
+			lead = snapshot; // rollback on network error
 			toasts.push('Won capture failed — server error');
 			return;
 		} finally {
-			savingWon = false;
+			mutating = false;
 		}
+		wonOpen = false; // close modal only on success
 		await invalidateAll();
 		toasts.success('Deal won — captured 🎉');
 	}
 
 	async function confirmLost(reason: LostReason, note?: string) {
 		void note;
-		if (savingLost) return;
-		savingLost = true;
-		lostOpen = false;
+		if (mutating) return;
+		mutating = true;
+		// Same pattern: keep lostOpen = true until save succeeds so user's reason is preserved.
+		const snapshot = lead;
+		lead = patchRecord(lead, { stage: 'lost' }); // optimistic stage update
 		try {
 			const res = await fetch(`/api/leads/${lead.id}/stage`, {
 				method: 'PATCH',
@@ -177,23 +182,26 @@
 			});
 			if (!res.ok) {
 				const msg = await res.text().catch(() => 'Server error');
+				lead = snapshot; // rollback
 				toasts.push(`Mark lost failed: ${msg}`);
-				return;
+				return; // lostOpen stays true → modal remains open
 			}
 		} catch {
+			lead = snapshot; // rollback on network error
 			toasts.push('Mark lost failed — server error');
 			return;
 		} finally {
-			savingLost = false;
+			mutating = false;
 		}
+		lostOpen = false; // close modal only on success
 		await invalidateAll();
 		toasts.push('Marked lost — still searchable');
 	}
 
 	async function confirmReassign(ownerId: string) {
-		if (reassigning) return; // duplicate-submit guard
-		reassigning = true;
-		reassignOpen = false;
+		if (mutating) return; // duplicate-submit guard
+		mutating = true;
+		reassignOpen = false; // reassign modal has a single select — safe to close immediately
 		const snapshot = lead;
 		lead = patchRecord(lead, { ownerId }); // optimistic owner
 		try {
@@ -213,7 +221,7 @@
 			toasts.push('Reassign failed — server error');
 			return;
 		} finally {
-			reassigning = false;
+			mutating = false;
 		}
 		await invalidateAll(); // $effect reconciles shadow with server truth
 		toasts.success('Lead reassigned');
@@ -306,28 +314,24 @@
 
 			<!-- RIGHT RAIL -->
 			<div class="flex flex-col gap-3.5">
-				<StageControl
-					current={lead.stage}
-					disabled={!canEdit || stageMoving}
-					onSelect={selectStage}
-				/>
+				<StageControl current={lead.stage} disabled={!canEdit || mutating} onSelect={selectStage} />
 
 				<div class="flex flex-col gap-2.5 rounded-control border border-hairline bg-panel p-4">
 					<button
-						disabled={!canEdit || savingWon}
+						disabled={!canEdit || mutating}
 						onclick={() => (wonOpen = true)}
 						class="flex h-[38px] items-center justify-center gap-1.5 rounded-control bg-fresh text-[13px] font-semibold text-white disabled:opacity-50"
 					>
 						<Icon name="check" size={15} stroke={2.2} />
-						{savingWon ? 'Saving…' : 'Mark won'}
+						Mark won
 					</button>
 					<button
-						disabled={!canEdit || savingLost}
+						disabled={!canEdit || mutating}
 						onclick={() => (lostOpen = true)}
 						class="h-9 rounded-control border border-hairline bg-panel text-[13px] font-medium disabled:opacity-50"
 						style="color:#71717a"
 					>
-						{savingLost ? 'Saving…' : 'Mark lost'}
+						Mark lost
 					</button>
 				</div>
 
@@ -340,11 +344,11 @@
 						<span class="text-[13px] font-semibold">{ownerName ?? 'Unassigned'}</span>
 					</div>
 					<button
-						disabled={!canReassign(data.me) || reassigning}
+						disabled={!canReassign(data.me) || mutating}
 						onclick={() => (reassignOpen = true)}
 						class="h-[34px] w-full rounded-control border border-hairline bg-panel text-[12.5px] font-medium text-ink-600 disabled:opacity-50"
 					>
-						{reassigning ? 'Saving…' : 'Reassign'}
+						Reassign
 					</button>
 				</div>
 
@@ -376,6 +380,7 @@
 	<WonCaptureModal
 		open={true}
 		leadName={lead.name}
+		saving={mutating}
 		onclose={() => (wonOpen = false)}
 		onconfirm={confirmWon}
 	/>
@@ -384,6 +389,7 @@
 	<LostReasonModal
 		open={true}
 		leadName={lead.name}
+		saving={mutating}
 		onclose={() => (lostOpen = false)}
 		onconfirm={confirmLost}
 	/>

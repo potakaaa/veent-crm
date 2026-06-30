@@ -35,7 +35,7 @@
 		if (moving[leadId]) return; // duplicate-submit guard
 		moving = { ...moving, [leadId]: true };
 
-		const snapshot = shadowLeads;
+		const prevStage = lead.stage; // capture for targeted rollback
 		shadowLeads = patchInList(shadowLeads, leadId, { stage }); // optimistic move
 		try {
 			const res = await fetch(`/api/leads/${leadId}/stage`, {
@@ -45,12 +45,13 @@
 			});
 			if (!res.ok) {
 				const msg = await res.text().catch(() => 'Server error');
-				shadowLeads = snapshot; // rollback
+				// Targeted rollback: restore only this lead's stage so concurrent moves aren't undone.
+				shadowLeads = patchInList(shadowLeads, leadId, { stage: prevStage });
 				toasts.push(`Failed to move stage: ${msg}`);
 				return;
 			}
 		} catch {
-			shadowLeads = snapshot; // rollback on network error
+			shadowLeads = patchInList(shadowLeads, leadId, { stage: prevStage });
 			toasts.push('Failed to move stage — server error');
 			return;
 		} finally {
@@ -63,11 +64,11 @@
 	async function confirmWon(payload: MoveStagePayload) {
 		if (!wonLead || savingWon) return;
 		const lead = wonLead;
-		wonLead = null;
+		// Don't clear wonLead yet — modal stays open (showing "Saving…") so user input is
+		// preserved if the request fails and the user needs to retry.
 		savingWon = true;
-		// Optimistic: patch to won immediately
-		const snapshot = shadowLeads;
-		shadowLeads = patchInList(shadowLeads, lead.id, { stage: 'won' });
+		const prevStage = lead.stage;
+		shadowLeads = patchInList(shadowLeads, lead.id, { stage: 'won' }); // optimistic
 		try {
 			const res = await fetch(`/api/leads/${lead.id}/stage`, {
 				method: 'PATCH',
@@ -76,17 +77,18 @@
 			});
 			if (!res.ok) {
 				const msg = await res.text().catch(() => 'Server error');
-				shadowLeads = snapshot; // rollback
+				shadowLeads = patchInList(shadowLeads, lead.id, { stage: prevStage }); // targeted rollback
 				toasts.push(`Won capture failed: ${msg}`);
-				return;
+				return; // wonLead stays set → modal stays open
 			}
 		} catch {
-			shadowLeads = snapshot; // rollback
+			shadowLeads = patchInList(shadowLeads, lead.id, { stage: prevStage });
 			toasts.push('Won capture failed — server error');
 			return;
 		} finally {
 			savingWon = false;
 		}
+		wonLead = null; // close modal only on success
 		await invalidateAll();
 		toasts.success(`${lead.name} — deal won 🎉`);
 	}
@@ -94,10 +96,10 @@
 	async function confirmLost(reason: LostReason) {
 		if (!lostLead || savingLost) return;
 		const lead = lostLead;
-		lostLead = null;
+		// Same pattern: keep modal open until success so user's reason isn't lost on failure.
 		savingLost = true;
-		const snapshot = shadowLeads;
-		shadowLeads = patchInList(shadowLeads, lead.id, { stage: 'lost' });
+		const prevStage = lead.stage;
+		shadowLeads = patchInList(shadowLeads, lead.id, { stage: 'lost' }); // optimistic
 		try {
 			const res = await fetch(`/api/leads/${lead.id}/stage`, {
 				method: 'PATCH',
@@ -106,17 +108,18 @@
 			});
 			if (!res.ok) {
 				const msg = await res.text().catch(() => 'Server error');
-				shadowLeads = snapshot; // rollback
+				shadowLeads = patchInList(shadowLeads, lead.id, { stage: prevStage }); // targeted rollback
 				toasts.push(`Mark lost failed: ${msg}`);
-				return;
+				return; // lostLead stays set → modal stays open
 			}
 		} catch {
-			shadowLeads = snapshot; // rollback
+			shadowLeads = patchInList(shadowLeads, lead.id, { stage: prevStage });
 			toasts.push('Mark lost failed — server error');
 			return;
 		} finally {
 			savingLost = false;
 		}
+		lostLead = null; // close modal only on success
 		await invalidateAll();
 		toasts.push('Marked lost — still searchable');
 	}

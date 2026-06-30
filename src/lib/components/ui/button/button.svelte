@@ -83,6 +83,8 @@
 		class={cn(buttonVariants({ variant, size }), className)}
 		{href}
 		aria-disabled={loading || disabled ? 'true' : undefined}
+		tabindex={loading || disabled ? -1 : undefined}
+		onclick={loading || disabled ? (e: MouseEvent) => e.preventDefault() : undefined}
 		{...restProps as Record<string, unknown>}
 	>
 		{@render content()}

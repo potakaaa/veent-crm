@@ -68,7 +68,6 @@
 		const followUpAt = new Date(Date.now() + 3 * 86_400_000).toLocaleDateString('en-CA', {
 			timeZone: 'Asia/Manila'
 		});
-		const snapshot = shadowLeads;
 		shadowLeads = removeFromList(shadowLeads, l.id); // optimistic remove
 		try {
 			const res = await fetch(`/api/leads/${l.id}/snooze`, {
@@ -78,12 +77,13 @@
 			});
 			if (!res.ok) {
 				const msg = await res.text().catch(() => 'Server error');
-				shadowLeads = snapshot; // rollback
+				// Targeted rollback: restore only this lead so concurrent snoozes aren't undone.
+				if (!shadowLeads.some((s) => s.id === l.id)) shadowLeads = [...shadowLeads, l];
 				toasts.push(`Snooze failed: ${msg}`);
 				return;
 			}
 		} catch {
-			shadowLeads = snapshot; // rollback on network error
+			if (!shadowLeads.some((s) => s.id === l.id)) shadowLeads = [...shadowLeads, l];
 			toasts.push('Snooze failed — server error');
 			return;
 		} finally {

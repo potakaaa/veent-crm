@@ -33,7 +33,7 @@
 		{ label: 'Platform', value: lead.platform },
 		{
 			label: 'Page URL',
-			value: lead.pageUrl ?? `facebook.com/${lead.handle.replace('@', '')}`,
+			value: lead.pageUrl ?? '—',
 			href: lead.pageUrl
 		},
 		...(lead.socialFacebook && lead.socialFacebook !== lead.pageUrl

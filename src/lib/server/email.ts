@@ -3,6 +3,7 @@
 import { Resend } from 'resend';
 import { env } from '$env/dynamic/private';
 import type { DueReminder } from './reminders';
+import { buildReminderDigestHtml } from './email-templates/reminder';
 
 export type EmailMessage = {
 	to: string;
@@ -45,20 +46,12 @@ export async function sendReminderDigest({
 	}
 
 	try {
-		const escHtml = (s: string) =>
-			s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-		const items = reminders
-			.map(
-				(r) =>
-					`<li>${escHtml(r.leadName)} — follow up ${r.followUpAt}${r.overdue ? ' <strong>(overdue)</strong>' : ''}</li>`
-			)
-			.join('');
-		const html = `<p>You have ${reminders.length} follow-up(s) due:</p><ul>${items}</ul>`;
+		const html = buildReminderDigestHtml({ appUrl: env.APP_URL ?? '', reminders });
 		const resend = new Resend(env.RESEND_API_KEY);
 		const { error } = await resend.emails.send({
 			from,
 			to: repEmail,
-			subject: `Follow-up reminders (${reminders.length})`,
+			subject: `You have ${reminders.length} reminder${reminders.length > 1 ? 's' : ''} due — Veent`,
 			html
 		});
 		if (error) {

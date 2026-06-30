@@ -15,6 +15,8 @@ n8n webhook integration, and the reminders UI page.
 - `src/routes/reminders/+page.server.ts` — pending follow-ups load (current user, future follow_up_at)
 - `src/routes/+page.server.ts` — Today view load (due/overdue/replied/cold, Manila TZ boundary)
 - `src/routes/api/reminders/due/+server.ts` — secret-authed endpoint polled by n8n
+- `src/routes/api/reminders/notify/+server.ts` — POST endpoint: groups due reminders by rep, sends branded email digest per rep (secret-authed, same pattern as /api/reminders/due)
+- `src/lib/server/email-templates/reminder.ts` — pure `buildReminderDigestHtml()` branded digest builder (inline CSS, no env imports)
 - `src/routes/api/leads/[id]/activities/+server.ts` — POST endpoint for logging a touch (201/409/401/400)
 - `src/lib/server/reminders.ts` — real `getDueReminders()` + `startOfManilaDayUTC()` helper
 - `src/lib/server/db/leads.ts` — `insertActivity()` (dedup tx), `resolveFollowUpAt()`, `dbRowToLead()` (optional 2nd param)
@@ -23,6 +25,10 @@ n8n webhook integration, and the reminders UI page.
 - `src/lib/components/leads/LogTouchForm.svelte` — all 7 channels sourced from `ACTIVITY_CHANNELS`
 - `src/lib/server/db/schema.ts` — `crm_activities.follow_up_at` + partial index; `crm_activities_dedupe_uq`
 - `src/tests/reminders.spec.ts` — unit tests for VE-A1, VE-B1, VE-C2
+
+## Env
+
+- `APP_URL` — base CRM URL used for CTA links in reminder emails (e.g. `https://crm.veent.io`). Optional; links degrade gracefully if unset (relative `/leads/...` path, no throw).
 
 ## Related Context
 

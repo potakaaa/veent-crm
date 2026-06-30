@@ -57,6 +57,13 @@
       "when": 1782779247353,
       "tag": "0007_tan_mongu",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1782795060961,
+      "tag": "0008_lovely_doctor_octopus",
+      "breakpoints": true
     }
   ]
 }

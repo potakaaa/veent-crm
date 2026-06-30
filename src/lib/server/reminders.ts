@@ -61,3 +61,28 @@ export async function getDueReminders(): Promise<DueReminder[]> {
 		overdue: r.followUpAt! < startOfToday
 	}));
 }
+
+/**
+ * Group due reminders by rep email, preserving input order within each group.
+ * Reminders with a null repEmail are DROPPED (they are the "skipped" count).
+ * Pure, deterministic — no DB, no env.
+ */
+export function groupRemindersByRep(
+	reminders: DueReminder[]
+): Array<{ repEmail: string; reminders: DueReminder[] }> {
+	const order: string[] = [];
+	const byRep = new Map<string, DueReminder[]>();
+
+	for (const r of reminders) {
+		if (r.repEmail === null) continue;
+		let group = byRep.get(r.repEmail);
+		if (!group) {
+			group = [];
+			byRep.set(r.repEmail, group);
+			order.push(r.repEmail);
+		}
+		group.push(r);
+	}
+
+	return order.map((repEmail) => ({ repEmail, reminders: byRep.get(repEmail)! }));
+}

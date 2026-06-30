@@ -45,7 +45,7 @@
 		{ label: 'Platform', value: lead.platform },
 		{
 			label: 'Page URL',
-			value: lead.pageUrl ?? `facebook.com/${lead.handle.replace('@', '')}`,
+			value: lead.pageUrl ?? '—',
 			href: lead.pageUrl
 		},
 		...(lead.socialFacebook && lead.socialFacebook !== lead.pageUrl
@@ -256,8 +256,18 @@
 					{lead.handle} · {lead.category} · {lead.location}
 				</div>
 			</div>
-			<div class="flex items-center gap-2 text-[12.5px] text-ink-500">
-				owner <Avatar name={ownerName} />
+			<div class="flex items-center gap-3">
+				{#if canEdit}
+					<a
+						href="/leads/{lead.id}/edit"
+						class="rounded-control border border-hairline bg-panel px-3 py-1.5 text-[12.5px] font-medium text-ink hover:bg-panel-sunken"
+					>
+						Edit
+					</a>
+				{/if}
+				<div class="flex items-center gap-2 text-[12.5px] text-ink-500">
+					owner <Avatar name={ownerName} />
+				</div>
 			</div>
 		</div>
 

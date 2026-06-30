@@ -29,8 +29,9 @@ export async function sendEmail(msg: EmailMessage): Promise<void> {
 
 /**
  * Email-fallback reminder digest for n8n. Unlike sendEmail, this NEVER throws:
- * it no-ops with a warning when RESEND_API_KEY / RESEND_FROM is unset, and logs
- * (does not throw) on send failure — n8n is the primary path, this is the fallback.
+ * it no-ops with a warning when RESEND_API_KEY / RESEND_FROM / APP_URL is unset,
+ * and logs (does not throw) on send failure — n8n is the primary path, this is the fallback.
+ * Returns 'sent', 'skipped', or 'failed' so callers can track delivery accurately.
  */
 export async function sendReminderDigest({
 	repEmail,
@@ -38,15 +39,16 @@ export async function sendReminderDigest({
 }: {
 	repEmail: string;
 	reminders: DueReminder[];
-}): Promise<void> {
+}): Promise<'sent' | 'skipped' | 'failed'> {
 	const from = env.RESEND_FROM;
-	if (!env.RESEND_API_KEY || !from) {
-		console.warn('[reminders] RESEND_API_KEY not set — skipping email digest');
-		return;
+	const appUrl = env.APP_URL;
+	if (!env.RESEND_API_KEY || !from || !appUrl) {
+		console.warn('[reminders] RESEND_API_KEY/RESEND_FROM/APP_URL not set — skipping email digest');
+		return 'skipped';
 	}
 
 	try {
-		const html = buildReminderDigestHtml({ appUrl: env.APP_URL ?? '', reminders });
+		const html = buildReminderDigestHtml({ appUrl, reminders });
 		const resend = new Resend(env.RESEND_API_KEY);
 		const { error } = await resend.emails.send({
 			from,
@@ -56,8 +58,11 @@ export async function sendReminderDigest({
 		});
 		if (error) {
 			console.error(`[reminders] sendReminderDigest failed: ${error.message}`);
+			return 'failed';
 		}
+		return 'sent';
 	} catch (err) {
 		console.error('[reminders] sendReminderDigest threw:', err);
+		return 'failed';
 	}
 }

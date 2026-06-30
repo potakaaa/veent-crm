@@ -10,22 +10,18 @@ export const POST: RequestHandler = async ({ request }) => {
 	const secret = env.REMINDERS_ENDPOINT_SECRET;
 	const provided = request.headers.get('authorization')?.replace(/^Bearer\s+/i, '');
 
-	// STUB: if no secret is configured (v0), allow; once set, require a match.
-	if (secret && provided !== secret) throw error(401, 'unauthorized');
+	if (!secret || provided !== secret) throw error(401, 'unauthorized');
 
 	const due = await getDueReminders();
 	const groups = groupRemindersByRep(due);
 	const grouped = groups.reduce((n, g) => n + g.reminders.length, 0);
 	const skipped = due.length - grouped; // null-rep reminders dropped by grouping
 
+	let sent = 0;
 	for (const group of groups) {
-		try {
-			await sendReminderDigest({ repEmail: group.repEmail, reminders: group.reminders });
-		} catch (err) {
-			// One rep's failure must not abort the rest.
-			console.error(`[reminders] notify dispatch failed for ${group.repEmail}:`, err);
-		}
+		const status = await sendReminderDigest({ repEmail: group.repEmail, reminders: group.reminders });
+		if (status === 'sent') sent++;
 	}
 
-	return json({ sent: groups.length, skipped });
+	return json({ sent, skipped });
 };

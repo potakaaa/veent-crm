@@ -212,7 +212,7 @@ Export `groupRemindersByRep(reminders: DueReminder[]): Array<{ repEmail: string;
 
 ### TDD failing stubs (Fully-Automated rows → consumed by execute-agent red-first)
 
-```
+```typescript
 test("buildReminderDigestHtml renders lead name and CTA with leadId", () => {
   throw new Error("NOT IMPLEMENTED — TDD stub for: template renders lead name + CTA leadId")
 })

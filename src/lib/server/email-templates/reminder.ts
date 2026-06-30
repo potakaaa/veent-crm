@@ -2,7 +2,7 @@
 // MUST stay pure: no imports from $env or resend — unit-testable with no env setup.
 // Inline CSS only (email clients strip <style> blocks). Table-based layout for client compatibility.
 // Design mirrors email-templates.ts (magic-link / welcome shell) for visual consistency.
-import type { DueReminder } from '$lib/server/reminders';
+import { REMINDER_TZ, type DueReminder } from '$lib/server/reminders';
 
 // --- Veent design system palette (matches email-templates.ts exactly) -------
 const COLOR = {
@@ -37,13 +37,13 @@ function formatReminderDate(iso: string): string {
 		month: 'short',
 		day: 'numeric',
 		year: 'numeric',
-		timeZone: 'UTC'
+		timeZone: REMINDER_TZ
 	});
 	const time = d.toLocaleTimeString('en-US', {
 		hour: 'numeric',
 		minute: '2-digit',
 		hour12: true,
-		timeZone: 'UTC'
+		timeZone: REMINDER_TZ
 	});
 	return `${date} &middot; ${time}`;
 }

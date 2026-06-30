@@ -121,7 +121,7 @@ describe('sendReminderDigest (VE-C2)', () => {
 		const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
 		await expect(
 			sendReminderDigest({ repEmail: 'rep@example.com', reminders: [] })
-		).resolves.toBeUndefined();
+		).resolves.toBe('skipped');
 		expect(warn).toHaveBeenCalled();
 		warn.mockRestore();
 	});
@@ -258,7 +258,7 @@ describe('buildReminderDigestHtml', () => {
 			reminders: [makeDueReminder({ leadId: 'lead-xyz', leadName: 'Acme Sports Club' })]
 		});
 		expect(html).toContain('Acme Sports Club');
-		expect(html).toContain('/leads/lead-xyz');
+		expect(html).toContain('https://crm.veent.io/leads/lead-xyz');
 	});
 
 	it('places overdue reminders in Overdue section', () => {

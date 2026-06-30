@@ -88,6 +88,7 @@ function parseEventDate(raw: string | null): string | undefined {
 	const parts = datePart.split('/');
 	if (parts.length !== 3) return undefined;
 	const [m, d, y] = parts;
+	if (!/^\d+$/.test(m) || !/^\d+$/.test(d) || !/^\d+$/.test(y)) return undefined;
 	const month = parseInt(m, 10);
 	const day = parseInt(d, 10);
 	const year = parseInt(y, 10);

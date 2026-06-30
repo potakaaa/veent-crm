@@ -54,11 +54,16 @@ export const POST: RequestHandler = async ({ request }) => {
 			// Backfill country on existing leads that pre-date the country column.
 			const incomingCountry = normalizeCountry(parseCountryFromLocation(lead.location));
 			if (incomingCountry && dupHit[0].country == null) {
-				await db
+				const updated = await db
 					.update(crmLeads)
 					.set({ country: incomingCountry, updatedAt: new Date() })
-					.where(and(eq(crmLeads.id, dupHit[0].id), isNull(crmLeads.country)));
-				patched++;
+					.where(and(eq(crmLeads.id, dupHit[0].id), isNull(crmLeads.country)))
+					.returning({ id: crmLeads.id });
+				if (updated.length > 0) {
+					patched++;
+				} else {
+					skipped++;
+				}
 			} else {
 				skipped++;
 			}

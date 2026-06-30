@@ -1,15 +1,32 @@
 <script lang="ts">
-	import { invalidateAll } from '$app/navigation';
+	import { goto, afterNavigate, invalidateAll } from '$app/navigation';
+	import { page } from '$app/state';
+	import { SvelteURLSearchParams } from 'svelte/reactivity';
 	import PageHeader from '$lib/components/shared/PageHeader.svelte';
 	import StageChip from '$lib/components/shared/StageChip.svelte';
 	import ReassignModal from '$lib/components/leads/ReassignModal.svelte';
+	import EventBadge from '$lib/components/shared/EventBadge.svelte';
 	import Icon from '$lib/components/shared/Icon.svelte';
-	import { crm } from '$lib/services';
 	import { toasts } from '$lib/stores/toasts.svelte';
 	import { canReassign } from '$lib/utils/permissions';
+	import { Button } from '$lib/components/ui/button';
 	import type { Lead } from '$lib/types';
 
 	let { data } = $props();
+
+	let paging = $state(false);
+	afterNavigate(() => {
+		paging = false;
+	});
+
+	function navigate(patch: Record<string, string | number | undefined>) {
+		const params = new SvelteURLSearchParams(page.url.searchParams);
+		for (const [k, v] of Object.entries(patch)) {
+			if (v === undefined) params.delete(k);
+			else params.set(k, String(v));
+		}
+		goto(`?${params}`, { keepFocus: true });
+	}
 
 	let selected = $state<Record<string, boolean>>({});
 	let assignOpen = $state(false);
@@ -25,20 +42,49 @@
 	}
 
 	async function claim(lead: Lead) {
-		await crm.claimLead(lead.id);
+		const res = await fetch(`/api/leads/${lead.id}/claim`, { method: 'POST' });
+		if (!res.ok) {
+			toasts.push(`Failed to claim ${lead.name}`);
+			return;
+		}
 		await invalidateAll();
 		toasts.success(`Claimed ${lead.name}`);
 	}
 
 	async function bulkClaim() {
-		await crm.bulkClaim(selectedIds);
-		toasts.success(`Claimed ${selectedIds.length} leads`);
+		if (selectedIds.length > 200) {
+			toasts.push('Cannot bulk claim more than 200 leads at once');
+			return;
+		}
+		const res = await fetch('/api/leads/bulk-claim', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ ids: selectedIds })
+		});
+		if (!res.ok) {
+			toasts.push('Bulk claim failed');
+			return;
+		}
+		const { claimed } = await res.json();
+		toasts.success(`Claimed ${claimed} lead${claimed === 1 ? '' : 's'}`);
 		selected = {};
 		await invalidateAll();
 	}
 
 	async function assignTo(ownerId: string) {
-		await crm.reassignLeads(selectedIds, ownerId);
+		const responses = await Promise.all(
+			selectedIds.map((id) =>
+				fetch(`/api/leads/${id}/owner`, {
+					method: 'PATCH',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ ownerId })
+				})
+			)
+		);
+		if (responses.some((r) => !r.ok)) {
+			toasts.push('Some assignments failed — refresh and try again');
+			return;
+		}
 		assignOpen = false;
 		const name = data.users.find((u) => u.id === ownerId)?.name ?? 'rep';
 		toasts.success(`Assigned ${selectedIds.length} to ${name}`);
@@ -46,7 +92,14 @@
 		await invalidateAll();
 	}
 
-	const grid = 'grid grid-cols-[36px_2.2fr_1.6fr_1fr_1.1fr_110px] gap-3';
+	const grid = 'grid grid-cols-[36px_2.2fr_1.8fr_1fr_90px_1.1fr_110px] gap-3';
+
+	const sourceLabel: Record<string, { label: string; class: string }> = {
+		scraper: { label: 'Scraped', class: 'bg-teal-50 text-teal-700' },
+		manual: { label: 'Manual', class: 'bg-ink-50 text-ink-500' },
+		sheet_import: { label: 'Import', class: 'bg-amber-50 text-amber-700' },
+		other: { label: 'Other', class: 'bg-ink-50 text-ink-400' }
+	};
 </script>
 
 <svelte:head><title>Up for grabs · Veent CRM</title></svelte:head>
@@ -54,7 +107,7 @@
 <div class="px-7 pb-16 pt-6">
 	<PageHeader
 		title="Up for grabs"
-		subtitle={`${data.leads.length} leads with no active owner — former-rep leads and never-assigned pages. Claim one to start working it.`}
+		subtitle={`${data.pagination.total} leads with no active owner — former-rep leads and never-assigned pages. Claim one to start working it.`}
 	>
 		{#snippet actions()}
 			{#if selectedIds.length}
@@ -82,8 +135,8 @@
 			class="{grid} items-center border-b border-hairline bg-[#fdf7f5] px-4 py-[9px] font-mono text-[10.5px] uppercase tracking-[0.4px] text-ink-300"
 		>
 			<span></span><span>Organizer / page</span><span>Event</span><span>Stage</span><span
-				>Last owner</span
-			><span></span>
+				>Source</span
+			><span>Last owner</span><span></span>
 		</div>
 		{#each data.leads as l (l.id)}
 			<div
@@ -110,8 +163,29 @@
 					</div>
 					<div class="font-mono text-[11px] text-ink-400">{l.handle} · {l.category}</div>
 				</a>
-				<div class="truncate text-[12.5px] text-ink-600">{l.eventName ?? '—'}</div>
+				<div class="min-w-0">
+					<div class="flex items-center gap-1.5">
+						<span class="truncate text-[12.5px] text-ink-600">{l.eventName ?? '—'}</span>
+						<EventBadge date={l.eventDate} />
+					</div>
+					{#if l.eventDate}
+						<div class="font-mono text-[11px] text-ink-400">
+							{new Date(l.eventDate + 'T00:00:00').toLocaleDateString('en-PH', {
+								month: 'short',
+								day: 'numeric',
+								year: 'numeric'
+							})}
+						</div>
+					{/if}
+				</div>
 				<div><StageChip stage={l.stage} /></div>
+				<div>
+					<span
+						class="rounded-[5px] px-[6px] py-[2px] font-mono text-[10.5px] font-medium {(
+							sourceLabel[l.source] ?? sourceLabel.other
+						).class}">{(sourceLabel[l.source] ?? sourceLabel.other).label}</span
+					>
+				</div>
 				<div class="font-mono text-[12px] text-ink-400">{formerOwner(l.formerOwnerId)}</div>
 				<div>
 					<button
@@ -128,6 +202,36 @@
 			</div>
 		{/each}
 	</div>
+
+	{#if data.pagination.totalPages > 1}
+		{@const { page: pg, pageSize, total, totalPages } = data.pagination}
+		{@const start = (pg - 1) * pageSize + 1}
+		{@const end = Math.min(pg * pageSize, total)}
+		<div class="mt-5 flex items-center justify-between text-[13px] text-ink-300">
+			<span class="font-mono">{start}–{end} of {total}</span>
+			<div class="flex items-center gap-2">
+				<Button
+					variant="outline"
+					size="sm"
+					disabled={pg <= 1 || paging}
+					onclick={() => {
+						paging = true;
+						navigate({ page: pg - 1 });
+					}}>← Prev</Button
+				>
+				<span class="font-mono">Page {pg} of {totalPages}</span>
+				<Button
+					variant="outline"
+					size="sm"
+					disabled={pg >= totalPages || paging}
+					onclick={() => {
+						paging = true;
+						navigate({ page: pg + 1 });
+					}}>Next →</Button
+				>
+			</div>
+		</div>
+	{/if}
 
 	<div class="mt-3.5 flex items-center gap-2 text-[12px] text-ink-200">
 		<Icon name="info" size={14} stroke={2} />

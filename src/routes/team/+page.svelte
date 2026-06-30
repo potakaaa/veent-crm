@@ -22,7 +22,7 @@
 	import { toasts } from '$lib/stores/toasts.svelte';
 	import { canManageUsers } from '$lib/utils/permissions';
 	import { userFormSchema, USER_ROLES } from '$lib/zod/schemas';
-	import type { Role, User } from '$lib/types';
+	import type { User } from '$lib/types';
 
 	let { data } = $props();
 	const canManage = $derived(canManageUsers(data.currentUser));
@@ -40,12 +40,24 @@
 			return;
 		}
 		try {
-			await crm.createUser({ name, email, role: role as Role });
+			const res = await fetch('/api/users', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ name, email, role })
+			});
+			if (res.status === 409) {
+				formError = 'This email is already registered.';
+				return;
+			}
+			if (!res.ok) {
+				formError = 'Unable to add user — try again.';
+				return;
+			}
 			addOpen = false;
 			name = email = formError = '';
 			role = 'rep';
 			await invalidateAll();
-			toasts.success('Rep added to the allowlist');
+			toasts.success("Invite sent — they'll receive a sign-in link by email");
 		} catch (err) {
 			formError = err instanceof Error ? err.message : 'Unable to add rep.';
 		}
@@ -173,7 +185,7 @@
 <Modal
 	open={addOpen}
 	title="Add a rep"
-	subtitle="They join the allowlist and can sign in via magic link."
+	subtitle="They'll receive a welcome email with a sign-in link."
 	width={420}
 	onclose={() => (addOpen = false)}
 >

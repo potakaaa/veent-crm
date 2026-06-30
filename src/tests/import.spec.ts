@@ -129,6 +129,10 @@ describe('normalizeCountry', () => {
 		expect(normalizeCountry(null)).toBeNull();
 		expect(normalizeCountry('')).toBeNull();
 	});
+	it('ignores leading/trailing whitespace when matching', () => {
+		expect(normalizeCountry('  Philippines  ')).toBe('Philippines');
+		expect(normalizeCountry('  sg  ')).toBe('Singapore');
+	});
 });
 
 describe('slugify', () => {

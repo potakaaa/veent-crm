@@ -103,7 +103,7 @@ during every write. Filter and dropdown queries switch to the `country` column.
 **Packages:** `import` feature only (no auth/billing/session surfaces touched)
 **Risk class:** Low — additive column, no existing queries break; `getLeadCountries()` return type change is the only caller-visible shape change
 
-Callers of `getLeadCountries()` to audit: `src/routes/leads/+page.server.ts` (passes countries to the page — must destructure `.country` not `.location`).
+Callers of `getLeadCountries()` to audit: `src/routes/leads/+page.server.ts` (passes countries to the page — receives `string[]` directly; no destructuring needed since `getLeadCountries()` already maps to canonical country name strings).
 
 ---
 
@@ -163,7 +163,7 @@ const COUNTRY_MAP: Record<string, string> = {
 export function normalizeCountry(raw?: string | null): string | null {
   if (!raw) return null;
   const key = raw.trim().toLowerCase();
-  return COUNTRY_MAP[key] ?? (raw.trim() || null);
+  return COUNTRY_MAP[key] ?? null;  // unknown inputs return null — no passthrough
 }
 ```
 
@@ -316,14 +316,8 @@ Test gates (C3 5-column table):
 
 gap-resolution legend: A — proven now | D — deferred known-gap (no live DB harness in CI)
 
-Failing stubs (Fully-Automated rows):
-```ts
-// src/tests/import.spec.ts — add inside a describe('normalizeCountry') block
-test('maps PH to Philippines', () => { throw new Error('NOT IMPLEMENTED — TDD stub: normalizeCountry("PH") === "Philippines"') })
-test('maps SG to Singapore',   () => { throw new Error('NOT IMPLEMENTED — TDD stub: normalizeCountry("SG") === "Singapore"') })
-test('returns null for unknown', () => { throw new Error('NOT IMPLEMENTED — TDD stub: normalizeCountry("United States") === null') })
-test('returns null on empty',  () => { throw new Error('NOT IMPLEMENTED — TDD stub: normalizeCountry(null) === null') })
-```
+Tests implemented (Fully-Automated rows):
+All normalizeCountry stubs are now implemented and passing in `src/tests/import.spec.ts` — table-driven coverage of 15 PH aliases, 7 SG aliases, unknown-country null, empty/null/undefined null, and leading/trailing whitespace trim.
 
 Dimension findings:
 - Infra fit: PASS — additive `text` column, Drizzle migration is straightforward, pure function has no $lib/$env imports

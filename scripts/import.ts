@@ -284,6 +284,7 @@ type LeadInsert = {
 	eventDate: string | null;
 	eventDateRaw: string | null;
 	eventLink: string | null;
+	scraperOrgId: number | null;
 	notes: string | null;
 };
 
@@ -348,7 +349,7 @@ function buildLeadGroup(handle: string, events: TsvRow[]): LeadGroup {
 		pageUrl: emptyToNull(website),
 		contactEmail: email ? email.toLowerCase() : null,
 		location,
-		platform: normalizePlatform(fb || undefined, ig || undefined),
+		platform: normalizePlatform(fb || undefined, ig || undefined, rep.event_source_url || undefined),
 		source: 'scraper',
 		stage: 'new',
 		ownerId: null,
@@ -356,6 +357,7 @@ function buildLeadGroup(handle: string, events: TsvRow[]): LeadGroup {
 		eventDate: dateOnly(rep.event_starts_at),
 		eventDateRaw: emptyToNull(rep.event_starts_at),
 		eventLink: emptyToNull(rep.event_source_url),
+		scraperOrgId: rep.organizer_ref_id ? parseInt(rep.organizer_ref_id, 10) || null : null,
 		notes
 	};
 

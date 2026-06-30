@@ -35,6 +35,7 @@ function makeRow(overrides: Partial<Parameters<typeof dbRowToLead>[0]> = {}) {
 		eventDateRaw: null,
 		eventLink: null,
 		sourceRef: null,
+		scraperOrgId: null,
 		stage: 'new' as const,
 		lostReason: null,
 		ownerId: 'owner-uuid',

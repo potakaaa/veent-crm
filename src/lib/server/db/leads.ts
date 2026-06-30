@@ -371,7 +371,8 @@ export async function listUnassignedLeads(
 		order = [
 			sql`CASE WHEN ${crmLeads.eventDate} >= CURRENT_DATE THEN 0 ELSE 1 END`,
 			sql`CASE WHEN ${crmLeads.eventDate} >= CURRENT_DATE THEN ${crmLeads.eventDate} END ASC NULLS LAST`,
-			desc(sql`coalesce(${crmLeads.lastActivityAt}, ${crmLeads.createdAt})`)
+			desc(sql`coalesce(${crmLeads.lastActivityAt}, ${crmLeads.createdAt})`),
+			asc(crmLeads.id)
 		];
 	} else if (validSort === 'event') {
 		order =

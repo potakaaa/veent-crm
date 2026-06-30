@@ -32,6 +32,10 @@
 	function sortInd(col: string) {
 		return data.sort === col ? (data.dir === 'asc' ? ' ↑' : ' ↓') : '';
 	}
+	function ariaSort(col: string): 'ascending' | 'descending' | 'none' {
+		if (data.sort !== col) return 'none';
+		return data.dir === 'asc' ? 'ascending' : 'descending';
+	}
 
 	function resolveEnhance(leadId: string): SubmitFunction {
 		return ({ cancel }) => {
@@ -71,30 +75,30 @@
 					<tr
 						class="border-b border-hairline font-mono text-[10px] uppercase tracking-wider text-ink-300"
 					>
-						<th class="px-4 py-2.5 text-left"
+						<th class="px-4 py-2.5 text-left" aria-sort={ariaSort('name')}
 							><a href={sortHref('name')} class={sortCls('name')}>Name{sortInd('name')}</a></th
 						>
-						<th class="px-4 py-2.5 text-left"
+						<th class="px-4 py-2.5 text-left" aria-sort={ariaSort('category')}
 							><a href={sortHref('category')} class={sortCls('category')}
 								>Category{sortInd('category')}</a
 							></th
 						>
-						<th class="px-4 py-2.5 text-left"
+						<th class="px-4 py-2.5 text-left" aria-sort={ariaSort('platform')}
 							><a href={sortHref('platform')} class={sortCls('platform')}
 								>Platform{sortInd('platform')}</a
 							></th
 						>
-						<th class="px-4 py-2.5 text-left"
+						<th class="px-4 py-2.5 text-left" aria-sort={ariaSort('stage')}
 							><a href={sortHref('stage')} class={sortCls('stage')}>Stage{sortInd('stage')}</a></th
 						>
-						<th class="px-4 py-2.5 text-left"
+						<th class="px-4 py-2.5 text-left" aria-sort={ariaSort('source')}
 							><a href={sortHref('source')} class={sortCls('source')}>Source{sortInd('source')}</a
 							></th
 						>
-						<th class="px-4 py-2.5 text-left"
+						<th class="px-4 py-2.5 text-left" aria-sort={ariaSort('event')}
 							><a href={sortHref('event')} class={sortCls('event')}>Event{sortInd('event')}</a></th
 						>
-						<th class="px-4 py-2.5 text-left"
+						<th class="px-4 py-2.5 text-left" aria-sort={ariaSort('createdAt')}
 							><a href={sortHref('createdAt')} class={sortCls('createdAt')}
 								>Added{sortInd('createdAt')}</a
 							></th

@@ -1,25 +1,31 @@
 import type { Actions, PageServerLoad } from './$types';
+import { listReviewLeads } from '$lib/server/db/leads';
 import { db } from '$lib/server/db';
 import { crmLeads } from '$lib/server/db/schema';
 import { eq, isNull, and } from 'drizzle-orm';
 import { fail, redirect } from '@sveltejs/kit';
 
-export const load: PageServerLoad = async () => {
-	const leads = await db
-		.select({
-			id: crmLeads.id,
-			name: crmLeads.name,
-			category: crmLeads.category,
-			platform: crmLeads.platform,
-			stage: crmLeads.stage,
-			source: crmLeads.source,
-			createdAt: crmLeads.createdAt
-		})
-		.from(crmLeads)
-		.where(and(isNull(crmLeads.deletedAt), eq(crmLeads.needsReview, true)))
-		.orderBy(crmLeads.createdAt);
+const PAGE_SIZE = 25;
 
-	return { leads };
+export const load: PageServerLoad = async ({ url }) => {
+	const rawPage = Math.max(1, parseInt(url.searchParams.get('page') ?? '1', 10) || 1);
+
+	const result = await listReviewLeads(rawPage, PAGE_SIZE);
+	const totalPages = Math.max(1, Math.ceil(result.total / PAGE_SIZE));
+
+	if (rawPage > totalPages) {
+		redirect(307, totalPages > 1 ? `?page=${totalPages}` : '/review');
+	}
+
+	return {
+		leads: result.leads,
+		pagination: {
+			page: rawPage,
+			pageSize: PAGE_SIZE,
+			total: result.total,
+			totalPages
+		}
+	};
 };
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
@@ -31,6 +37,9 @@ export const actions: Actions = {
 		if (typeof leadId !== 'string' || !leadId) return fail(400, { error: 'Missing leadId' });
 		if (!UUID_RE.test(leadId)) return fail(400, { error: 'Invalid leadId' });
 
+		const rawPage = parseInt(data.get('page') as string, 10);
+		const page = Number.isFinite(rawPage) && rawPage > 1 ? rawPage : 1;
+
 		const [updated] = await db
 			.update(crmLeads)
 			.set({ needsReview: false, updatedAt: new Date() })
@@ -41,6 +50,6 @@ export const actions: Actions = {
 
 		if (!updated) return fail(404, { error: 'Lead not found or already resolved' });
 
-		redirect(303, '/review');
+		redirect(303, page > 1 ? `/review?page=${page}` : '/review');
 	}
 };

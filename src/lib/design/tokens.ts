@@ -56,11 +56,11 @@ export const platformToken = (platform: string) =>
 
 /** Activity-outcome chip colors. */
 export const OUTCOME_TOKENS: Record<string, { label: string; hex: string }> = {
-	sent: { label: 'sent', hex: '#64748b' },
-	replied: { label: 'replied', hex: '#0e9f6e' },
-	no_response: { label: 'no response', hex: '#c2710c' },
-	rejected: { label: 'rejected', hex: '#e11d48' },
-	other: { label: 'other', hex: '#71717a' }
+	sent: { label: 'Sent', hex: '#64748b' },
+	replied: { label: 'Replied', hex: '#0e9f6e' },
+	no_response: { label: 'No response', hex: '#c2710c' },
+	rejected: { label: 'Rejected', hex: '#e11d48' },
+	other: { label: 'Other', hex: '#71717a' }
 };
 
 /** Deterministic avatar color for a rep, by name. */

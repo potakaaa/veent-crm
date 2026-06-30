@@ -14,7 +14,7 @@
 	import ReassignModal from '$lib/components/leads/ReassignModal.svelte';
 	import { toasts } from '$lib/stores/toasts.svelte';
 	import { canEditLead, canReassign } from '$lib/utils/permissions';
-	import { formatDate } from '$lib/utils/dates';
+	import { formatDate, followUpDate } from '$lib/utils/dates';
 	import type { AddActivityInput, LostReason, MoveStagePayload, Stage } from '$lib/types';
 
 	let { data } = $props();
@@ -56,18 +56,18 @@
 	]);
 
 	async function logTouch(input: AddActivityInput) {
-		const occurredAt = new Date().toISOString();
+		const followUpAt =
+			input.followUpInDays != null ? followUpDate(input.followUpInDays) : undefined;
+
 		let res: Response;
 		try {
-			res = await fetch(`/api/leads/${lead.id}/activities`, {
+			res = await fetch(`/api/leads/${lead.id}/touch`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
-					leadId: lead.id,
 					channel: input.channel,
 					outcome: input.outcome,
-					occurredAt,
-					followUpInDays: input.followUpInDays,
+					followUpAt,
 					notes: input.note
 				})
 			});
@@ -76,12 +76,16 @@
 			throw new Error('network');
 		}
 
-		if (res.status === 409) {
-			toasts.push('Already logged — touch already recorded for this channel/time');
-			throw new Error('duplicate');
-		}
 		if (!res.ok) {
-			toasts.push('Touch logging failed — please try again');
+			const text = await res.text().catch(() => '');
+			let msg = 'Touch logging failed — please try again';
+			try {
+				const j = JSON.parse(text) as Record<string, unknown>;
+				if (typeof j?.message === 'string') msg = j.message;
+			} catch {
+				/* ignore parse error */
+			}
+			toasts.push(msg);
 			throw new Error('http');
 		}
 

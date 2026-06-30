@@ -77,3 +77,15 @@ export const addDays = (iso: string, days: number): string => {
 	d.setDate(d.getDate() + days);
 	return d.toISOString();
 };
+
+/**
+ * Return a YYYY-MM-DD date string for N days from `now` in Asia/Manila time
+ * (UTC+8, no DST). Mirrors the server-side parse in /api/leads/[id]/touch:
+ * `new Date(dateStr + 'T00:00:00+08:00')`.
+ */
+export function followUpDate(days: number, now: Date = new Date()): string {
+	// Shift to Manila-local clock (UTC+8), then add days on the UTC date fields.
+	const manila = new Date(now.getTime() + 8 * 3_600_000);
+	manila.setUTCDate(manila.getUTCDate() + days);
+	return manila.toISOString().slice(0, 10);
+}

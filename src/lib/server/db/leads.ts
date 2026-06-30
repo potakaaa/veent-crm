@@ -4,7 +4,21 @@
  */
 import { db } from './index';
 import { crmLeads, crmUsers, crmActivities, crmLeadHistory } from './schema';
-import { eq, isNull, isNotNull, desc, and, ne, inArray, sql } from 'drizzle-orm';
+import {
+	eq,
+	isNull,
+	isNotNull,
+	desc,
+	asc,
+	and,
+	or,
+	ne,
+	inArray,
+	ilike,
+	count,
+	sql,
+	type SQL
+} from 'drizzle-orm';
 import type {
 	Lead,
 	User,
@@ -142,6 +156,109 @@ export async function listLeads(): Promise<Lead[]> {
 		.where(isNull(crmLeads.deletedAt))
 		.orderBy(desc(sql`coalesce(${crmLeads.lastActivityAt}, ${crmLeads.createdAt})`));
 	return rows.map((row) => dbRowToLead(row));
+}
+
+/**
+ * Distinct non-null lead locations ("countries"), alphabetically sorted.
+ * Powers the country filter dropdown on the leads page.
+ */
+export async function getLeadCountries(): Promise<string[]> {
+	const rows = await db
+		.selectDistinct({ location: crmLeads.location })
+		.from(crmLeads)
+		.where(and(isNull(crmLeads.deletedAt), isNotNull(crmLeads.location)))
+		.orderBy(asc(crmLeads.location));
+	return rows.map((r) => r.location as string);
+}
+
+export interface ListLeadsParams {
+	userId: string;
+	segment?: 'mine' | 'all' | 'unassigned' | 'lost';
+	stage?: string;
+	platform?: string;
+	country?: string;
+	staleOnly?: boolean;
+	search?: string;
+	page?: number;
+	pageSize?: number;
+}
+
+/**
+ * Server-backed, SQL-level filtered + paginated lead listing.
+ * Preserves the listLeads() invariants: sort by COALESCE(last_activity_at, created_at) DESC,
+ * hide lost leads unless the 'lost' segment is active, exclude soft-deleted rows.
+ */
+export async function listLeadsFiltered(
+	params: ListLeadsParams
+): Promise<{ leads: Lead[]; total: number }> {
+	const {
+		userId,
+		segment = 'mine',
+		stage,
+		platform,
+		country,
+		staleOnly = false,
+		search,
+		page = 1,
+		pageSize = 25
+	} = params;
+
+	const offset = (Math.max(1, page) - 1) * pageSize;
+
+	const conditions: SQL[] = [isNull(crmLeads.deletedAt) as SQL];
+
+	// Segment
+	if (segment === 'mine') conditions.push(eq(crmLeads.ownerId, userId));
+	else if (segment === 'unassigned') conditions.push(isNull(crmLeads.ownerId) as SQL);
+	else if (segment === 'lost') conditions.push(sql`${crmLeads.stage} = 'lost'`);
+
+	// Product rule: hide lost unless explicitly in the lost segment
+	if (segment !== 'lost') conditions.push(sql`${crmLeads.stage} <> 'lost'`);
+
+	// Stage filter
+	if (stage) conditions.push(sql`${crmLeads.stage} = ${stage}`);
+
+	// Platform filter
+	if (platform) conditions.push(sql`${crmLeads.platform} = ${platform}`);
+
+	// Country filter (location column)
+	if (country) conditions.push(eq(crmLeads.location, country));
+
+	// Stale only: no activity for > 30 days
+	if (staleOnly) {
+		conditions.push(
+			sql`COALESCE(${crmLeads.lastActivityAt}, ${crmLeads.createdAt}) < NOW() - INTERVAL '30 days'`
+		);
+	}
+
+	// Search: case-insensitive against name and normalizedHandle
+	if (search) {
+		const like = `%${search}%`;
+		conditions.push(
+			or(ilike(crmLeads.name, like), ilike(sql`COALESCE(${crmLeads.normalizedHandle}, '')`, like))!
+		);
+	}
+
+	const where = and(...conditions);
+
+	const [countResult, rows] = await Promise.all([
+		db.select({ total: count() }).from(crmLeads).where(where),
+		db
+			.select()
+			.from(crmLeads)
+			.where(where)
+			.orderBy(
+				desc(sql`COALESCE(${crmLeads.lastActivityAt}, ${crmLeads.createdAt})`),
+				asc(crmLeads.id) // stable secondary sort: prevents duplicate/missing rows across pages
+			)
+			.limit(pageSize)
+			.offset(offset)
+	]);
+
+	return {
+		leads: rows.map((row) => dbRowToLead(row)),
+		total: countResult[0].total
+	};
 }
 
 export async function getLead(id: string): Promise<Lead | null> {

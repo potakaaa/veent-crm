@@ -118,7 +118,6 @@
 			</div>
 			{#each manager as item (item.href)}{@render navButton(item)}{/each}
 		{/if}
-
 	</nav>
 
 	<!-- user footer -->

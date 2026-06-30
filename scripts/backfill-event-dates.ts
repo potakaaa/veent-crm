@@ -12,6 +12,10 @@
 const dryRun = process.argv.includes('--dry-run');
 const load = process.argv.includes('--load');
 
+if (dryRun && load) {
+	console.error('--dry-run and --load are mutually exclusive');
+	process.exit(1);
+}
 if (!dryRun && !load) {
 	console.error('Pass --dry-run or --load');
 	process.exit(1);
@@ -59,8 +63,8 @@ const neonRows = await scraperClient<
 				SELECT e2.starts_at FROM events_event e2
 				WHERE e2.organizer_ref_id = e.organizer_ref_id AND e2.starts_at IS NOT NULL
 				ORDER BY
-					CASE WHEN e2.starts_at >= NOW() THEN 0 ELSE 1 END,
-					CASE WHEN e2.starts_at >= NOW() THEN e2.starts_at END ASC,
+					CASE WHEN e2.starts_at >= CURRENT_DATE THEN 0 ELSE 1 END,
+					CASE WHEN e2.starts_at >= CURRENT_DATE THEN e2.starts_at END ASC,
 					e2.starts_at DESC
 				LIMIT 1
 			),
@@ -98,7 +102,7 @@ for (const lead of leads) {
 			.update(crmLeads)
 			.set({
 				scraperOrgId: match.orgId,
-				eventDate: match.eventDate ?? undefined,
+				eventDate: match.eventDate ?? null,
 				updatedAt: new Date()
 			})
 			.where(eq(crmLeads.id, lead.id));

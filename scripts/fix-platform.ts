@@ -12,6 +12,10 @@ import { normalizePlatform } from '../src/lib/server/import-utils';
 const dryRun = process.argv.includes('--dry-run');
 const load = process.argv.includes('--load');
 
+if (dryRun && load) {
+	console.error('--dry-run and --load are mutually exclusive');
+	process.exit(1);
+}
 if (!dryRun && !load) {
 	console.error('Pass --dry-run or --load');
 	process.exit(1);
@@ -19,7 +23,7 @@ if (!dryRun && !load) {
 
 const postgres = (await import('postgres')).default;
 const { drizzle } = await import('drizzle-orm/postgres-js');
-const { isNull, or, eq, isNotNull } = await import('drizzle-orm');
+const { isNull, or, eq, isNotNull, and } = await import('drizzle-orm');
 const schema = await import('../src/lib/server/db/schema');
 
 const url = process.env.DATABASE_URL;
@@ -40,7 +44,9 @@ const leads = await db
 		pageUrl: crmLeads.pageUrl
 	})
 	.from(crmLeads)
-	.where(or(isNull(crmLeads.platform), eq(crmLeads.platform, 'Other')));
+	.where(
+		and(or(isNull(crmLeads.platform), eq(crmLeads.platform, 'Other')), isNull(crmLeads.deletedAt))
+	);
 
 console.log(`Found ${leads.length} leads with null/Other platform`);
 
@@ -50,11 +56,12 @@ let unchanged = 0;
 for (const lead of leads) {
 	// Derive platform: social URLs first, then event link, then page URL as last resort.
 	// page_url is the organizer's website — lower confidence but better than nothing.
-	const derived = normalizePlatform(
-		lead.socialFacebook ?? undefined,
-		lead.socialInstagram ?? undefined,
-		lead.eventLink ?? lead.pageUrl ?? undefined
-	);
+	const derived =
+		normalizePlatform(
+			lead.socialFacebook ?? undefined,
+			lead.socialInstagram ?? undefined,
+			lead.eventLink ?? undefined
+		) ?? normalizePlatform(undefined, undefined, lead.pageUrl ?? undefined);
 
 	if (!derived || derived === lead.platform) {
 		unchanged++;

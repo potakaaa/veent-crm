@@ -108,16 +108,23 @@ export function mapCategory(value: string): { category: CrmLeadCategory; needsRe
 	return { category: 'Other', needsReview: true };
 }
 
-const PLATFORM_URL_MAP: Array<[RegExp, CrmLeadPlatform]> = [
-	[/facebook\.com/i, 'Facebook'],
-	[/instagram\.com/i, 'Instagram'],
-	[/tiktok\.com/i, 'TikTok'],
-	[/twitter\.com|x\.com/i, 'Twitter/X']
+const PLATFORM_HOSTNAME_MAP: Array<[string, CrmLeadPlatform]> = [
+	['facebook.com', 'Facebook'],
+	['instagram.com', 'Instagram'],
+	['tiktok.com', 'TikTok'],
+	['twitter.com', 'Twitter/X'],
+	['x.com', 'Twitter/X']
 ];
 
 function platformFromUrl(url: string): CrmLeadPlatform | null {
-	for (const [re, platform] of PLATFORM_URL_MAP) {
-		if (re.test(url)) return platform;
+	let hostname: string;
+	try {
+		hostname = new URL(url).hostname.toLowerCase();
+	} catch {
+		return null;
+	}
+	for (const [domain, platform] of PLATFORM_HOSTNAME_MAP) {
+		if (hostname === domain || hostname.endsWith('.' + domain)) return platform;
 	}
 	return null;
 }

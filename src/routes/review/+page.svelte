@@ -63,11 +63,11 @@
 		discarding = { ...discarding, [target.id]: true };
 		const failedLead = shadowLeads.find((l) => l.id === target.id);
 		shadowLeads = removeFromList(shadowLeads, target.id); // optimistic remove
-		discardTarget = null;
 
 		try {
 			const res = await fetch(`/api/leads/${target.id}/discard`, { method: 'DELETE' });
 			if (!res.ok) throw new Error();
+			discardTarget = null; // close modal only on success
 			await invalidateAll();
 		} catch {
 			if (failedLead && !shadowLeads.some((l) => l.id === failedLead.id)) {

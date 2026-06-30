@@ -203,7 +203,6 @@
 	async function confirmDiscard() {
 		if (mutating) return;
 		mutating = true;
-		discardOpen = false;
 		try {
 			const res = await fetch(`/api/leads/${lead.id}/discard`, { method: 'DELETE' });
 			if (!res.ok) {
@@ -217,6 +216,7 @@
 		} finally {
 			mutating = false;
 		}
+		discardOpen = false; // close modal only on success
 		await goto('/leads');
 	}
 

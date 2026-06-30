@@ -83,7 +83,8 @@
 		subtitle="Sorted by last activity — freshest first. Search the command bar before adding a page."
 	>
 		{#snippet actions()}
-			<span class="font-mono text-[12px] text-ink-300">{data.total} shown · last activity ↓</span>
+			<span class="font-mono text-[12px] text-ink-300">{data.total} matching · last activity ↓</span
+			>
 			<Button variant="outline" size="sm" href={exportHref}>Export CSV</Button>
 		{/snippet}
 	</PageHeader>
@@ -114,8 +115,9 @@
 			>
 			<SelectContent>
 				<SelectItem value="" label="All stages">All stages</SelectItem>
-				{#each LEAD_STAGES as s}<SelectItem value={s} label={stageLabel(s)}
-						>{stageLabel(s)}</SelectItem
+				{#each LEAD_STAGES.filter((s) => s !== 'lost' || data.filters.segment === 'lost') as s}<SelectItem
+						value={s}
+						label={stageLabel(s)}>{stageLabel(s)}</SelectItem
 					>{/each}
 			</SelectContent>
 		</Select>

@@ -88,11 +88,17 @@ function parseEventDate(raw: string | null): string | undefined {
 	const parts = datePart.split('/');
 	if (parts.length !== 3) return undefined;
 	const [m, d, y] = parts;
-	const yyyy = y.padStart(4, '0');
-	const mm = m.padStart(2, '0');
-	const dd = d.padStart(2, '0');
-	const iso = `${yyyy}-${mm}-${dd}`;
-	return isNaN(new Date(iso).getTime()) ? undefined : iso;
+	const month = parseInt(m, 10);
+	const day = parseInt(d, 10);
+	const year = parseInt(y, 10);
+	// Reject out-of-range values explicitly — new Date() silently rolls over (e.g. Feb 30 → Mar 2)
+	if (month < 1 || month > 12 || day < 1 || day > 31 || year < 1000) return undefined;
+	const daysInMonth = new Date(year, month, 0).getDate();
+	if (day > daysInMonth) return undefined;
+	const yyyy = String(year).padStart(4, '0');
+	const mm = String(month).padStart(2, '0');
+	const dd = String(day).padStart(2, '0');
+	return `${yyyy}-${mm}-${dd}`;
 }
 
 function validUrl(raw: string | null | undefined): string | undefined {
@@ -159,9 +165,15 @@ async function fetchPage(
 ): Promise<{ results: ScraperLead[]; pages: number; total: number }> {
 	const params = new URLSearchParams({ limit: String(FETCH_LIMIT), page: String(page) });
 	if (countryArg) params.set('country', countryArg);
-	const res = await fetch(`${SCRAPER_BASE}/api/leads/?${params}`);
-	if (!res.ok) throw new Error(`Scraper returned ${res.status}`);
-	return res.json() as any;
+	const ac = new AbortController();
+	const timer = setTimeout(() => ac.abort(), 15_000);
+	try {
+		const res = await fetch(`${SCRAPER_BASE}/api/leads/?${params}`, { signal: ac.signal });
+		if (!res.ok) throw new Error(`Scraper returned ${res.status}`);
+		return res.json() as any;
+	} finally {
+		clearTimeout(timer);
+	}
 }
 
 // ---------------------------------------------------------------------------
@@ -177,16 +189,23 @@ async function postBatch(leads: ReturnType<typeof toIngestLead>[]): Promise<{
 	if (DRY_RUN) {
 		return { received: leads.length, created: 0, skipped: 0, patched: 0, review: 0 };
 	}
-	const res = await fetch(CRM_INGEST, {
-		method: 'POST',
-		headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${INGEST_SECRET}` },
-		body: JSON.stringify({ leads })
-	});
-	if (!res.ok) {
-		const text = await res.text();
-		throw new Error(`CRM ingest returned ${res.status}: ${text}`);
+	const ac = new AbortController();
+	const timer = setTimeout(() => ac.abort(), 30_000);
+	try {
+		const res = await fetch(CRM_INGEST, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${INGEST_SECRET}` },
+			body: JSON.stringify({ leads }),
+			signal: ac.signal
+		});
+		if (!res.ok) {
+			const text = await res.text();
+			throw new Error(`CRM ingest returned ${res.status}: ${text}`);
+		}
+		return res.json() as any;
+	} finally {
+		clearTimeout(timer);
 	}
-	return res.json() as any;
 }
 
 // ---------------------------------------------------------------------------

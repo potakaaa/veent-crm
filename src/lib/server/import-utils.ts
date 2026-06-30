@@ -145,7 +145,7 @@ export function normalizePlatform(
 }
 
 // Variant spellings → canonical country name. Lowercased keys; lookup is case-insensitive.
-// Covers Philippines and Singapore (the only two markets in v1); unknown countries pass through.
+// Covers Philippines and Singapore (the only two markets in v1); unknown inputs return null.
 const COUNTRY_MAP: Record<string, string> = {
 	// Philippines
 	philippines: 'Philippines',

@@ -60,8 +60,8 @@ during every write. Filter and dropdown queries switch to the `country` column.
   field (parse last segment after the final comma, or full string if no comma)
 - `getLeadCountries()` — switch to `selectDistinct({ country })` on `country` column
 - `listLeadsFiltered()` — switch country-filter clause to `eq(crmLeads.country, country)`
-- Unit tests for `normalizeCountry()` covering Philippines, Singapore, and unknown passthrough
-- One-off backfill in the import script: existing rows can be updated via a separate `bun run db:push` after schema migration (no data backfill script needed for v1 — new writes will normalize going forward)
+- Unit tests for `normalizeCountry()` covering Philippines, Singapore, and null return for unknowns
+- Historical backfill: existing `country = NULL` rows are backfilled by re-pushing scraper events through the ingest endpoint, which upserts `country` when it is `NULL` and an incoming location yields a PH/SG match (`scripts/push-from-scraper.ts`)
 
 **Out of scope (v1):**
 - Backfilling country for already-imported leads (data that already exists will have `country = NULL` until re-imported or manually updated)
@@ -90,7 +90,7 @@ during every write. Filter and dropdown queries switch to the `country` column.
 | Contract | Change |
 |----------|--------|
 | `crm_leads` table schema | New nullable `country text` column (additive — no existing query breaks) |
-| `getLeadCountries()` return type | Now returns `{ country: string }[]` instead of `{ location: string }[]` — callers that destructure `location` from this function must be updated |
+| `getLeadCountries()` return type | Still returns `string[]` — values are now canonical country names instead of raw location strings; no structural change for callers |
 | `listLeadsFiltered()` `country` param | Semantics tighten: now matches the new indexed `country` column (canonical value), not the free-text `location` field |
 | `ingestLeadSchema` (Zod) | No change — `country` is derived server-side, not sent by scraper |
 | TSV column spec | No change — `venue_country` (col 32) was already the source; we now normalize it |
@@ -113,7 +113,7 @@ Callers of `getLeadCountries()` to audit: `src/routes/leads/+page.server.ts` (pa
 |---|-----------|--------------|
 | AC-1 | `normalizeCountry('PH')` → `'Philippines'`; `normalizeCountry('SG')` → `'Singapore'` | Unit test (Fully-Automated) |
 | AC-2 | All Philippines variant spellings in the map resolve to `'Philippines'` | Unit test (Fully-Automated) |
-| AC-3 | Unknown country strings pass through unchanged (not silently dropped) | Unit test (Fully-Automated) |
+| AC-3 | Unknown country strings return `null` (only Philippines and Singapore are stored) | Unit test (Fully-Automated) |
 | AC-4 | `null`/`undefined`/empty input returns `null` | Unit test (Fully-Automated) |
 | AC-5 | TSV import: PH leads have `crm_leads.country = 'Philippines'` after load | Hybrid (dry-run output check) |
 | AC-6 | Push ingest: POSTing `location: "Makati, Philippines"` sets `country = 'Philippines'` | Hybrid (DB spot-check) |
@@ -260,7 +260,7 @@ function parseCountryFromLocation(location?: string | null): string | null {
 ## Known Gaps (v1)
 
 - Existing `crm_leads` rows will have `country = NULL` after the migration. They will not appear in the country filter dropdown until re-imported or manually patched.
-- Country map only covers PH and SG. Other countries passthrough raw text (normalized to title case as-is).
+- Country map only covers PH and SG. Other country strings return `null` and are not stored.
 - `parseCountryFromLocation` is a heuristic (last comma-segment). Scrapers that send non-standard location strings (e.g. `"Philippines"` alone, or `"Manila"` with no country) will produce `null` country for the latter.
 
 ---
@@ -308,7 +308,7 @@ Test gates (C3 5-column table):
 
 | criterion id | behavior | strategy | proving test | gap-resolution |
 |---|---|---|---|---|
-| AC-1/2/3/4 | normalizeCountry maps PH/SG variants, passes unknowns, returns null on empty input | Fully-Automated | `bun run test:unit -- src/tests/import.spec.ts` (normalizeCountry describe block) | A |
+| AC-1/2/3/4 | normalizeCountry maps PH/SG variants, returns null for unknowns and empty input | Fully-Automated | `bun run test:unit -- src/tests/import.spec.ts` (normalizeCountry describe block) | A |
 | AC-9a | Zero TypeScript errors across all 7 changed files | Fully-Automated | `bun run check` | A |
 | AC-5 | TSV import writes `country = 'Philippines'` for PH rows | Hybrid | Dry-run import + inspect reconciliation output; or `psql` spot-check after `--load` | D |
 | AC-6 | Push ingest sets `country` from `location` field | Hybrid | POST to `/api/leads/ingest` + DB spot-check | D |
@@ -321,7 +321,7 @@ Failing stubs (Fully-Automated rows):
 // src/tests/import.spec.ts — add inside a describe('normalizeCountry') block
 test('maps PH to Philippines', () => { throw new Error('NOT IMPLEMENTED — TDD stub: normalizeCountry("PH") === "Philippines"') })
 test('maps SG to Singapore',   () => { throw new Error('NOT IMPLEMENTED — TDD stub: normalizeCountry("SG") === "Singapore"') })
-test('passes unknown through', () => { throw new Error('NOT IMPLEMENTED — TDD stub: normalizeCountry("United States") === "United States"') })
+test('returns null for unknown', () => { throw new Error('NOT IMPLEMENTED — TDD stub: normalizeCountry("United States") === null') })
 test('returns null on empty',  () => { throw new Error('NOT IMPLEMENTED — TDD stub: normalizeCountry(null) === null') })
 ```
 
@@ -347,7 +347,7 @@ Accepted by: user (accepted with plan fix — 2026-06-30)
 
 ## Autonomous Goal Block
 
-```
+```text
 SESSION GOAL: Country normalization — Philippines and Singapore filters
 Charter + umbrella plan: N/A — single plan
 Autonomy: proceed without approval pauses on all reversible decisions; surface only irreversible or outward-facing actions not in this contract

@@ -81,30 +81,45 @@ describe('mapCategory', () => {
 });
 
 describe('normalizeCountry', () => {
-	it('passes through the canonical Philippines name', () => {
-		expect(normalizeCountry('Philippines')).toBe('Philippines');
-	});
-	it('maps PH to Philippines', () => {
-		expect(normalizeCountry('PH')).toBe('Philippines');
-	});
-	it('maps Pilipinas to Philippines', () => {
-		expect(normalizeCountry('Pilipinas')).toBe('Philippines');
-	});
-	it('maps "the Philippines" to Philippines', () => {
-		expect(normalizeCountry('the Philippines')).toBe('Philippines');
-	});
-	it('maps lowercase philippines to Philippines', () => {
-		expect(normalizeCountry('philippines')).toBe('Philippines');
-	});
-	it('passes through the canonical Singapore name', () => {
-		expect(normalizeCountry('Singapore')).toBe('Singapore');
-	});
-	it('maps SG to Singapore', () => {
-		expect(normalizeCountry('SG')).toBe('Singapore');
-	});
-	it('maps lowercase sg to Singapore', () => {
-		expect(normalizeCountry('sg')).toBe('Singapore');
-	});
+	// Table-driven: every supported alias from COUNTRY_MAP
+	const PH_ALIASES = [
+		'Philippines',
+		'ph',
+		'PH',
+		'Pilipinas',
+		'pilipinas',
+		'the Philippines',
+		'the philippines',
+		'Republic of the Philippines',
+		'republic of the philippines',
+		'Phil',
+		'phil',
+		'Phils',
+		'phils',
+		'RP',
+		'rp'
+	];
+	const SG_ALIASES = [
+		'Singapore',
+		'sg',
+		'SG',
+		'Singapura',
+		'singapura',
+		'Republic of Singapore',
+		'republic of singapore'
+	];
+
+	for (const alias of PH_ALIASES) {
+		it(`maps "${alias}" → Philippines`, () => {
+			expect(normalizeCountry(alias)).toBe('Philippines');
+		});
+	}
+	for (const alias of SG_ALIASES) {
+		it(`maps "${alias}" → Singapore`, () => {
+			expect(normalizeCountry(alias)).toBe('Singapore');
+		});
+	}
+
 	it('returns null for countries other than Philippines / Singapore', () => {
 		expect(normalizeCountry('United States')).toBeNull();
 		expect(normalizeCountry('Malaysia')).toBeNull();

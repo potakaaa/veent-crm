@@ -57,7 +57,7 @@ export const POST: RequestHandler = async ({ request }) => {
 				await db
 					.update(crmLeads)
 					.set({ country: incomingCountry, updatedAt: new Date() })
-					.where(eq(crmLeads.id, dupHit[0].id));
+					.where(and(eq(crmLeads.id, dupHit[0].id), isNull(crmLeads.country)));
 				patched++;
 			} else {
 				skipped++;

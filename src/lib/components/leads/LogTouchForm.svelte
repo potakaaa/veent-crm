@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { Textarea } from '$lib/components/ui/textarea';
 	import { Button } from '$lib/components/ui/button';
-	import { ACTIVITY_CHANNELS, ACTIVITY_OUTCOMES } from '$lib/zod/schemas';
+	import { ACTIVITY_CHANNELS } from '$lib/zod/schemas';
 	import { OUTCOME_TOKENS } from '$lib/design/tokens';
 	import type { ActivityChannel, ActivityOutcome, AddActivityInput } from '$lib/types';
 
@@ -23,10 +23,13 @@
 		key,
 		label: channelLabels[key]
 	}));
-	const outcomeOpts: { key: ActivityOutcome; label: string }[] = ACTIVITY_OUTCOMES.map((key) => ({
-		key,
-		label: OUTCOME_TOKENS[key]?.label ?? key
-	}));
+	const FORM_OUTCOMES = [
+		'sent',
+		'replied',
+		'no_response',
+		'rejected'
+	] as const satisfies readonly ActivityOutcome[];
+	const outcomeOpts = FORM_OUTCOMES.map((key) => ({ key, label: OUTCOME_TOKENS[key].label }));
 	const followOpts = [1, 3, 7, 14];
 
 	let channel = $state<ActivityChannel>('fb_dm');

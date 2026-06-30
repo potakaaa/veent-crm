@@ -8,16 +8,19 @@ import { fail, redirect } from '@sveltejs/kit';
 const PAGE_SIZE = 25;
 
 export const load: PageServerLoad = async ({ url }) => {
-	const page = Math.max(1, parseInt(url.searchParams.get('page') ?? '1', 10) || 1);
+	const rawPage = Math.max(1, parseInt(url.searchParams.get('page') ?? '1', 10) || 1);
 
-	const result = await listReviewLeads(page, PAGE_SIZE);
+	const result = await listReviewLeads(rawPage, PAGE_SIZE);
 	const totalPages = Math.max(1, Math.ceil(result.total / PAGE_SIZE));
-	const normalizedPage = Math.min(page, totalPages);
+
+	if (rawPage > totalPages) {
+		redirect(307, totalPages > 1 ? `?page=${totalPages}` : '/review');
+	}
 
 	return {
 		leads: result.leads,
 		pagination: {
-			page: normalizedPage,
+			page: rawPage,
 			pageSize: PAGE_SIZE,
 			total: result.total,
 			totalPages

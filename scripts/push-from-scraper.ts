@@ -8,34 +8,51 @@
  *   bun run scripts/push-from-scraper.ts --country=Singapore
  */
 
-const SCRAPER_BASE  = 'http://localhost:8000';
-const CRM_INGEST    = 'http://localhost:5173/api/leads/ingest';
+const SCRAPER_BASE = 'http://localhost:8000';
+const CRM_INGEST = 'http://localhost:5173/api/leads/ingest';
 const INGEST_SECRET = process.env.INGEST_SECRET ?? 'dev-scraper-secret';
-const BATCH_SIZE    = 100;
-const FETCH_LIMIT   = 100;
+const BATCH_SIZE = 100;
+const FETCH_LIMIT = 100;
 
-const args      = process.argv.slice(2);
-const DRY_RUN   = args.includes('--dry-run');
-const countryArg = args.find(a => a.startsWith('--country='))?.split('=')[1];
+const args = process.argv.slice(2);
+const DRY_RUN = args.includes('--dry-run');
+const countryArg = args.find((a) => a.startsWith('--country='))?.split('=')[1];
 
 // Valid CRM category enum values
 const CRM_CATEGORIES = new Set([
-	'Sports', 'Workshop', 'Church', 'Theater', 'Bar/DJ', 'Conference', 'Music Fest',
-	'Fan Fair', 'School', 'Concert', 'Live Band', 'Expo', 'Screening', 'Camp',
-	'Competition', 'Convention', 'Film', 'Modelling', 'Resort', 'Other',
+	'Sports',
+	'Workshop',
+	'Church',
+	'Theater',
+	'Bar/DJ',
+	'Conference',
+	'Music Fest',
+	'Fan Fair',
+	'School',
+	'Concert',
+	'Live Band',
+	'Expo',
+	'Screening',
+	'Camp',
+	'Competition',
+	'Convention',
+	'Film',
+	'Modelling',
+	'Resort',
+	'Other'
 ]);
 
 // Map scraper category strings to CRM enum (exact match first, then synonyms, else omit)
 const CATEGORY_SYNONYMS: Record<string, string> = {
-	'convention': 'Convention',
-	'theatre': 'Theater',
-	'music': 'Concert',
+	convention: 'Convention',
+	theatre: 'Theater',
+	music: 'Concert',
 	'music fest': 'Music Fest',
 	'fun run': 'Sports',
-	'webinar': 'Workshop',
+	webinar: 'Workshop',
 	'workshop / training': 'Workshop',
 	'science & technology': 'Conference',
-	'exhibitions': 'Expo',
+	exhibitions: 'Expo'
 };
 
 function mapCategory(raw: string | null | undefined): string | undefined {
@@ -49,11 +66,11 @@ function mapCategory(raw: string | null | undefined): string | undefined {
 // Platform mapping: scraper source → CRM enum
 // ---------------------------------------------------------------------------
 const PLATFORM_MAP: Record<string, string> = {
-	facebook:  'Facebook',
+	facebook: 'Facebook',
 	instagram: 'Instagram',
-	tiktok:    'TikTok',
-	twitter:   'Twitter/X',
-	x:         'Twitter/X',
+	tiktok: 'TikTok',
+	twitter: 'Twitter/X',
+	x: 'Twitter/X'
 };
 
 function mapPlatform(src: string | null): string | undefined {
@@ -72,9 +89,9 @@ function parseEventDate(raw: string | null): string | undefined {
 	if (parts.length !== 3) return undefined;
 	const [m, d, y] = parts;
 	const yyyy = y.padStart(4, '0');
-	const mm   = m.padStart(2, '0');
-	const dd   = d.padStart(2, '0');
-	const iso  = `${yyyy}-${mm}-${dd}`;
+	const mm = m.padStart(2, '0');
+	const dd = d.padStart(2, '0');
+	const iso = `${yyyy}-${mm}-${dd}`;
 	return isNaN(new Date(iso).getTime()) ? undefined : iso;
 }
 
@@ -104,40 +121,42 @@ function buildLocation(city: string | null, country: string | null): string | un
 // Scraper lead → CRM ingest payload item
 // ---------------------------------------------------------------------------
 interface ScraperLead {
-	db_id:              number;
-	category:           string | null;
-	page_name:          string;
-	location_city:      string | null;
-	location_country:   string | null;
-	event:              string | null;
-	link:               string | null;
-	event_date:         string | null;
-	organizer_email:    string | null;
-	organizer_phone:    string | null;
+	db_id: number;
+	category: string | null;
+	page_name: string;
+	location_city: string | null;
+	location_country: string | null;
+	event: string | null;
+	link: string | null;
+	event_date: string | null;
+	organizer_email: string | null;
+	organizer_phone: string | null;
 	organizer_facebook: string | null;
-	platform:           string | null;
+	platform: string | null;
 }
 
 function toIngestLead(s: ScraperLead) {
 	return {
-		pageName:    s.page_name?.trim() || s.event?.trim() || `Event #${s.db_id}`,
-		sourceRef:   String(s.db_id),
-		location:    buildLocation(s.location_city, s.location_country),
-		category:    mapCategory(s.category),
-		platform:    mapPlatform(s.platform),
-		eventName:   s.event ?? undefined,
-		eventDate:   parseEventDate(s.event_date),
-		eventLink:   validUrl(s.link),
-		email:       validEmail(s.organizer_email),
-		phone:       s.organizer_phone ?? undefined,
-		facebookUrl: validUrl(s.organizer_facebook),
+		pageName: s.page_name?.trim() || s.event?.trim() || `Event #${s.db_id}`,
+		sourceRef: String(s.db_id),
+		location: buildLocation(s.location_city, s.location_country),
+		category: mapCategory(s.category),
+		platform: mapPlatform(s.platform),
+		eventName: s.event ?? undefined,
+		eventDate: parseEventDate(s.event_date),
+		eventLink: validUrl(s.link),
+		email: validEmail(s.organizer_email),
+		phone: s.organizer_phone ?? undefined,
+		facebookUrl: validUrl(s.organizer_facebook)
 	};
 }
 
 // ---------------------------------------------------------------------------
 // Fetch one page from the scraper
 // ---------------------------------------------------------------------------
-async function fetchPage(page: number): Promise<{ results: ScraperLead[]; pages: number; total: number }> {
+async function fetchPage(
+	page: number
+): Promise<{ results: ScraperLead[]; pages: number; total: number }> {
 	const params = new URLSearchParams({ limit: String(FETCH_LIMIT), page: String(page) });
 	if (countryArg) params.set('country', countryArg);
 	const res = await fetch(`${SCRAPER_BASE}/api/leads/?${params}`);
@@ -149,15 +168,19 @@ async function fetchPage(page: number): Promise<{ results: ScraperLead[]; pages:
 // POST a batch to the CRM
 // ---------------------------------------------------------------------------
 async function postBatch(leads: ReturnType<typeof toIngestLead>[]): Promise<{
-	received: number; created: number; skipped: number; patched: number; review: number;
+	received: number;
+	created: number;
+	skipped: number;
+	patched: number;
+	review: number;
 }> {
 	if (DRY_RUN) {
 		return { received: leads.length, created: 0, skipped: 0, patched: 0, review: 0 };
 	}
 	const res = await fetch(CRM_INGEST, {
-		method:  'POST',
+		method: 'POST',
 		headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${INGEST_SECRET}` },
-		body:    JSON.stringify({ leads }),
+		body: JSON.stringify({ leads })
 	});
 	if (!res.ok) {
 		const text = await res.text();
@@ -170,7 +193,9 @@ async function postBatch(leads: ReturnType<typeof toIngestLead>[]): Promise<{
 // Main
 // ---------------------------------------------------------------------------
 async function main() {
-	console.log(`Mode: ${DRY_RUN ? 'DRY RUN' : 'LIVE'}${countryArg ? ` | country filter: ${countryArg}` : ''}`);
+	console.log(
+		`Mode: ${DRY_RUN ? 'DRY RUN' : 'LIVE'}${countryArg ? ` | country filter: ${countryArg}` : ''}`
+	);
 	console.log(`Scraper: ${SCRAPER_BASE}  →  CRM: ${CRM_INGEST}\n`);
 
 	const totals = { received: 0, created: 0, skipped: 0, patched: 0, review: 0 };
@@ -178,7 +203,9 @@ async function main() {
 	// First page to learn total count
 	const first = await fetchPage(1);
 	const totalPages = first.pages;
-	console.log(`Scraper has ${first.total} events across ${totalPages} pages (limit ${FETCH_LIMIT})\n`);
+	console.log(
+		`Scraper has ${first.total} events across ${totalPages} pages (limit ${FETCH_LIMIT})\n`
+	);
 
 	let batch: ReturnType<typeof toIngestLead>[] = [];
 
@@ -186,11 +213,13 @@ async function main() {
 		if (!batch.length) return;
 		const result = await postBatch(batch);
 		totals.received += result.received;
-		totals.created  += result.created;
-		totals.skipped  += result.skipped;
-		totals.patched  += result.patched;
-		totals.review   += result.review;
-		process.stdout.write(`  → received ${result.received} | created ${result.created} | patched ${result.patched} | skipped ${result.skipped}\n`);
+		totals.created += result.created;
+		totals.skipped += result.skipped;
+		totals.patched += result.patched;
+		totals.review += result.review;
+		process.stdout.write(
+			`  → received ${result.received} | created ${result.created} | patched ${result.patched} | skipped ${result.skipped}\n`
+		);
 		batch = [];
 	};
 
@@ -213,4 +242,7 @@ async function main() {
 	console.log(`Review   : ${totals.review}`);
 }
 
-main().catch((err) => { console.error(err); process.exit(1); });
+main().catch((err) => {
+	console.error(err);
+	process.exit(1);
+});

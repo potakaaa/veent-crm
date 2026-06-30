@@ -16,7 +16,12 @@
 
 import { readFileSync } from 'node:fs';
 import { tsvRowSchema, type TsvRow } from '../src/lib/zod/schemas';
-import { normalizeHandle, mapCategory, normalizePlatform, normalizeCountry } from './lib/import-utils';
+import {
+	normalizeHandle,
+	mapCategory,
+	normalizePlatform,
+	normalizeCountry
+} from './lib/import-utils';
 
 // --- CLI -------------------------------------------------------------------
 type Args = { file?: string; dryRun: boolean; load: boolean };

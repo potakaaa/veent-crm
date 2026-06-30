@@ -42,6 +42,7 @@
 		"eslint-config-prettier": "^10.1.8",
 		"eslint-plugin-svelte": "^3.19.0",
 		"globals": "^17.6.0",
+		"layerchart": "2.0.0-next.48",
 		"postgres": "^3.4.9",
 		"prettier": "^3.8.3",
 		"prettier-plugin-svelte": "^4.1.0",
@@ -66,8 +67,8 @@
 		"@sentry/sveltekit": "^10.60.0",
 		"better-auth": "^1.6.20",
 		"clsx": "^2.1.1",
-		"echarts": "^6.1.0",
 		"resend": "^6.14.0",
+		"svelte-sonner": "^1.1.1",
 		"sveltekit-superforms": "^2.30.1",
 		"zod": "^4.4.3"
 	}

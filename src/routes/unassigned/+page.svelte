@@ -135,9 +135,11 @@
 	</div>
 </div>
 
-<ReassignModal
-	open={assignOpen}
-	users={data.users}
-	onclose={() => (assignOpen = false)}
-	onconfirm={assignTo}
-/>
+{#if assignOpen}
+	<ReassignModal
+		open={true}
+		users={data.users}
+		onclose={() => (assignOpen = false)}
+		onconfirm={assignTo}
+	/>
+{/if}

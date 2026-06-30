@@ -105,15 +105,19 @@
 	<PipelineBoard leads={data.leads} users={data.users} {onMove} />
 </div>
 
-<WonCaptureModal
-	open={!!wonLead}
-	leadName={wonLead?.name ?? ''}
-	onclose={() => (wonLead = null)}
-	onconfirm={confirmWon}
-/>
-<LostReasonModal
-	open={!!lostLead}
-	leadName={lostLead?.name ?? ''}
-	onclose={() => (lostLead = null)}
-	onconfirm={confirmLost}
-/>
+{#if wonLead}
+	<WonCaptureModal
+		open={true}
+		leadName={wonLead.name}
+		onclose={() => (wonLead = null)}
+		onconfirm={confirmWon}
+	/>
+{/if}
+{#if lostLead}
+	<LostReasonModal
+		open={true}
+		leadName={lostLead.name}
+		onclose={() => (lostLead = null)}
+		onconfirm={confirmLost}
+	/>
+{/if}

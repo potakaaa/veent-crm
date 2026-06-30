@@ -108,8 +108,31 @@ export function mapCategory(value: string): { category: CrmLeadCategory; needsRe
 	return { category: 'Other', needsReview: true };
 }
 
-export function normalizePlatform(fbUrl?: string, igUrl?: string): CrmLeadPlatform | null {
+const PLATFORM_URL_MAP: Array<[RegExp, CrmLeadPlatform]> = [
+	[/facebook\.com/i, 'Facebook'],
+	[/instagram\.com/i, 'Instagram'],
+	[/tiktok\.com/i, 'TikTok'],
+	[/twitter\.com|x\.com/i, 'Twitter/X']
+];
+
+function platformFromUrl(url: string): CrmLeadPlatform | null {
+	for (const [re, platform] of PLATFORM_URL_MAP) {
+		if (re.test(url)) return platform;
+	}
+	return null;
+}
+
+export function normalizePlatform(
+	fbUrl?: string,
+	igUrl?: string,
+	eventSourceUrl?: string
+): CrmLeadPlatform | null {
+	// Explicit organizer social URLs take priority.
 	if (fbUrl) return 'Facebook';
 	if (igUrl) return 'Instagram';
+	// Fall back to the event source URL — tells us which platform the event was scraped from
+	// even when the organizer has no social profile URL (e.g. website-only organizers).
+	// Works for any platform — FB, IG, TikTok, Twitter/X.
+	if (eventSourceUrl) return platformFromUrl(eventSourceUrl);
 	return null;
 }

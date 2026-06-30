@@ -5,7 +5,7 @@ import { and, eq, isNull } from 'drizzle-orm';
 import { ingestBatchSchema } from '$lib/zod/schemas';
 import { db } from '$lib/server/db';
 import { crmLeads } from '$lib/server/db/schema';
-import { normalizeHandle } from '$lib/server/import-utils';
+import { normalizeHandle, normalizePlatform } from '$lib/server/import-utils';
 
 // Scraper intake. Secret-authed (INGEST_SECRET); the scraper never gets DATABASE_URL. The CRM
 // owns validation + dedup-at-the-door (normalized_handle): match = skip, never blind-create.
@@ -54,8 +54,11 @@ export const POST: RequestHandler = async ({ request }) => {
 			name: lead.pageName,
 			normalizedHandle,
 			sourceRef: lead.sourceRef ?? null,
+			scraperOrgId: lead.scraperOrgId ?? null,
 			category: lead.category ?? 'Other',
-			platform: lead.platform ?? null,
+			platform:
+				lead.platform ??
+				normalizePlatform(lead.facebookUrl, lead.instagramUrl, lead.eventLink),
 			location: lead.location ?? null,
 			pageUrl: lead.url ?? null,
 			socialFacebook: lead.facebookUrl ?? null,
@@ -63,6 +66,7 @@ export const POST: RequestHandler = async ({ request }) => {
 			contactEmail: lead.email ?? null,
 			contactPhone: lead.phone ?? null,
 			eventName: lead.eventName ?? null,
+			eventDate: lead.eventDate ?? null,
 			eventLink: lead.eventLink ?? null,
 			source: 'scraper',
 			stage: 'new',

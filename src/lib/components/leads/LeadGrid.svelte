@@ -3,6 +3,7 @@
 	import PlatformBadge from '$lib/components/shared/PlatformBadge.svelte';
 	import StageChip from '$lib/components/shared/StageChip.svelte';
 	import AgeBadge from '$lib/components/shared/AgeBadge.svelte';
+	import EventBadge from '$lib/components/shared/EventBadge.svelte';
 	import EmptyState from '$lib/components/shared/EmptyState.svelte';
 	import type { Lead, User } from '$lib/types';
 
@@ -37,7 +38,17 @@
 				</div>
 				<div class="mt-px truncate font-mono text-[11px] text-ink-400">{l.handle}</div>
 			</div>
-			<div class="truncate text-[12.5px] text-ink-600">{l.eventName ?? '—'}</div>
+			<div class="min-w-0">
+				<div class="flex items-center gap-1.5">
+					<span class="truncate text-[12.5px] text-ink-600">{l.eventName ?? '—'}</span>
+					<EventBadge date={l.eventDate} />
+				</div>
+				{#if l.eventDate}
+					<div class="mt-px font-mono text-[11px] text-ink-400">
+						{new Date(l.eventDate + 'T00:00:00').toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}
+					</div>
+				{/if}
+			</div>
 			<div><StageChip stage={l.stage} /></div>
 			<div><Avatar name={ownerName(l.ownerId)} /></div>
 			<div><AgeBadge label={l.age.label} type={l.age.type} /></div>

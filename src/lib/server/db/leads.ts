@@ -140,7 +140,13 @@ export async function listLeads(): Promise<Lead[]> {
 		.select()
 		.from(crmLeads)
 		.where(isNull(crmLeads.deletedAt))
-		.orderBy(desc(sql`coalesce(${crmLeads.lastActivityAt}, ${crmLeads.createdAt})`));
+		.orderBy(
+			// Leads with upcoming events float to the top, soonest first.
+			// Leads with no future event fall back to last-activity order.
+			sql`CASE WHEN ${crmLeads.eventDate} >= CURRENT_DATE THEN 0 ELSE 1 END`,
+			sql`CASE WHEN ${crmLeads.eventDate} >= CURRENT_DATE THEN ${crmLeads.eventDate} END ASC NULLS LAST`,
+			desc(sql`coalesce(${crmLeads.lastActivityAt}, ${crmLeads.createdAt})`)
+		);
 	return rows.map((row) => dbRowToLead(row));
 }
 

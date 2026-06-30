@@ -161,6 +161,8 @@ export const crmLeads = pgTable(
 
 		// scraper provenance — event ID from the scraper DB; unique per non-null value
 		sourceRef: text('source_ref'),
+		// stable link back to the Neon organizer row; drives event-date reconciliation
+		scraperOrgId: integer('scraper_org_id'),
 
 		notes: text('notes'),
 		createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),

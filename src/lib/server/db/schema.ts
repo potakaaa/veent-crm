@@ -131,6 +131,7 @@ export const crmLeads = pgTable(
 		// advisory dedup/search — indexed, NOT unique
 		normalizedHandle: text('normalized_handle'),
 		contactEmail: text('contact_email'),
+		contactPhone: text('contact_phone'),
 
 		// event (folded in)
 		eventName: text('event_name'),

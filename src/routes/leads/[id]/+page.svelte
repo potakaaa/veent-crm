@@ -31,11 +31,23 @@
 		{ label: 'Category', value: lead.category },
 		{ label: 'Location', value: lead.location },
 		{ label: 'Platform', value: lead.platform },
-		{ label: 'Page URL', value: lead.pageUrl ?? `facebook.com/${lead.handle.replace('@', '')}` },
-		{ label: 'Contact email', value: lead.email ?? '—' },
+		{
+			label: 'Page URL',
+			value: lead.pageUrl ?? `facebook.com/${lead.handle.replace('@', '')}`,
+			href: lead.pageUrl
+		},
+		...(lead.socialFacebook && lead.socialFacebook !== lead.pageUrl
+			? [{ label: 'Facebook', value: lead.socialFacebook, href: lead.socialFacebook }]
+			: []),
+		...(lead.socialInstagram
+			? [{ label: 'Instagram', value: lead.socialInstagram, href: lead.socialInstagram }]
+			: []),
+		{ label: 'Contact email', value: lead.email ?? '—', href: lead.email ? `mailto:${lead.email}` : undefined },
+		...(lead.phone ? [{ label: 'Phone', value: lead.phone, href: `tel:${lead.phone}` }] : []),
 		{
 			label: 'Event',
-			value: lead.eventDate ? `${lead.eventName} · ${lead.eventDate}` : (lead.eventName ?? '—')
+			value: lead.eventDate ? `${lead.eventName} · ${lead.eventDate}` : (lead.eventName ?? '—'),
+			href: lead.eventLink
 		}
 	]);
 
@@ -215,7 +227,16 @@
 					{#each fields as f}
 						<div>
 							<div class="mb-0.5 text-[11px] text-ink-300">{f.label}</div>
-							<div class="font-mono text-[13px] text-ink">{f.value}</div>
+							{#if f.href}
+								<a
+									href={f.href}
+									target="_blank"
+									rel="noopener noreferrer"
+									class="block truncate font-mono text-[13px] text-blue-600 underline hover:text-blue-800"
+								>{f.value}</a>
+							{:else}
+								<div class="font-mono text-[13px] text-ink">{f.value}</div>
+							{/if}
 						</div>
 					{/each}
 				</div>

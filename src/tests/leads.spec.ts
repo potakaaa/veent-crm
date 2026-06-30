@@ -29,6 +29,7 @@ function makeRow(overrides: Partial<Parameters<typeof dbRowToLead>[0]> = {}) {
 		pageUrl: null,
 		normalizedHandle: null,
 		contactEmail: null,
+		contactPhone: null,
 		eventName: null,
 		eventDate: null,
 		eventDateRaw: null,

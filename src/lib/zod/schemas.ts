@@ -169,13 +169,15 @@ export const ingestLeadSchema = z.object({
 	handle: z.string().optional(),
 	url: z.string().url().optional(),
 	facebookUrl: z.string().url().optional(),
+	instagramUrl: z.string().url().optional(),
 	platform: z.enum(LEAD_PLATFORMS).optional(),
 	category: z.enum(LEAD_CATEGORIES).optional(),
 	location: z.string().optional(),
 	eventName: z.string().optional(),
 	eventLink: z.string().url().optional(),
 	sourceRef: z.string().optional(),
-	email: z.string().email().optional()
+	email: z.string().email().optional(),
+	phone: z.string().optional()
 });
 export const ingestBatchSchema = z.object({
 	leads: z.array(ingestLeadSchema).max(1000)

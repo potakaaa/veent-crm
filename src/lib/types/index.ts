@@ -59,8 +59,12 @@ export interface Lead {
 	formerOwnerId?: string | null;
 	eventName?: string;
 	eventDate?: string;
+	eventLink?: string;
 	email?: string;
+	phone?: string;
 	pageUrl?: string;
+	socialFacebook?: string;
+	socialInstagram?: string;
 	/** Count of sibling leads that share the same page (advisory dedup only). */
 	siblings?: number;
 	source: LeadSource;

@@ -3,8 +3,8 @@
 	import PageHeader from '$lib/components/shared/PageHeader.svelte';
 	import StageChip from '$lib/components/shared/StageChip.svelte';
 	import ReassignModal from '$lib/components/leads/ReassignModal.svelte';
+	import EventBadge from '$lib/components/shared/EventBadge.svelte';
 	import Icon from '$lib/components/shared/Icon.svelte';
-	import { crm } from '$lib/services';
 	import { toasts } from '$lib/stores/toasts.svelte';
 	import { canReassign } from '$lib/utils/permissions';
 	import type { Lead } from '$lib/types';
@@ -25,20 +25,41 @@
 	}
 
 	async function claim(lead: Lead) {
-		await crm.claimLead(lead.id);
+		const res = await fetch(`/api/leads/${lead.id}/claim`, { method: 'POST' });
+		if (!res.ok) {
+			toasts.push(`Failed to claim ${lead.name}`);
+			return;
+		}
 		await invalidateAll();
 		toasts.success(`Claimed ${lead.name}`);
 	}
 
 	async function bulkClaim() {
-		await crm.bulkClaim(selectedIds);
-		toasts.success(`Claimed ${selectedIds.length} leads`);
+		const res = await fetch('/api/leads/bulk-claim', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ ids: selectedIds })
+		});
+		if (!res.ok) {
+			toasts.push('Bulk claim failed');
+			return;
+		}
+		const { claimed } = await res.json();
+		toasts.success(`Claimed ${claimed} lead${claimed === 1 ? '' : 's'}`);
 		selected = {};
 		await invalidateAll();
 	}
 
 	async function assignTo(ownerId: string) {
-		await crm.reassignLeads(selectedIds, ownerId);
+		await Promise.all(
+			selectedIds.map((id) =>
+				fetch(`/api/leads/${id}/owner`, {
+					method: 'PATCH',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ ownerId })
+				})
+			)
+		);
 		assignOpen = false;
 		const name = data.users.find((u) => u.id === ownerId)?.name ?? 'rep';
 		toasts.success(`Assigned ${selectedIds.length} to ${name}`);
@@ -46,7 +67,7 @@
 		await invalidateAll();
 	}
 
-	const grid = 'grid grid-cols-[36px_2.2fr_1.6fr_1fr_1.1fr_110px] gap-3';
+	const grid = 'grid grid-cols-[36px_2.2fr_1.8fr_1fr_1.1fr_110px] gap-3';
 </script>
 
 <svelte:head><title>Up for grabs · Veent CRM</title></svelte:head>
@@ -110,7 +131,21 @@
 					</div>
 					<div class="font-mono text-[11px] text-ink-400">{l.handle} · {l.category}</div>
 				</a>
-				<div class="truncate text-[12.5px] text-ink-600">{l.eventName ?? '—'}</div>
+				<div class="min-w-0">
+					<div class="flex items-center gap-1.5">
+						<span class="truncate text-[12.5px] text-ink-600">{l.eventName ?? '—'}</span>
+						<EventBadge date={l.eventDate} />
+					</div>
+					{#if l.eventDate}
+						<div class="font-mono text-[11px] text-ink-400">
+							{new Date(l.eventDate + 'T00:00:00').toLocaleDateString('en-PH', {
+								month: 'short',
+								day: 'numeric',
+								year: 'numeric'
+							})}
+						</div>
+					{/if}
+				</div>
 				<div><StageChip stage={l.stage} /></div>
 				<div class="font-mono text-[12px] text-ink-400">{formerOwner(l.formerOwnerId)}</div>
 				<div>

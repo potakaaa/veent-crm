@@ -277,6 +277,44 @@ export async function getLead(id: string): Promise<Lead | null> {
 	return row ? dbRowToLead(row) : null;
 }
 
+export async function listUnassignedLeads(): Promise<Lead[]> {
+	const rows = await db
+		.select()
+		.from(crmLeads)
+		.where(
+			and(
+				isNull(crmLeads.ownerId),
+				isNull(crmLeads.deletedAt),
+				ne(crmLeads.stage, 'won'),
+				ne(crmLeads.stage, 'lost')
+			)
+		)
+		.orderBy(
+			sql`CASE WHEN ${crmLeads.eventDate} >= CURRENT_DATE THEN 0 ELSE 1 END`,
+			sql`CASE WHEN ${crmLeads.eventDate} >= CURRENT_DATE THEN ${crmLeads.eventDate} END ASC NULLS LAST`,
+			desc(sql`coalesce(${crmLeads.lastActivityAt}, ${crmLeads.createdAt})`)
+		);
+	return rows.map((row) => dbRowToLead(row));
+}
+
+export async function claimLead(id: string, userId: string): Promise<Lead | null> {
+	const now = new Date();
+	const [row] = await db
+		.update(crmLeads)
+		.set({ ownerId: userId, updatedAt: now })
+		.where(and(eq(crmLeads.id, id), isNull(crmLeads.deletedAt), isNull(crmLeads.ownerId)))
+		.returning();
+	if (!row) return null;
+	await db.insert(crmLeadHistory).values({
+		leadId: id,
+		actorUserId: userId,
+		field: 'owner_id',
+		oldValue: null,
+		newValue: userId
+	});
+	return dbRowToLead(row);
+}
+
 export async function listUsers(): Promise<User[]> {
 	const rows = await db.select().from(crmUsers).orderBy(crmUsers.name);
 	return rows.map(dbUserToUser);

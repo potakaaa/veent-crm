@@ -18,6 +18,7 @@
 	import { toasts } from '$lib/stores/toasts.svelte';
 	import { canEditLead, canReassign } from '$lib/utils/permissions';
 	import { formatDate, followUpDate } from '$lib/utils/dates';
+	import { stageLabel } from '$lib/utils/stages';
 	import type { AddActivityInput, LostReason, MoveStagePayload, Stage } from '$lib/types';
 
 	let { data } = $props();
@@ -133,7 +134,7 @@
 			mutating = false;
 		}
 		await invalidateAll(); // $effect reconciles shadow with server truth
-		toasts.push(`Moved to ${stage}`);
+		toasts.push(`Moved to ${stageLabel(stage)}`);
 	}
 
 	async function confirmWon(payload: MoveStagePayload) {

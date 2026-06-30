@@ -3,6 +3,7 @@
 	import { goto } from '$app/navigation';
 	import Icon, { type IconName } from '$lib/components/shared/Icon.svelte';
 	import { authClient } from '$lib/auth-client';
+	import { roleLabel } from '$lib/utils/roles';
 	import type { User } from '$lib/types';
 
 	async function signOut() {
@@ -130,7 +131,7 @@
 		<div class="min-w-0 flex-1">
 			<div class="text-[12.5px] font-semibold">{user?.name ?? 'Signed out'}</div>
 			<div class="font-mono text-[10px] text-[#8a7270]">
-				{user?.role ?? '—'}{user?.location ? ` · ${user.location}` : ''}
+				{user?.role ? roleLabel(user.role) : '—'}{user?.location ? ` · ${user.location}` : ''}
 			</div>
 		</div>
 		<button onclick={signOut} title="Sign out" class="p-1 text-[#8a7270] hover:text-white">

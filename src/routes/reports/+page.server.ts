@@ -3,6 +3,7 @@ import { db } from '$lib/server/db';
 import { crmLeads, crmActivities, crmUsers } from '$lib/server/db/schema';
 import { eq, isNull, count, sum, and, sql } from 'drizzle-orm';
 import type { ReportData, FunnelStage, Currency } from '$lib/types';
+import { currencyLabel } from '$lib/utils/currency';
 
 const STAGE_META: Record<string, { label: string; color: string; order: number }> = {
 	new: { label: 'New', color: '#6366f1', order: 0 },
@@ -96,7 +97,7 @@ export const load: PageServerLoad = async () => {
 		.filter((r) => r.currency)
 		.map((r) => ({
 			currency: r.currency as Currency,
-			label: r.currency as Currency,
+			label: currencyLabel(r.currency as Currency),
 			total: Number(r.total) / 100,
 			deals: Number(r.deals)
 		}));

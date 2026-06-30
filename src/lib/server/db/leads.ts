@@ -307,6 +307,26 @@ export async function getLead(id: string): Promise<Lead | null> {
 	return row ? dbRowToLead(row) : null;
 }
 
+export async function listReviewLeads(
+	page = 1,
+	pageSize = 25
+): Promise<{ leads: Lead[]; total: number }> {
+	const where = and(isNull(crmLeads.deletedAt), eq(crmLeads.needsReview, true));
+
+	const [rows, [{ total }]] = await Promise.all([
+		db
+			.select()
+			.from(crmLeads)
+			.where(where)
+			.orderBy(asc(crmLeads.createdAt), asc(crmLeads.id))
+			.limit(pageSize)
+			.offset((Math.max(1, page) - 1) * pageSize),
+		db.select({ total: count() }).from(crmLeads).where(where)
+	]);
+
+	return { leads: rows.map((row) => dbRowToLead(row)), total };
+}
+
 export async function listUnassignedLeads(
 	page = 1,
 	pageSize = 25

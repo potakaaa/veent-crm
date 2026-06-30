@@ -92,7 +92,9 @@
 							<div class="flex w-[52px] shrink-0 items-center gap-1.5">
 								<span class="font-mono text-[12.5px] text-ink-500">{r.touches || '—'}</span>
 								{#if r.wins > 0}
-									<span class="rounded-[3px] bg-[#22c55e]/15 px-1 font-mono text-[9.5px] font-semibold text-[#16a34a]">
+									<span
+										class="rounded-[3px] bg-[#22c55e]/15 px-1 font-mono text-[9.5px] font-semibold text-[#16a34a]"
+									>
 										{r.wins}W
 									</span>
 								{/if}

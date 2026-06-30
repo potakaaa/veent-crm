@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { goto } from '$app/navigation';
+	import { goto, afterNavigate } from '$app/navigation';
 	import { page } from '$app/state';
 	import { SvelteURLSearchParams } from 'svelte/reactivity';
 	import PageHeader from '$lib/components/shared/PageHeader.svelte';
@@ -13,6 +13,9 @@
 	import type { LeadSegment, Stage } from '$lib/types';
 
 	let { data } = $props();
+
+	let paging = $state(false);
+	afterNavigate(() => { paging = false; });
 
 	// Local search state — writable derived: resets when the loaded filter changes
 	// (back/forward navigation), but still assignable for live typing before debounce.
@@ -170,15 +173,15 @@
 				<Button
 					variant="outline"
 					size="sm"
-					disabled={pg <= 1}
-					onclick={() => navigate({ page: pg - 1 })}>← Prev</Button
+					disabled={pg <= 1 || paging}
+					onclick={() => { paging = true; navigate({ page: pg - 1 }); }}>← Prev</Button
 				>
 				<span class="font-mono">Page {pg} of {totalPages}</span>
 				<Button
 					variant="outline"
 					size="sm"
-					disabled={pg >= totalPages}
-					onclick={() => navigate({ page: pg + 1 })}>Next →</Button
+					disabled={pg >= totalPages || paging}
+					onclick={() => { paging = true; navigate({ page: pg + 1 }); }}>Next →</Button
 				>
 			</div>
 		</div>

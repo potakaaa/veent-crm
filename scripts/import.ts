@@ -349,7 +349,11 @@ function buildLeadGroup(handle: string, events: TsvRow[]): LeadGroup {
 		pageUrl: emptyToNull(website),
 		contactEmail: email ? email.toLowerCase() : null,
 		location,
-		platform: normalizePlatform(fb || undefined, ig || undefined, rep.event_source_url || undefined),
+		platform: normalizePlatform(
+			fb || undefined,
+			ig || undefined,
+			rep.event_source_url || undefined
+		),
 		source: 'scraper',
 		stage: 'new',
 		ownerId: null,

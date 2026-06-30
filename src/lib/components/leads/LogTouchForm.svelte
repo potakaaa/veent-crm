@@ -95,6 +95,8 @@
 		<span class="text-[12px] text-ink-200">
 			Logs a touch and books a follow-up reminder (Asia/Manila).
 		</span>
-		<Button disabled={disabled || submitting} onclick={submit}>Log touch</Button>
+		<Button {disabled} loading={submitting} loadingText="Logging…" onclick={submit}
+			>Log touch</Button
+		>
 	</div>
 </div>

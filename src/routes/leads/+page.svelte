@@ -1,9 +1,10 @@
 <script lang="ts">
 	import { goto, afterNavigate } from '$app/navigation';
-	import { page } from '$app/state';
+	import { page, navigating } from '$app/state';
 	import { SvelteURLSearchParams } from 'svelte/reactivity';
 	import PageHeader from '$lib/components/shared/PageHeader.svelte';
 	import LeadGrid from '$lib/components/leads/LeadGrid.svelte';
+	import { TableSkeleton } from '$lib/components/shared/skeletons';
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
 	import { Separator } from '$lib/components/ui/separator';
@@ -18,6 +19,9 @@
 	afterNavigate(() => {
 		paging = false;
 	});
+
+	// Skeleton while navigating to this route (filter/segment/page changes included).
+	const navLoading = $derived(paging || navigating.to?.url.pathname === '/leads');
 
 	// Local search state — writable derived: resets when the loaded filter changes
 	// (back/forward navigation), but still assignable for live typing before debounce.
@@ -164,7 +168,11 @@
 		/>
 	</div>
 
-	<LeadGrid leads={data.leads} users={data.users} />
+	{#if navLoading}
+		<TableSkeleton rows={8} cols={5} />
+	{:else}
+		<LeadGrid leads={data.leads} users={data.users} />
+	{/if}
 
 	<!-- pagination -->
 	{#if data.pagination.totalPages > 1}

@@ -10,12 +10,14 @@
 		open,
 		leadName,
 		onclose,
-		onconfirm
+		onconfirm,
+		saving = false
 	}: {
 		open: boolean;
 		leadName: string;
 		onclose: () => void;
 		onconfirm: (reason: LostReason, note?: string) => void;
+		saving?: boolean;
 	} = $props();
 
 	const REASON_LABEL: Record<LostReason, string> = {
@@ -61,11 +63,13 @@
 	</div>
 
 	{#snippet footer()}
-		<Button variant="outline" class="flex-1" onclick={onclose}>Cancel</Button>
+		<Button variant="outline" class="flex-1" onclick={onclose} disabled={saving}>Cancel</Button>
 		<Button
 			variant="destructive"
 			class="flex-[2]"
-			disabled={!reason}
+			disabled={!reason || saving}
+			loading={saving}
+			loadingText="Saving…"
 			onclick={() => reason && onconfirm(reason, note.trim() || undefined)}
 		>
 			Mark lost

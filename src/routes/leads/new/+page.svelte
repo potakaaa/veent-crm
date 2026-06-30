@@ -42,6 +42,7 @@
 	const dupes = $derived(name.length > 1 ? hasPotentialDuplicate({ name }, data.leads) : []);
 
 	async function create() {
+		if (saving) return; // duplicate-submit guard
 		const parsed = leadFormSchema.safeParse({
 			name,
 			category,
@@ -201,7 +202,7 @@
 
 			<div class="flex items-center justify-end gap-2.5 sm:col-span-2">
 				<Button variant="outline" href="/leads">Cancel</Button>
-				<Button onclick={create} disabled={saving || !name}>
+				<Button onclick={create} disabled={!name} loading={saving} loadingText="Creating…">
 					{dupes.length ? 'Create anyway' : 'Create lead'}
 				</Button>
 			</div>

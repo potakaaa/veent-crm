@@ -1,23 +1,37 @@
 <script lang="ts">
 	import { goto, afterNavigate, invalidateAll } from '$app/navigation';
-	import { page } from '$app/state';
+	import { page, navigating } from '$app/state';
 	import { SvelteURLSearchParams } from 'svelte/reactivity';
 	import PageHeader from '$lib/components/shared/PageHeader.svelte';
 	import StageChip from '$lib/components/shared/StageChip.svelte';
 	import ReassignModal from '$lib/components/leads/ReassignModal.svelte';
 	import EventBadge from '$lib/components/shared/EventBadge.svelte';
 	import Icon from '$lib/components/shared/Icon.svelte';
+	import { TableSkeleton } from '$lib/components/shared/skeletons';
 	import { toasts } from '$lib/stores/toasts.svelte';
+	import { removeFromList } from '$lib/utils/optimistic';
 	import { canReassign } from '$lib/utils/permissions';
 	import { Button } from '$lib/components/ui/button';
 	import type { Lead } from '$lib/types';
 
 	let { data } = $props();
 
+	// Optimistic shadow of the unassigned queue. E1: a writable `$derived` IS the reconcile
+	// mechanism — reassign for an optimistic remove; it auto-resyncs to server truth when
+	// `data.leads` changes after invalidateAll().
+	let shadowLeads = $derived(data.leads);
+
+	// Pending guards.
+	let claiming = $state<Record<string, boolean>>({});
+	let bulkPending = $state(false);
+	let assignPending = $state(false);
+
 	let paging = $state(false);
 	afterNavigate(() => {
 		paging = false;
 	});
+
+	const navLoading = $derived(paging || navigating.to?.url.pathname === '/unassigned');
 
 	function navigate(patch: Record<string, string | number | undefined>) {
 		const params = new SvelteURLSearchParams(page.url.searchParams);
@@ -31,7 +45,7 @@
 	let selected = $state<Record<string, boolean>>({});
 	let assignOpen = $state(false);
 	const selectedIds = $derived(
-		data.leads.filter((lead) => selected[lead.id]).map((lead) => lead.id)
+		shadowLeads.filter((lead) => selected[lead.id]).map((lead) => lead.id)
 	);
 
 	const formerOwner = (id: string | null | undefined) =>
@@ -42,54 +56,96 @@
 	}
 
 	async function claim(lead: Lead) {
-		const res = await fetch(`/api/leads/${lead.id}/claim`, { method: 'POST' });
-		if (!res.ok) {
-			toasts.push(`Failed to claim ${lead.name}`);
+		if (claiming[lead.id]) return; // duplicate-submit guard
+		claiming = { ...claiming, [lead.id]: true };
+		const snapshot = shadowLeads;
+		shadowLeads = removeFromList(shadowLeads, lead.id); // optimistic remove
+		try {
+			const res = await fetch(`/api/leads/${lead.id}/claim`, { method: 'POST' });
+			if (!res.ok) {
+				shadowLeads = snapshot; // rollback
+				toasts.push(`Failed to claim ${lead.name}`);
+				return;
+			}
+		} catch {
+			shadowLeads = snapshot; // rollback on network error
+			toasts.push(`Failed to claim ${lead.name} — server error`);
 			return;
+		} finally {
+			claiming = { ...claiming, [lead.id]: false };
 		}
-		await invalidateAll();
+		await invalidateAll(); // $effect reconciles shadow with server truth
 		toasts.success(`Claimed ${lead.name}`);
 	}
 
 	async function bulkClaim() {
+		if (bulkPending) return; // duplicate-submit guard
 		if (selectedIds.length > 200) {
 			toasts.push('Cannot bulk claim more than 200 leads at once');
 			return;
 		}
-		const res = await fetch('/api/leads/bulk-claim', {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ ids: selectedIds })
-		});
-		if (!res.ok) {
-			toasts.push('Bulk claim failed');
+		bulkPending = true;
+		const ids = selectedIds;
+		const snapshot = shadowLeads;
+		shadowLeads = shadowLeads.filter((l) => !selected[l.id]); // optimistic remove
+		try {
+			const res = await fetch('/api/leads/bulk-claim', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ ids })
+			});
+			if (!res.ok) {
+				shadowLeads = snapshot; // rollback
+				toasts.push('Bulk claim failed');
+				return;
+			}
+			const { claimed } = await res.json();
+			toasts.success(`Claimed ${claimed} lead${claimed === 1 ? '' : 's'}`);
+		} catch {
+			shadowLeads = snapshot; // rollback on network error
+			toasts.push('Bulk claim failed — server error');
 			return;
+		} finally {
+			bulkPending = false;
 		}
-		const { claimed } = await res.json();
-		toasts.success(`Claimed ${claimed} lead${claimed === 1 ? '' : 's'}`);
 		selected = {};
-		await invalidateAll();
+		await invalidateAll(); // $effect reconciles shadow with server truth
 	}
 
 	async function assignTo(ownerId: string) {
-		const responses = await Promise.all(
-			selectedIds.map((id) =>
-				fetch(`/api/leads/${id}/owner`, {
-					method: 'PATCH',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({ ownerId })
-				})
-			)
-		);
+		if (assignPending) return; // duplicate-submit guard
+		assignPending = true;
+		const snapshot = shadowLeads;
+		const count = selectedIds.length;
+		shadowLeads = shadowLeads.filter((l) => !selected[l.id]); // optimistic remove
+		let responses: Response[];
+		try {
+			responses = await Promise.all(
+				selectedIds.map((id) =>
+					fetch(`/api/leads/${id}/owner`, {
+						method: 'PATCH',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({ ownerId })
+					})
+				)
+			);
+		} catch {
+			shadowLeads = snapshot; // rollback on network error
+			toasts.push('Some assignments failed — refresh and try again');
+			return;
+		} finally {
+			assignPending = false;
+		}
 		if (responses.some((r) => !r.ok)) {
+			shadowLeads = snapshot; // rollback
 			toasts.push('Some assignments failed — refresh and try again');
 			return;
 		}
 		assignOpen = false;
 		const name = data.users.find((u) => u.id === ownerId)?.name ?? 'rep';
-		toasts.success(`Assigned ${selectedIds.length} to ${name}`);
+		toasts.success(`Assigned ${count} to ${name}`);
 		selected = {};
-		await invalidateAll();
+		await invalidateAll(); // $effect reconciles shadow with server truth
 	}
 
 	const grid = 'grid grid-cols-[36px_2.2fr_1.8fr_1fr_90px_1.1fr_110px] gap-3';
@@ -114,9 +170,10 @@
 				<span class="font-mono text-[12px] text-primary">{selectedIds.length} selected</span>
 				<button
 					onclick={bulkClaim}
-					class="h-[34px] rounded-control bg-primary px-3.5 text-[12.5px] font-semibold text-white"
+					disabled={bulkPending}
+					class="h-[34px] rounded-control bg-primary px-3.5 text-[12.5px] font-semibold text-white disabled:opacity-50"
 				>
-					Claim {selectedIds.length}
+					{bulkPending ? 'Claiming…' : `Claim ${selectedIds.length}`}
 				</button>
 				{#if canReassign(data.currentUser)}
 					<button
@@ -130,78 +187,83 @@
 		{/snippet}
 	</PageHeader>
 
-	<div class="overflow-hidden rounded-control border border-hairline bg-panel">
-		<div
-			class="{grid} items-center border-b border-hairline bg-[#fdf7f5] px-4 py-[9px] font-mono text-[10.5px] uppercase tracking-[0.4px] text-ink-300"
-		>
-			<span></span><span>Organizer / page</span><span>Event</span><span>Stage</span><span
-				>Source</span
-			><span>Last owner</span><span></span>
-		</div>
-		{#each data.leads as l (l.id)}
+	{#if navLoading}
+		<TableSkeleton rows={8} cols={6} />
+	{:else}
+		<div class="overflow-hidden rounded-control border border-hairline bg-panel">
 			<div
-				class="{grid} min-h-11 items-center border-b border-panel-sunken px-4 last:border-b-0 hover:bg-[#fdf7f5]"
+				class="{grid} items-center border-b border-hairline bg-[#fdf7f5] px-4 py-[9px] font-mono text-[10.5px] uppercase tracking-[0.4px] text-ink-300"
 			>
-				<button
-					onclick={() => toggle(l.id)}
-					aria-label="Select {l.name}"
-					class="flex h-[18px] w-[18px] items-center justify-center rounded-[5px] border-[1.5px] {selected[
-						l.id
-					]
-						? 'border-primary bg-primary'
-						: 'border-hairline-strong bg-panel'}"
+				<span></span><span>Organizer / page</span><span>Event</span><span>Stage</span><span
+					>Source</span
+				><span>Last owner</span><span></span>
+			</div>
+			{#each shadowLeads as l (l.id)}
+				<div
+					class="{grid} min-h-11 items-center border-b border-panel-sunken px-4 last:border-b-0 hover:bg-[#fdf7f5]"
 				>
-					{#if selected[l.id]}<Icon name="check" size={12} stroke={3} />{/if}
-				</button>
-				<a href="/leads/{l.id}" class="min-w-0">
-					<div class="flex items-center gap-1.5 text-[13px] font-semibold">
-						{l.name}
-						{#if l.siblings}<span
-								class="rounded-[4px] bg-[rgba(194,113,12,0.1)] px-[5px] py-px font-mono text-[9.5px] text-stale"
-								>{l.siblings} events</span
-							>{/if}
-					</div>
-					<div class="font-mono text-[11px] text-ink-400">{l.handle} · {l.category}</div>
-				</a>
-				<div class="min-w-0">
-					<div class="flex items-center gap-1.5">
-						<span class="truncate text-[12.5px] text-ink-600">{l.eventName ?? '—'}</span>
-						<EventBadge date={l.eventDate} />
-					</div>
-					{#if l.eventDate}
-						<div class="font-mono text-[11px] text-ink-400">
-							{new Date(l.eventDate + 'T00:00:00').toLocaleDateString('en-PH', {
-								month: 'short',
-								day: 'numeric',
-								year: 'numeric'
-							})}
-						</div>
-					{/if}
-				</div>
-				<div><StageChip stage={l.stage} /></div>
-				<div>
-					<span
-						class="rounded-[5px] px-[6px] py-[2px] font-mono text-[10.5px] font-medium {(
-							sourceLabel[l.source] ?? sourceLabel.other
-						).class}">{(sourceLabel[l.source] ?? sourceLabel.other).label}</span
-					>
-				</div>
-				<div class="font-mono text-[12px] text-ink-400">{formerOwner(l.formerOwnerId)}</div>
-				<div>
 					<button
-						onclick={() => claim(l)}
-						class="h-[30px] w-full rounded-[7px] bg-primary text-[12.5px] font-semibold text-white hover:bg-primary-strong"
+						onclick={() => toggle(l.id)}
+						aria-label="Select {l.name}"
+						class="flex h-[18px] w-[18px] items-center justify-center rounded-[5px] border-[1.5px] {selected[
+							l.id
+						]
+							? 'border-primary bg-primary'
+							: 'border-hairline-strong bg-panel'}"
 					>
-						Claim
+						{#if selected[l.id]}<Icon name="check" size={12} stroke={3} />{/if}
 					</button>
+					<a href="/leads/{l.id}" class="min-w-0">
+						<div class="flex items-center gap-1.5 text-[13px] font-semibold">
+							{l.name}
+							{#if l.siblings}<span
+									class="rounded-[4px] bg-[rgba(194,113,12,0.1)] px-[5px] py-px font-mono text-[9.5px] text-stale"
+									>{l.siblings} events</span
+								>{/if}
+						</div>
+						<div class="font-mono text-[11px] text-ink-400">{l.handle} · {l.category}</div>
+					</a>
+					<div class="min-w-0">
+						<div class="flex items-center gap-1.5">
+							<span class="truncate text-[12.5px] text-ink-600">{l.eventName ?? '—'}</span>
+							<EventBadge date={l.eventDate} />
+						</div>
+						{#if l.eventDate}
+							<div class="font-mono text-[11px] text-ink-400">
+								{new Date(l.eventDate + 'T00:00:00').toLocaleDateString('en-PH', {
+									month: 'short',
+									day: 'numeric',
+									year: 'numeric'
+								})}
+							</div>
+						{/if}
+					</div>
+					<div><StageChip stage={l.stage} /></div>
+					<div>
+						<span
+							class="rounded-[5px] px-[6px] py-[2px] font-mono text-[10.5px] font-medium {(
+								sourceLabel[l.source] ?? sourceLabel.other
+							).class}">{(sourceLabel[l.source] ?? sourceLabel.other).label}</span
+						>
+					</div>
+					<div class="font-mono text-[12px] text-ink-400">{formerOwner(l.formerOwnerId)}</div>
+					<div>
+						<button
+							onclick={() => claim(l)}
+							disabled={claiming[l.id]}
+							class="h-[30px] w-full rounded-[7px] bg-primary text-[12.5px] font-semibold text-white hover:bg-primary-strong disabled:opacity-50"
+						>
+							{claiming[l.id] ? 'Claiming…' : 'Claim'}
+						</button>
+					</div>
 				</div>
-			</div>
-		{:else}
-			<div class="p-12 text-center text-[13px] text-ink-200">
-				No leads up for grabs — queue clear.
-			</div>
-		{/each}
-	</div>
+			{:else}
+				<div class="p-12 text-center text-[13px] text-ink-200">
+					No leads up for grabs — queue clear.
+				</div>
+			{/each}
+		</div>
+	{/if}
 
 	{#if data.pagination.totalPages > 1}
 		{@const { page: pg, pageSize, total, totalPages } = data.pagination}

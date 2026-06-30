@@ -36,8 +36,12 @@
 		href?: string;
 		variant?: ButtonVariant;
 		size?: ButtonSize;
+		loading?: boolean;
+		loadingText?: string;
 	};
 
+	// E2: `disabled` is destructured OUT of restProps so the explicit
+	// `disabled={loading || disabled}` binding below is never overridden by the spread.
 	let {
 		class: className,
 		variant = 'default',
@@ -45,27 +49,52 @@
 		ref = $bindable(null),
 		href = undefined,
 		type = 'button',
+		loading = false,
+		loadingText = undefined,
+		disabled = undefined,
 		children,
 		...restProps
 	}: Props = $props();
 </script>
+
+{#snippet content()}
+	{#if loading}
+		<svg
+			class="size-4 shrink-0 animate-spin"
+			xmlns="http://www.w3.org/2000/svg"
+			fill="none"
+			viewBox="0 0 24 24"
+			aria-hidden="true"
+		>
+			<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"
+			></circle>
+			<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+			></path>
+		</svg>
+		{#if loadingText}{loadingText}{:else}{@render children?.()}{/if}
+	{:else}
+		{@render children?.()}
+	{/if}
+{/snippet}
 
 {#if href}
 	<a
 		bind:this={ref}
 		class={cn(buttonVariants({ variant, size }), className)}
 		{href}
+		aria-disabled={loading || disabled ? 'true' : undefined}
 		{...restProps as Record<string, unknown>}
 	>
-		{@render children?.()}
+		{@render content()}
 	</a>
 {:else}
 	<button
 		bind:this={ref}
 		class={cn(buttonVariants({ variant, size }), className)}
 		{type}
+		disabled={loading || disabled}
 		{...restProps}
 	>
-		{@render children?.()}
+		{@render content()}
 	</button>
 {/if}

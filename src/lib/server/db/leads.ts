@@ -427,6 +427,102 @@ export async function createLead(
 	return dbRowToLead(row);
 }
 
+export async function updateLead(
+	id: string,
+	input: {
+		name: string;
+		category: DbLead['category'];
+		platform?: DbLead['platform'];
+		location?: string;
+		pageUrl?: string;
+		contactEmail?: string;
+		contactPhone?: string;
+		socialFacebook?: string;
+		socialInstagram?: string;
+		eventName?: string;
+		eventDate?: string;
+		eventDateRaw?: string;
+		eventLink?: string;
+		notes?: string;
+	},
+	actorId: string
+): Promise<Lead | null> {
+	return db.transaction(async (tx) => {
+		const [existing] = await tx
+			.select()
+			.from(crmLeads)
+			.where(and(eq(crmLeads.id, id), isNull(crmLeads.deletedAt)))
+			.limit(1);
+
+		if (!existing) return null;
+
+		const normalizedHandle =
+			'@' +
+			input.name
+				.toLowerCase()
+				.replace(/\s+/g, '')
+				.replace(/[^a-z0-9@]/g, '');
+
+		const now = new Date();
+		const [updated] = await tx
+			.update(crmLeads)
+			.set({
+				name: input.name,
+				normalizedHandle,
+				category: input.category,
+				platform: input.platform ?? null,
+				location: input.location ?? null,
+				pageUrl: input.pageUrl ?? null,
+				contactEmail: input.contactEmail ?? null,
+				contactPhone: input.contactPhone ?? null,
+				socialFacebook: input.socialFacebook ?? null,
+				socialInstagram: input.socialInstagram ?? null,
+				eventName: input.eventName ?? null,
+				eventDate: input.eventDate ?? null,
+				eventDateRaw: input.eventDateRaw ?? null,
+				eventLink: input.eventLink ?? null,
+				notes: input.notes ?? null,
+				updatedAt: now
+			})
+			.where(and(eq(crmLeads.id, id), isNull(crmLeads.deletedAt)))
+			.returning();
+
+		if (!updated) return null;
+
+		// Write history rows for changed scalar fields.
+		const tracked: Array<[string, string | null, string | null]> = [
+			['name', existing.name, updated.name],
+			['category', existing.category, updated.category],
+			['platform', existing.platform ?? null, updated.platform ?? null],
+			['location', existing.location ?? null, updated.location ?? null],
+			['contact_email', existing.contactEmail ?? null, updated.contactEmail ?? null],
+			['contact_phone', existing.contactPhone ?? null, updated.contactPhone ?? null],
+			['page_url', existing.pageUrl ?? null, updated.pageUrl ?? null],
+			['social_facebook', existing.socialFacebook ?? null, updated.socialFacebook ?? null],
+			['social_instagram', existing.socialInstagram ?? null, updated.socialInstagram ?? null],
+			['event_name', existing.eventName ?? null, updated.eventName ?? null],
+			['event_date_raw', existing.eventDateRaw ?? null, updated.eventDateRaw ?? null],
+			['event_link', existing.eventLink ?? null, updated.eventLink ?? null],
+			['notes', existing.notes ?? null, updated.notes ?? null]
+		];
+
+		const changed = tracked.filter(([, oldVal, newVal]) => oldVal !== newVal);
+		if (changed.length > 0) {
+			await tx.insert(crmLeadHistory).values(
+				changed.map(([field, oldValue, newValue]) => ({
+					leadId: id,
+					actorUserId: actorId,
+					field,
+					oldValue,
+					newValue
+				}))
+			);
+		}
+
+		return dbRowToLead(updated);
+	});
+}
+
 /**
  * Insert an outreach touch and bump the lead's `last_activity_at`, transactionally.
  * Returns the created Activity, or `null` on a dedup conflict (caller maps to 409).

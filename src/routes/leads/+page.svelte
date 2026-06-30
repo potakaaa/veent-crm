@@ -15,7 +15,9 @@
 	let { data } = $props();
 
 	let paging = $state(false);
-	afterNavigate(() => { paging = false; });
+	afterNavigate(() => {
+		paging = false;
+	});
 
 	// Local search state — writable derived: resets when the loaded filter changes
 	// (back/forward navigation), but still assignable for live typing before debounce.
@@ -174,14 +176,20 @@
 					variant="outline"
 					size="sm"
 					disabled={pg <= 1 || paging}
-					onclick={() => { paging = true; navigate({ page: pg - 1 }); }}>← Prev</Button
+					onclick={() => {
+						paging = true;
+						navigate({ page: pg - 1 });
+					}}>← Prev</Button
 				>
 				<span class="font-mono">Page {pg} of {totalPages}</span>
 				<Button
 					variant="outline"
 					size="sm"
 					disabled={pg >= totalPages || paging}
-					onclick={() => { paging = true; navigate({ page: pg + 1 }); }}>Next →</Button
+					onclick={() => {
+						paging = true;
+						navigate({ page: pg + 1 });
+					}}>Next →</Button
 				>
 			</div>
 		</div>

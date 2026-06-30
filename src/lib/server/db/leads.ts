@@ -4,7 +4,21 @@
  */
 import { db } from './index';
 import { crmLeads, crmUsers, crmActivities, crmLeadHistory } from './schema';
-import { eq, isNull, isNotNull, desc, and, ne, inArray, sql } from 'drizzle-orm';
+import {
+	eq,
+	isNull,
+	isNotNull,
+	desc,
+	asc,
+	and,
+	or,
+	ne,
+	inArray,
+	ilike,
+	count,
+	sql,
+	type SQL
+} from 'drizzle-orm';
 import type {
 	Lead,
 	User,
@@ -142,6 +156,116 @@ export async function listLeads(): Promise<Lead[]> {
 		.where(isNull(crmLeads.deletedAt))
 		.orderBy(desc(sql`coalesce(${crmLeads.lastActivityAt}, ${crmLeads.createdAt})`));
 	return rows.map((row) => dbRowToLead(row));
+}
+
+/**
+ * Distinct non-null lead locations ("countries"), alphabetically sorted.
+ * Powers the country filter dropdown on the leads page.
+ */
+export async function getLeadCountries(): Promise<string[]> {
+	const rows = await db
+		.selectDistinct({ location: crmLeads.location })
+		.from(crmLeads)
+		.where(and(isNull(crmLeads.deletedAt), isNotNull(crmLeads.location)))
+		.orderBy(asc(crmLeads.location));
+	return rows.map((r) => r.location as string);
+}
+
+export interface ListLeadsParams {
+	userId: string;
+	segment?: 'mine' | 'all' | 'unassigned' | 'lost';
+	stage?: string;
+	platform?: string;
+	country?: string;
+	staleOnly?: boolean;
+	search?: string;
+	page?: number;
+	pageSize?: number;
+}
+
+/**
+ * Server-backed, SQL-level filtered + paginated lead listing.
+ * Preserves the listLeads() invariants: sort by COALESCE(last_activity_at, created_at) DESC,
+ * hide lost leads unless the 'lost' segment is active, exclude soft-deleted rows.
+ */
+export async function listLeadsFiltered(
+	params: ListLeadsParams
+): Promise<{ leads: Lead[]; total: number }> {
+	const {
+		userId,
+		segment = 'mine',
+		stage,
+		platform,
+		country,
+		staleOnly = false,
+		search,
+		page = 1,
+		pageSize = 25
+	} = params;
+
+	const offset = (Math.max(1, page) - 1) * pageSize;
+
+	const conditions: SQL[] = [isNull(crmLeads.deletedAt) as SQL];
+
+	// Segment
+	if (segment === 'mine') conditions.push(eq(crmLeads.ownerId, userId));
+	else if (segment === 'unassigned') conditions.push(isNull(crmLeads.ownerId) as SQL);
+	else if (segment === 'lost') conditions.push(sql`${crmLeads.stage} = 'lost'`);
+
+	// Product rule: hide lost unless explicitly in the lost segment
+	if (segment !== 'lost') conditions.push(sql`${crmLeads.stage} <> 'lost'`);
+
+	// Stage filter
+	if (stage) conditions.push(sql`${crmLeads.stage} = ${stage}`);
+
+	// Platform filter
+	if (platform) conditions.push(sql`${crmLeads.platform} = ${platform}`);
+
+	// Country filter (location column)
+	if (country) conditions.push(eq(crmLeads.location, country));
+
+	// Stale only: no activity for > 30 days
+	if (staleOnly) {
+		conditions.push(
+			sql`COALESCE(${crmLeads.lastActivityAt}, ${crmLeads.createdAt}) < NOW() - INTERVAL '30 days'`
+		);
+	}
+
+	// Search: case-insensitive against name and normalizedHandle.
+	// Ingest stores handles without '@' (e.g. 'acmefb'); manual creation stores with '@'.
+	// Strip a leading '@' so "copied handle" queries match both storage formats.
+	if (search) {
+		const nameLike = `%${search}%`;
+		const handleSearch = search.startsWith('@') ? search.slice(1) : search;
+		const handleLike = `%${handleSearch}%`;
+		conditions.push(
+			or(
+				ilike(crmLeads.name, nameLike),
+				ilike(sql`COALESCE(${crmLeads.normalizedHandle}, '')`, handleLike)
+			)!
+		);
+	}
+
+	const where = and(...conditions);
+
+	const [countResult, rows] = await Promise.all([
+		db.select({ total: count() }).from(crmLeads).where(where),
+		db
+			.select()
+			.from(crmLeads)
+			.where(where)
+			.orderBy(
+				desc(sql`COALESCE(${crmLeads.lastActivityAt}, ${crmLeads.createdAt})`),
+				asc(crmLeads.id) // stable secondary sort: prevents duplicate/missing rows across pages
+			)
+			.limit(pageSize)
+			.offset(offset)
+	]);
+
+	return {
+		leads: rows.map((row) => dbRowToLead(row)),
+		total: countResult[0].total
+	};
 }
 
 export async function getLead(id: string): Promise<Lead | null> {
@@ -587,6 +711,43 @@ export async function getNavCounts(
 		unassigned: Number(unassignedRow?.count ?? 0),
 		review: Number(reviewRow?.count ?? 0)
 	};
+}
+
+// ---------------------------------------------------------------------------
+// Reminders queue — overdue + going-cold leads for the current user
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns two pre-sorted reminder buckets for `userId`:
+ *   overdue — leads with a past follow-up date, earliest first (most overdue)
+ *   cold    — active leads with no future follow-up that have gone stale (>30d),
+ *             sorted by last-activity ascending (coldest first)
+ *
+ * Won, lost, soft-deleted, and unassigned leads are excluded.
+ * Cold threshold mirrors computeAge: idle > 30 days without a booked follow-up.
+ */
+export async function getRemindersQueue(
+	userId: string
+): Promise<{ overdue: Lead[]; cold: Lead[] }> {
+	const queue = await getTodayQueue(userId);
+
+	const overdue = queue
+		.filter((l) => l.urgency === 'overdue')
+		.sort(
+			(a, b) =>
+				new Date(a.followUpAt!).getTime() - new Date(b.followUpAt!).getTime() ||
+				a.id.localeCompare(b.id)
+		);
+
+	const cold = queue
+		.filter((l) => l.urgency === 'cold')
+		.sort(
+			(a, b) =>
+				new Date(a.lastActivityAt).getTime() - new Date(b.lastActivityAt).getTime() ||
+				a.id.localeCompare(b.id)
+		);
+
+	return { overdue, cold };
 }
 
 // ---------------------------------------------------------------------------

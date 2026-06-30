@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { invalidateAll } from '$app/navigation';
 	import PageHeader from '$lib/components/shared/PageHeader.svelte';
 	import LeadListRow from '$lib/components/leads/LeadListRow.svelte';
 	import EmptyState from '$lib/components/shared/EmptyState.svelte';
@@ -14,21 +15,40 @@
 			color: '#e11d48',
 			hint: 'past their booked follow-up date'
 		},
-		{
-			key: 'due',
-			title: 'Due today',
-			color: '#c0362c',
-			hint: 'follow-ups booked for today (Manila)'
-		},
 		{ key: 'cold', title: 'Going cold', color: '#c2710c', hint: 're-touch before they lapse' }
 	];
+
 	const groups = $derived(
 		groupDefs.map((g) => ({ ...g, rows: data.leads.filter((l: Lead) => l.urgency === g.key) }))
 	);
 	const total = $derived(groups.reduce((n, g) => n + g.rows.length, 0));
 
-	const snooze = (l: Lead) => toasts.push(`Snoozed ${l.name} — rebooked follow-up`);
-	const nudge = (l: Lead) => toasts.success(`Nudge sent to ${l.name}`);
+	/** Snooze for 3 days (Asia/Manila midnight). */
+	async function snooze(l: Lead) {
+		const followUpAt = new Date(Date.now() + 3 * 86_400_000).toLocaleDateString('en-CA', {
+			timeZone: 'Asia/Manila'
+		});
+		try {
+			const res = await fetch(`/api/leads/${l.id}/snooze`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ followUpAt })
+			});
+			if (!res.ok) {
+				const msg = await res.text().catch(() => 'Server error');
+				toasts.push(`Snooze failed: ${msg}`);
+				return;
+			}
+		} catch {
+			toasts.push('Snooze failed — server error');
+			return;
+		}
+		await invalidateAll();
+		toasts.push(`Snoozed ${l.name} · follow-up in 3 days`);
+	}
+
+	const nudge = (l: Lead) =>
+		toasts.push(`Nudge: no outbound messaging integration yet (${l.name})`);
 </script>
 
 <svelte:head><title>Reminders · Veent CRM</title></svelte:head>

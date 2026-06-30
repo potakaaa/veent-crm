@@ -1,22 +1,28 @@
 <script lang="ts">
+	import { goto, afterNavigate } from '$app/navigation';
+	import { page } from '$app/state';
+	import { SvelteURLSearchParams } from 'svelte/reactivity';
 	import PageHeader from '$lib/components/shared/PageHeader.svelte';
 	import LeadGrid from '$lib/components/leads/LeadGrid.svelte';
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
 	import { Separator } from '$lib/components/ui/separator';
 	import { Select, SelectTrigger, SelectContent, SelectItem } from '$lib/components/ui/select';
-	import { leadsToCsv, downloadCsv } from '$lib/utils/csv';
 	import { LEAD_STAGES, LEAD_PLATFORMS } from '$lib/zod/schemas';
 	import { stageLabel } from '$lib/utils/stages';
-	import type { Lead, LeadSegment, Stage } from '$lib/types';
+	import type { LeadSegment, Stage } from '$lib/types';
 
 	let { data } = $props();
 
-	let segment = $state<LeadSegment>('mine');
-	let stage = $state('');
-	let platform = $state('');
-	let staleOnly = $state(false);
-	let search = $state('');
+	let paging = $state(false);
+	afterNavigate(() => {
+		paging = false;
+	});
+
+	// Local search state — writable derived: resets when the loaded filter changes
+	// (back/forward navigation), but still assignable for live typing before debounce.
+	let searchInput = $derived(data.filters.search ?? '');
+	let searchTimer: ReturnType<typeof setTimeout> | null = null;
 
 	const segDefs: { key: LeadSegment; label: string }[] = [
 		{ key: 'mine', label: 'Mine' },
@@ -25,38 +31,48 @@
 		{ key: 'lost', label: 'Lost' }
 	];
 
-	function bySegment(l: Lead): boolean {
-		if (segment === 'mine') return l.ownerId === data.me.id;
-		if (segment === 'unassigned') return l.ownerId === null;
-		if (segment === 'lost') return l.stage === 'lost';
-		return true;
+	function navigate(patch: Record<string, string | number | boolean | undefined>) {
+		const params = new SvelteURLSearchParams(page.url.searchParams);
+		for (const [k, v] of Object.entries(patch)) {
+			if (v === undefined || v === '' || v === false || v === 0) {
+				params.delete(k);
+			} else {
+				params.set(k, String(v));
+			}
+		}
+		goto(`?${params}`, { keepFocus: true });
 	}
 
-	const segCount = (key: LeadSegment) =>
-		data.leads.filter((l: Lead) => {
-			if (key === 'mine') return l.ownerId === data.me.id;
-			if (key === 'unassigned') return l.ownerId === null;
-			if (key === 'lost') return l.stage === 'lost';
-			return l.stage !== 'lost';
-		}).length;
+	function setFilter(key: string, value: string | boolean | number | undefined) {
+		navigate({ [key]: value, page: undefined }); // reset page (delete param = default 1)
+	}
 
-	const filtered = $derived(
-		data.leads.filter((l: Lead) => {
-			// Lost is hidden unless the Lost segment is active (product rule).
-			if (segment !== 'lost' && l.stage === 'lost') return false;
-			if (!bySegment(l)) return false;
-			if (stage && l.stage !== stage) return false;
-			if (platform && l.platform !== platform) return false;
-			if (staleOnly && l.age.type !== 'stale') return false;
-			if (search) {
-				const q = search.toLowerCase();
-				if (!l.name.toLowerCase().includes(q) && !l.handle.toLowerCase().includes(q)) return false;
-			}
-			return true;
-		})
-	);
+	function setSegment(seg: string) {
+		navigate({ segment: seg === 'mine' ? undefined : seg, page: undefined });
+	}
 
-	const exportCsv = () => downloadCsv('veent-leads.csv', leadsToCsv(filtered));
+	function onSearchInput(e: Event & { currentTarget: HTMLInputElement }) {
+		const val = e.currentTarget.value;
+		searchInput = val;
+		if (searchTimer) clearTimeout(searchTimer);
+		searchTimer = setTimeout(() => {
+			navigate({ q: val || undefined, page: undefined });
+		}, 300);
+	}
+
+	// Build export URL using current filter params.
+	const exportHref = $derived.by(() => {
+		const p = new SvelteURLSearchParams();
+		if (data.filters.segment && data.filters.segment !== 'mine')
+			p.set('segment', data.filters.segment);
+		if (data.filters.stage) p.set('stage', data.filters.stage);
+		if (data.filters.platform) p.set('platform', data.filters.platform);
+		if (data.filters.country) p.set('country', data.filters.country);
+		if (data.filters.staleOnly) p.set('staleOnly', '1');
+		if (data.filters.search) p.set('q', data.filters.search);
+		const qs = p.toString();
+		return `/api/leads/export${qs ? '?' + qs : ''}`;
+	});
 </script>
 
 <svelte:head><title>My Leads · Veent CRM</title></svelte:head>
@@ -67,10 +83,9 @@
 		subtitle="Sorted by last activity — freshest first. Search the command bar before adding a page."
 	>
 		{#snippet actions()}
-			<span class="font-mono text-[12px] text-ink-300"
-				>{filtered.length} shown · last activity ↓</span
+			<span class="font-mono text-[12px] text-ink-300">{data.total} matching · last activity ↓</span
 			>
-			<Button variant="outline" size="sm" onclick={exportCsv}>Export CSV</Button>
+			<Button variant="outline" size="sm" href={exportHref}>Export CSV</Button>
 		{/snippet}
 	</PageHeader>
 
@@ -79,45 +94,106 @@
 		<div class="flex rounded-control bg-panel-sunken p-[3px]">
 			{#each segDefs as s (s.key)}
 				<button
-					onclick={() => (segment = s.key)}
-					class="h-[26px] rounded-[6px] px-3 text-[12.5px] {segment === s.key
+					onclick={() => setSegment(s.key)}
+					class="h-[26px] rounded-[6px] px-3 text-[12.5px] {data.filters.segment === s.key
 						? 'bg-panel font-semibold text-ink shadow-frame'
 						: 'font-medium text-[#7d6a68]'}"
 				>
-					{s.label}<span class="ml-1.5 font-mono text-[10px] opacity-70">{segCount(s.key)}</span>
+					{s.label}
 				</button>
 			{/each}
 		</div>
 		<Separator orientation="vertical" class="h-[22px]" />
 
-		<Select type="single" bind:value={stage}>
-			<SelectTrigger size="sm">{stage ? stageLabel(stage as Stage) : 'Stage'}</SelectTrigger>
+		<Select
+			type="single"
+			value={data.filters.stage}
+			onValueChange={(v: string) => setFilter('stage', v)}
+		>
+			<SelectTrigger size="sm"
+				>{data.filters.stage ? stageLabel(data.filters.stage as Stage) : 'Stage'}</SelectTrigger
+			>
 			<SelectContent>
 				<SelectItem value="" label="All stages">All stages</SelectItem>
-				{#each LEAD_STAGES as s}<SelectItem value={s} label={stageLabel(s)}
-						>{stageLabel(s)}</SelectItem
+				{#each LEAD_STAGES.filter((s) => s !== 'lost' || data.filters.segment === 'lost') as s}<SelectItem
+						value={s}
+						label={stageLabel(s)}>{stageLabel(s)}</SelectItem
 					>{/each}
 			</SelectContent>
 		</Select>
-		<Select type="single" bind:value={platform}>
-			<SelectTrigger size="sm">{platform || 'Platform'}</SelectTrigger>
+		<Select
+			type="single"
+			value={data.filters.platform}
+			onValueChange={(v: string) => setFilter('platform', v)}
+		>
+			<SelectTrigger size="sm">{data.filters.platform || 'Platform'}</SelectTrigger>
 			<SelectContent>
 				<SelectItem value="" label="All platforms">All platforms</SelectItem>
 				{#each LEAD_PLATFORMS as p}<SelectItem value={p} label={p}>{p}</SelectItem>{/each}
 			</SelectContent>
 		</Select>
 
+		{#if data.countries.length > 0}
+			<Select
+				type="single"
+				value={data.filters.country}
+				onValueChange={(v: string) => setFilter('country', v)}
+			>
+				<SelectTrigger size="sm">{data.filters.country || 'Country'}</SelectTrigger>
+				<SelectContent>
+					<SelectItem value="" label="All countries">All countries</SelectItem>
+					{#each data.countries as c}<SelectItem value={c} label={c}>{c}</SelectItem>{/each}
+				</SelectContent>
+			</Select>
+		{/if}
+
 		<Button
 			variant="outline"
 			size="sm"
-			onclick={() => (staleOnly = !staleOnly)}
-			class={staleOnly ? 'border-stale bg-[rgba(194,113,12,0.08)] text-[#92560b]' : ''}
+			onclick={() => setFilter('staleOnly', data.filters.staleOnly ? undefined : true)}
+			class={data.filters.staleOnly ? 'border-stale bg-[rgba(194,113,12,0.08)] text-[#92560b]' : ''}
 		>
 			<span class="h-[7px] w-[7px] rounded-full bg-stale"></span> Stale only (&gt;30d)
 		</Button>
 
-		<Input bind:value={search} placeholder="Filter…" class="ml-auto h-8 w-44" />
+		<Input
+			value={searchInput}
+			oninput={onSearchInput}
+			placeholder="Filter…"
+			class="ml-auto h-8 w-44"
+		/>
 	</div>
 
-	<LeadGrid leads={filtered} users={data.users} />
+	<LeadGrid leads={data.leads} users={data.users} />
+
+	<!-- pagination -->
+	{#if data.pagination.totalPages > 1}
+		{@const { page: pg, pageSize, total, totalPages } = data.pagination}
+		{@const start = (pg - 1) * pageSize + 1}
+		{@const end = Math.min(pg * pageSize, total)}
+		<div class="mt-5 flex items-center justify-between text-[13px] text-ink-300">
+			<span class="font-mono">{start}–{end} of {total}</span>
+			<div class="flex items-center gap-2">
+				<Button
+					variant="outline"
+					size="sm"
+					disabled={pg <= 1 || paging}
+					onclick={() => {
+						paging = true;
+						navigate({ page: pg - 1 });
+					}}>← Prev</Button
+				>
+				<span class="font-mono">Page {pg} of {totalPages}</span>
+				<Button
+					variant="outline"
+					size="sm"
+					disabled={pg >= totalPages || paging}
+					onclick={() => {
+						paging = true;
+						navigate({ page: pg + 1 });
+					}}>Next →</Button
+				>
+			</div>
+		</div>
+	{/if}
 </div>

@@ -1,18 +1,17 @@
 /**
- * Unit tests for the activity-log + reminders feature (pure functions, no DB).
- *   - VE-A1: resolveFollowUpAt computes follow-up from followUpInDays
- *   - VE-B1: dbRowToLead(row, followUpAt) urgency overdue / due
- *   - VE-C2: sendReminderDigest no-ops (logs, no throw) when RESEND_API_KEY unset
+ * Unit tests for the reminders feature (pure functions, no DB).
+ *   VE-A1: resolveFollowUpAt computes follow-up from followUpInDays
+ *   VE-B1: dbRowToLead urgency overdue / due
+ *   VE-C2: sendReminderDigest no-ops when RESEND_API_KEY unset
+ *   VE-R1: reminder grouping — overdue / cold / exclusions / sort order
  */
 import { describe, it, expect, vi } from 'vitest';
 
-// Force the no-key contract path deterministically regardless of the ambient
-// environment (RESEND_API_KEY may be set in CI/dev). db/index.ts falls back to a
-// default DATABASE_URL when unset — no connection is opened by these pure tests.
 vi.mock('$env/dynamic/private', () => ({ env: {} }));
 
 import { resolveFollowUpAt, dbRowToLead } from '$lib/server/db/leads';
 import { sendReminderDigest } from '$lib/server/email';
+import type { Lead } from '$lib/types';
 
 const DAY = 86_400_000;
 
@@ -122,5 +121,114 @@ describe('sendReminderDigest (VE-C2)', () => {
 		).resolves.toBeUndefined();
 		expect(warn).toHaveBeenCalled();
 		warn.mockRestore();
+	});
+});
+
+// ---------------------------------------------------------------------------
+// VE-R1 — reminder grouping logic (pure, no DB)
+// ---------------------------------------------------------------------------
+
+describe('reminder grouping (VE-R1)', () => {
+	// All dates relative to live Date.now() so dbRowToLead's default `now` lines up.
+	function staleRow(daysAgo: number) {
+		return makeLeadRow({
+			id: `stale-${daysAgo}`,
+			lastActivityAt: new Date(Date.now() - daysAgo * DAY)
+		});
+	}
+
+	// — overdue ---
+
+	it('overdue: lead with follow-up in the past appears as overdue', () => {
+		const pastFollowUp = new Date(Date.now() - 3 * DAY);
+		const lead = dbRowToLead(makeLeadRow(), pastFollowUp);
+		expect(lead.urgency).toBe('overdue');
+	});
+
+	it('overdue: future follow-up does NOT appear as overdue', () => {
+		const futureFollowUp = new Date(Date.now() + 5 * DAY);
+		const lead = dbRowToLead(makeLeadRow(), futureFollowUp);
+		expect(lead.urgency).not.toBe('overdue');
+	});
+
+	// — cold ---
+
+	it('cold: contacted lead with last activity >30d and no follow-up is cold', () => {
+		const row = staleRow(31);
+		const lead = dbRowToLead(row);
+		expect(lead.urgency).toBe('cold');
+		expect(lead.age.type).toBe('stale');
+	});
+
+	it('cold: lead with last activity exactly 30d is NOT cold (threshold is >30d)', () => {
+		const row = staleRow(30);
+		const lead = dbRowToLead(row);
+		expect(lead.urgency).not.toBe('cold');
+	});
+
+	// — exclusions ---
+
+	it('won lead is excluded from both groups (urgency is normal)', () => {
+		const row = makeLeadRow({ stage: 'won' as const });
+		const lead = dbRowToLead(row);
+		expect(lead.urgency).not.toBe('overdue');
+		expect(lead.urgency).not.toBe('cold');
+		expect(lead.age.label).toBe('won');
+	});
+
+	it('lost lead is excluded from both groups (urgency is normal)', () => {
+		const row = makeLeadRow({ stage: 'lost' as const });
+		const lead = dbRowToLead(row);
+		expect(lead.urgency).not.toBe('overdue');
+		expect(lead.urgency).not.toBe('cold');
+		expect(lead.age.label).toBe('lost');
+	});
+
+	// — sort order ---
+
+	it('overdue sort: earlier follow-up date sorts first (most overdue first)', () => {
+		const earlier = dbRowToLead(makeLeadRow({ id: 'a' }), new Date(Date.now() - 5 * DAY));
+		const later = dbRowToLead(makeLeadRow({ id: 'b' }), new Date(Date.now() - 2 * DAY));
+
+		const sorted = [later, earlier].sort(
+			(a: Lead, b: Lead) => new Date(a.followUpAt!).getTime() - new Date(b.followUpAt!).getTime()
+		);
+
+		expect(sorted[0].id).toBe('a');
+		expect(sorted[1].id).toBe('b');
+	});
+
+	it('cold sort: earlier lastActivityAt sorts first (coldest first)', () => {
+		const colder = dbRowToLead(staleRow(60));
+		const warmer = dbRowToLead(staleRow(35));
+
+		const sorted = [warmer, colder].sort(
+			(a: Lead, b: Lead) =>
+				new Date(a.lastActivityAt).getTime() - new Date(b.lastActivityAt).getTime()
+		);
+
+		expect(new Date(sorted[0].lastActivityAt) < new Date(sorted[1].lastActivityAt)).toBe(true);
+	});
+
+	// — determinism ---
+
+	it('two overdue leads with identical followUpAt sort deterministically by id', () => {
+		// Use a clearly past timestamp so both leads are definitively overdue.
+		const ts = new Date(Date.now() - DAY);
+		const a = dbRowToLead(makeLeadRow({ id: 'x' }), ts);
+		const b = dbRowToLead(makeLeadRow({ id: 'y' }), ts);
+
+		// Mirror the tiebreaker used in getRemindersQueue: primary followUpAt ASC, secondary id ASC.
+		const sorted = [b, a].sort(
+			(x: Lead, y: Lead) =>
+				new Date(x.followUpAt!).getTime() - new Date(y.followUpAt!).getTime() ||
+				x.id.localeCompare(y.id)
+		);
+
+		expect(sorted).toHaveLength(2);
+		expect(sorted.every((l) => l.urgency === 'overdue')).toBe(true);
+		// 'x' < 'y' alphabetically, so 'x' must come first
+		expect(sorted[0].id).toBe('x');
+		expect(sorted[1].id).toBe('y');
 	});
 });

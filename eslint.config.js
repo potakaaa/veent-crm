@@ -9,7 +9,17 @@ import ts from 'typescript-eslint';
 const gitignorePath = path.resolve(import.meta.dirname, '.gitignore');
 
 export default defineConfig(
-	{ ignores: ['.claude/**', '.codex/**', 'process/**', 'docs/**', 'drizzle/**', 'scripts/**'] },
+	{
+		ignores: [
+			'.archive/**',
+			'.claude/**',
+			'.codex/**',
+			'process/**',
+			'docs/**',
+			'drizzle/**',
+			'scripts/**'
+		]
+	},
 	includeIgnoreFile(gitignorePath),
 	js.configs.recommended,
 	ts.configs.recommended,

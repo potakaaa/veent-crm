@@ -277,24 +277,34 @@ export async function getLead(id: string): Promise<Lead | null> {
 	return row ? dbRowToLead(row) : null;
 }
 
-export async function listUnassignedLeads(): Promise<Lead[]> {
-	const rows = await db
-		.select()
-		.from(crmLeads)
-		.where(
-			and(
-				isNull(crmLeads.ownerId),
-				isNull(crmLeads.deletedAt),
-				ne(crmLeads.stage, 'won'),
-				ne(crmLeads.stage, 'lost')
-			)
-		)
-		.orderBy(
-			sql`CASE WHEN ${crmLeads.eventDate} >= CURRENT_DATE THEN 0 ELSE 1 END`,
-			sql`CASE WHEN ${crmLeads.eventDate} >= CURRENT_DATE THEN ${crmLeads.eventDate} END ASC NULLS LAST`,
-			desc(sql`coalesce(${crmLeads.lastActivityAt}, ${crmLeads.createdAt})`)
-		);
-	return rows.map((row) => dbRowToLead(row));
+export async function listUnassignedLeads(
+	page = 1,
+	pageSize = 25
+): Promise<{ leads: Lead[]; total: number }> {
+	const where = and(
+		isNull(crmLeads.ownerId),
+		isNull(crmLeads.deletedAt),
+		ne(crmLeads.stage, 'won'),
+		ne(crmLeads.stage, 'lost')
+	);
+	const order = [
+		sql`CASE WHEN ${crmLeads.eventDate} >= CURRENT_DATE THEN 0 ELSE 1 END`,
+		sql`CASE WHEN ${crmLeads.eventDate} >= CURRENT_DATE THEN ${crmLeads.eventDate} END ASC NULLS LAST`,
+		desc(sql`coalesce(${crmLeads.lastActivityAt}, ${crmLeads.createdAt})`)
+	];
+
+	const [rows, [{ total }]] = await Promise.all([
+		db
+			.select()
+			.from(crmLeads)
+			.where(where)
+			.orderBy(...order)
+			.limit(pageSize)
+			.offset((Math.max(1, page) - 1) * pageSize),
+		db.select({ total: count() }).from(crmLeads).where(where)
+	]);
+
+	return { leads: rows.map((row) => dbRowToLead(row)), total };
 }
 
 export async function claimLead(id: string, userId: string): Promise<Lead | null> {

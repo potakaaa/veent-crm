@@ -440,6 +440,7 @@ export async function updateLead(
 		socialFacebook?: string;
 		socialInstagram?: string;
 		eventName?: string;
+		eventDate?: string;
 		eventDateRaw?: string;
 		eventLink?: string;
 		notes?: string;
@@ -455,11 +456,19 @@ export async function updateLead(
 
 		if (!existing) return null;
 
+		const normalizedHandle =
+			'@' +
+			input.name
+				.toLowerCase()
+				.replace(/\s+/g, '')
+				.replace(/[^a-z0-9@]/g, '');
+
 		const now = new Date();
 		const [updated] = await tx
 			.update(crmLeads)
 			.set({
 				name: input.name,
+				normalizedHandle,
 				category: input.category,
 				platform: input.platform ?? null,
 				location: input.location ?? null,
@@ -469,6 +478,7 @@ export async function updateLead(
 				socialFacebook: input.socialFacebook ?? null,
 				socialInstagram: input.socialInstagram ?? null,
 				eventName: input.eventName ?? null,
+				eventDate: input.eventDate ?? null,
 				eventDateRaw: input.eventDateRaw ?? null,
 				eventLink: input.eventLink ?? null,
 				notes: input.notes ?? null,

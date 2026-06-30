@@ -67,7 +67,7 @@ export type LeadForm = z.infer<typeof leadFormSchema>;
 // --- Update an existing lead (PATCH) ---------------------------------------
 export const leadUpdateSchema = z.object({
 	name: z.string().trim().min(1, 'Page / organizer name is required'),
-	category: z.enum(LEAD_CATEGORIES).default('Other'),
+	category: z.enum(LEAD_CATEGORIES),
 	platform: z.enum(LEAD_PLATFORMS).optional(),
 	location: z.string().optional(),
 	pageUrl: z.string().url().optional().or(z.literal('')),
@@ -76,6 +76,10 @@ export const leadUpdateSchema = z.object({
 	socialFacebook: z.string().url().optional().or(z.literal('')),
 	socialInstagram: z.string().url().optional().or(z.literal('')),
 	eventName: z.string().optional(),
+	eventDate: z
+		.string()
+		.regex(/^\d{4}-\d{2}-\d{2}$/, 'eventDate must be YYYY-MM-DD')
+		.optional(),
 	eventDateRaw: z.string().optional(),
 	eventLink: z.string().url().optional().or(z.literal('')),
 	notes: z.string().optional()

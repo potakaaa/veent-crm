@@ -57,6 +57,7 @@
 			socialFacebook: socialFacebook || '',
 			socialInstagram: socialInstagram || '',
 			eventName: eventName || undefined,
+			eventDate: selectedDate ? selectedDate.toString() : undefined,
 			eventDateRaw: eventDateDisplay || undefined,
 			eventLink: eventLink || '',
 			notes: notes || undefined

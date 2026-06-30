@@ -46,6 +46,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			socialFacebook: data.socialFacebook || undefined,
 			socialInstagram: data.socialInstagram || undefined,
 			eventName: data.eventName || undefined,
+			eventDate: data.eventDate || undefined,
 			eventDateRaw: data.eventDateRaw || undefined,
 			eventLink: data.eventLink || undefined,
 			notes: data.notes || undefined

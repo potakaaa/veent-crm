@@ -12,9 +12,11 @@ import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { magicLink } from 'better-auth/plugins/magic-link';
 import { dash } from '@better-auth/infra';
+import { eq } from 'drizzle-orm';
 import { db } from '$lib/server/db/index';
-import { baUser, baAccount, baSession, baVerification } from '$lib/server/db/schema';
+import { baUser, baAccount, baSession, baVerification, crmUsers } from '$lib/server/db/schema';
 import { sendEmail } from './email';
+import { pendingWelcomeEmails, welcomeEmail, loginEmail } from './email-templates';
 import { env } from '$env/dynamic/private';
 
 export type SessionUser = {
@@ -41,11 +43,19 @@ function createAuth() {
 			magicLink({
 				sendMagicLink: async ({ email, url }) => {
 					console.log(`\n[DEV] Magic link for ${email}:\n${url}\n`);
-					await sendEmail({
-						to: email,
-						subject: 'Your Veent CRM login link',
-						html: `<p>Click to sign in: <a href="${url}">${url}</a></p><p>Link expires in 5 minutes.</p>`
-					});
+					if (pendingWelcomeEmails.has(email)) {
+						// This email was just added by a manager via POST /api/users — send the
+						// welcome template with a personalized name looked up from crm_users.
+						pendingWelcomeEmails.delete(email);
+						const [row] = await db
+							.select({ name: crmUsers.name })
+							.from(crmUsers)
+							.where(eq(crmUsers.email, email))
+							.limit(1);
+						await sendEmail({ to: email, ...welcomeEmail(row?.name ?? 'there', url) });
+					} else {
+						await sendEmail({ to: email, ...loginEmail(url) });
+					}
 				}
 			}),
 			dash({

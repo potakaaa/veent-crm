@@ -133,7 +133,11 @@ veent-crm/
       +layout.svelte           # Nav + global layout
       +page.server.ts          # Today / daily loop home
       +page.svelte
+      +error.svelte            # Global branded error page (404 + generic; chrome-less, outside layout)
       login/+page.svelte       # Magic-link login page
+      unauthorized/
+        +page.server.ts        # Sanitizes ?from= param (same-origin relative paths only)
+        +page.svelte           # Branded "Access restricted" page; sign-in CTA → /login
       leads/
         +page.server.ts        # Leads list
         +page.svelte
@@ -235,8 +239,10 @@ veent-crm/
 ### Auth / session conventions (current v0)
 
 - `DEV_BYPASS = true` in `hooks.server.ts` injects a fake manager — remove when Better Auth is wired
-- Public routes (no auth required): `/login`, `/health`, `/api/reminders/due`, `/api/leads/ingest`
+- Public routes (no auth required): `/login`, `/unauthorized`, `/health`, `/api/reminders/due`, `/api/leads/ingest`
 - `/api/reminders/due` and `/api/leads/ingest` use secret-based auth (not session-based)
+- Unauthenticated hits on protected routes redirect to `/unauthorized?from=[encoded-path]` (not `/login`). The `from` param is sanitized server-side — only same-origin relative paths (single leading `/`) pass through; off-origin and scheme-containing values are stripped to `null`.
+- `src/routes/+error.svelte` is the global SvelteKit error page (404 + generic errors). It renders outside the layout tree — chrome-less by default, no bare-mode edit needed.
 
 ### Audit trail
 

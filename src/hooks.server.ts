@@ -16,6 +16,7 @@ initSentry(); // no-op stub
 // routes reachable without a session
 const PUBLIC_PREFIXES = [
 	'/login',
+	'/unauthorized',
 	'/health',
 	'/api/reminders/due',
 	'/api/leads/ingest',
@@ -46,7 +47,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 	}
 
 	if (!isPublic && !event.locals.user) {
-		redirect(303, '/login');
+		redirect(303, '/unauthorized?from=' + encodeURIComponent(path));
 	}
 
 	return resolve(event);

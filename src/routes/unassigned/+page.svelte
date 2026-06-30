@@ -28,6 +28,20 @@
 		goto(`?${params}`, { keepFocus: true });
 	}
 
+	function sortClick(col: string) {
+		const isActive = (data.sort ?? '') === col;
+		const nextDir = isActive ? (data.dir === 'asc' ? 'desc' : 'asc') : 'asc';
+		navigate({ sort: col, dir: nextDir, page: undefined });
+	}
+	function sortCls(col: string) {
+		return (data.sort ?? '') === col
+			? 'text-left text-ink-600 font-semibold underline underline-offset-2 cursor-pointer'
+			: 'text-left text-ink-300 hover:text-ink-600 hover:underline hover:underline-offset-2 cursor-pointer';
+	}
+	function sortInd(col: string) {
+		return (data.sort ?? '') === col ? (data.dir === 'asc' ? ' ↑' : ' ↓') : '';
+	}
+
 	let selected = $state<Record<string, boolean>>({});
 	let assignOpen = $state(false);
 	const selectedIds = $derived(
@@ -134,9 +148,21 @@
 		<div
 			class="{grid} items-center border-b border-hairline bg-[#fdf7f5] px-4 py-[9px] font-mono text-[10.5px] uppercase tracking-[0.4px] text-ink-300"
 		>
-			<span></span><span>Organizer / page</span><span>Event</span><span>Stage</span><span
-				>Source</span
-			><span>Last owner</span><span></span>
+			<span></span>
+			<button onclick={() => sortClick('name')} class={sortCls('name')}
+				>Organizer / page{sortInd('name')}</button
+			>
+			<button onclick={() => sortClick('event')} class={sortCls('event')}
+				>Event{sortInd('event')}</button
+			>
+			<button onclick={() => sortClick('stage')} class={sortCls('stage')}
+				>Stage{sortInd('stage')}</button
+			>
+			<button onclick={() => sortClick('source')} class={sortCls('source')}
+				>Source{sortInd('source')}</button
+			>
+			<span>Last owner</span>
+			<span></span>
 		</div>
 		{#each data.leads as l (l.id)}
 			<div

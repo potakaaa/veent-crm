@@ -31,6 +31,11 @@
 		const nextDir = data.sort === col && data.dir === 'asc' ? 'desc' : 'asc';
 		return `?sort=${col}&dir=${nextDir}`;
 	}
+	function sortCls(col: string) {
+		return data.sort === col
+			? 'text-ink-600 font-semibold underline underline-offset-2'
+			: 'text-ink-300 hover:text-ink-600 hover:underline hover:underline-offset-2 cursor-pointer';
+	}
 	function sortInd(col: string) {
 		return data.sort === col ? (data.dir === 'asc' ? ' ↑' : ' ↓') : '';
 	}
@@ -130,17 +135,17 @@
 			<TableHeader>
 				<TableRow class="bg-[#fdf7f5] hover:bg-[#fdf7f5]">
 					<TableHead
-						><a href={sortHref('name')} class="hover:text-ink">Name{sortInd('name')}</a></TableHead
+						><a href={sortHref('name')} class={sortCls('name')}>Name{sortInd('name')}</a></TableHead
 					>
 					<TableHead
-						><a href={sortHref('email')} class="hover:text-ink">Email{sortInd('email')}</a
+						><a href={sortHref('email')} class={sortCls('email')}>Email{sortInd('email')}</a
 						></TableHead
 					>
 					<TableHead
-						><a href={sortHref('role')} class="hover:text-ink">Role{sortInd('role')}</a></TableHead
+						><a href={sortHref('role')} class={sortCls('role')}>Role{sortInd('role')}</a></TableHead
 					>
 					<TableHead
-						><a href={sortHref('active')} class="hover:text-ink">Status{sortInd('active')}</a
+						><a href={sortHref('active')} class={sortCls('active')}>Status{sortInd('active')}</a
 						></TableHead
 					>
 					<TableHead class="text-right">Leads</TableHead>

@@ -201,6 +201,9 @@ export async function getLeadCountries(): Promise<string[]> {
 	return rows.map((r) => r.country as string);
 }
 
+const LEADS_SORT_COLS = ['name', 'event', 'stage', 'platform', 'lastActivity'] as const;
+type LeadsSortCol = (typeof LEADS_SORT_COLS)[number];
+
 export interface ListLeadsParams {
 	userId: string;
 	segment?: 'mine' | 'all' | 'unassigned' | 'lost';
@@ -211,6 +214,8 @@ export interface ListLeadsParams {
 	search?: string;
 	page?: number;
 	pageSize?: number;
+	sort?: string;
+	dir?: 'asc' | 'desc';
 }
 
 /**
@@ -230,7 +235,9 @@ export async function listLeadsFiltered(
 		staleOnly = false,
 		search,
 		page = 1,
-		pageSize = 25
+		pageSize = 25,
+		sort,
+		dir = 'desc'
 	} = params;
 
 	const offset = (Math.max(1, page) - 1) * pageSize;
@@ -278,16 +285,40 @@ export async function listLeadsFiltered(
 
 	const where = and(...conditions);
 
+	const LEADS_COL_MAP = {
+		name: crmLeads.name,
+		stage: crmLeads.stage,
+		platform: crmLeads.platform
+	} satisfies Record<Exclude<LeadsSortCol, 'event' | 'lastActivity'>, unknown>;
+
+	const validSort: LeadsSortCol =
+		sort && (LEADS_SORT_COLS as readonly string[]).includes(sort)
+			? (sort as LeadsSortCol)
+			: 'lastActivity';
+	const sortFn = dir === 'asc' ? asc : desc;
+
+	let leadsOrder: SQL[];
+	if (validSort === 'event') {
+		leadsOrder =
+			dir === 'asc'
+				? [sql`${crmLeads.eventDate} ASC NULLS LAST`, asc(crmLeads.id)]
+				: [sql`${crmLeads.eventDate} DESC NULLS LAST`, asc(crmLeads.id)];
+	} else if (validSort === 'lastActivity') {
+		leadsOrder = [
+			sortFn(sql`COALESCE(${crmLeads.lastActivityAt}, ${crmLeads.createdAt})`),
+			asc(crmLeads.id)
+		];
+	} else {
+		leadsOrder = [sortFn(LEADS_COL_MAP[validSort]), asc(crmLeads.id)];
+	}
+
 	const [countResult, rows] = await Promise.all([
 		db.select({ total: count() }).from(crmLeads).where(where),
 		db
 			.select()
 			.from(crmLeads)
 			.where(where)
-			.orderBy(
-				desc(sql`COALESCE(${crmLeads.lastActivityAt}, ${crmLeads.createdAt})`),
-				asc(crmLeads.id) // stable secondary sort: prevents duplicate/missing rows across pages
-			)
+			.orderBy(...leadsOrder)
 			.limit(pageSize)
 			.offset(offset)
 	]);
@@ -307,9 +338,20 @@ export async function getLead(id: string): Promise<Lead | null> {
 	return row ? dbRowToLead(row) : null;
 }
 
+const UNASSIGNED_SORT_COLS = ['name', 'event', 'stage', 'source'] as const;
+type UnassignedSortCol = (typeof UNASSIGNED_SORT_COLS)[number];
+
+const UNASSIGNED_COL_MAP = {
+	name: crmLeads.name,
+	stage: crmLeads.stage,
+	source: crmLeads.source
+} satisfies Record<Exclude<UnassignedSortCol, 'event'>, unknown>;
+
 export async function listUnassignedLeads(
 	page = 1,
-	pageSize = 25
+	pageSize = 25,
+	sort?: string,
+	dir?: 'asc' | 'desc'
 ): Promise<{ leads: Lead[]; total: number }> {
 	const where = and(
 		isNull(crmLeads.ownerId),
@@ -317,11 +359,28 @@ export async function listUnassignedLeads(
 		ne(crmLeads.stage, 'won'),
 		ne(crmLeads.stage, 'lost')
 	);
-	const order = [
-		sql`CASE WHEN ${crmLeads.eventDate} >= CURRENT_DATE THEN 0 ELSE 1 END`,
-		sql`CASE WHEN ${crmLeads.eventDate} >= CURRENT_DATE THEN ${crmLeads.eventDate} END ASC NULLS LAST`,
-		desc(sql`coalesce(${crmLeads.lastActivityAt}, ${crmLeads.createdAt})`)
-	];
+
+	const validSort: UnassignedSortCol | null =
+		sort && (UNASSIGNED_SORT_COLS as readonly string[]).includes(sort)
+			? (sort as UnassignedSortCol)
+			: null;
+	const sortFn = dir === 'asc' ? asc : desc;
+
+	let order: SQL[];
+	if (!validSort) {
+		order = [
+			sql`CASE WHEN ${crmLeads.eventDate} >= CURRENT_DATE THEN 0 ELSE 1 END`,
+			sql`CASE WHEN ${crmLeads.eventDate} >= CURRENT_DATE THEN ${crmLeads.eventDate} END ASC NULLS LAST`,
+			desc(sql`coalesce(${crmLeads.lastActivityAt}, ${crmLeads.createdAt})`)
+		];
+	} else if (validSort === 'event') {
+		order =
+			dir === 'asc'
+				? [sql`${crmLeads.eventDate} ASC NULLS LAST`, asc(crmLeads.id)]
+				: [sql`${crmLeads.eventDate} DESC NULLS LAST`, asc(crmLeads.id)];
+	} else {
+		order = [sortFn(UNASSIGNED_COL_MAP[validSort]), asc(crmLeads.id)];
+	}
 
 	const [rows, [{ total }]] = await Promise.all([
 		db

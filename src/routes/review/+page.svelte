@@ -10,6 +10,11 @@
 		const nextDir = data.sort === col && data.dir === 'asc' ? 'desc' : 'asc';
 		return `?sort=${col}&dir=${nextDir}`;
 	}
+	function sortCls(col: string) {
+		return data.sort === col
+			? 'text-ink-600 font-semibold underline underline-offset-2'
+			: 'text-ink-300 hover:text-ink-600 hover:underline hover:underline-offset-2 cursor-pointer';
+	}
 	function sortInd(col: string) {
 		return data.sort === col ? (data.dir === 'asc' ? ' ↑' : ' ↓') : '';
 	}
@@ -30,29 +35,31 @@
 						class="border-b border-hairline font-mono text-[10px] uppercase tracking-wider text-ink-300"
 					>
 						<th class="px-4 py-2.5 text-left"
-							><a href={sortHref('name')} class="hover:text-ink">Name{sortInd('name')}</a></th
+							><a href={sortHref('name')} class={sortCls('name')}>Name{sortInd('name')}</a></th
 						>
 						<th class="px-4 py-2.5 text-left"
-							><a href={sortHref('category')} class="hover:text-ink"
+							><a href={sortHref('category')} class={sortCls('category')}
 								>Category{sortInd('category')}</a
 							></th
 						>
 						<th class="px-4 py-2.5 text-left"
-							><a href={sortHref('platform')} class="hover:text-ink"
+							><a href={sortHref('platform')} class={sortCls('platform')}
 								>Platform{sortInd('platform')}</a
 							></th
 						>
 						<th class="px-4 py-2.5 text-left"
-							><a href={sortHref('stage')} class="hover:text-ink">Stage{sortInd('stage')}</a></th
+							><a href={sortHref('stage')} class={sortCls('stage')}>Stage{sortInd('stage')}</a></th
 						>
 						<th class="px-4 py-2.5 text-left"
-							><a href={sortHref('source')} class="hover:text-ink">Source{sortInd('source')}</a></th
+							><a href={sortHref('source')} class={sortCls('source')}>Source{sortInd('source')}</a
+							></th
 						>
 						<th class="px-4 py-2.5 text-left"
-							><a href={sortHref('event')} class="hover:text-ink">Event{sortInd('event')}</a></th
+							><a href={sortHref('event')} class={sortCls('event')}>Event{sortInd('event')}</a></th
 						>
 						<th class="px-4 py-2.5 text-left"
-							><a href={sortHref('createdAt')} class="hover:text-ink">Added{sortInd('createdAt')}</a
+							><a href={sortHref('createdAt')} class={sortCls('createdAt')}
+								>Added{sortInd('createdAt')}</a
 							></th
 						>
 						<th class="px-4 py-2.5 text-left" scope="col"><span class="sr-only">Actions</span></th>

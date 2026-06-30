@@ -60,6 +60,18 @@
 		}, 300);
 	}
 
+	function sortClick(col: string) {
+		const isActive = data.sort === col;
+		const nextDir = isActive
+			? data.dir === 'asc'
+				? 'desc'
+				: 'asc'
+			: col === 'lastActivity'
+				? 'desc'
+				: 'asc';
+		navigate({ sort: col, dir: nextDir, page: undefined });
+	}
+
 	// Build export URL using current filter params.
 	const exportHref = $derived.by(() => {
 		const p = new SvelteURLSearchParams();
@@ -78,13 +90,9 @@
 <svelte:head><title>My Leads · Veent CRM</title></svelte:head>
 
 <div class="px-7 pb-16 pt-6">
-	<PageHeader
-		title="My Leads"
-		subtitle="Sorted by last activity — freshest first. Search the command bar before adding a page."
-	>
+	<PageHeader title="My Leads" subtitle="Search the command bar before adding a page.">
 		{#snippet actions()}
-			<span class="font-mono text-[12px] text-ink-300">{data.total} matching · last activity ↓</span
-			>
+			<span class="font-mono text-[12px] text-ink-300">{data.total} matching</span>
 			<Button variant="outline" size="sm" href={exportHref}>Export CSV</Button>
 		{/snippet}
 	</PageHeader>
@@ -164,7 +172,13 @@
 		/>
 	</div>
 
-	<LeadGrid leads={data.leads} users={data.users} />
+	<LeadGrid
+		leads={data.leads}
+		users={data.users}
+		sort={data.sort}
+		dir={data.dir}
+		onSort={sortClick}
+	/>
 
 	<!-- pagination -->
 	{#if data.pagination.totalPages > 1}

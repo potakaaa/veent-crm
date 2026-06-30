@@ -209,23 +209,34 @@
 		<div
 			class="{grid} items-center border-b border-hairline bg-[#fdf7f5] px-4 py-[9px] font-mono text-[10.5px] uppercase tracking-[0.4px] text-ink-300"
 		>
-			{#each table.getHeaderGroups()[0].headers as header}
-				{#if header.column.getCanSort()}
-					<button
-						onclick={header.column.getToggleSortingHandler()}
-						class={header.column.getIsSorted()
-							? 'text-left font-semibold text-ink-600 underline underline-offset-2 cursor-pointer'
-							: 'text-left text-ink-300 hover:text-ink-600 hover:underline hover:underline-offset-2 cursor-pointer'}
-					>
-						{header.column.columnDef.header}{header.column.getIsSorted() === 'asc'
-							? ' ↑'
+			{#each table.getHeaderGroups()[0].headers as header (header.id)}
+				<div
+					role="columnheader"
+					aria-sort={header.column.getCanSort()
+						? header.column.getIsSorted() === 'asc'
+							? 'ascending'
 							: header.column.getIsSorted() === 'desc'
-								? ' ↓'
-								: ''}
-					</button>
-				{:else}
-					<span>{header.column.columnDef.header}</span>
-				{/if}
+								? 'descending'
+								: 'none'
+						: undefined}
+				>
+					{#if header.column.getCanSort()}
+						<button
+							onclick={header.column.getToggleSortingHandler()}
+							class={header.column.getIsSorted()
+								? 'text-left font-semibold text-ink-600 underline underline-offset-2 cursor-pointer'
+								: 'text-left text-ink-300 hover:text-ink-600 hover:underline hover:underline-offset-2 cursor-pointer'}
+						>
+							{header.column.columnDef.header}{header.column.getIsSorted() === 'asc'
+								? ' ↑'
+								: header.column.getIsSorted() === 'desc'
+									? ' ↓'
+									: ''}
+						</button>
+					{:else}
+						<span>{header.column.columnDef.header}</span>
+					{/if}
+				</div>
 			{/each}
 		</div>
 		{#if navLoading}

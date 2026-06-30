@@ -153,7 +153,13 @@
 							{:else if header.id === '_actions'}
 								<TableHead></TableHead>
 							{:else if header.column.getCanSort()}
-								<TableHead>
+								<TableHead
+									aria-sort={header.column.getIsSorted() === 'asc'
+										? 'ascending'
+										: header.column.getIsSorted() === 'desc'
+											? 'descending'
+											: 'none'}
+								>
 									<button
 										onclick={header.column.getToggleSortingHandler()}
 										class={header.column.getIsSorted()

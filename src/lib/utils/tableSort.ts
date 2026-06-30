@@ -42,7 +42,7 @@ export function makeSortTable<T>(opts: {
 			columnDef: { header: col.header },
 			getCanSort: () => col.enableSorting !== false,
 			getIsSorted: (): false | 'asc' | 'desc' => {
-				if (!col.enableSorting || sort !== col.id) return false;
+				if (col.enableSorting === false || sort !== col.id) return false;
 				return dir === 'asc' ? 'asc' : 'desc';
 			},
 			getToggleSortingHandler: () => () => {

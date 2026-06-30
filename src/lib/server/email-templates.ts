@@ -14,6 +14,10 @@
 
 export const pendingWelcomeEmails = new Set<string>();
 
+function esc(s: string): string {
+	return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
 // --- Veent design system palette (warm wine-on-cream) ----------------------
 const COLOR = {
 	canvas: '#f3e9e6',
@@ -58,17 +62,17 @@ function shell({
 <div style="font-family:'Inter',Arial,sans-serif;font-size:11px;color:${COLOR.subtext};letter-spacing:0.3px;margin-top:2px;">Outreach Console</div>
 </td></tr>
 <tr><td style="padding:16px 36px 0 36px;">
-<h1 style="margin:0;font-family:Georgia,'Spectral',serif;font-weight:600;font-size:26px;color:${COLOR.ink};line-height:1.3;">${heading}</h1>
+<h1 style="margin:0;font-family:Georgia,'Spectral',serif;font-weight:600;font-size:26px;color:${COLOR.ink};line-height:1.3;">${esc(heading)}</h1>
 </td></tr>
 <tr><td style="padding:14px 36px 0 36px;">
-<p style="margin:0;font-family:'Inter',Arial,sans-serif;font-size:15px;color:${COLOR.body};line-height:1.6;">${subhead}</p>
+<p style="margin:0;font-family:'Inter',Arial,sans-serif;font-size:15px;color:${COLOR.body};line-height:1.6;">${esc(subhead)}</p>
 </td></tr>
 <tr><td style="padding:28px 36px 0 36px;">
-<a href="${url}" style="display:inline-block;background-color:${COLOR.primary};color:#ffffff;font-family:'Inter',Arial,sans-serif;font-weight:700;font-size:16px;text-decoration:none;border-radius:8px;padding:14px 28px;">${ctaLabel}</a>
+<a href="${esc(url)}" style="display:inline-block;background-color:${COLOR.primary};color:#ffffff;font-family:'Inter',Arial,sans-serif;font-weight:700;font-size:16px;text-decoration:none;border-radius:8px;padding:14px 28px;">${esc(ctaLabel)}</a>
 </td></tr>
 <tr><td style="padding:22px 36px 0 36px;">
 <p style="margin:0 0 6px 0;font-family:'Inter',Arial,sans-serif;font-size:13px;color:${COLOR.mono};line-height:1.5;">Or paste this link into your browser:</p>
-<p style="margin:0;font-family:'Courier New',monospace;font-size:12px;color:${COLOR.mono};word-break:break-all;line-height:1.5;">${url}</p>
+<p style="margin:0;font-family:'Courier New',monospace;font-size:12px;color:${COLOR.mono};word-break:break-all;line-height:1.5;">${esc(url)}</p>
 </td></tr>
 <tr><td style="padding:18px 36px 0 36px;">
 <p style="margin:0;font-family:'Inter',Arial,sans-serif;font-size:13px;color:${COLOR.mono};line-height:1.5;">This link is single-use and expires in 5 minutes.</p>

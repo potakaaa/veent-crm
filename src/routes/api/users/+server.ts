@@ -44,6 +44,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			headers: request.headers
 		});
 	} catch (err) {
+		pendingWelcomeEmails.delete(email);
 		console.error('[api/users] signInMagicLink failed:', err);
 	}
 

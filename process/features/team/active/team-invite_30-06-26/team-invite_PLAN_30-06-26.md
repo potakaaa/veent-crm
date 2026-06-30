@@ -256,7 +256,7 @@ already reads from the real DB — confirm it still works after the new user is 
 
 ### Shared structure (both templates)
 
-```
+```text
 ┌─────────────────────────────────────────────────────┐
 │  [top bar: 4px solid #c0362c]                       │
 │                                                     │
@@ -487,7 +487,7 @@ Accepted by: session (orchestrator directive: "write the Validate Contract when 
 
 ## Autonomous Goal Block
 
-```
+```text
 SESSION GOAL: Team Invite — magic-link welcome email + real POST /api/users (feature: team)
 Charter + umbrella plan: N/A — single SIMPLE plan (process/features/team/active/team-invite_30-06-26/team-invite_PLAN_30-06-26.md)
 Autonomy: standing EXECUTE consent for this plan only; reversible edits auto-proceed; surface hard stops (per feedback_autonomous_phase_execution.md / orchestration.md §Autonomy Mode)

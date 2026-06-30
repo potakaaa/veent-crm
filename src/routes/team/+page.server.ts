@@ -5,11 +5,30 @@ import { crmUsers } from '$lib/server/db/schema';
 import { asc, desc } from 'drizzle-orm';
 import { dbUserToUser } from '$lib/server/db/leads';
 
+const SORT_COLS = ['name', 'email', 'role', 'active'] as const;
+type SortCol = (typeof SORT_COLS)[number];
+
+const COL_MAP = {
+	name: crmUsers.name,
+	email: crmUsers.email,
+	role: crmUsers.role,
+	active: crmUsers.active
+} satisfies Record<SortCol, unknown>;
+
 // Manager-only: this roster doubles as the magic-link allowlist (active reps with email).
-export const load: PageServerLoad = async ({ locals }) => {
+export const load: PageServerLoad = async ({ locals, url }) => {
 	if (locals.user?.role !== 'manager') {
 		error(403, 'Manager only');
 	}
-	const rows = await db.select().from(crmUsers).orderBy(desc(crmUsers.active), asc(crmUsers.name));
-	return { users: rows.map(dbUserToUser) };
+
+	const rawSort = url.searchParams.get('sort') ?? 'name';
+	const sort: SortCol = (SORT_COLS as readonly string[]).includes(rawSort)
+		? (rawSort as SortCol)
+		: 'name';
+	const dir = url.searchParams.get('dir') === 'desc' ? ('desc' as const) : ('asc' as const);
+	const fn = dir === 'asc' ? asc : desc;
+
+	const rows = await db.select().from(crmUsers).orderBy(fn(COL_MAP[sort]), asc(crmUsers.id));
+
+	return { users: rows.map(dbUserToUser), sort, dir };
 };

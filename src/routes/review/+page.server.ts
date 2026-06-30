@@ -9,8 +9,10 @@ const PAGE_SIZE = 25;
 
 export const load: PageServerLoad = async ({ url }) => {
 	const rawPage = Math.max(1, parseInt(url.searchParams.get('page') ?? '1', 10) || 1);
+	const sort = url.searchParams.get('sort') ?? 'createdAt';
+	const dir = url.searchParams.get('dir') === 'desc' ? ('desc' as const) : ('asc' as const);
 
-	const result = await listReviewLeads(rawPage, PAGE_SIZE);
+	const result = await listReviewLeads(rawPage, PAGE_SIZE, sort, dir);
 	const totalPages = Math.max(1, Math.ceil(result.total / PAGE_SIZE));
 
 	if (rawPage > totalPages) {
@@ -19,6 +21,8 @@ export const load: PageServerLoad = async ({ url }) => {
 
 	return {
 		leads: result.leads,
+		sort,
+		dir,
 		pagination: {
 			page: rawPage,
 			pageSize: PAGE_SIZE,

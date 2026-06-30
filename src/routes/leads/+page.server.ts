@@ -25,6 +25,11 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	const search = url.searchParams.get('q') ?? '';
 	const page = Math.max(1, parseInt(url.searchParams.get('page') ?? '1', 10) || 1);
 
+	const LEADS_SORT_COLS_SET = new Set(['name', 'event', 'stage', 'platform', 'lastActivity']);
+	const rawSort = url.searchParams.get('sort') ?? '';
+	const sort = LEADS_SORT_COLS_SET.has(rawSort) ? rawSort : undefined;
+	const dir = url.searchParams.get('dir') === 'asc' ? ('asc' as const) : ('desc' as const);
+
 	const [result, users, countries] = await Promise.all([
 		listLeadsFiltered({
 			userId: locals.user.id,
@@ -35,7 +40,9 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 			staleOnly,
 			search: search || undefined,
 			page,
-			pageSize: PAGE_SIZE
+			pageSize: PAGE_SIZE,
+			sort,
+			dir
 		}),
 		listUsers(),
 		getLeadCountries()
@@ -56,6 +63,8 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		users,
 		me,
 		filters: { segment, stage, platform, country, staleOnly, search },
+		sort: sort ?? 'lastActivity',
+		dir,
 		pagination: {
 			page,
 			pageSize: PAGE_SIZE,

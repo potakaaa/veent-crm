@@ -4,14 +4,15 @@
 	import { navigating, page } from '$app/state';
 	import { SvelteURLSearchParams } from 'svelte/reactivity';
 	import type { SubmitFunction } from '@sveltejs/kit';
+	import { makeSortTable } from '$lib/utils/tableSort';
+	import { Skeleton } from '$lib/components/ui/skeleton';
+	import { Button } from '$lib/components/ui/button';
 	import PageHeader from '$lib/components/shared/PageHeader.svelte';
 	import EmptyState from '$lib/components/shared/EmptyState.svelte';
 	import StageChip from '$lib/components/shared/StageChip.svelte';
-	import { TableSkeleton } from '$lib/components/shared/skeletons';
-	import { Button } from '$lib/components/ui/button';
+	import DiscardIssueModal from '$lib/components/leads/DiscardIssueModal.svelte';
 	import { toasts } from '$lib/stores/toasts.svelte';
 	import { removeFromList } from '$lib/utils/optimistic';
-	import DiscardIssueModal from '$lib/components/leads/DiscardIssueModal.svelte';
 	import { sourceLabel } from '$lib/utils/sources';
 
 	let { data } = $props();
@@ -20,11 +21,10 @@
 	let resolving = $state<Record<string, boolean>>({});
 	let paging = $state(false);
 
-	// Discard modal state — null when closed, set to the target lead when open.
 	let discardTarget = $state<{ id: string; name: string } | null>(null);
 	let discarding = $state<Record<string, boolean>>({});
 
-	const navLoading = $derived(navigating.to?.url.pathname === '/review');
+	const navLoading = $derived(paging || navigating.to?.url.pathname === '/review');
 
 	afterNavigate(() => {
 		paging = false;
@@ -38,6 +38,27 @@
 		}
 		goto(`?${params}`, { keepFocus: true });
 	}
+
+	const table = $derived(
+		makeSortTable({
+			data: shadowLeads,
+			columns: [
+				{ id: 'name', header: 'Name' },
+				{ id: 'category', header: 'Category' },
+				{ id: 'platform', header: 'Platform' },
+				{ id: 'stage', header: 'Stage' },
+				{ id: 'source', header: 'Source' },
+				{ id: 'event', header: 'Event' },
+				{ id: 'createdAt', header: 'Added' },
+				{ id: '_actions', header: '', enableSorting: false }
+			],
+			sort: data.sort ?? '',
+			dir: data.dir,
+			onToggle(id, desc) {
+				navigate({ sort: id, dir: desc ? 'desc' : 'asc', page: undefined });
+			}
+		})
+	);
 
 	function resolveEnhance(leadId: string): SubmitFunction {
 		return ({ cancel }) => {
@@ -67,12 +88,12 @@
 
 		discarding = { ...discarding, [target.id]: true };
 		const failedLead = shadowLeads.find((l) => l.id === target.id);
-		shadowLeads = removeFromList(shadowLeads, target.id); // optimistic remove
+		shadowLeads = removeFromList(shadowLeads, target.id);
 
 		try {
 			const res = await fetch(`/api/leads/${target.id}/discard`, { method: 'DELETE' });
 			if (!res.ok) throw new Error();
-			discardTarget = null; // close modal only on success
+			discardTarget = null;
 			await invalidateAll();
 		} catch {
 			if (failedLead && !shadowLeads.some((l) => l.id === failedLead.id)) {
@@ -90,68 +111,110 @@
 <div class="px-7 pb-16 pt-6">
 	<PageHeader title="Review queue" subtitle="{shadowLeads.length} leads need attention" />
 
-	{#if navLoading}
-		<TableSkeleton rows={6} cols={6} />
-	{:else if shadowLeads.length === 0}
+	{#if !navLoading && shadowLeads.length === 0}
 		<EmptyState title="All clear" hint="No leads flagged for review." tone="success" />
 	{:else}
 		<div class="overflow-x-auto rounded-control border border-hairline bg-panel">
 			<table class="w-full text-[13px]">
 				<thead>
-					<tr
-						class="border-b border-hairline font-mono text-[10px] uppercase tracking-wider text-ink-300"
-					>
-						<th class="px-4 py-2.5 text-left">Name</th>
-						<th class="px-4 py-2.5 text-left">Category</th>
-						<th class="px-4 py-2.5 text-left">Platform</th>
-						<th class="px-4 py-2.5 text-left">Stage</th>
-						<th class="px-4 py-2.5 text-left">Source</th>
-						<th class="px-4 py-2.5 text-left">Added</th>
-						<th class="px-4 py-2.5 text-left" scope="col"><span class="sr-only">Actions</span></th>
-					</tr>
-				</thead>
-				<tbody>
-					{#each shadowLeads as lead (lead.id)}
-						<tr class="border-b border-hairline last:border-0 hover:bg-panel-sunken">
-							<td class="px-4 py-2.5 font-medium">{lead.name}</td>
-							<td class="px-4 py-2.5 text-ink-600">{lead.category}</td>
-							<td class="px-4 py-2.5 text-ink-600">{lead.platform ?? '—'}</td>
-							<td class="px-4 py-2.5"><StageChip stage={lead.stage} /></td>
-							<td class="px-4 py-2.5">
-								<span
-									class="rounded-[5px] px-[6px] py-[2px] font-mono text-[10.5px] font-medium {sourceLabel(
-										lead.source
-									).class}">{sourceLabel(lead.source).label}</span
-								>
-							</td>
-							<td class="px-4 py-2.5 font-mono text-[11px] text-ink-500">
-								{new Date(lead.createdAt).toISOString().split('T')[0]}
-							</td>
-							<td class="px-4 py-2.5 text-right">
-								<div class="flex items-center justify-end gap-2">
-									<form method="POST" action="?/resolve" use:enhance={resolveEnhance(lead.id)}>
-										<input type="hidden" name="leadId" value={lead.id} />
-										<input type="hidden" name="page" value={data.pagination.page} />
-										<button
-											disabled={resolving[lead.id] || discarding[lead.id]}
-											class="h-[28px] rounded-control border border-hairline px-2.5 font-mono text-[11px] text-ink-600 hover:border-fresh hover:text-fresh disabled:opacity-50"
-											aria-label="Resolve {lead.name}"
-										>
-											{resolving[lead.id] ? 'Saving…' : 'Resolve'}
-										</button>
-									</form>
-									<button
-										disabled={resolving[lead.id] || discarding[lead.id]}
-										onclick={() => (discardTarget = { id: lead.id, name: lead.name })}
-										class="h-[28px] rounded-control border border-hairline px-2.5 font-mono text-[11px] text-ink-600 hover:border-red-400 hover:text-red-500 disabled:opacity-50"
-										aria-label="Discard {lead.name}"
+					{#each table.getHeaderGroups() as headerGroup}
+						<tr
+							class="border-b border-hairline font-mono text-[10px] uppercase tracking-wider text-ink-300"
+						>
+							{#each headerGroup.headers as header}
+								{#if header.id === '_actions'}
+									<th class="px-4 py-2.5 text-left" scope="col"
+										><span class="sr-only">Actions</span></th
 									>
-										{discarding[lead.id] ? 'Discarding…' : 'Discard'}
-									</button>
-								</div>
-							</td>
+								{:else if header.column.getCanSort()}
+									<th
+										class="px-4 py-2.5 text-left"
+										aria-sort={header.column.getIsSorted() === 'asc'
+											? 'ascending'
+											: header.column.getIsSorted() === 'desc'
+												? 'descending'
+												: 'none'}
+									>
+										<button
+											onclick={header.column.getToggleSortingHandler()}
+											class={header.column.getIsSorted()
+												? 'cursor-pointer font-semibold text-ink-600 underline underline-offset-2'
+												: 'cursor-pointer text-ink-300 hover:text-ink-600 hover:underline hover:underline-offset-2'}
+										>
+											{header.column.columnDef.header}{header.column.getIsSorted() === 'asc'
+												? ' ↑'
+												: header.column.getIsSorted() === 'desc'
+													? ' ↓'
+													: ''}
+										</button>
+									</th>
+								{:else}
+									<th class="px-4 py-2.5 text-left">{header.column.columnDef.header}</th>
+								{/if}
+							{/each}
 						</tr>
 					{/each}
+				</thead>
+				<tbody>
+					{#if navLoading}
+						{#each Array(6) as _, i (i)}
+							<tr class="border-b border-hairline last:border-0">
+								{#each Array(8) as _, c (c)}
+									<td class="px-4 py-3"><Skeleton class="h-3.5 w-full" /></td>
+								{/each}
+							</tr>
+						{/each}
+					{:else}
+						{#each table.getRowModel().rows as row (row.original.id)}
+							{@const lead = row.original}
+							<tr class="border-b border-hairline last:border-0 hover:bg-panel-sunken">
+								<td class="px-4 py-2.5 font-medium">{lead.name}</td>
+								<td class="px-4 py-2.5 text-ink-600">{lead.category}</td>
+								<td class="px-4 py-2.5 text-ink-600">{lead.platform ?? '—'}</td>
+								<td class="px-4 py-2.5"><StageChip stage={lead.stage} /></td>
+								<td class="px-4 py-2.5">
+									<span
+										class="rounded-[5px] px-[6px] py-[2px] font-mono text-[10.5px] font-medium {sourceLabel(
+											lead.source
+										).class}">{sourceLabel(lead.source).label}</span
+									>
+								</td>
+								<td class="px-4 py-2.5 font-mono text-[11px] text-ink-500">
+									{#if lead.eventDate}
+										<span title={lead.eventName ?? undefined}>{lead.eventDate}</span>
+									{:else}
+										—
+									{/if}
+								</td>
+								<td class="px-4 py-2.5 font-mono text-[11px] text-ink-500">
+									{new Date(lead.createdAt).toISOString().split('T')[0]}
+								</td>
+								<td class="px-4 py-2.5 text-right">
+									<div class="flex items-center justify-end gap-2">
+										<form method="POST" action="?/resolve" use:enhance={resolveEnhance(lead.id)}>
+											<input type="hidden" name="leadId" value={lead.id} />
+											<input type="hidden" name="page" value={data.pagination.page} />
+											<button
+												disabled={resolving[lead.id] || discarding[lead.id]}
+												class="h-[28px] rounded-control border border-hairline px-2.5 font-mono text-[11px] text-ink-600 hover:border-fresh hover:text-fresh disabled:opacity-50"
+												aria-label="Resolve {lead.name}"
+											>
+												{resolving[lead.id] ? 'Saving…' : 'Resolve'}
+											</button>
+										</form>
+										<button
+											disabled={resolving[lead.id] || discarding[lead.id]}
+											onclick={() => (discardTarget = { id: lead.id, name: lead.name })}
+											class="h-[28px] rounded-control border border-hairline px-2.5 font-mono text-[11px] text-ink-600 hover:border-red-400 hover:text-red-500 disabled:opacity-50"
+											aria-label="Discard {lead.name}"
+										>
+											{discarding[lead.id] ? 'Discarding…' : 'Discard'}
+										</button>
+									</div>
+								</td>
+							</tr>
+						{/each}
+					{/if}
 				</tbody>
 			</table>
 		</div>

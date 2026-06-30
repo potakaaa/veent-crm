@@ -4,7 +4,6 @@
 	import { SvelteURLSearchParams } from 'svelte/reactivity';
 	import PageHeader from '$lib/components/shared/PageHeader.svelte';
 	import LeadGrid from '$lib/components/leads/LeadGrid.svelte';
-	import { TableSkeleton } from '$lib/components/shared/skeletons';
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
 	import { Separator } from '$lib/components/ui/separator';
@@ -64,6 +63,10 @@
 		}, 300);
 	}
 
+	function sortClick(col: string, sortDir: 'asc' | 'desc') {
+		navigate({ sort: col, dir: sortDir, page: undefined });
+	}
+
 	// Build export URL using current filter params.
 	const exportHref = $derived.by(() => {
 		const p = new SvelteURLSearchParams();
@@ -82,13 +85,9 @@
 <svelte:head><title>My Leads · Veent CRM</title></svelte:head>
 
 <div class="px-7 pb-16 pt-6">
-	<PageHeader
-		title="My Leads"
-		subtitle="Sorted by last activity — freshest first. Search the command bar before adding a page."
-	>
+	<PageHeader title="My Leads" subtitle="Search the command bar before adding a page.">
 		{#snippet actions()}
-			<span class="font-mono text-[12px] text-ink-300">{data.total} matching · last activity ↓</span
-			>
+			<span class="font-mono text-[12px] text-ink-300">{data.total} matching</span>
 			<Button variant="outline" size="sm" href={exportHref}>Export CSV</Button>
 		{/snippet}
 	</PageHeader>
@@ -168,11 +167,14 @@
 		/>
 	</div>
 
-	{#if navLoading}
-		<TableSkeleton rows={8} cols={5} />
-	{:else}
-		<LeadGrid leads={data.leads} users={data.users} />
-	{/if}
+	<LeadGrid
+		leads={data.leads}
+		users={data.users}
+		sort={data.sort}
+		dir={data.dir}
+		loading={navLoading}
+		onSortChange={sortClick}
+	/>
 
 	<!-- pagination -->
 	{#if data.pagination.totalPages > 1}

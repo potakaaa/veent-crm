@@ -318,7 +318,7 @@ export async function listReviewLeads(
 			.select()
 			.from(crmLeads)
 			.where(where)
-			.orderBy(asc(crmLeads.createdAt))
+			.orderBy(asc(crmLeads.createdAt), asc(crmLeads.id))
 			.limit(pageSize)
 			.offset((Math.max(1, page) - 1) * pageSize),
 		db.select({ total: count() }).from(crmLeads).where(where)

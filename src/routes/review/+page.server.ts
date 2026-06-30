@@ -11,14 +11,16 @@ export const load: PageServerLoad = async ({ url }) => {
 	const page = Math.max(1, parseInt(url.searchParams.get('page') ?? '1', 10) || 1);
 
 	const result = await listReviewLeads(page, PAGE_SIZE);
+	const totalPages = Math.max(1, Math.ceil(result.total / PAGE_SIZE));
+	const normalizedPage = Math.min(page, totalPages);
 
 	return {
 		leads: result.leads,
 		pagination: {
-			page,
+			page: normalizedPage,
 			pageSize: PAGE_SIZE,
 			total: result.total,
-			totalPages: Math.max(1, Math.ceil(result.total / PAGE_SIZE))
+			totalPages
 		}
 	};
 };
@@ -32,6 +34,9 @@ export const actions: Actions = {
 		if (typeof leadId !== 'string' || !leadId) return fail(400, { error: 'Missing leadId' });
 		if (!UUID_RE.test(leadId)) return fail(400, { error: 'Invalid leadId' });
 
+		const rawPage = parseInt(data.get('page') as string, 10);
+		const page = Number.isFinite(rawPage) && rawPage > 1 ? rawPage : 1;
+
 		const [updated] = await db
 			.update(crmLeads)
 			.set({ needsReview: false, updatedAt: new Date() })
@@ -42,6 +47,6 @@ export const actions: Actions = {
 
 		if (!updated) return fail(404, { error: 'Lead not found or already resolved' });
 
-		redirect(303, '/review');
+		redirect(303, page > 1 ? `/review?page=${page}` : '/review');
 	}
 };

@@ -83,6 +83,7 @@
 					<div>
 						<form method="POST" action="?/resolve">
 							<input type="hidden" name="leadId" value={lead.id} />
+							<input type="hidden" name="page" value={data.pagination.page} />
 							<button
 								class="h-[30px] w-full rounded-[7px] border border-hairline bg-panel px-2.5 font-mono text-[11px] text-ink-600 hover:border-fresh hover:text-fresh"
 								aria-label="Resolve {lead.name}"

@@ -1,8 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import PageHeader from '$lib/components/shared/PageHeader.svelte';
-	import PlatformBadge from '$lib/components/shared/PlatformBadge.svelte';
-	import StageChip from '$lib/components/shared/StageChip.svelte';
 	import Icon from '$lib/components/shared/Icon.svelte';
 	import { Card, CardContent } from '$lib/components/ui/card';
 	import { Input } from '$lib/components/ui/input';
@@ -11,25 +9,34 @@
 	import { Select, SelectTrigger, SelectContent, SelectItem } from '$lib/components/ui/select';
 	import { Calendar } from '$lib/components/ui/calendar';
 	import * as Dialog from '$lib/components/ui/dialog';
+	import { Textarea } from '$lib/components/ui/textarea';
 	import { toasts } from '$lib/stores/toasts.svelte';
-	import { hasPotentialDuplicate } from '$lib/utils/dedup';
 	import { formatEventDate } from '$lib/utils/dates';
-	import { leadFormSchema, LEAD_CATEGORIES, LEAD_PLATFORMS } from '$lib/zod/schemas';
-	import type { DateValue } from '@internationalized/date';
+	import { leadUpdateSchema, LEAD_CATEGORIES, LEAD_PLATFORMS } from '$lib/zod/schemas';
+	import { parseDate, type DateValue } from '@internationalized/date';
 
 	let { data } = $props();
+	const { lead } = data;
 
-	let name = $state('');
-	let category = $state<string>('Other');
-	let platform = $state<string>('');
-	let location = $state('');
-	let pageUrl = $state('');
-	let email = $state('');
-	let eventName = $state('');
-	let selectedDate = $state<DateValue | undefined>(undefined);
+	let name = $state(lead.name);
+	let category = $state<string>(lead.category);
+	let platform = $state<string>(lead.platform ?? '');
+	let location = $state(lead.location === '—' ? '' : (lead.location ?? ''));
+	let pageUrl = $state(lead.pageUrl ?? '');
+	let email = $state(lead.email ?? '');
+	let phone = $state(lead.phone ?? '');
+	let socialFacebook = $state(lead.socialFacebook ?? '');
+	let socialInstagram = $state(lead.socialInstagram ?? '');
+	let eventName = $state(lead.eventName ?? '');
+	let eventLink = $state(lead.eventLink ?? '');
+	let notes = $state(lead.notes ?? '');
+
+	let selectedDate = $state<DateValue | undefined>(
+		lead.eventDate ? parseDate(lead.eventDate) : undefined
+	);
 	let dateOpen = $state(false);
 	let tempDate = $state<DateValue | undefined>(undefined);
-	let error = $state('');
+	let formError = $state('');
 	let saving = $state(false);
 
 	const eventDateDisplay = $derived(selectedDate ? formatEventDate(selectedDate) : '');
@@ -38,81 +45,59 @@
 		if (dateOpen) tempDate = selectedDate;
 	});
 
-	// Advisory only — duplicates are surfaced but never block "Create anyway".
-	const dupes = $derived(name.length > 1 ? hasPotentialDuplicate({ name }, data.leads) : []);
-
-	async function create() {
-		if (saving) return; // duplicate-submit guard
-		const parsed = leadFormSchema.safeParse({
+	async function save() {
+		const parsed = leadUpdateSchema.safeParse({
 			name,
 			category,
 			platform: platform || undefined,
 			location: location || undefined,
 			pageUrl: pageUrl || '',
 			contactEmail: email || '',
+			phone: phone || undefined,
+			socialFacebook: socialFacebook || '',
+			socialInstagram: socialInstagram || '',
 			eventName: eventName || undefined,
-			eventDateRaw: eventDateDisplay || undefined
+			eventDate: selectedDate ? selectedDate.toString() : undefined,
+			eventDateRaw: eventDateDisplay || undefined,
+			eventLink: eventLink || '',
+			notes: notes || undefined
 		});
 		if (!parsed.success) {
-			error = parsed.error.issues[0]?.message ?? 'Please check the form.';
+			formError = parsed.error.issues[0]?.message ?? 'Please check the form.';
 			return;
 		}
-		error = '';
+		formError = '';
 		saving = true;
 		try {
-			const res = await fetch('/api/leads', {
-				method: 'POST',
+			const res = await fetch(`/api/leads/${lead.id}`, {
+				method: 'PATCH',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify(parsed.data)
 			});
 			if (!res.ok) {
-				error = (await res.text().catch(() => '')) || 'Could not create lead.';
+				formError = (await res.text().catch(() => '')) || 'Could not save changes.';
 				return;
 			}
-			const { id, name: leadName } = (await res.json()) as { id: string; name: string };
-			toasts.success(`Created ${leadName}`);
-			await goto(`/leads/${id}`);
+			toasts.success('Lead updated');
+			await goto(`/leads/${lead.id}`);
 		} catch {
-			error = 'Could not create lead. Please try again.';
+			formError = 'Could not save changes. Please try again.';
 		} finally {
 			saving = false;
 		}
 	}
 </script>
 
-<svelte:head><title>New lead · Veent CRM</title></svelte:head>
+<svelte:head><title>Edit {lead.name} · Veent CRM</title></svelte:head>
 
 <div class="mx-auto max-w-[680px] px-7 pb-16 pt-6">
 	<a
-		href="/leads"
+		href="/leads/{lead.id}"
 		class="mb-3.5 flex items-center gap-1.5 text-[12.5px] text-ink-400 hover:text-ink"
 	>
-		<Icon name="back" size={14} stroke={2} /> Back to leads
+		<Icon name="back" size={14} stroke={2} /> Back to lead
 	</a>
-	<PageHeader
-		title="New lead"
-		subtitle="Search the command bar first — dedup is advisory, but two reps shouldn't DM the same page."
-	/>
-
-	{#if dupes.length}
-		<div class="mb-4 rounded-control border border-stale/30 bg-[rgba(194,113,12,0.08)] p-3">
-			<div class="mb-2 flex items-center gap-2 text-[12px] font-semibold text-[#92560b]">
-				<Icon name="alert" size={14} stroke={2} /> Possible duplicate — review before creating (you can
-				still create anyway).
-			</div>
-			{#each dupes as d (d.id)}
-				<a
-					href="/leads/{d.id}"
-					class="flex items-center gap-2.5 rounded-[7px] px-2 py-1.5 hover:bg-panel"
-				>
-					<PlatformBadge platform={d.platform} />
-					<span class="flex-1 text-[13px] font-semibold">{d.name}</span>
-					<span class="font-mono text-[11px] text-ink-400">{d.handle}</span>
-					<StageChip stage={d.stage} />
-				</a>
-			{/each}
-		</div>
-	{/if}
+	<PageHeader title="Edit lead" subtitle={lead.name} />
 
 	<Card class="rounded-control py-5">
 		<CardContent class="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -125,7 +110,7 @@
 				<Select type="single" bind:value={category}>
 					<SelectTrigger id="category" class="w-full">{category}</SelectTrigger>
 					<SelectContent>
-						{#each LEAD_CATEGORIES as c (c)}<SelectItem value={c} label={c}>{c}</SelectItem>{/each}
+						{#each LEAD_CATEGORIES as c}<SelectItem value={c} label={c}>{c}</SelectItem>{/each}
 					</SelectContent>
 				</Select>
 			</div>
@@ -135,7 +120,7 @@
 					<SelectTrigger id="platform" class="w-full">{platform || 'Select platform'}</SelectTrigger
 					>
 					<SelectContent>
-						{#each LEAD_PLATFORMS as p (p)}<SelectItem value={p} label={p}>{p}</SelectItem>{/each}
+						{#each LEAD_PLATFORMS as p}<SelectItem value={p} label={p}>{p}</SelectItem>{/each}
 					</SelectContent>
 				</Select>
 			</div>
@@ -148,12 +133,36 @@
 				<Input id="email" bind:value={email} placeholder="hello@page.ph" />
 			</div>
 			<div class="grid gap-1.5">
+				<Label for="phone">Phone</Label>
+				<Input id="phone" bind:value={phone} placeholder="+63 917 000 0000" />
+			</div>
+			<div class="grid gap-1.5">
 				<Label for="pageUrl">Page URL</Label>
 				<Input id="pageUrl" bind:value={pageUrl} placeholder="https://facebook.com/…" />
 			</div>
 			<div class="grid gap-1.5">
+				<Label for="socialFacebook">Facebook</Label>
+				<Input
+					id="socialFacebook"
+					bind:value={socialFacebook}
+					placeholder="https://facebook.com/…"
+				/>
+			</div>
+			<div class="grid gap-1.5">
+				<Label for="socialInstagram">Instagram</Label>
+				<Input
+					id="socialInstagram"
+					bind:value={socialInstagram}
+					placeholder="https://instagram.com/…"
+				/>
+			</div>
+			<div class="grid gap-1.5">
 				<Label for="eventName">Event name</Label>
 				<Input id="eventName" bind:value={eventName} placeholder="Worship Night Vol. 4" />
+			</div>
+			<div class="grid gap-1.5">
+				<Label for="eventLink">Event link</Label>
+				<Input id="eventLink" bind:value={eventLink} placeholder="https://…" />
 			</div>
 			<div class="grid gap-1.5 sm:col-span-2">
 				<Label for="eventDate">Event date</Label>
@@ -197,14 +206,16 @@
 					</Dialog.Content>
 				</Dialog.Root>
 			</div>
+			<div class="grid gap-1.5 sm:col-span-2">
+				<Label for="notes">Notes</Label>
+				<Textarea id="notes" bind:value={notes} placeholder="Anything worth noting…" rows={3} />
+			</div>
 
-			{#if error}<p class="text-[12.5px] text-overdue sm:col-span-2">{error}</p>{/if}
+			{#if formError}<p class="text-[12.5px] text-overdue sm:col-span-2">{formError}</p>{/if}
 
 			<div class="flex items-center justify-end gap-2.5 sm:col-span-2">
-				<Button variant="outline" href="/leads">Cancel</Button>
-				<Button onclick={create} disabled={!name} loading={saving} loadingText="Creating…">
-					{dupes.length ? 'Create anyway' : 'Create lead'}
-				</Button>
+				<Button variant="outline" href="/leads/{lead.id}">Cancel</Button>
+				<Button onclick={save} disabled={saving || !name}>Save changes</Button>
 			</div>
 		</CardContent>
 	</Card>

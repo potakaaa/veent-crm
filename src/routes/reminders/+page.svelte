@@ -1,12 +1,16 @@
 <script lang="ts">
 	import { invalidateAll } from '$app/navigation';
+	import { navigating } from '$app/state';
 	import PageHeader from '$lib/components/shared/PageHeader.svelte';
 	import LeadListRow from '$lib/components/leads/LeadListRow.svelte';
 	import EmptyState from '$lib/components/shared/EmptyState.svelte';
+	import { DashboardSectionSkeleton } from '$lib/components/shared/skeletons';
 	import { toasts } from '$lib/stores/toasts.svelte';
 	import type { Lead, Urgency } from '$lib/types';
 
 	let { data } = $props();
+
+	const navLoading = $derived(navigating.to?.url.pathname === '/reminders');
 
 	const groupDefs: { key: Urgency; title: string; color: string; hint: string }[] = [
 		{
@@ -59,7 +63,9 @@
 		subtitle="Follow-ups booked from your logged touches. Activities drive these dates — log a touch to rebook."
 	/>
 
-	{#if total === 0}
+	{#if navLoading}
+		<DashboardSectionSkeleton sections={2} />
+	{:else if total === 0}
 		<EmptyState
 			title="Nothing due"
 			hint="Every follow-up is booked for later. Go prospect or check Up for grabs."

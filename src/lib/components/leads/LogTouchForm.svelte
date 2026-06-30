@@ -60,7 +60,7 @@
 		<div class="min-w-[130px] flex-1">
 			<div class="mb-1.5 text-[11px] text-ink-300">Channel</div>
 			<div class="flex flex-wrap gap-1.5">
-				{#each channelOpts as c}
+				{#each channelOpts as c (c.key)}
 					<button class={pill(channel === c.key)} onclick={() => (channel = c.key)}
 						>{c.label}</button
 					>
@@ -70,7 +70,7 @@
 		<div class="min-w-[130px] flex-1">
 			<div class="mb-1.5 text-[11px] text-ink-300">Outcome</div>
 			<div class="flex flex-wrap gap-1.5">
-				{#each outcomeOpts as o}
+				{#each outcomeOpts as o (o.key)}
 					<button class={pill(outcome === o.key)} onclick={() => (outcome = o.key)}
 						>{o.label}</button
 					>
@@ -80,7 +80,7 @@
 		<div class="min-w-[130px]">
 			<div class="mb-1.5 text-[11px] text-ink-300">Follow up in</div>
 			<div class="flex gap-1.5">
-				{#each followOpts as f}
+				{#each followOpts as f (f)}
 					<button class={pill(followUpInDays === f, true)} onclick={() => (followUpInDays = f)}>
 						{f}d
 					</button>
@@ -97,6 +97,8 @@
 		<span class="text-[12px] text-ink-200">
 			Logs a touch and books a follow-up reminder (Asia/Manila).
 		</span>
-		<Button disabled={disabled || submitting} onclick={submit}>Log touch</Button>
+		<Button {disabled} loading={submitting} loadingText="Logging…" onclick={submit}
+			>Log touch</Button
+		>
 	</div>
 </div>

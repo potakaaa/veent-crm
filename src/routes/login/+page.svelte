@@ -113,7 +113,7 @@
 				DM the same organizer twice.
 			</div>
 			<div class="mt-7 flex flex-wrap gap-2">
-				{#each ['dedup on', 'Asia/Manila', 'keyboard-first'] as tag}
+				{#each ['dedup on', 'Asia/Manila', 'keyboard-first'] as tag (tag)}
 					<div
 						class="rounded-[6px] border border-[#43282a] bg-white/5 px-[9px] py-[5px] font-mono text-[11px] text-[#b89e9c]"
 					>

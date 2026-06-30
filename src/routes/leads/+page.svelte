@@ -1,9 +1,10 @@
 <script lang="ts">
 	import { goto, afterNavigate } from '$app/navigation';
-	import { page } from '$app/state';
+	import { page, navigating } from '$app/state';
 	import { SvelteURLSearchParams } from 'svelte/reactivity';
 	import PageHeader from '$lib/components/shared/PageHeader.svelte';
 	import LeadGrid from '$lib/components/leads/LeadGrid.svelte';
+	import { TableSkeleton } from '$lib/components/shared/skeletons';
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
 	import { Separator } from '$lib/components/ui/separator';
@@ -18,6 +19,9 @@
 	afterNavigate(() => {
 		paging = false;
 	});
+
+	// Skeleton while navigating to this route (filter/segment/page changes included).
+	const navLoading = $derived(paging || navigating.to?.url.pathname === '/leads');
 
 	// Local search state — writable derived: resets when the loaded filter changes
 	// (back/forward navigation), but still assignable for live typing before debounce.
@@ -123,7 +127,7 @@
 			>
 			<SelectContent>
 				<SelectItem value="" label="All stages">All stages</SelectItem>
-				{#each LEAD_STAGES.filter((s) => s !== 'lost' || data.filters.segment === 'lost') as s}<SelectItem
+				{#each LEAD_STAGES.filter((s) => s !== 'lost' || data.filters.segment === 'lost') as s (s)}<SelectItem
 						value={s}
 						label={stageLabel(s)}>{stageLabel(s)}</SelectItem
 					>{/each}
@@ -137,7 +141,7 @@
 			<SelectTrigger size="sm">{data.filters.platform || 'Platform'}</SelectTrigger>
 			<SelectContent>
 				<SelectItem value="" label="All platforms">All platforms</SelectItem>
-				{#each LEAD_PLATFORMS as p}<SelectItem value={p} label={p}>{p}</SelectItem>{/each}
+				{#each LEAD_PLATFORMS as p (p)}<SelectItem value={p} label={p}>{p}</SelectItem>{/each}
 			</SelectContent>
 		</Select>
 
@@ -150,7 +154,7 @@
 				<SelectTrigger size="sm">{data.filters.country || 'Country'}</SelectTrigger>
 				<SelectContent>
 					<SelectItem value="" label="All countries">All countries</SelectItem>
-					{#each data.countries as c}<SelectItem value={c} label={c}>{c}</SelectItem>{/each}
+					{#each data.countries as c (c)}<SelectItem value={c} label={c}>{c}</SelectItem>{/each}
 				</SelectContent>
 			</Select>
 		{/if}
@@ -172,13 +176,17 @@
 		/>
 	</div>
 
-	<LeadGrid
-		leads={data.leads}
-		users={data.users}
-		sort={data.sort}
-		dir={data.dir}
-		onSort={sortClick}
-	/>
+	{#if navLoading}
+		<TableSkeleton rows={8} cols={5} />
+	{:else}
+		<LeadGrid
+			leads={data.leads}
+			users={data.users}
+			sort={data.sort}
+			dir={data.dir}
+			onSort={sortClick}
+		/>
+	{/if}
 
 	<!-- pagination -->
 	{#if data.pagination.totalPages > 1}

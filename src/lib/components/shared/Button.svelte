@@ -12,11 +12,15 @@
 	type Variant = 'primary' | 'secondary' | 'ghost' | 'success' | 'danger';
 	type Size = 'sm' | 'md';
 
+	// E2: `loading`/`loadingText` are NOT part of HTMLButtonAttributes, so the typed
+	// `...rest` spread drops them. Declare them as explicit props and forward explicitly.
 	let {
 		variant = 'secondary',
 		size = 'md',
 		href = undefined,
 		class: extra = '',
+		loading = false,
+		loadingText = undefined,
 		children,
 		...rest
 	}: {
@@ -24,6 +28,8 @@
 		size?: Size;
 		href?: string;
 		class?: string;
+		loading?: boolean;
+		loadingText?: string;
 		children: Snippet;
 	} & HTMLButtonAttributes = $props();
 
@@ -37,6 +43,14 @@
 	const sizeMap: Record<Size, ButtonSize> = { sm: 'sm', md: 'default' };
 </script>
 
-<UiButton variant={variantMap[variant]} size={sizeMap[size]} {href} class={extra} {...rest}>
+<UiButton
+	variant={variantMap[variant]}
+	size={sizeMap[size]}
+	{href}
+	class={extra}
+	{loading}
+	{loadingText}
+	{...rest}
+>
 	{@render children()}
 </UiButton>

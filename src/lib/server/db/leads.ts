@@ -590,6 +590,35 @@ export async function getNavCounts(
 }
 
 // ---------------------------------------------------------------------------
+// Reminders queue — overdue + going-cold leads for the current user
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns two pre-sorted reminder buckets for `userId`:
+ *   overdue — leads with a past follow-up date, earliest first (most overdue)
+ *   cold    — active leads with no future follow-up that have gone stale (>30d),
+ *             sorted by last-activity ascending (coldest first)
+ *
+ * Won, lost, soft-deleted, and unassigned leads are excluded.
+ * Cold threshold mirrors computeAge: idle > 30 days without a booked follow-up.
+ */
+export async function getRemindersQueue(
+	userId: string
+): Promise<{ overdue: Lead[]; cold: Lead[] }> {
+	const queue = await getTodayQueue(userId);
+
+	const overdue = queue
+		.filter((l) => l.urgency === 'overdue')
+		.sort((a, b) => new Date(a.followUpAt!).getTime() - new Date(b.followUpAt!).getTime());
+
+	const cold = queue
+		.filter((l) => l.urgency === 'cold')
+		.sort((a, b) => new Date(a.lastActivityAt).getTime() - new Date(b.lastActivityAt).getTime());
+
+	return { overdue, cold };
+}
+
+// ---------------------------------------------------------------------------
 // Snooze — defer follow-up without counting as an outreach touch
 // ---------------------------------------------------------------------------
 

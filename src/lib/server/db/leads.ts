@@ -164,6 +164,30 @@ export async function listLeads(): Promise<Lead[]> {
 	return rows.map((row) => dbRowToLead(row));
 }
 
+const PIPELINE_STAGES = ['new', 'contacted', 'replied', 'in_discussion', 'won'] as const;
+
+export async function listPipelineLeads(): Promise<{ leads: Lead[]; lostCount: number }> {
+	const eventOrder = [
+		sql`CASE WHEN ${crmLeads.eventDate} >= CURRENT_DATE THEN 0 ELSE 1 END`,
+		sql`CASE WHEN ${crmLeads.eventDate} >= CURRENT_DATE THEN ${crmLeads.eventDate} END ASC NULLS LAST`,
+		desc(sql`coalesce(${crmLeads.lastActivityAt}, ${crmLeads.createdAt})`)
+	];
+
+	const [rows, [{ lostCount }]] = await Promise.all([
+		db
+			.select()
+			.from(crmLeads)
+			.where(and(isNull(crmLeads.deletedAt), inArray(crmLeads.stage, [...PIPELINE_STAGES])))
+			.orderBy(...eventOrder),
+		db
+			.select({ lostCount: count() })
+			.from(crmLeads)
+			.where(and(isNull(crmLeads.deletedAt), sql`${crmLeads.stage} = 'lost'`))
+	]);
+
+	return { leads: rows.map((row) => dbRowToLead(row)), lostCount };
+}
+
 /**
  * Distinct non-null lead locations ("countries"), alphabetically sorted.
  * Powers the country filter dropdown on the leads page.

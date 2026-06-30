@@ -2,14 +2,21 @@
 	import Avatar from '$lib/components/shared/Avatar.svelte';
 	import PlatformBadge from '$lib/components/shared/PlatformBadge.svelte';
 	import AgeBadge from '$lib/components/shared/AgeBadge.svelte';
+	import EventBadge from '$lib/components/shared/EventBadge.svelte';
 	import { BOARD_STAGES, stageColor, stageLabel } from '$lib/utils/stages';
 	import type { Lead, Stage, User } from '$lib/types';
 
 	let {
 		leads,
+		lostCount = 0,
 		users,
 		onMove
-	}: { leads: Lead[]; users: User[]; onMove?: (leadId: string, stage: Stage) => void } = $props();
+	}: {
+		leads: Lead[];
+		lostCount?: number;
+		users: User[];
+		onMove?: (leadId: string, stage: Stage) => void;
+	} = $props();
 
 	const ownerName = (id: string | null) => users.find((u) => u.id === id)?.name ?? null;
 	const columns = $derived(
@@ -19,7 +26,6 @@
 			cards: leads.filter((l) => l.stage === stage)
 		}))
 	);
-	const lostCount = $derived(leads.filter((l) => l.stage === 'lost').length);
 
 	let dragId = $state<string | null>(null);
 	function drop(stage: Stage) {
@@ -60,9 +66,19 @@
 							<PlatformBadge platform={c.platform} />
 							<span class="truncate text-[12.5px] font-semibold">{c.name}</span>
 						</div>
-						<div class="mb-2 truncate font-mono text-[11px] text-ink-400">
-							{c.eventDate ? `${c.eventName} · ${c.eventDate}` : (c.eventName ?? '—')}
+						<div class="mb-1.5 flex items-center gap-1.5">
+							<span class="truncate font-mono text-[11px] text-ink-400">{c.eventName ?? '—'}</span>
+							<EventBadge date={c.eventDate} />
 						</div>
+						{#if c.eventDate}
+							<div class="mb-2 font-mono text-[11px] text-ink-300">
+								{new Date(c.eventDate + 'T00:00:00').toLocaleDateString('en-PH', {
+									month: 'short',
+									day: 'numeric',
+									year: 'numeric'
+								})}
+							</div>
+						{/if}
 						<div class="flex items-center justify-between">
 							<AgeBadge label={c.age.label} type={c.age.type} />
 							<Avatar name={ownerName(c.ownerId)} />

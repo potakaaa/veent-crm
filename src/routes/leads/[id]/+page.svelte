@@ -316,22 +316,28 @@
 	</div>
 </div>
 
-<WonCaptureModal
-	open={wonOpen}
-	leadName={lead.name}
-	onclose={() => (wonOpen = false)}
-	onconfirm={confirmWon}
-/>
-<LostReasonModal
-	open={lostOpen}
-	leadName={lead.name}
-	onclose={() => (lostOpen = false)}
-	onconfirm={confirmLost}
-/>
-<ReassignModal
-	open={reassignOpen}
-	users={data.users}
-	currentOwnerId={lead.ownerId}
-	onclose={() => (reassignOpen = false)}
-	onconfirm={confirmReassign}
-/>
+{#if wonOpen}
+	<WonCaptureModal
+		open={true}
+		leadName={lead.name}
+		onclose={() => (wonOpen = false)}
+		onconfirm={confirmWon}
+	/>
+{/if}
+{#if lostOpen}
+	<LostReasonModal
+		open={true}
+		leadName={lead.name}
+		onclose={() => (lostOpen = false)}
+		onconfirm={confirmLost}
+	/>
+{/if}
+{#if reassignOpen}
+	<ReassignModal
+		open={true}
+		users={data.users}
+		currentOwnerId={lead.ownerId}
+		onclose={() => (reassignOpen = false)}
+		onconfirm={confirmReassign}
+	/>
+{/if}

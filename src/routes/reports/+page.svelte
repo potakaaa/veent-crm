@@ -3,58 +3,11 @@
 	import Avatar from '$lib/components/shared/Avatar.svelte';
 	import { formatMoney } from '$lib/utils/currency';
 	import type { FunnelStage } from '$lib/types';
-	import * as echarts from 'echarts/core';
-	import { BarChart } from 'echarts/charts';
-	import { GridComponent, TooltipComponent, LegendComponent } from 'echarts/components';
-	import { CanvasRenderer } from 'echarts/renderers';
-
-	echarts.use([BarChart, GridComponent, TooltipComponent, LegendComponent, CanvasRenderer]);
 
 	let { data } = $props();
 	const report = $derived(data.report);
 	const maxCount = $derived(Math.max(...report.funnel.map((f: FunnelStage) => f.count), 1));
-
-	let chartEl: HTMLDivElement | undefined = $state();
-	let chart: echarts.ECharts | undefined;
-
-	$effect(() => {
-		if (!chartEl) return;
-		chart = echarts.init(chartEl);
-		const names = report.leaderboard.map((r) => r.name);
-		chart.setOption({
-			tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
-			legend: { data: ['Wins', 'Touches', 'Replies'] },
-			grid: { left: 16, right: 16, top: 32, bottom: 8, containLabel: true },
-			xAxis: { type: 'value' },
-			yAxis: { type: 'category', data: names },
-			series: [
-				{
-					name: 'Wins',
-					type: 'bar',
-					data: report.leaderboard.map((r) => r.wins),
-					itemStyle: { color: '#22c55e' }
-				},
-				{
-					name: 'Touches',
-					type: 'bar',
-					data: report.leaderboard.map((r) => r.touches),
-					itemStyle: { color: '#6366f1' }
-				},
-				{
-					name: 'Replies',
-					type: 'bar',
-					data: report.leaderboard.map((r) => r.replies),
-					itemStyle: { color: '#3b82f6' }
-				}
-			]
-		});
-		const observer = new ResizeObserver(() => chart?.resize());
-		observer.observe(chartEl);
-		return () => {
-			observer.disconnect();
-			chart?.dispose();
-		};
-	});
+	const maxTouches = $derived(Math.max(...report.leaderboard.map((r) => r.touches), 1));
 </script>
 
 <svelte:head><title>Reports · Veent CRM</title></svelte:head>
@@ -113,13 +66,53 @@
 		</div>
 
 		<!-- leaderboard -->
-		<div class="rounded-control border border-hairline bg-panel p-5">
+		<div class="rounded-control border border-hairline bg-panel p-5 flex flex-col">
 			<div class="mb-4 text-[14px] font-bold">Rep leaderboard</div>
 			{#if report.leaderboard.length > 0}
-				<div bind:this={chartEl} class="mb-4 h-[220px] w-full"></div>
+				<div class="mb-5 space-y-[7px]">
+					{#each report.leaderboard as r (r.repId)}
+						<div class="flex items-center gap-3">
+							<div class="w-[72px] shrink-0 truncate text-right text-[11.5px] text-ink-500">
+								{r.name.split(' ')[0]}
+							</div>
+							<div class="relative min-w-0 flex-1">
+								<div class="h-[26px] w-full overflow-hidden rounded-[5px] bg-panel-sunken">
+									{#if r.touches > 0}
+										<div
+											class="flex h-full items-center rounded-[5px] bg-[#6366f1] pl-2.5 transition-all"
+											style="width:{Math.max((r.touches / maxTouches) * 100, 8)}%"
+										>
+											<span class="truncate pr-2 font-mono text-[10.5px] font-medium text-white/90">
+												{r.name.split(' ')[0]}
+											</span>
+										</div>
+									{/if}
+								</div>
+							</div>
+							<div class="flex w-[52px] shrink-0 items-center gap-1.5">
+								<span class="font-mono text-[12.5px] text-ink-500">{r.touches || '—'}</span>
+								{#if r.wins > 0}
+									<span
+										class="rounded-[3px] bg-[#22c55e]/15 px-1 font-mono text-[9.5px] font-semibold text-[#16a34a]"
+									>
+										{r.wins}W
+									</span>
+								{/if}
+							</div>
+						</div>
+					{/each}
+					<div class="flex items-center gap-4 pt-1 text-[11px] text-ink-300">
+						<span class="flex items-center gap-1.5">
+							<span class="inline-block h-[9px] w-[9px] rounded-[2px] bg-[#6366f1]"></span>Touches
+						</span>
+						<span class="flex items-center gap-1.5">
+							<span class="inline-block h-[9px] w-[9px] rounded-[2px] bg-[#22c55e]"></span>Wins
+						</span>
+					</div>
+				</div>
 			{/if}
 			<div
-				class="grid grid-cols-[1.4fr_1fr_1fr_0.8fr] gap-2 border-b border-hairline pb-2.5 font-mono text-[10px] uppercase tracking-[0.4px] text-ink-300"
+				class="grid grid-cols-[1.6fr_0.9fr_0.9fr_0.7fr] gap-2 border-b border-hairline pb-2 font-mono text-[10px] uppercase tracking-[0.4px] text-ink-300"
 			>
 				<span>Rep</span><span class="text-right">Touches</span><span class="text-right"
 					>Replies</span
@@ -127,14 +120,19 @@
 			</div>
 			{#each report.leaderboard as r (r.repId)}
 				<div
-					class="grid grid-cols-[1.4fr_1fr_1fr_0.8fr] items-center gap-2 border-b border-panel-sunken py-2.5 last:border-b-0"
+					class="grid grid-cols-[1.6fr_0.9fr_0.9fr_0.7fr] items-center gap-2 border-b border-panel-sunken py-2 last:border-b-0"
 				>
-					<div class="flex items-center gap-2">
-						<Avatar name={r.name} /><span class="text-[13px] font-semibold">{r.name}</span>
+					<div class="flex min-w-0 items-center gap-2">
+						<Avatar name={r.name} />
+						<span class="truncate text-[13px] font-semibold">{r.name}</span>
 					</div>
-					<span class="text-right font-mono text-[13px]">{r.touches}</span>
-					<span class="text-right font-mono text-[13px] text-fresh">{r.replies}</span>
-					<span class="text-right font-mono text-[13px] font-semibold">{r.wins}</span>
+					<span class="text-right font-mono text-[13px]">{r.touches || '—'}</span>
+					<span class="text-right font-mono text-[13px] text-fresh">{r.replies || '—'}</span>
+					<span
+						class="text-right font-mono text-[13px] font-bold {r.wins > 0
+							? 'text-ink'
+							: 'text-ink-300'}">{r.wins || '—'}</span
+					>
 				</div>
 			{/each}
 		</div>

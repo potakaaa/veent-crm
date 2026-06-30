@@ -11,6 +11,7 @@
 	import { Button } from '$lib/components/ui/button';
 	import { toasts } from '$lib/stores/toasts.svelte';
 	import { removeFromList } from '$lib/utils/optimistic';
+	import DiscardIssueModal from '$lib/components/leads/DiscardIssueModal.svelte';
 	import { sourceLabel } from '$lib/utils/sources';
 
 	let { data } = $props();
@@ -18,6 +19,10 @@
 	let shadowLeads = $derived(data.leads);
 	let resolving = $state<Record<string, boolean>>({});
 	let paging = $state(false);
+
+	// Discard modal state — null when closed, set to the target lead when open.
+	let discardTarget = $state<{ id: string; name: string } | null>(null);
+	let discarding = $state<Record<string, boolean>>({});
 
 	const navLoading = $derived(navigating.to?.url.pathname === '/review');
 
@@ -53,6 +58,30 @@
 				}
 			};
 		};
+	}
+
+	async function confirmDiscard() {
+		const target = discardTarget;
+		if (!target) return;
+		if (discarding[target.id]) return;
+
+		discarding = { ...discarding, [target.id]: true };
+		const failedLead = shadowLeads.find((l) => l.id === target.id);
+		shadowLeads = removeFromList(shadowLeads, target.id); // optimistic remove
+
+		try {
+			const res = await fetch(`/api/leads/${target.id}/discard`, { method: 'DELETE' });
+			if (!res.ok) throw new Error();
+			discardTarget = null; // close modal only on success
+			await invalidateAll();
+		} catch {
+			if (failedLead && !shadowLeads.some((l) => l.id === failedLead.id)) {
+				shadowLeads = [...shadowLeads, failedLead];
+			}
+			toasts.push('Could not discard — please try again');
+		} finally {
+			discarding = { ...discarding, [target.id]: false };
+		}
 	}
 </script>
 
@@ -99,17 +128,27 @@
 								{new Date(lead.createdAt).toISOString().split('T')[0]}
 							</td>
 							<td class="px-4 py-2.5 text-right">
-								<form method="POST" action="?/resolve" use:enhance={resolveEnhance(lead.id)}>
-									<input type="hidden" name="leadId" value={lead.id} />
-									<input type="hidden" name="page" value={data.pagination.page} />
+								<div class="flex items-center justify-end gap-2">
+									<form method="POST" action="?/resolve" use:enhance={resolveEnhance(lead.id)}>
+										<input type="hidden" name="leadId" value={lead.id} />
+										<input type="hidden" name="page" value={data.pagination.page} />
+										<button
+											disabled={resolving[lead.id] || discarding[lead.id]}
+											class="h-[28px] rounded-control border border-hairline px-2.5 font-mono text-[11px] text-ink-600 hover:border-fresh hover:text-fresh disabled:opacity-50"
+											aria-label="Resolve {lead.name}"
+										>
+											{resolving[lead.id] ? 'Saving…' : 'Resolve'}
+										</button>
+									</form>
 									<button
-										disabled={resolving[lead.id]}
-										class="h-[28px] rounded-control border border-hairline px-2.5 font-mono text-[11px] text-ink-600 hover:border-fresh hover:text-fresh disabled:opacity-50"
-										aria-label="Resolve {lead.name}"
+										disabled={resolving[lead.id] || discarding[lead.id]}
+										onclick={() => (discardTarget = { id: lead.id, name: lead.name })}
+										class="h-[28px] rounded-control border border-hairline px-2.5 font-mono text-[11px] text-ink-600 hover:border-red-400 hover:text-red-500 disabled:opacity-50"
+										aria-label="Discard {lead.name}"
 									>
-										{resolving[lead.id] ? 'Saving…' : 'Resolve'}
+										{discarding[lead.id] ? 'Discarding…' : 'Discard'}
 									</button>
-								</form>
+								</div>
 							</td>
 						</tr>
 					{/each}
@@ -148,3 +187,13 @@
 		{/if}
 	{/if}
 </div>
+
+{#if discardTarget}
+	<DiscardIssueModal
+		open={true}
+		leadName={discardTarget.name}
+		saving={discarding[discardTarget.id] ?? false}
+		onclose={() => (discardTarget = null)}
+		onconfirm={confirmDiscard}
+	/>
+{/if}

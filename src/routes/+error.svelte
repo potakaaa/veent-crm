@@ -44,7 +44,9 @@
 				An unexpected error occurred. Try again, or head back to the console.
 			</p>
 			{#if page.error?.message}
-				<p class="mb-7 rounded-panel border border-[#43282a] bg-white/5 p-3.5 font-mono text-[12.5px] leading-relaxed text-[#cdbab8]">
+				<p
+					class="mb-7 rounded-panel border border-[#43282a] bg-white/5 p-3.5 font-mono text-[12.5px] leading-relaxed text-[#cdbab8]"
+				>
 					{page.error.message}
 				</p>
 			{:else}

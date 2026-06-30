@@ -4,7 +4,6 @@
 	import { SvelteURLSearchParams } from 'svelte/reactivity';
 	import PageHeader from '$lib/components/shared/PageHeader.svelte';
 	import LeadGrid from '$lib/components/leads/LeadGrid.svelte';
-	import { TableSkeleton } from '$lib/components/shared/skeletons';
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
 	import { Separator } from '$lib/components/ui/separator';
@@ -64,16 +63,8 @@
 		}, 300);
 	}
 
-	function sortClick(col: string) {
-		const isActive = data.sort === col;
-		const nextDir = isActive
-			? data.dir === 'asc'
-				? 'desc'
-				: 'asc'
-			: col === 'lastActivity'
-				? 'desc'
-				: 'asc';
-		navigate({ sort: col, dir: nextDir, page: undefined });
+	function sortClick(col: string, sortDir: 'asc' | 'desc') {
+		navigate({ sort: col, dir: sortDir, page: undefined });
 	}
 
 	// Build export URL using current filter params.
@@ -176,17 +167,14 @@
 		/>
 	</div>
 
-	{#if navLoading}
-		<TableSkeleton rows={8} cols={5} />
-	{:else}
-		<LeadGrid
-			leads={data.leads}
-			users={data.users}
-			sort={data.sort}
-			dir={data.dir}
-			onSort={sortClick}
-		/>
-	{/if}
+	<LeadGrid
+		leads={data.leads}
+		users={data.users}
+		sort={data.sort}
+		dir={data.dir}
+		loading={navLoading}
+		onSortChange={sortClick}
+	/>
 
 	<!-- pagination -->
 	{#if data.pagination.totalPages > 1}

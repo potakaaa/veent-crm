@@ -1,13 +1,14 @@
 <script lang="ts">
 	import { goto, afterNavigate, invalidateAll } from '$app/navigation';
 	import { page, navigating } from '$app/state';
+	import { makeSortTable } from '$lib/utils/tableSort';
+	import { Skeleton } from '$lib/components/ui/skeleton';
 	import { SvelteURLSearchParams } from 'svelte/reactivity';
 	import PageHeader from '$lib/components/shared/PageHeader.svelte';
 	import StageChip from '$lib/components/shared/StageChip.svelte';
 	import ReassignModal from '$lib/components/leads/ReassignModal.svelte';
 	import EventBadge from '$lib/components/shared/EventBadge.svelte';
 	import Icon from '$lib/components/shared/Icon.svelte';
-	import { TableSkeleton } from '$lib/components/shared/skeletons';
 	import { toasts } from '$lib/stores/toasts.svelte';
 	import { removeFromList } from '$lib/utils/optimistic';
 	import { canReassign } from '$lib/utils/permissions';
@@ -42,19 +43,25 @@
 		goto(`?${params}`, { keepFocus: true });
 	}
 
-	function sortClick(col: string) {
-		const isActive = (data.sort ?? '') === col;
-		const nextDir = isActive ? (data.dir === 'asc' ? 'desc' : 'asc') : 'asc';
-		navigate({ sort: col, dir: nextDir, page: undefined });
-	}
-	function sortCls(col: string) {
-		return (data.sort ?? '') === col
-			? 'text-left text-ink-600 font-semibold underline underline-offset-2 cursor-pointer'
-			: 'text-left text-ink-300 hover:text-ink-600 hover:underline hover:underline-offset-2 cursor-pointer';
-	}
-	function sortInd(col: string) {
-		return (data.sort ?? '') === col ? (data.dir === 'asc' ? ' ↑' : ' ↓') : '';
-	}
+	const table = $derived(
+		makeSortTable({
+			data: shadowLeads,
+			columns: [
+				{ id: '_select', header: '', enableSorting: false },
+				{ id: 'name', header: 'Organizer / page' },
+				{ id: 'event', header: 'Event' },
+				{ id: 'stage', header: 'Stage' },
+				{ id: 'source', header: 'Source' },
+				{ id: '_lastOwner', header: 'Last owner', enableSorting: false },
+				{ id: '_actions', header: '', enableSorting: false }
+			],
+			sort: data.sort ?? '',
+			dir: data.dir,
+			onToggle(id, desc) {
+				navigate({ sort: id, dir: desc ? 'desc' : 'asc', page: undefined });
+			}
+		})
+	);
 
 	let selected = $state<Record<string, boolean>>({});
 	let assignOpen = $state(false);
@@ -204,29 +211,38 @@
 		{/snippet}
 	</PageHeader>
 
-	{#if navLoading}
-		<TableSkeleton rows={8} cols={6} />
-	{:else}
-		<div class="overflow-hidden rounded-control border border-hairline bg-panel">
-			<div
-				class="{grid} items-center border-b border-hairline bg-[#fdf7f5] px-4 py-[9px] font-mono text-[10.5px] uppercase tracking-[0.4px] text-ink-300"
-			>
-				<span></span>
-				<button onclick={() => sortClick('name')} class={sortCls('name')}
-					>Organizer / page{sortInd('name')}</button
-				>
-				<button onclick={() => sortClick('event')} class={sortCls('event')}
-					>Event{sortInd('event')}</button
-				>
-				<button onclick={() => sortClick('stage')} class={sortCls('stage')}
-					>Stage{sortInd('stage')}</button
-				>
-				<button onclick={() => sortClick('source')} class={sortCls('source')}
-					>Source{sortInd('source')}</button
-				>
-				<span>Last owner</span>
-				<span></span>
-			</div>
+	<div class="overflow-hidden rounded-control border border-hairline bg-panel">
+		<div
+			class="{grid} items-center border-b border-hairline bg-[#fdf7f5] px-4 py-[9px] font-mono text-[10.5px] uppercase tracking-[0.4px] text-ink-300"
+		>
+			{#each table.getHeaderGroups()[0].headers as header}
+				{#if header.column.getCanSort()}
+					<button
+						onclick={header.column.getToggleSortingHandler()}
+						class={header.column.getIsSorted()
+							? 'text-left font-semibold text-ink-600 underline underline-offset-2 cursor-pointer'
+							: 'text-left text-ink-300 hover:text-ink-600 hover:underline hover:underline-offset-2 cursor-pointer'}
+					>
+						{header.column.columnDef.header}{header.column.getIsSorted() === 'asc'
+							? ' ↑'
+							: header.column.getIsSorted() === 'desc'
+								? ' ↓'
+								: ''}
+					</button>
+				{:else}
+					<span>{header.column.columnDef.header}</span>
+				{/if}
+			{/each}
+		</div>
+		{#if navLoading}
+			{#each Array(8) as _, i (i)}
+				<div class="{grid} min-h-11 items-center border-b border-panel-sunken px-4 last:border-b-0">
+					{#each Array(7) as _, c (c)}
+						<Skeleton class="h-3.5 w-full" />
+					{/each}
+				</div>
+			{/each}
+		{:else}
 			{#each shadowLeads as l (l.id)}
 				<div
 					class="{grid} min-h-11 items-center border-b border-panel-sunken px-4 last:border-b-0 hover:bg-[#fdf7f5]"
@@ -291,8 +307,8 @@
 					No leads up for grabs — queue clear.
 				</div>
 			{/each}
-		</div>
-	{/if}
+		{/if}
+	</div>
 
 	{#if data.pagination.totalPages > 1}
 		{@const { page: pg, pageSize, total, totalPages } = data.pagination}

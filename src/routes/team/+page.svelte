@@ -1,9 +1,10 @@
 <script lang="ts">
-	import { invalidateAll } from '$app/navigation';
+	import { goto, invalidateAll } from '$app/navigation';
 	import { navigating } from '$app/state';
+	import { makeSortTable } from '$lib/utils/tableSort';
+	import { Skeleton } from '$lib/components/ui/skeleton';
 	import PageHeader from '$lib/components/shared/PageHeader.svelte';
 	import Avatar from '$lib/components/shared/Avatar.svelte';
-	import { TableSkeleton } from '$lib/components/shared/skeletons';
 	import Modal from '$lib/components/shared/Modal.svelte';
 	import Icon from '$lib/components/shared/Icon.svelte';
 	import { Card } from '$lib/components/ui/card';
@@ -31,18 +32,24 @@
 
 	const navLoading = $derived(navigating.to?.url.pathname === '/team');
 
-	function sortHref(col: string) {
-		const nextDir = data.sort === col && data.dir === 'asc' ? 'desc' : 'asc';
-		return `?sort=${col}&dir=${nextDir}`;
-	}
-	function sortCls(col: string) {
-		return data.sort === col
-			? 'text-ink-600 font-semibold underline underline-offset-2'
-			: 'text-ink-300 hover:text-ink-600 hover:underline hover:underline-offset-2 cursor-pointer';
-	}
-	function sortInd(col: string) {
-		return data.sort === col ? (data.dir === 'asc' ? ' ↑' : ' ↓') : '';
-	}
+	const table = $derived(
+		makeSortTable({
+			data: data.users,
+			columns: [
+				{ id: 'name', header: 'Name' },
+				{ id: 'email', header: 'Email' },
+				{ id: 'role', header: 'Role' },
+				{ id: 'active', header: 'Status' },
+				{ id: '_leads', header: 'Leads', enableSorting: false },
+				{ id: '_actions', header: '', enableSorting: false }
+			],
+			sort: data.sort ?? '',
+			dir: data.dir,
+			onToggle(id, desc) {
+				goto(`?sort=${id}&dir=${desc ? 'desc' : 'asc'}`, { keepFocus: true });
+			}
+		})
+	);
 
 	let addOpen = $state(false);
 	let name = $state('');
@@ -134,35 +141,50 @@
 		</div>
 	{/if}
 
-	{#if navLoading}
-		<TableSkeleton rows={6} cols={6} />
-	{:else}
-		<Card class="gap-0 overflow-hidden rounded-control py-0">
-			<Table>
-				<TableHeader>
+	<Card class="gap-0 overflow-hidden rounded-control py-0">
+		<Table>
+			<TableHeader>
+				{#each table.getHeaderGroups() as headerGroup}
 					<TableRow class="bg-[#fdf7f5] hover:bg-[#fdf7f5]">
-						<TableHead
-							><a href={sortHref('name')} class={sortCls('name')}>Name{sortInd('name')}</a
-							></TableHead
-						>
-						<TableHead
-							><a href={sortHref('email')} class={sortCls('email')}>Email{sortInd('email')}</a
-							></TableHead
-						>
-						<TableHead
-							><a href={sortHref('role')} class={sortCls('role')}>Role{sortInd('role')}</a
-							></TableHead
-						>
-						<TableHead
-							><a href={sortHref('active')} class={sortCls('active')}>Status{sortInd('active')}</a
-							></TableHead
-						>
-						<TableHead class="text-right">Leads</TableHead>
-						<TableHead></TableHead>
+						{#each headerGroup.headers as header}
+							{#if header.id === '_leads'}
+								<TableHead class="text-right">{header.column.columnDef.header}</TableHead>
+							{:else if header.id === '_actions'}
+								<TableHead></TableHead>
+							{:else if header.column.getCanSort()}
+								<TableHead>
+									<button
+										onclick={header.column.getToggleSortingHandler()}
+										class={header.column.getIsSorted()
+											? 'cursor-pointer font-semibold text-ink-600 underline underline-offset-2'
+											: 'cursor-pointer text-ink-300 hover:text-ink-600 hover:underline hover:underline-offset-2'}
+									>
+										{header.column.columnDef.header}{header.column.getIsSorted() === 'asc'
+											? ' ↑'
+											: header.column.getIsSorted() === 'desc'
+												? ' ↓'
+												: ''}
+									</button>
+								</TableHead>
+							{:else}
+								<TableHead>{header.column.columnDef.header}</TableHead>
+							{/if}
+						{/each}
 					</TableRow>
-				</TableHeader>
-				<TableBody>
-					{#each data.users as u (u.id)}
+				{/each}
+			</TableHeader>
+			<TableBody>
+				{#if navLoading}
+					{#each Array(6) as _, i (i)}
+						<TableRow>
+							{#each Array(6) as _, c (c)}
+								<TableCell><Skeleton class="h-3.5 w-full" /></TableCell>
+							{/each}
+						</TableRow>
+					{/each}
+				{:else}
+					{#each table.getRowModel().rows as row (row.original.id)}
+						{@const u = row.original}
 						<TableRow style="opacity:{u.active ? 1 : 0.55}">
 							<TableCell>
 								<div class="flex items-center gap-2.5">
@@ -203,10 +225,10 @@
 							</TableCell>
 						</TableRow>
 					{/each}
-				</TableBody>
-			</Table>
-		</Card>
-	{/if}
+				{/if}
+			</TableBody>
+		</Table>
+	</Card>
 
 	<div class="mt-3.5 flex items-center gap-2 text-[12.5px] text-ink-200">
 		<Icon name="info" size={14} stroke={2} />

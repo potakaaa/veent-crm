@@ -1,7 +1,9 @@
 <script lang="ts">
 	import { invalidateAll } from '$app/navigation';
+	import { navigating } from '$app/state';
 	import PageHeader from '$lib/components/shared/PageHeader.svelte';
 	import Avatar from '$lib/components/shared/Avatar.svelte';
+	import { TableSkeleton } from '$lib/components/shared/skeletons';
 	import Modal from '$lib/components/shared/Modal.svelte';
 	import Icon from '$lib/components/shared/Icon.svelte';
 	import { Card } from '$lib/components/ui/card';
@@ -26,6 +28,8 @@
 
 	let { data } = $props();
 	const canManage = $derived(canManageUsers(data.currentUser));
+
+	const navLoading = $derived(navigating.to?.url.pathname === '/team');
 
 	let addOpen = $state(false);
 	let name = $state('');
@@ -117,63 +121,67 @@
 		</div>
 	{/if}
 
-	<Card class="gap-0 overflow-hidden rounded-control py-0">
-		<Table>
-			<TableHeader>
-				<TableRow class="bg-[#fdf7f5] hover:bg-[#fdf7f5]">
-					<TableHead>Name</TableHead>
-					<TableHead>Email</TableHead>
-					<TableHead>Role</TableHead>
-					<TableHead>Status</TableHead>
-					<TableHead class="text-right">Leads</TableHead>
-					<TableHead></TableHead>
-				</TableRow>
-			</TableHeader>
-			<TableBody>
-				{#each data.users as u (u.id)}
-					<TableRow style="opacity:{u.active ? 1 : 0.55}">
-						<TableCell>
-							<div class="flex items-center gap-2.5">
-								<Avatar name={u.name} size="md" />
-								<span class="text-[13px] font-semibold">{u.name}</span>
-							</div>
-						</TableCell>
-						<TableCell class="font-mono text-[12px] text-ink-600">{u.email}</TableCell>
-						<TableCell>
-							<Badge
-								variant="outline"
-								class="font-mono text-[11px]"
-								style={u.role === 'manager'
-									? 'color:#c0362c;background:rgba(192,54,44,0.1);border-color:transparent'
-									: 'color:#5a4a48;background:#f5ecea;border-color:transparent'}
-							>
-								{u.role}
-							</Badge>
-						</TableCell>
-						<TableCell>
-							<Badge
-								variant="outline"
-								class="font-mono text-[11px]"
-								style={u.active
-									? 'color:#0e9f6e;background:rgba(14,159,110,0.1);border-color:transparent'
-									: 'color:#a89490;background:#f5ecea;border-color:transparent'}
-							>
-								{u.active ? 'active' : 'inactive'}
-							</Badge>
-						</TableCell>
-						<TableCell class="text-right font-mono text-[13px]">{u.leadCount ?? '—'}</TableCell>
-						<TableCell class="text-right">
-							{#if canManage && u.role !== 'manager'}
-								<Button variant="outline" size="sm" onclick={() => toggleActive(u)}>
-									{u.active ? 'Deactivate' : 'Reactivate'}
-								</Button>
-							{/if}
-						</TableCell>
+	{#if navLoading}
+		<TableSkeleton rows={6} cols={6} />
+	{:else}
+		<Card class="gap-0 overflow-hidden rounded-control py-0">
+			<Table>
+				<TableHeader>
+					<TableRow class="bg-[#fdf7f5] hover:bg-[#fdf7f5]">
+						<TableHead>Name</TableHead>
+						<TableHead>Email</TableHead>
+						<TableHead>Role</TableHead>
+						<TableHead>Status</TableHead>
+						<TableHead class="text-right">Leads</TableHead>
+						<TableHead></TableHead>
 					</TableRow>
-				{/each}
-			</TableBody>
-		</Table>
-	</Card>
+				</TableHeader>
+				<TableBody>
+					{#each data.users as u (u.id)}
+						<TableRow style="opacity:{u.active ? 1 : 0.55}">
+							<TableCell>
+								<div class="flex items-center gap-2.5">
+									<Avatar name={u.name} size="md" />
+									<span class="text-[13px] font-semibold">{u.name}</span>
+								</div>
+							</TableCell>
+							<TableCell class="font-mono text-[12px] text-ink-600">{u.email}</TableCell>
+							<TableCell>
+								<Badge
+									variant="outline"
+									class="font-mono text-[11px]"
+									style={u.role === 'manager'
+										? 'color:#c0362c;background:rgba(192,54,44,0.1);border-color:transparent'
+										: 'color:#5a4a48;background:#f5ecea;border-color:transparent'}
+								>
+									{u.role}
+								</Badge>
+							</TableCell>
+							<TableCell>
+								<Badge
+									variant="outline"
+									class="font-mono text-[11px]"
+									style={u.active
+										? 'color:#0e9f6e;background:rgba(14,159,110,0.1);border-color:transparent'
+										: 'color:#a89490;background:#f5ecea;border-color:transparent'}
+								>
+									{u.active ? 'active' : 'inactive'}
+								</Badge>
+							</TableCell>
+							<TableCell class="text-right font-mono text-[13px]">{u.leadCount ?? '—'}</TableCell>
+							<TableCell class="text-right">
+								{#if canManage && u.role !== 'manager'}
+									<Button variant="outline" size="sm" onclick={() => toggleActive(u)}>
+										{u.active ? 'Deactivate' : 'Reactivate'}
+									</Button>
+								{/if}
+							</TableCell>
+						</TableRow>
+					{/each}
+				</TableBody>
+			</Table>
+		</Card>
+	{/if}
 
 	<div class="mt-3.5 flex items-center gap-2 text-[12.5px] text-ink-200">
 		<Icon name="info" size={14} stroke={2} />
@@ -203,7 +211,7 @@
 			<Select type="single" bind:value={role}>
 				<SelectTrigger id="rep-role" class="w-full">{role}</SelectTrigger>
 				<SelectContent>
-					{#each USER_ROLES as r}<SelectItem value={r} label={r}>{r}</SelectItem>{/each}
+					{#each USER_ROLES as r (r)}<SelectItem value={r} label={r}>{r}</SelectItem>{/each}
 				</SelectContent>
 			</Select>
 		</div>

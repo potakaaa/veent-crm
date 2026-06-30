@@ -10,12 +10,14 @@
 		open,
 		leadName,
 		onclose,
-		onconfirm
+		onconfirm,
+		saving = false
 	}: {
 		open: boolean;
 		leadName: string;
 		onclose: () => void;
 		onconfirm: (reason: LostReason, note?: string) => void;
+		saving?: boolean;
 	} = $props();
 
 	const REASON_LABEL: Record<LostReason, string> = {
@@ -43,7 +45,7 @@
 >
 	<div class="mb-2 text-[11.5px] text-ink-300">Reason (required)</div>
 	<div class="flex flex-col gap-2">
-		{#each LOST_REASONS as r}
+		{#each LOST_REASONS as r (r)}
 			<Button
 				variant={reason === r ? 'secondary' : 'outline'}
 				class="h-10 justify-start {reason === r
@@ -61,11 +63,13 @@
 	</div>
 
 	{#snippet footer()}
-		<Button variant="outline" class="flex-1" onclick={onclose}>Cancel</Button>
+		<Button variant="outline" class="flex-1" onclick={onclose} disabled={saving}>Cancel</Button>
 		<Button
 			variant="destructive"
 			class="flex-[2]"
-			disabled={!reason}
+			disabled={!reason || saving}
+			loading={saving}
+			loadingText="Saving…"
 			onclick={() => reason && onconfirm(reason, note.trim() || undefined)}
 		>
 			Mark lost

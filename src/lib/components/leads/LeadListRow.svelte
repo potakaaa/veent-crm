@@ -7,8 +7,14 @@
 	let {
 		lead,
 		onSnooze,
-		onNudge
-	}: { lead: Lead; onSnooze?: (l: Lead) => void; onNudge?: (l: Lead) => void } = $props();
+		onNudge,
+		snoozing = false
+	}: {
+		lead: Lead;
+		onSnooze?: (l: Lead) => void;
+		onNudge?: (l: Lead) => void;
+		snoozing?: boolean;
+	} = $props();
 
 	const eventLine = $derived(
 		lead.eventDate ? `${lead.eventName ?? '—'} · ${lead.eventDate}` : (lead.eventName ?? '—')
@@ -43,9 +49,10 @@
 		</a>
 		<button
 			onclick={() => onSnooze?.(lead)}
-			class="h-[30px] rounded-[7px] border border-hairline bg-panel px-2.5 text-[12px] font-medium text-ink-600 hover:bg-panel-sunken"
+			disabled={snoozing}
+			class="h-[30px] rounded-[7px] border border-hairline bg-panel px-2.5 text-[12px] font-medium text-ink-600 hover:bg-panel-sunken disabled:opacity-50"
 		>
-			Snooze
+			{snoozing ? 'Snoozing…' : 'Snooze'}
 		</button>
 		<button
 			onclick={() => onNudge?.(lead)}

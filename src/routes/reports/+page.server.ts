@@ -97,7 +97,7 @@ export const load: PageServerLoad = async () => {
 		.map((r) => ({
 			currency: r.currency as Currency,
 			label: r.currency as Currency,
-			total: Number(r.total),
+			total: Number(r.total) / 100,
 			deals: Number(r.deals)
 		}));
 

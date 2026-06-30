@@ -12,12 +12,14 @@
 		open,
 		leadName,
 		onclose,
-		onconfirm
+		onconfirm,
+		saving = false
 	}: {
 		open: boolean;
 		leadName: string;
 		onclose: () => void;
 		onconfirm: (payload: MoveStagePayload) => void;
+		saving?: boolean;
 	} = $props();
 
 	let signedOrg = $state('');
@@ -79,7 +81,7 @@
 			<Select type="single" bind:value={currency}>
 				<SelectTrigger id="won-cur" class="w-full font-mono">{currency}</SelectTrigger>
 				<SelectContent>
-					{#each CURRENCIES as c}<SelectItem value={c} label={c}>{c}</SelectItem>{/each}
+					{#each CURRENCIES as c (c)}<SelectItem value={c} label={c}>{c}</SelectItem>{/each}
 				</SelectContent>
 			</Select>
 		</div>
@@ -90,7 +92,14 @@
 	</div>
 
 	{#snippet footer()}
-		<Button variant="outline" class="flex-1" onclick={onclose}>Cancel</Button>
-		<Button variant="success" class="flex-[2]" onclick={confirm}>Mark won</Button>
+		<Button variant="outline" class="flex-1" onclick={onclose} disabled={saving}>Cancel</Button>
+		<Button
+			variant="success"
+			class="flex-[2]"
+			onclick={confirm}
+			loading={saving}
+			loadingText="Saving…"
+			disabled={saving}>Mark won</Button
+		>
 	{/snippet}
 </Modal>

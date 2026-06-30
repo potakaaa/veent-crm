@@ -42,6 +42,7 @@
 	const dupes = $derived(name.length > 1 ? hasPotentialDuplicate({ name }, data.leads) : []);
 
 	async function create() {
+		if (saving) return; // duplicate-submit guard
 		const parsed = leadFormSchema.safeParse({
 			name,
 			category,
@@ -124,7 +125,7 @@
 				<Select type="single" bind:value={category}>
 					<SelectTrigger id="category" class="w-full">{category}</SelectTrigger>
 					<SelectContent>
-						{#each LEAD_CATEGORIES as c}<SelectItem value={c} label={c}>{c}</SelectItem>{/each}
+						{#each LEAD_CATEGORIES as c (c)}<SelectItem value={c} label={c}>{c}</SelectItem>{/each}
 					</SelectContent>
 				</Select>
 			</div>
@@ -134,7 +135,7 @@
 					<SelectTrigger id="platform" class="w-full">{platform || 'Select platform'}</SelectTrigger
 					>
 					<SelectContent>
-						{#each LEAD_PLATFORMS as p}<SelectItem value={p} label={p}>{p}</SelectItem>{/each}
+						{#each LEAD_PLATFORMS as p (p)}<SelectItem value={p} label={p}>{p}</SelectItem>{/each}
 					</SelectContent>
 				</Select>
 			</div>
@@ -201,7 +202,7 @@
 
 			<div class="flex items-center justify-end gap-2.5 sm:col-span-2">
 				<Button variant="outline" href="/leads">Cancel</Button>
-				<Button onclick={create} disabled={saving || !name}>
+				<Button onclick={create} disabled={!name} loading={saving} loadingText="Creating…">
 					{dupes.length ? 'Create anyway' : 'Create lead'}
 				</Button>
 			</div>

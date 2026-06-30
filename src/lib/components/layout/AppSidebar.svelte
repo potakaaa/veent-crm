@@ -119,22 +119,6 @@
 			{#each manager as item (item.href)}{@render navButton(item)}{/each}
 		{/if}
 
-		<div
-			class="px-2 pb-2 pt-[18px] font-mono text-[9.5px] uppercase tracking-[1.2px] text-[#7a6260]"
-		>
-			System
-		</div>
-		<a
-			href="/style-guide"
-			class="mb-0.5 flex h-[38px] items-center gap-[11px] rounded-control px-[11px] text-[13px] font-medium text-[#b89e9c] transition-colors hover:bg-white/5 {isActive(
-				'/style-guide'
-			)
-				? 'bg-[rgba(192,54,44,0.16)] text-white'
-				: ''}"
-		>
-			<Icon name="palette" />
-			<span class="flex-1 text-left">Style guide</span>
-		</a>
 	</nav>
 
 	<!-- user footer -->

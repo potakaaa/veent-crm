@@ -31,5 +31,4 @@ export const load: LayoutLoad = async ({ url, fetch, data }) => {
 		: { overdue: 0, unassigned: 0, review: 0 };
 
 	return { currentUser, users, leads, counts };
-
 };

@@ -77,11 +77,11 @@ export const POST: RequestHandler = async ({ request }) => {
 		});
 		created++;
 		if (
-				!lead.category ||
-				lead.category === 'Other' ||
-				(!lead.url && !lead.facebookUrl && !lead.instagramUrl && !lead.email && !lead.phone)
-			)
-				review++;
+			!lead.category ||
+			lead.category === 'Other' ||
+			(!lead.url && !lead.facebookUrl && !lead.instagramUrl && !lead.email && !lead.phone)
+		)
+			review++;
 	}
 
 	return json({ received: parsed.data.leads.length, created, skipped, review });

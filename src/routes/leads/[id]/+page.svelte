@@ -42,7 +42,11 @@
 		...(lead.socialInstagram
 			? [{ label: 'Instagram', value: lead.socialInstagram, href: lead.socialInstagram }]
 			: []),
-		{ label: 'Contact email', value: lead.email ?? '—', href: lead.email ? `mailto:${lead.email}` : undefined },
+		{
+			label: 'Contact email',
+			value: lead.email ?? '—',
+			href: lead.email ? `mailto:${lead.email}` : undefined
+		},
 		...(lead.phone ? [{ label: 'Phone', value: lead.phone, href: `tel:${lead.phone}` }] : []),
 		{
 			label: 'Event',
@@ -233,7 +237,8 @@
 									target="_blank"
 									rel="noopener noreferrer"
 									class="block truncate font-mono text-[13px] text-blue-600 underline hover:text-blue-800"
-								>{f.value}</a>
+									>{f.value}</a
+								>
 							{:else}
 								<div class="font-mono text-[13px] text-ink">{f.value}</div>
 							{/if}

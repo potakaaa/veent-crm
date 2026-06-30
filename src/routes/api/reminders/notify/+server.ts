@@ -19,7 +19,10 @@ export const POST: RequestHandler = async ({ request }) => {
 
 	let sent = 0;
 	for (const group of groups) {
-		const status = await sendReminderDigest({ repEmail: group.repEmail, reminders: group.reminders });
+		const status = await sendReminderDigest({
+			repEmail: group.repEmail,
+			reminders: group.reminders
+		});
 		if (status === 'sent') sent++;
 	}
 

@@ -119,9 +119,9 @@ describe('dbRowToLead urgency (VE-B1)', () => {
 describe('sendReminderDigest (VE-C2)', () => {
 	it('no-ops (logs, does not throw) when RESEND_API_KEY is unset', async () => {
 		const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-		await expect(
-			sendReminderDigest({ repEmail: 'rep@example.com', reminders: [] })
-		).resolves.toBe('skipped');
+		await expect(sendReminderDigest({ repEmail: 'rep@example.com', reminders: [] })).resolves.toBe(
+			'skipped'
+		);
 		expect(warn).toHaveBeenCalled();
 		warn.mockRestore();
 	});

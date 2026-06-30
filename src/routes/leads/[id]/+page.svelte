@@ -276,7 +276,7 @@
 						Lead &amp; event
 					</div>
 					<div class="grid grid-cols-2 gap-x-6 gap-y-3">
-						{#each fields as f}
+						{#each fields as f (f.label)}
 							<div>
 								<div class="mb-0.5 text-[11px] text-ink-300">{f.label}</div>
 								{#if f.href}

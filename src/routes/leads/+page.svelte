@@ -119,7 +119,7 @@
 			>
 			<SelectContent>
 				<SelectItem value="" label="All stages">All stages</SelectItem>
-				{#each LEAD_STAGES.filter((s) => s !== 'lost' || data.filters.segment === 'lost') as s}<SelectItem
+				{#each LEAD_STAGES.filter((s) => s !== 'lost' || data.filters.segment === 'lost') as s (s)}<SelectItem
 						value={s}
 						label={stageLabel(s)}>{stageLabel(s)}</SelectItem
 					>{/each}
@@ -133,7 +133,7 @@
 			<SelectTrigger size="sm">{data.filters.platform || 'Platform'}</SelectTrigger>
 			<SelectContent>
 				<SelectItem value="" label="All platforms">All platforms</SelectItem>
-				{#each LEAD_PLATFORMS as p}<SelectItem value={p} label={p}>{p}</SelectItem>{/each}
+				{#each LEAD_PLATFORMS as p (p)}<SelectItem value={p} label={p}>{p}</SelectItem>{/each}
 			</SelectContent>
 		</Select>
 
@@ -146,7 +146,7 @@
 				<SelectTrigger size="sm">{data.filters.country || 'Country'}</SelectTrigger>
 				<SelectContent>
 					<SelectItem value="" label="All countries">All countries</SelectItem>
-					{#each data.countries as c}<SelectItem value={c} label={c}>{c}</SelectItem>{/each}
+					{#each data.countries as c (c)}<SelectItem value={c} label={c}>{c}</SelectItem>{/each}
 				</SelectContent>
 			</Select>
 		{/if}

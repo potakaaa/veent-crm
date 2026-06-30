@@ -45,7 +45,7 @@
 >
 	<div class="mb-2 text-[11.5px] text-ink-300">Reason (required)</div>
 	<div class="flex flex-col gap-2">
-		{#each LOST_REASONS as r}
+		{#each LOST_REASONS as r (r)}
 			<Button
 				variant={reason === r ? 'secondary' : 'outline'}
 				class="h-10 justify-start {reason === r

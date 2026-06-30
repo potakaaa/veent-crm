@@ -81,7 +81,7 @@
 			<Select type="single" bind:value={currency}>
 				<SelectTrigger id="won-cur" class="w-full font-mono">{currency}</SelectTrigger>
 				<SelectContent>
-					{#each CURRENCIES as c}<SelectItem value={c} label={c}>{c}</SelectItem>{/each}
+					{#each CURRENCIES as c (c)}<SelectItem value={c} label={c}>{c}</SelectItem>{/each}
 				</SelectContent>
 			</Select>
 		</div>

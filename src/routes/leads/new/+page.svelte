@@ -125,7 +125,7 @@
 				<Select type="single" bind:value={category}>
 					<SelectTrigger id="category" class="w-full">{category}</SelectTrigger>
 					<SelectContent>
-						{#each LEAD_CATEGORIES as c}<SelectItem value={c} label={c}>{c}</SelectItem>{/each}
+						{#each LEAD_CATEGORIES as c (c)}<SelectItem value={c} label={c}>{c}</SelectItem>{/each}
 					</SelectContent>
 				</Select>
 			</div>
@@ -135,7 +135,7 @@
 					<SelectTrigger id="platform" class="w-full">{platform || 'Select platform'}</SelectTrigger
 					>
 					<SelectContent>
-						{#each LEAD_PLATFORMS as p}<SelectItem value={p} label={p}>{p}</SelectItem>{/each}
+						{#each LEAD_PLATFORMS as p (p)}<SelectItem value={p} label={p}>{p}</SelectItem>{/each}
 					</SelectContent>
 				</Select>
 			</div>

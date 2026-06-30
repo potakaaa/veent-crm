@@ -211,7 +211,7 @@
 			<Select type="single" bind:value={role}>
 				<SelectTrigger id="rep-role" class="w-full">{role}</SelectTrigger>
 				<SelectContent>
-					{#each USER_ROLES as r}<SelectItem value={r} label={r}>{r}</SelectItem>{/each}
+					{#each USER_ROLES as r (r)}<SelectItem value={r} label={r}>{r}</SelectItem>{/each}
 				</SelectContent>
 			</Select>
 		</div>

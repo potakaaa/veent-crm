@@ -51,7 +51,8 @@ export default defineConfig(
 		// 'svelte/button-has-type': 'error'
 		rules: {
 			'svelte/require-each-key': 'warn',
-			'svelte/no-navigation-without-resolve': 'warn'
+			// view-transition API not used in this app
+			'svelte/no-navigation-without-resolve': 'off'
 		}
 	}
 );

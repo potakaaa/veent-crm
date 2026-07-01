@@ -229,6 +229,7 @@ export interface AddActivityInput {
 	outcome: ActivityOutcome;
 	note?: string;
 	followUpInDays?: number;
+	followUpAt?: string; // YYYY-MM-DD; takes precedence over followUpInDays when set
 }
 
 export interface CreateUserInput {

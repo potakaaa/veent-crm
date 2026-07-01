@@ -85,7 +85,8 @@
 
 	async function logTouch(input: AddActivityInput) {
 		const followUpAt =
-			input.followUpInDays != null ? followUpDate(input.followUpInDays) : undefined;
+			input.followUpAt ??
+			(input.followUpInDays != null ? followUpDate(input.followUpInDays) : undefined);
 
 		let res: Response;
 		try {

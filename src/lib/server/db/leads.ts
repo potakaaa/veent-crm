@@ -1162,6 +1162,38 @@ export async function snoozeLead(
 }
 
 // ---------------------------------------------------------------------------
+// Ownership history
+// ---------------------------------------------------------------------------
+
+export async function getOwnershipHistory(leadId: string): Promise<
+	Array<{
+		id: string;
+		actorUserId: string | null;
+		oldValue: string | null;
+		newValue: string | null;
+		at: string;
+	}>
+> {
+	const rows = await db
+		.select({
+			id: crmLeadHistory.id,
+			actorUserId: crmLeadHistory.actorUserId,
+			oldValue: crmLeadHistory.oldValue,
+			newValue: crmLeadHistory.newValue,
+			at: crmLeadHistory.at
+		})
+		.from(crmLeadHistory)
+		.where(and(eq(crmLeadHistory.leadId, leadId), eq(crmLeadHistory.field, 'owner_id')))
+		.orderBy(asc(crmLeadHistory.at));
+	return rows.map((r) => ({
+		id: r.id,
+		actorUserId: r.actorUserId,
+		oldValue: r.oldValue,
+		newValue: r.newValue,
+		at: r.at.toISOString()
+	}));
+}
+
 // Heatmap aggregation
 // ---------------------------------------------------------------------------
 

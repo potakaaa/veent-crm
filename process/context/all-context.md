@@ -236,12 +236,12 @@ veent-crm/
 - Public env vars: `import { env } from '$env/dynamic/public'`
 - Locals type: `app.d.ts` declares `interface Locals { user: SessionUser | null }`
 
-### Auth / session conventions (current v0)
+### Auth / session conventions
 
-- `DEV_BYPASS = true` in `hooks.server.ts` injects a fake manager — remove when Better Auth is wired
-- Public routes (no auth required): `/login`, `/unauthorized`, `/health`, `/api/reminders/due`, `/api/leads/ingest`
+- Better Auth is live-wired in `src/lib/server/auth.ts` (real `betterAuth()` config: `drizzleAdapter` + `magicLink` plugin + Resend email delivery via `email.ts`). `hooks.server.ts` has no `DEV_BYPASS` reference — that stub was removed.
+- Public routes (no auth required): `/login`, `/unauthorized`, `/health`, `/api/reminders/due`, `/api/reminders/notify`, `/api/leads/ingest`, `/api/auth`
 - `/api/reminders/due` and `/api/leads/ingest` use secret-based auth (not session-based)
-- Unauthenticated hits on protected routes redirect to `/unauthorized?from=[encoded-path]` (not `/login`). The `from` param is sanitized server-side — only same-origin relative paths (single leading `/`) pass through; off-origin and scheme-containing values are stripped to `null`.
+- Unauthenticated hits on protected routes split into two branches: no Better Auth session at all → `/login?from=[encoded-path]`; session exists but the email has no active `crm_users` allowlist row → `/unauthorized?from=[encoded-path]`. The `from` param is sanitized server-side via the shared `sanitizeFrom` helper (`src/lib/server/sanitize-redirect.ts`, used by both `/login` and `/unauthorized`) — only same-origin relative paths (single leading `/`) pass through; off-origin and scheme-containing values are stripped to `null`.
 - `src/routes/+error.svelte` is the global SvelteKit error page (404 + generic errors). It renders outside the layout tree — chrome-less by default, no bare-mode edit needed.
 
 ### Audit trail

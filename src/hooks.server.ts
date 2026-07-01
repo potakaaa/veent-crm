@@ -50,7 +50,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 	if (!isPublic && !event.locals.user) {
 		if (!session?.user?.email) {
 			// No Better Auth session at all — send to login.
-			redirect(303, '/login');
+			redirect(303, '/login?from=' + encodeURIComponent(path));
 		}
 		// Session exists but email isn't an active crm_users row — allowlist rejection.
 		redirect(303, '/unauthorized?from=' + encodeURIComponent(path));

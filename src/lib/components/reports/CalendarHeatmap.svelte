@@ -152,52 +152,50 @@
 	{#if navLoading}
 		<Skeleton class="h-[120px] w-full rounded-control" />
 	{:else}
-		<div class="overflow-x-auto">
-			<div class="flex gap-1.5" style="min-width: max-content;">
-				<!-- Day labels (left) -->
-				<div class="flex flex-col gap-px pt-5">
-					{#each DAY_LABELS as label, i (i)}
-						<div class="flex h-[12px] items-center font-mono text-[9.5px] text-ink-300">
-							{label}
-						</div>
+		<div class="flex min-w-0 gap-1.5">
+			<!-- Day labels (left) -->
+			<div class="flex shrink-0 flex-col gap-px pt-5">
+				{#each DAY_LABELS as label, i (i)}
+					<div class="flex h-[12px] items-center font-mono text-[9.5px] text-ink-300">
+						{label}
+					</div>
+				{/each}
+			</div>
+
+			<!-- Weeks grid -->
+			<div class="min-w-0 flex-1">
+				<!-- Month labels row -->
+				<div class="relative mb-1 h-5">
+					{#each grid.monthLabels as ml (ml.col)}
+						<span
+							class="absolute font-mono text-[10px] text-ink-400"
+							style="left: {((ml.col / grid.weeks.length) * 100).toFixed(2)}%"
+						>
+							{ml.label}
+						</span>
 					{/each}
 				</div>
 
-				<!-- Weeks grid -->
-				<div>
-					<!-- Month labels row -->
-					<div class="relative mb-1 h-5" style="width: {grid.weeks.length * 14}px">
-						{#each grid.monthLabels as ml (ml.col)}
-							<span
-								class="absolute font-mono text-[10px] text-ink-400"
-								style="left: {ml.col * 14}px"
-							>
-								{ml.label}
-							</span>
+				<!-- Cell grid -->
+				<div
+					class="grid gap-px"
+					style="grid-template-columns: repeat({grid.weeks
+						.length}, 1fr); grid-template-rows: repeat(7, 12px);"
+				>
+					{#each grid.weeks as week, wi (wi)}
+						{#each week as cell, di (di)}
+							<!-- svelte-ignore a11y_no_static_element_interactions -->
+							<div
+								class="rounded-[2px] {densityClass(
+									cell.day?.total ?? 0
+								)} cursor-default transition-opacity hover:opacity-80"
+								style="grid-column: {wi + 1}; grid-row: {di + 1};"
+								onmouseenter={cell.day ? (e) => showTooltip(e, cell.day!) : undefined}
+								onmouseleave={hideTooltip}
+								aria-label={cell.day ? `${cell.date}: ${cell.day.total} leads` : cell.date}
+							></div>
 						{/each}
-					</div>
-
-					<!-- Cell grid -->
-					<div
-						class="grid gap-px"
-						style="grid-template-columns: repeat({grid.weeks
-							.length}, 12px); grid-template-rows: repeat(7, 12px);"
-					>
-						{#each grid.weeks as week, wi (wi)}
-							{#each week as cell, di (di)}
-								<!-- svelte-ignore a11y_no_static_element_interactions -->
-								<div
-									class="rounded-[2px] {densityClass(
-										cell.day?.total ?? 0
-									)} cursor-default transition-opacity hover:opacity-80"
-									style="grid-column: {wi + 1}; grid-row: {di + 1};"
-									onmouseenter={cell.day ? (e) => showTooltip(e, cell.day!) : undefined}
-									onmouseleave={hideTooltip}
-									aria-label={cell.day ? `${cell.date}: ${cell.day.total} leads` : cell.date}
-								></div>
-							{/each}
-						{/each}
-					</div>
+					{/each}
 				</div>
 			</div>
 		</div>

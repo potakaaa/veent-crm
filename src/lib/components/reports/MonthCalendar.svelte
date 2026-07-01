@@ -191,11 +191,11 @@
 			<div class="grid grid-cols-7 gap-1">
 				{#each week as cell, di (di)}
 					{#if cell.date === null}
-						<div class="min-h-[64px] rounded-[6px]"></div>
+						<div class="min-h-[80px] rounded-[6px]"></div>
 					{:else}
 						<!-- svelte-ignore a11y_no_static_element_interactions -->
 						<div
-							class="relative flex min-h-[64px] flex-col items-start justify-start rounded-[6px] p-2 {densityBg(
+							class="relative flex min-h-[80px] flex-col items-start justify-start rounded-[6px] p-2 {densityBg(
 								cell.day?.total ?? 0
 							)} {cell.date === todayStr ? 'ring-2 ring-primary ring-offset-1' : ''} {cell.day
 								? 'cursor-default'

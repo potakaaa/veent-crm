@@ -47,13 +47,13 @@
 		{/snippet}
 	</PageHeader>
 
-	<div class="mb-[18px] grid grid-cols-1 gap-[18px] lg:grid-cols-[300px_1fr]">
+	<div class="mb-[18px] flex flex-col gap-[18px]">
+		<MonthCalendar data={data.heatmap} />
 		<CalendarHeatmap
 			data={data.heatmap}
 			metric={data.heatMetric}
 			onchange={(m) => goto(`?heatMetric=${m}`, { keepFocus: true })}
 		/>
-		<MonthCalendar data={data.heatmap} />
 	</div>
 
 	{#if navLoading}

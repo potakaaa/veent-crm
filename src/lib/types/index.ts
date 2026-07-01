@@ -188,12 +188,6 @@ export interface CurrencyTotal {
 	deals: number;
 }
 
-export interface OutreachMetrics {
-	leadsReachedOut: number;
-	leadsThatReplied: number;
-	leadsWithMeeting: number;
-}
-
 export interface ReportData {
 	funnel: FunnelStage[];
 	leaderboard: LeaderboardRow[];

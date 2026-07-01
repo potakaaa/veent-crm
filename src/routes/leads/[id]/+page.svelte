@@ -343,6 +343,14 @@
 					</div>
 				</div>
 
+				<div class="mb-4">
+					<ActivityTimeline
+						activities={data.activities}
+						leadHistory={data.leadHistory}
+						users={data.users}
+					/>
+				</div>
+
 				{#if canEdit}
 					<LogTouchForm onSubmit={logTouch} />
 				{/if}
@@ -407,12 +415,6 @@
 						</div>
 					</div>
 				</div>
-
-				<ActivityTimeline
-					activities={data.activities}
-					leadHistory={data.leadHistory}
-					users={data.users}
-				/>
 			</div>
 		</div>
 	</div>

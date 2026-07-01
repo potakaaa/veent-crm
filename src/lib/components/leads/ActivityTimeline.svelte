@@ -68,7 +68,7 @@
 			>{entries.length} event{entries.length === 1 ? '' : 's'}</span
 		>
 	</div>
-	<div class="max-h-[420px] overflow-y-auto pr-1">
+	<div class="max-h-[260px] overflow-y-auto pr-1">
 		{#each entries as entry (entry.kind === 'activity' ? `a-${entry.data.id}` : `h-${entry.data.id}`)}
 			<div class="flex gap-3 pb-4 last:pb-0">
 				<div class="flex flex-col items-center">

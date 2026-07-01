@@ -16,7 +16,7 @@
 		counts
 	}: {
 		user: User | null;
-		counts: { overdue: number; unassigned: number; review: number };
+		counts: { overdue: number; unassigned: number };
 	} = $props();
 
 	type NavItem = {
@@ -47,14 +47,7 @@
 	]);
 	const manager: NavItem[] = $derived([
 		{ href: '/reports', label: 'Reports', icon: 'reports' },
-		{ href: '/team', label: 'Team', icon: 'team' },
-		{
-			href: '/review',
-			label: 'Review queue',
-			icon: 'review',
-			badge: counts.review || undefined,
-			badgeColor: '#e11d48'
-		}
+		{ href: '/team', label: 'Team', icon: 'team' }
 	]);
 
 	const isActive = (href: string) => {

@@ -11,7 +11,7 @@
 		children
 	}: {
 		user: User | null;
-		counts: { overdue: number; unassigned: number; review: number };
+		counts: { overdue: number; unassigned: number };
 		children: Snippet;
 	} = $props();
 </script>
@@ -19,7 +19,7 @@
 <div class="flex h-screen overflow-hidden bg-panel-subtle">
 	<AppSidebar {user} {counts} />
 	<div class="flex min-w-0 flex-1 flex-col">
-		<AppTopbar reviewCount={counts.review} />
+		<AppTopbar />
 		<main class="min-h-0 flex-1 overflow-y-auto">
 			{@render children()}
 		</main>

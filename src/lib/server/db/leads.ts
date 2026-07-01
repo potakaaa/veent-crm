@@ -89,7 +89,6 @@ export function dbRowToLead(row: DbLead, followUpAt?: string | Date | null): Lea
 		socialFacebook: row.socialFacebook ?? undefined,
 		socialInstagram: row.socialInstagram ?? undefined,
 		source: row.source as Lead['source'],
-		needsReview: row.needsReview,
 		notes: row.notes ?? undefined,
 		signedOrg: row.wonOrgName ?? undefined,
 		dealValue: row.dealValueCents != null ? row.dealValueCents / 100 : undefined,
@@ -338,62 +337,6 @@ export async function getLead(id: string): Promise<Lead | null> {
 	return row ? dbRowToLead(row) : null;
 }
 
-const REVIEW_SORT_COLS = [
-	'name',
-	'category',
-	'platform',
-	'stage',
-	'source',
-	'createdAt',
-	'event'
-] as const;
-type ReviewSortCol = (typeof REVIEW_SORT_COLS)[number];
-
-const REVIEW_COL_MAP = {
-	name: crmLeads.name,
-	category: crmLeads.category,
-	platform: crmLeads.platform,
-	stage: crmLeads.stage,
-	source: crmLeads.source,
-	createdAt: crmLeads.createdAt
-} satisfies Record<Exclude<ReviewSortCol, 'event'>, unknown>;
-
-export async function listReviewLeads(
-	page = 1,
-	pageSize = 25,
-	sort = 'createdAt',
-	dir: 'asc' | 'desc' = 'asc'
-): Promise<{ leads: Lead[]; total: number }> {
-	const where = and(isNull(crmLeads.deletedAt), eq(crmLeads.needsReview, true));
-	const validSort: ReviewSortCol = (REVIEW_SORT_COLS as readonly string[]).includes(sort)
-		? (sort as ReviewSortCol)
-		: 'createdAt';
-	const sortFn = dir === 'asc' ? asc : desc;
-
-	let order: SQL<unknown>[];
-	if (validSort === 'event') {
-		order =
-			dir === 'asc'
-				? [sql`${crmLeads.eventDate} ASC NULLS LAST`, asc(crmLeads.id)]
-				: [sql`${crmLeads.eventDate} DESC NULLS LAST`, asc(crmLeads.id)];
-	} else {
-		order = [sortFn(REVIEW_COL_MAP[validSort]), asc(crmLeads.id)];
-	}
-
-	const [rows, [{ total }]] = await Promise.all([
-		db
-			.select()
-			.from(crmLeads)
-			.where(where)
-			.orderBy(...order)
-			.limit(pageSize)
-			.offset((Math.max(1, page) - 1) * pageSize),
-		db.select({ total: count() }).from(crmLeads).where(where)
-	]);
-
-	return { leads: rows.map((row) => dbRowToLead(row)), total };
-}
-
 const UNASSIGNED_SORT_COLS = ['name', 'event', 'stage', 'source'] as const;
 type UnassignedSortCol = (typeof UNASSIGNED_SORT_COLS)[number];
 
@@ -596,8 +539,7 @@ export async function createLead(
 			normalizedHandle,
 			ownerId,
 			source: 'manual',
-			stage: 'new',
-			needsReview: false
+			stage: 'new'
 		})
 		.returning();
 
@@ -1047,8 +989,8 @@ export async function logLeadTouch(
 
 export async function getNavCounts(
 	userId: string
-): Promise<{ overdue: number; unassigned: number; review: number }> {
-	const [todayLeads, [unassignedRow], [reviewRow]] = await Promise.all([
+): Promise<{ overdue: number; unassigned: number }> {
+	const [todayLeads, [unassignedRow]] = await Promise.all([
 		getTodayQueue(userId),
 		db
 			.select({ count: sql<number>`COUNT(*)` })
@@ -1060,17 +1002,12 @@ export async function getNavCounts(
 					ne(crmLeads.stage, 'won'),
 					ne(crmLeads.stage, 'lost')
 				)
-			),
-		db
-			.select({ count: sql<number>`COUNT(*)` })
-			.from(crmLeads)
-			.where(and(eq(crmLeads.needsReview, true), isNull(crmLeads.deletedAt)))
+			)
 	]);
 
 	return {
 		overdue: todayLeads.filter((l) => l.urgency === 'overdue').length,
-		unassigned: Number(unassignedRow?.count ?? 0),
-		review: Number(reviewRow?.count ?? 0)
+		unassigned: Number(unassignedRow?.count ?? 0)
 	};
 }
 

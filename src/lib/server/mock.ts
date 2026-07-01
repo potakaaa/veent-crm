@@ -38,7 +38,6 @@ export type MockLead = {
 	stage: (typeof import('$lib/zod/schemas').LEAD_STAGES)[number];
 	ownerName: string | null;
 	lastActivityAt: string | null;
-	needsReview: boolean;
 	source: string;
 };
 
@@ -52,7 +51,6 @@ export const MOCK_LEADS: MockLead[] = [
 		stage: 'won',
 		ownerName: 'Jonna',
 		lastActivityAt: '2026-05-02T03:00:00Z',
-		needsReview: false,
 		source: 'sheet_import'
 	},
 	{
@@ -64,7 +62,6 @@ export const MOCK_LEADS: MockLead[] = [
 		stage: 'won',
 		ownerName: 'Ethyl',
 		lastActivityAt: '2026-05-10T03:00:00Z',
-		needsReview: false,
 		source: 'sheet_import'
 	},
 	{
@@ -76,7 +73,6 @@ export const MOCK_LEADS: MockLead[] = [
 		stage: 'won',
 		ownerName: 'Shane',
 		lastActivityAt: '2026-05-18T03:00:00Z',
-		needsReview: false,
 		source: 'sheet_import'
 	},
 	{
@@ -88,7 +84,6 @@ export const MOCK_LEADS: MockLead[] = [
 		stage: 'lost',
 		ownerName: 'Angel',
 		lastActivityAt: '2026-03-01T03:00:00Z',
-		needsReview: false,
 		source: 'sheet_import'
 	},
 	{
@@ -100,7 +95,6 @@ export const MOCK_LEADS: MockLead[] = [
 		stage: 'in_discussion',
 		ownerName: 'Meybelle',
 		lastActivityAt: '2026-06-20T03:00:00Z',
-		needsReview: false,
 		source: 'sheet_import'
 	},
 	{
@@ -112,7 +106,6 @@ export const MOCK_LEADS: MockLead[] = [
 		stage: 'replied',
 		ownerName: 'Elay',
 		lastActivityAt: '2026-06-22T03:00:00Z',
-		needsReview: false,
 		source: 'sheet_import'
 	},
 	{
@@ -124,7 +117,6 @@ export const MOCK_LEADS: MockLead[] = [
 		stage: 'contacted',
 		ownerName: null,
 		lastActivityAt: null,
-		needsReview: true,
 		source: 'sheet_import'
 	},
 	{
@@ -136,7 +128,6 @@ export const MOCK_LEADS: MockLead[] = [
 		stage: 'new',
 		ownerName: null,
 		lastActivityAt: null,
-		needsReview: false,
 		source: 'sheet_import'
 	},
 	{
@@ -148,7 +139,6 @@ export const MOCK_LEADS: MockLead[] = [
 		stage: 'new',
 		ownerName: null,
 		lastActivityAt: null,
-		needsReview: false,
 		source: 'scraper'
 	}
 ];

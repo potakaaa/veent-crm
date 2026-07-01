@@ -96,8 +96,8 @@ For most substantial tasks:
 | Feature   | Guide                                  | Status                                   |
 | --------- | -------------------------------------- | ---------------------------------------- |
 | auth      | `process/features/auth/_GUIDE.md`      | not-started (v0 stub, DEV_BYPASS active) |
-| leads     | `process/features/leads/_GUIDE.md`     | not-started (mock data only)             |
-| pipeline  | `process/features/pipeline/_GUIDE.md`  | not-started (mock data only)             |
+| leads     | `process/features/leads/_GUIDE.md`     | in-progress (leads list, lead detail, lead creation, and Up for Grabs query the real DB via `src/lib/server/db/leads.ts`; Review Queue removed 01-07-26) |
+| pipeline  | `process/features/pipeline/_GUIDE.md`  | in-progress (`/pipeline` also queries the real DB via `src/lib/server/db/leads.ts`) |
 | import    | `process/features/import/_GUIDE.md`    | not-started (stub pipeline)              |
 | reminders | `process/features/reminders/_GUIDE.md` | in-progress (code-complete, EVL green; manual UI/DB gates pending) |
 | reports   | `process/features/reports/_GUIDE.md`   | not-started (mock data only)             |

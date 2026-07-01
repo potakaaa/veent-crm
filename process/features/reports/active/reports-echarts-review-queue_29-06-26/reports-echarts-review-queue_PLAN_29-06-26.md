@@ -1,9 +1,22 @@
 # Reports (ECharts) + Review Queue — Implementation Plan
 
+> **⚠️ SUPERSEDED (01-07-26):** RFC-004 (Review Queue Real Data + Resolve Action) and its
+> acceptance criteria AC8/AC9 target `/review` and the `needs_review` column. Both were
+> **fully removed** by
+> `process/features/leads/active/ufg-inline-edit-review-removal_01-07-26/ufg-inline-edit-review-removal_PLAN_01-07-26.md`
+> (GitHub #90) — `src/routes/review/` deleted, `crm_leads.needs_review` column dropped
+> (migration generated, not yet applied — see that plan's Status block). RFC-004's scope,
+> resolve-action design, and DB queries referencing `needs_review`/`listReviewLeads` are
+> **obsolete and must not be resumed**. RFC-001/002/003 (Reports page real-data wiring, CSV
+> export) are unaffected and remain valid — do not treat the whole plan as dead, only
+> RFC-004 + AC8/AC9. Do not resume RFC-004 work from this file; if the Reports feature still
+> needs a "leads needing attention" surface, that requires a new SPEC (no replacement signal
+> currently exists per the superseding plan's SPEC).
+
 **Date**: 29-06-26
 **Complexity**: COMPLEX (multi-RFC, multi-session)
 **Feature folder**: `process/features/reports/`
-**Status**: 🔨 CODE DONE
+**Status**: 🔨 CODE DONE — RFC-004 superseded/obsolete (see note above); RFC-001/002/003 status unaffected
 
 ---
 

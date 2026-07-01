@@ -25,7 +25,7 @@
 		saving?: boolean;
 		onclose: () => void;
 		onsave: (data: Record<string, unknown>) => void;
-		onresolve: (data: Record<string, unknown>) => void;
+		onresolve?: (data: Record<string, unknown>) => void;
 	} = $props();
 
 	let name = $state('');
@@ -107,7 +107,7 @@
 			return;
 		}
 		formError = '';
-		onresolve(parsed.data);
+		onresolve?.(parsed.data);
 	}
 </script>
 
@@ -226,8 +226,10 @@
 		<Button variant="outline" onclick={handleSave} disabled={saving || !name}>
 			{saving ? 'Saving…' : 'Save changes'}
 		</Button>
-		<Button onclick={handleResolve} disabled={saving || !name}>
-			{saving ? 'Saving…' : 'Resolve'}
-		</Button>
+		{#if onresolve}
+			<Button onclick={handleResolve} disabled={saving || !name}>
+				{saving ? 'Saving…' : 'Resolve'}
+			</Button>
+		{/if}
 	{/snippet}
 </Modal>

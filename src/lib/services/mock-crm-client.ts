@@ -94,7 +94,6 @@ class MockCrmClient implements CrmClient {
 		if (filters.platform) out = out.filter((l) => l.platform === filters.platform);
 		if (filters.category) out = out.filter((l) => l.category === filters.category);
 		if (filters.staleOnly) out = out.filter((l) => l.age.type === 'stale');
-		if (filters.needsReview) out = out.filter((l) => l.needsReview);
 		if (filters.search) {
 			const q = filters.search.toLowerCase();
 			out = out.filter(
@@ -133,7 +132,6 @@ class MockCrmClient implements CrmClient {
 			email: input.email,
 			pageUrl: input.pageUrl,
 			source: input.source ?? 'manual',
-			needsReview: false,
 			notes: input.notes,
 			createdAt: new Date().toISOString(),
 			lastActivityAt: new Date().toISOString(),

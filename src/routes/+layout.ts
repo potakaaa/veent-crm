@@ -9,7 +9,7 @@ export const load: LayoutLoad = async ({ url, fetch, data }) => {
 			currentUser: null,
 			users: [],
 			leads: [],
-			counts: { overdue: 0, unassigned: 0, review: 0 }
+			counts: { overdue: 0, unassigned: 0 }
 		};
 	}
 
@@ -26,9 +26,9 @@ export const load: LayoutLoad = async ({ url, fetch, data }) => {
 		fetch('/api/nav-counts')
 	]);
 
-	const counts: { overdue: number; unassigned: number; review: number } = countsRes.ok
+	const counts: { overdue: number; unassigned: number } = countsRes.ok
 		? await countsRes.json()
-		: { overdue: 0, unassigned: 0, review: 0 };
+		: { overdue: 0, unassigned: 0 };
 
 	return { currentUser, users, leads, counts };
 };

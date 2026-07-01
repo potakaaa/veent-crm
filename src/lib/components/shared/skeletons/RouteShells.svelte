@@ -20,7 +20,6 @@
 	);
 	const isPipeline = $derived(pathname === '/pipeline');
 	const isUnassigned = $derived(pathname === '/unassigned');
-	const isReview = $derived(pathname === '/review');
 	const isReminders = $derived(pathname === '/reminders');
 	const isReports = $derived(pathname === '/reports');
 	const isTeam = $derived(pathname === '/team');
@@ -110,11 +109,6 @@
 	<div class="px-7 pb-16 pt-6">
 		<PageHeader title="Up for grabs" subtitle="Unassigned leads — claim what you can work." />
 		<TableSkeleton rows={8} cols={6} />
-	</div>
-{:else if isReview}
-	<div class="px-7 pb-16 pt-6">
-		<PageHeader title="Review queue" subtitle="Leads flagged for attention." />
-		<TableSkeleton rows={6} cols={6} />
 	</div>
 {:else if isReminders}
 	<div class="mx-auto max-w-[940px] px-7 pb-16 pt-6">

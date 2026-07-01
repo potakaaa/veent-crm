@@ -4,7 +4,7 @@
 	import * as Popover from '$lib/components/ui/popover';
 	import * as Dialog from '$lib/components/ui/dialog';
 	import { Calendar } from '$lib/components/ui/calendar';
-	import { today, getLocalTimeZone, type DateValue } from '@internationalized/date';
+	import { today, type DateValue } from '@internationalized/date';
 	import { ACTIVITY_CHANNELS } from '$lib/zod/schemas';
 	import { OUTCOME_TOKENS } from '$lib/design/tokens';
 	import type { ActivityChannel, ActivityOutcome, AddActivityInput, Lead } from '$lib/types';
@@ -71,7 +71,7 @@
 	let note = $state('');
 	let submitting = $state(false);
 
-	const minDate = $derived(today(getLocalTimeZone()));
+	const minDate = $derived(today('Asia/Manila'));
 
 	const customDateDisplay = $derived(
 		customFollowUpDate
@@ -144,7 +144,10 @@
 				{#if customFollowUpDate}
 					<button
 						class={pill(true)}
-						onclick={() => (customFollowUpDate = undefined)}
+						onclick={() => {
+							customFollowUpDate = undefined;
+							followUpInDays = 3;
+						}}
 						aria-label="Clear custom date"
 					>
 						{customDateDisplay} ×

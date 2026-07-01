@@ -23,6 +23,15 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	const country = url.searchParams.get('country') ?? '';
 	const staleOnly = url.searchParams.get('staleOnly') === '1';
 	const search = url.searchParams.get('q') ?? '';
+	const rawDate = url.searchParams.get('date') ?? '';
+	const date = (() => {
+		if (!/^\d{4}-\d{2}-\d{2}$/.test(rawDate)) return '';
+		const d = new Date(rawDate + 'T00:00:00');
+		return isNaN(d.getTime()) || d.toISOString().slice(0, 10) !== rawDate ? '' : rawDate;
+	})();
+	const rawDateField = url.searchParams.get('dateField') ?? '';
+	const dateField: 'event_date' | 'created_at' =
+		rawDateField === 'created_at' ? 'created_at' : 'event_date';
 	const page = Math.max(1, parseInt(url.searchParams.get('page') ?? '1', 10) || 1);
 
 	const LEADS_SORT_COLS_SET = new Set(['name', 'event', 'stage', 'platform', 'lastActivity']);
@@ -39,6 +48,8 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 			country: country || undefined,
 			staleOnly,
 			search: search || undefined,
+			date: date || undefined,
+			dateField: date ? dateField : undefined,
 			page,
 			pageSize: PAGE_SIZE,
 			sort,
@@ -62,7 +73,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		countries,
 		users,
 		me,
-		filters: { segment, stage, platform, country, staleOnly, search },
+		filters: { segment, stage, platform, country, staleOnly, search, date, dateField },
 		sort: sort ?? 'lastActivity',
 		dir,
 		pagination: {

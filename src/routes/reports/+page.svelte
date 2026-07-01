@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { goto } from '$app/navigation';
 	import PageHeader from '$lib/components/shared/PageHeader.svelte';
 	import Avatar from '$lib/components/shared/Avatar.svelte';
 	import { CardSkeleton } from '$lib/components/shared/skeletons';
@@ -35,6 +36,49 @@
 			heatLoading = false;
 		}
 	}
+
+	// Outreach filter state — synced from URL params on navigation
+	let filterFrom = $state('');
+	let filterTo = $state('');
+	let filterRepId = $state('');
+
+	$effect(() => {
+		filterFrom = data.from ?? '';
+		filterTo = data.to ?? '';
+		filterRepId = data.repId ?? '';
+	});
+
+	const hasFilter = $derived(!!(filterFrom || filterTo || filterRepId));
+
+	function buildQuery(parts: [string, string][]): string {
+		const qs = parts
+			.filter(([, v]) => v)
+			.map(([k, v]) => `${k}=${encodeURIComponent(v)}`)
+			.join('&');
+		return qs ? `?${qs}` : '?';
+	}
+
+	function applyFilters(e: Event) {
+		e.preventDefault();
+		goto(
+			buildQuery([
+				['from', filterFrom],
+				['to', filterTo],
+				['repId', filterRepId],
+				['heatMetric', heatMetric !== 'event_date' ? heatMetric : '']
+			]),
+			{ keepFocus: true }
+		);
+	}
+
+	function clearFilters() {
+		filterFrom = '';
+		filterTo = '';
+		filterRepId = '';
+		goto(buildQuery([['heatMetric', heatMetric !== 'event_date' ? heatMetric : '']]), {
+			keepFocus: true
+		});
+	}
 </script>
 
 <svelte:head><title>Reports · Veent CRM</title></svelte:head>
@@ -66,6 +110,100 @@
 			</button>
 		{/snippet}
 	</PageHeader>
+
+	<!-- Outreach metrics filter bar -->
+	<form onsubmit={applyFilters} class="mb-[18px] flex flex-wrap items-end gap-2.5">
+		<div class="flex flex-col gap-1">
+			<label class="font-mono text-[10px] uppercase tracking-[0.4px] text-ink-300" for="rpt-from"
+				>From</label
+			>
+			<input
+				id="rpt-from"
+				type="date"
+				bind:value={filterFrom}
+				class="h-[34px] rounded-control border border-hairline bg-panel px-2.5 font-mono text-[12.5px] text-ink focus:outline-none focus:ring-1 focus:ring-primary"
+			/>
+		</div>
+		<div class="flex flex-col gap-1">
+			<label class="font-mono text-[10px] uppercase tracking-[0.4px] text-ink-300" for="rpt-to"
+				>To</label
+			>
+			<input
+				id="rpt-to"
+				type="date"
+				bind:value={filterTo}
+				class="h-[34px] rounded-control border border-hairline bg-panel px-2.5 font-mono text-[12.5px] text-ink focus:outline-none focus:ring-1 focus:ring-primary"
+			/>
+		</div>
+		<div class="flex flex-col gap-1">
+			<label class="font-mono text-[10px] uppercase tracking-[0.4px] text-ink-300" for="rpt-rep"
+				>Rep</label
+			>
+			<select
+				id="rpt-rep"
+				bind:value={filterRepId}
+				class="h-[34px] rounded-control border border-hairline bg-panel px-2.5 font-mono text-[12.5px] text-ink focus:outline-none focus:ring-1 focus:ring-primary"
+			>
+				<option value="">All reps</option>
+				{#each data.users as u (u.id)}
+					<option value={u.id}>{u.name}</option>
+				{/each}
+			</select>
+		</div>
+		<button
+			type="submit"
+			class="h-[34px] rounded-control bg-primary px-3.5 font-mono text-[12.5px] font-semibold text-white hover:bg-primary-strong"
+		>
+			Apply
+		</button>
+		{#if hasFilter}
+			<button
+				type="button"
+				onclick={clearFilters}
+				class="h-[34px] rounded-control border border-hairline bg-panel px-3.5 font-mono text-[12.5px] text-ink-600 hover:bg-panel-sunken"
+			>
+				Clear
+			</button>
+		{/if}
+	</form>
+
+	<!-- Outreach metrics card -->
+	{#await data.outreach}
+		<div class="mb-[18px]"><CardSkeleton /></div>
+	{:then outreach}
+		<div class="mb-[18px] rounded-control border border-hairline bg-panel p-5">
+			<div class="mb-4 text-[14px] font-bold">Outreach metrics</div>
+			<div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+				<div class="rounded-control border border-hairline bg-[#fdf3f2] p-4">
+					<div class="font-mono text-[10.5px] uppercase tracking-[0.8px] text-ink-300">
+						Leads reached out
+					</div>
+					<div class="mt-1 font-mono text-[28px] font-semibold tracking-[-1px] tnum text-ink">
+						{outreach.leadsReachedOut}
+					</div>
+					<div class="mt-0.5 text-[12px] text-ink-400">first reached-out date set</div>
+				</div>
+				<div class="rounded-control border border-hairline bg-[#fdf3f2] p-4">
+					<div class="font-mono text-[10.5px] uppercase tracking-[0.8px] text-ink-300">
+						Leads that replied
+					</div>
+					<div class="mt-1 font-mono text-[28px] font-semibold tracking-[-1px] tnum text-ink">
+						{outreach.leadsThatReplied}
+					</div>
+					<div class="mt-0.5 text-[12px] text-ink-400">leads with a replied activity</div>
+				</div>
+				<div class="rounded-control border border-hairline bg-[#fdf3f2] p-4">
+					<div class="font-mono text-[10.5px] uppercase tracking-[0.8px] text-ink-300">
+						Leads with meeting
+					</div>
+					<div class="mt-1 font-mono text-[28px] font-semibold tracking-[-1px] tnum text-ink">
+						{outreach.leadsWithMeeting}
+					</div>
+					<div class="mt-0.5 text-[12px] text-ink-400">at least one meeting logged</div>
+				</div>
+			</div>
+		</div>
+	{/await}
 
 	{#await data.report}
 		<div class="mb-[18px] grid grid-cols-1 gap-[18px] lg:grid-cols-[1.1fr_1fr]">

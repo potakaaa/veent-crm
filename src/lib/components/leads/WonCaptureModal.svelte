@@ -30,7 +30,7 @@
 
 	$effect(() => {
 		if (open) {
-			signedOrg = '';
+			signedOrg = leadName;
 			dealValue = '';
 			currency = 'PHP';
 			signedDate = manilaDate();
@@ -99,7 +99,7 @@
 			onclick={confirm}
 			loading={saving}
 			loadingText="Saving…"
-			disabled={saving}>Mark won</Button
+			disabled={saving || !signedOrg.trim()}>Mark won</Button
 		>
 	{/snippet}
 </Modal>

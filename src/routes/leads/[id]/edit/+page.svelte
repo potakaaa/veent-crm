@@ -78,8 +78,8 @@
 			eventDate: selectedDate ? selectedDate.toString() : undefined,
 			eventDateRaw: eventDateDisplay || undefined,
 			eventLink: eventLink || '',
-			firstAnnouncedDate: announcedDate ? announcedDate.toString() : undefined,
-			firstReachedOutDate: reachedOutDate ? reachedOutDate.toString() : undefined,
+			firstAnnouncedDate: announcedDate ? announcedDate.toString() : null,
+			firstReachedOutDate: reachedOutDate ? reachedOutDate.toString() : null,
 			notes: notes || undefined
 		});
 		if (!parsed.success) {
@@ -230,89 +230,113 @@
 				<Label for="firstAnnouncedDate"
 					>First announced <span class="text-ink-400">(optional)</span></Label
 				>
-				<Dialog.Root bind:open={announcedDateOpen}>
-					<Dialog.Trigger
-						id="firstAnnouncedDate"
-						class="flex h-9 w-full items-center justify-between rounded-control border border-hairline bg-panel px-3 py-2 text-left text-[13px] shadow-sm transition hover:bg-panel-sunken focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary {!announcedDateDisplay
-							? 'text-ink-400'
-							: 'text-ink'}"
-					>
-						{announcedDateDisplay || 'Pick a date'}
-						<Icon name="calendar" size={15} />
-					</Dialog.Trigger>
-					<Dialog.Content class="w-[min(92vw,400px)] gap-0 p-5" showCloseButton={false}>
-						<Dialog.Header class="mb-3 p-0">
-							<Dialog.Title>First announced date</Dialog.Title>
-						</Dialog.Header>
-						<div class="rounded-xl bg-panel-sunken p-3">
-							<Calendar
-								type="single"
-								bind:value={announcedDateTemp}
-								class="w-full [--cell-size:--spacing(9)]"
-							/>
-						</div>
-						<div class="mt-4 flex justify-end gap-2">
-							<Dialog.Close
-								class="rounded-control border border-hairline bg-panel px-3 py-1.5 text-[13px] font-medium text-ink hover:bg-panel-sunken"
-							>
-								Cancel
-							</Dialog.Close>
-							<button
-								onclick={() => {
-									announcedDate = announcedDateTemp;
-									announcedDateOpen = false;
-								}}
-								class="rounded-control bg-primary px-3 py-1.5 text-[13px] font-semibold text-white hover:bg-primary-strong"
-							>
-								Done
-							</button>
-						</div>
-					</Dialog.Content>
-				</Dialog.Root>
+				<div class="flex items-center gap-1.5">
+					<Dialog.Root bind:open={announcedDateOpen}>
+						<Dialog.Trigger
+							id="firstAnnouncedDate"
+							class="flex h-9 flex-1 items-center justify-between rounded-control border border-hairline bg-panel px-3 py-2 text-left text-[13px] shadow-sm transition hover:bg-panel-sunken focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary {!announcedDateDisplay
+								? 'text-ink-400'
+								: 'text-ink'}"
+						>
+							{announcedDateDisplay || 'Pick a date'}
+							<Icon name="calendar" size={15} />
+						</Dialog.Trigger>
+						<Dialog.Content class="w-[min(92vw,400px)] gap-0 p-5" showCloseButton={false}>
+							<Dialog.Header class="mb-3 p-0">
+								<Dialog.Title>First announced date</Dialog.Title>
+							</Dialog.Header>
+							<div class="rounded-xl bg-panel-sunken p-3">
+								<Calendar
+									type="single"
+									bind:value={announcedDateTemp}
+									class="w-full [--cell-size:--spacing(9)]"
+								/>
+							</div>
+							<div class="mt-4 flex justify-end gap-2">
+								<Dialog.Close
+									class="rounded-control border border-hairline bg-panel px-3 py-1.5 text-[13px] font-medium text-ink hover:bg-panel-sunken"
+								>
+									Cancel
+								</Dialog.Close>
+								<button
+									onclick={() => {
+										announcedDate = announcedDateTemp;
+										announcedDateOpen = false;
+									}}
+									class="rounded-control bg-primary px-3 py-1.5 text-[13px] font-semibold text-white hover:bg-primary-strong"
+								>
+									Done
+								</button>
+							</div>
+						</Dialog.Content>
+					</Dialog.Root>
+					{#if announcedDate}
+						<button
+							type="button"
+							onclick={() => (announcedDate = undefined)}
+							class="shrink-0 text-[12px] text-ink-400 hover:text-ink"
+							aria-label="Clear first announced date"
+						>
+							Clear
+						</button>
+					{/if}
+				</div>
 			</div>
 			<div class="grid gap-1.5">
 				<Label for="firstReachedOutDate"
 					>First reached out <span class="text-ink-400">(optional)</span></Label
 				>
-				<Dialog.Root bind:open={reachedOutDateOpen}>
-					<Dialog.Trigger
-						id="firstReachedOutDate"
-						class="flex h-9 w-full items-center justify-between rounded-control border border-hairline bg-panel px-3 py-2 text-left text-[13px] shadow-sm transition hover:bg-panel-sunken focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary {!reachedOutDateDisplay
-							? 'text-ink-400'
-							: 'text-ink'}"
-					>
-						{reachedOutDateDisplay || 'Pick a date'}
-						<Icon name="calendar" size={15} />
-					</Dialog.Trigger>
-					<Dialog.Content class="w-[min(92vw,400px)] gap-0 p-5" showCloseButton={false}>
-						<Dialog.Header class="mb-3 p-0">
-							<Dialog.Title>First reached out date</Dialog.Title>
-						</Dialog.Header>
-						<div class="rounded-xl bg-panel-sunken p-3">
-							<Calendar
-								type="single"
-								bind:value={reachedOutDateTemp}
-								class="w-full [--cell-size:--spacing(9)]"
-							/>
-						</div>
-						<div class="mt-4 flex justify-end gap-2">
-							<Dialog.Close
-								class="rounded-control border border-hairline bg-panel px-3 py-1.5 text-[13px] font-medium text-ink hover:bg-panel-sunken"
-							>
-								Cancel
-							</Dialog.Close>
-							<button
-								onclick={() => {
-									reachedOutDate = reachedOutDateTemp;
-									reachedOutDateOpen = false;
-								}}
-								class="rounded-control bg-primary px-3 py-1.5 text-[13px] font-semibold text-white hover:bg-primary-strong"
-							>
-								Done
-							</button>
-						</div>
-					</Dialog.Content>
-				</Dialog.Root>
+				<div class="flex items-center gap-1.5">
+					<Dialog.Root bind:open={reachedOutDateOpen}>
+						<Dialog.Trigger
+							id="firstReachedOutDate"
+							class="flex h-9 flex-1 items-center justify-between rounded-control border border-hairline bg-panel px-3 py-2 text-left text-[13px] shadow-sm transition hover:bg-panel-sunken focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary {!reachedOutDateDisplay
+								? 'text-ink-400'
+								: 'text-ink'}"
+						>
+							{reachedOutDateDisplay || 'Pick a date'}
+							<Icon name="calendar" size={15} />
+						</Dialog.Trigger>
+						<Dialog.Content class="w-[min(92vw,400px)] gap-0 p-5" showCloseButton={false}>
+							<Dialog.Header class="mb-3 p-0">
+								<Dialog.Title>First reached out date</Dialog.Title>
+							</Dialog.Header>
+							<div class="rounded-xl bg-panel-sunken p-3">
+								<Calendar
+									type="single"
+									bind:value={reachedOutDateTemp}
+									class="w-full [--cell-size:--spacing(9)]"
+								/>
+							</div>
+							<div class="mt-4 flex justify-end gap-2">
+								<Dialog.Close
+									class="rounded-control border border-hairline bg-panel px-3 py-1.5 text-[13px] font-medium text-ink hover:bg-panel-sunken"
+								>
+									Cancel
+								</Dialog.Close>
+								<button
+									onclick={() => {
+										reachedOutDate = reachedOutDateTemp;
+										reachedOutDateOpen = false;
+									}}
+									class="rounded-control bg-primary px-3 py-1.5 text-[13px] font-semibold text-white hover:bg-primary-strong"
+								>
+									Done
+								</button>
+							</div>
+						</Dialog.Content>
+					</Dialog.Root>
+					{#if reachedOutDate}
+						<button
+							type="button"
+							onclick={() => (reachedOutDate = undefined)}
+							class="shrink-0 text-[12px] text-ink-400 hover:text-ink"
+							aria-label="Clear first reached out date"
+						>
+							Clear
+						</button>
+					{/if}
+				</div>
 			</div>
 			<div class="grid gap-1.5 sm:col-span-2">
 				<Label for="notes">Notes <span class="text-ink-400">(optional)</span></Label>

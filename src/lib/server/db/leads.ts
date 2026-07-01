@@ -581,8 +581,8 @@ export async function updateLead(
 		eventDate?: string;
 		eventDateRaw?: string;
 		eventLink?: string;
-		firstAnnouncedDate?: string;
-		firstReachedOutDate?: string;
+		firstAnnouncedDate?: string | null;
+		firstReachedOutDate?: string | null;
 		notes?: string;
 	},
 	actorId: string

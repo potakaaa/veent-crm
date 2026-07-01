@@ -61,14 +61,8 @@ export const leadFormSchema = z.object({
 	eventName: z.string().optional(),
 	eventLink: z.string().url().optional().or(z.literal('')),
 	eventDateRaw: z.string().optional(),
-	firstAnnouncedDate: z
-		.string()
-		.regex(/^\d{4}-\d{2}-\d{2}$/, 'firstAnnouncedDate must be YYYY-MM-DD')
-		.optional(),
-	firstReachedOutDate: z
-		.string()
-		.regex(/^\d{4}-\d{2}-\d{2}$/, 'firstReachedOutDate must be YYYY-MM-DD')
-		.optional(),
+	firstAnnouncedDate: z.iso.date().or(z.literal('')).optional(),
+	firstReachedOutDate: z.iso.date().or(z.literal('')).optional(),
 	notes: z.string().optional()
 });
 export type LeadForm = z.infer<typeof leadFormSchema>;
@@ -92,13 +86,13 @@ export const leadUpdateSchema = z.object({
 	eventDateRaw: z.string().optional(),
 	eventLink: z.string().url().optional().or(z.literal('')),
 	firstAnnouncedDate: z
-		.string()
-		.regex(/^\d{4}-\d{2}-\d{2}$/, 'firstAnnouncedDate must be YYYY-MM-DD')
-		.optional(),
+		.union([z.iso.date(), z.literal(''), z.null()])
+		.optional()
+		.transform((v) => (v === '' ? null : v)),
 	firstReachedOutDate: z
-		.string()
-		.regex(/^\d{4}-\d{2}-\d{2}$/, 'firstReachedOutDate must be YYYY-MM-DD')
-		.optional(),
+		.union([z.iso.date(), z.literal(''), z.null()])
+		.optional()
+		.transform((v) => (v === '' ? null : v)),
 	notes: z.string().optional()
 });
 export type LeadUpdate = z.infer<typeof leadUpdateSchema>;

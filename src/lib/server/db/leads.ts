@@ -481,6 +481,34 @@ export async function claimLead(id: string, userId: string): Promise<Lead | null
 	});
 }
 
+export async function unclaimLead(id: string, userId: string): Promise<Lead | null> {
+	const now = new Date();
+	return db.transaction(async (tx) => {
+		const [row] = await tx
+			.update(crmLeads)
+			.set({ ownerId: null, updatedAt: now })
+			.where(
+				and(
+					eq(crmLeads.id, id),
+					isNull(crmLeads.deletedAt),
+					eq(crmLeads.ownerId, userId),
+					ne(crmLeads.stage, 'won'),
+					ne(crmLeads.stage, 'lost')
+				)
+			)
+			.returning();
+		if (!row) return null;
+		await tx.insert(crmLeadHistory).values({
+			leadId: id,
+			actorUserId: userId,
+			field: 'owner_id',
+			oldValue: userId,
+			newValue: null
+		});
+		return dbRowToLead(row);
+	});
+}
+
 export async function listUsers(): Promise<User[]> {
 	const rows = await db.select().from(crmUsers).orderBy(crmUsers.name);
 	return rows.map(dbUserToUser);

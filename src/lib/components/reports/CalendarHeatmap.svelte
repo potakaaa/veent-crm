@@ -153,7 +153,7 @@
 			<div class="flex gap-1.5" style="min-width: max-content;">
 				<!-- Day labels (left) -->
 				<div class="flex flex-col gap-px pt-5">
-					{#each DAY_LABELS as label (label)}
+					{#each DAY_LABELS as label, i (i)}
 						<div class="flex h-[12px] items-center font-mono text-[9.5px] text-ink-300">
 							{label}
 						</div>

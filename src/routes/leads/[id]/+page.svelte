@@ -354,6 +354,15 @@
 					</div>
 				</div>
 
+				{#if lead.notes}
+					<div class="mb-4 rounded-control border border-hairline bg-panel p-4">
+						<div class="mb-2 font-mono text-[11px] uppercase tracking-[0.5px] text-ink-300">
+							Notes
+						</div>
+						<p class="whitespace-pre-wrap text-[13px] leading-relaxed text-ink-600">{lead.notes}</p>
+					</div>
+				{/if}
+
 				<div class="mb-4">
 					<ActivityTimeline
 						activities={data.activities}

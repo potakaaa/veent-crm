@@ -160,7 +160,7 @@
 			</div>
 			<div class="flex flex-wrap gap-4">
 				{#each report.currencyTotals as c (c.currency)}
-					<div class="min-w-[200px] flex-1 rounded-control border border-hairline bg-[#fdf7f5] p-4">
+					<div class="min-w-[200px] flex-1 rounded-control border border-hairline bg-[#fdf3f2] p-4">
 						<div class="font-mono text-[11px] tracking-[1px] text-ink-300">{c.label}</div>
 						<div class="mt-1 font-mono text-[26px] font-semibold tracking-[-1px] tnum">
 							{formatMoney(c.total, c.currency)}

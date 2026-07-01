@@ -1,20 +1,23 @@
 <script lang="ts">
 	import { Card } from '$lib/components/ui/card';
+	import Icon, { type IconName } from '$lib/components/shared/Icon.svelte';
 
 	let {
 		value,
 		label,
-		accent = '#c0362c',
-		emphasize = false
-	}: { value: string | number; label: string; accent?: string; emphasize?: boolean } = $props();
+		icon,
+		accent = '#e11d2a'
+	}: { value: string | number; label: string; icon: IconName; accent?: string } = $props();
 </script>
 
-<Card class="gap-0 rounded-control p-4" style="border-left:3px solid {accent}">
-	<div
-		class="font-mono text-[26px] font-semibold tracking-[-1px] tnum"
-		style={emphasize ? `color:${accent}` : ''}
-	>
-		{value}
+<Card class="gap-0 overflow-hidden rounded-frame p-0">
+	<div class="flex items-center gap-2 px-4 pb-2.5 pt-3" style="background:{accent}14">
+		<span class="flex shrink-0" style="color:{accent}"><Icon name={icon} size={15} /></span>
+		<span class="truncate text-[12px] font-semibold" style="color:{accent}">{label}</span>
 	</div>
-	<div class="mt-0.5 text-[12px] text-ink-500">{label}</div>
+	<div class="px-4 pb-4 pt-3">
+		<div class="tnum text-[32px] font-extrabold leading-none tracking-[-1.2px] text-ink">
+			{value}
+		</div>
+	</div>
 </Card>

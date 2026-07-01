@@ -14,7 +14,7 @@
 			</div>
 			<div>
 				<div class="text-[15px] font-bold tracking-[-0.2px]">Veent CRM</div>
-				<div class="font-mono text-[10px] uppercase tracking-[1px] text-[#8a7270]">
+				<div class="font-mono text-[10px] uppercase tracking-[1px] text-[#8a828f]">
 					Outreach Console
 				</div>
 			</div>
@@ -26,11 +26,11 @@
 		<h1 class="mb-3 font-serif text-[34px] font-semibold leading-[1.2] tracking-[-0.5px]">
 			You need to sign in.
 		</h1>
-		<p class="mb-2 text-[14px] leading-relaxed text-[#b89e9c]">
+		<p class="mb-2 text-[14px] leading-relaxed text-[#a8a1ab]">
 			This page is for allowlisted Veent reps. Sign in with your work email to continue.
 		</p>
 		{#if data.from}
-			<p class="mb-6 text-[12.5px] leading-relaxed text-[#8a7270]">
+			<p class="mb-6 text-[12.5px] leading-relaxed text-[#8a828f]">
 				You were trying to reach <span class="font-mono text-[#cdbab8]">{data.from}</span>.
 			</p>
 		{:else}
@@ -44,7 +44,7 @@
 			Sign in
 		</a>
 
-		<p class="mt-[18px] text-[11.5px] leading-relaxed text-[#8a7270]">
+		<p class="mt-[18px] text-[11.5px] leading-relaxed text-[#8a828f]">
 			Not on the team yet? Ask a manager to add you in Team management — that list is the allowlist.
 		</p>
 	</div>

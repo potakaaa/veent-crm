@@ -227,7 +227,7 @@
 
 	<div class="overflow-hidden rounded-control border border-hairline bg-panel">
 		<div
-			class="{grid} items-center border-b border-hairline bg-[#fdf7f5] px-4 py-[9px] font-mono text-[10.5px] uppercase tracking-[0.4px] text-ink-300"
+			class="{grid} items-center border-b border-hairline bg-[#faf9fb] px-4 py-[9px] font-mono text-[10.5px] uppercase tracking-[0.4px] text-ink-300"
 		>
 			{#each table.getHeaderGroups()[0].headers as header (header.id)}
 				<div
@@ -270,7 +270,7 @@
 		{:else}
 			{#each shadowLeads as l (l.id)}
 				<div
-					class="{grid} min-h-11 items-center border-b border-panel-sunken px-4 last:border-b-0 hover:bg-[#fdf7f5]"
+					class="{grid} min-h-11 items-center border-b border-panel-sunken px-4 last:border-b-0 hover:bg-[#fcfbfd]"
 				>
 					<button
 						onclick={() => toggle(l.id)}

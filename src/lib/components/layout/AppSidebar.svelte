@@ -33,7 +33,7 @@
 			label: 'Today',
 			icon: 'today',
 			badge: counts.overdue || undefined,
-			badgeColor: '#e11d48'
+			badgeColor: '#e11d2a'
 		},
 		{ href: '/leads', label: 'My Leads', icon: 'leads' },
 		{ href: '/pipeline', label: 'Pipeline', icon: 'pipeline' },
@@ -53,7 +53,7 @@
 			label: 'Review queue',
 			icon: 'review',
 			badge: counts.review || undefined,
-			badgeColor: '#e11d48'
+			badgeColor: '#e11d2a'
 		}
 	]);
 
@@ -70,8 +70,8 @@
 	<a
 		href={item.href}
 		class="mb-0.5 flex h-[38px] items-center gap-[11px] rounded-control px-[11px] text-[13px] transition-colors {active
-			? 'bg-[rgba(192,54,44,0.16)] font-semibold text-white shadow-[inset_3px_0_0_#c0362c]'
-			: 'font-medium text-[#b89e9c] hover:bg-white/5'}"
+			? 'bg-[rgba(225,29,42,0.14)] font-semibold text-[#fca5a0] shadow-[inset_3px_0_0_#e11d2a]'
+			: 'font-medium text-[#a8a1ab] hover:bg-white/5'}"
 	>
 		<Icon name={item.icon} />
 		<span class="flex-1 text-left">{item.label}</span>
@@ -80,7 +80,7 @@
 				class="inline-flex h-[17px] min-w-[18px] items-center justify-center rounded-[9px] px-[5px] font-mono text-[10px] font-semibold"
 				style={item.badgeColor
 					? `background:${item.badgeColor};color:#fff`
-					: 'background:rgba(255,255,255,0.1);color:#b89e9c'}
+					: 'background:rgba(255,255,255,0.1);color:#a8a1ab'}
 			>
 				{item.badge}
 			</span>
@@ -88,32 +88,39 @@
 	</a>
 {/snippet}
 
-<aside data-rail class="flex w-[224px] shrink-0 flex-col bg-ink text-white max-[880px]:hidden">
+<aside
+	data-rail
+	class="flex w-[236px] shrink-0 flex-col bg-[#1a171c] text-[#f5f3f4] max-[880px]:hidden"
+>
 	<!-- brand -->
-	<div class="flex items-center gap-2.5 border-b border-[#3a2122] px-[18px] pb-[14px] pt-[18px]">
+	<div class="flex items-center gap-[11px] px-4 pb-[14px] pt-4">
 		<div
-			class="flex h-[30px] w-[30px] items-center justify-center rounded-[7px] bg-primary text-[15px] font-bold"
+			class="flex h-[34px] w-[34px] items-center justify-center rounded-[9px] bg-primary text-[17px] font-extrabold shadow-[0_4px_12px_rgba(225,29,42,0.4)]"
 		>
 			V
 		</div>
-		<div>
-			<div class="text-[13.5px] font-bold tracking-[-0.2px]">Veent CRM</div>
-			<div class="font-mono text-[9px] uppercase tracking-[1px] text-[#8a7270]">
+		<div class="min-w-0 flex-1">
+			<div class="text-[14px] font-extrabold tracking-[-0.3px]">Veent CRM</div>
+			<div class="font-mono text-[8px] uppercase tracking-[1.6px] text-[#8a828f]">
 				Outreach Console
 			</div>
 		</div>
+		<span class="h-[7px] w-[7px] rounded-full bg-[#22c55e] shadow-[0_0_0_3px_rgba(34,197,94,0.18)]"
+		></span>
 	</div>
 
 	<!-- nav -->
-	<nav class="flex-1 overflow-y-auto px-3 py-[14px]">
-		<div class="px-2 pb-2 font-mono text-[9.5px] uppercase tracking-[1.2px] text-[#7a6260]">
-			Work
+	<nav class="flex-1 overflow-y-auto px-3 py-1">
+		<div
+			class="px-2.5 pb-[7px] pt-2 font-mono text-[9.5px] uppercase tracking-[1.4px] text-[#6f6873]"
+		>
+			Workspace
 		</div>
 		{#each work as item (item.href)}{@render navButton(item)}{/each}
 
 		{#if user?.role === 'manager'}
 			<div
-				class="px-2 pb-2 pt-[18px] font-mono text-[9.5px] uppercase tracking-[1.2px] text-[#7a6260]"
+				class="px-2.5 pb-[7px] pt-[18px] font-mono text-[9.5px] uppercase tracking-[1.4px] text-[#6f6873]"
 			>
 				Manager
 			</div>
@@ -122,19 +129,24 @@
 	</nav>
 
 	<!-- user footer -->
-	<div class="flex items-center gap-2.5 border-t border-[#3a2122] px-[14px] py-3">
-		<div
-			class="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-full bg-primary text-[12px] font-semibold"
-		>
-			{user?.name?.[0] ?? '?'}
+	<div class="flex items-center gap-2.5 border-t border-[#26222b] px-[14px] py-[11px]">
+		<div class="relative shrink-0">
+			<div
+				class="flex h-[30px] w-[30px] items-center justify-center rounded-full bg-primary text-[12px] font-semibold"
+			>
+				{user?.name?.[0] ?? '?'}
+			</div>
+			<span
+				class="absolute -bottom-px -right-px h-[9px] w-[9px] rounded-full border-2 border-[#1a171c] bg-[#22c55e]"
+			></span>
 		</div>
 		<div class="min-w-0 flex-1">
 			<div class="text-[12.5px] font-semibold">{user?.name ?? 'Signed out'}</div>
-			<div class="font-mono text-[10px] text-[#8a7270]">
+			<div class="font-mono text-[9.5px] text-[#8a828f]">
 				{user?.role ? roleLabel(user.role) : '—'}{user?.location ? ` · ${user.location}` : ''}
 			</div>
 		</div>
-		<button onclick={signOut} title="Sign out" class="p-1 text-[#8a7270] hover:text-white">
+		<button onclick={signOut} title="Sign out" class="p-1 text-[#8a828f] hover:text-white">
 			<Icon name="logout" size={16} />
 		</button>
 	</div>

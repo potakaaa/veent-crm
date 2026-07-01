@@ -27,15 +27,15 @@
 
 	// Today section groups — real titles/colors from src/routes/+page.svelte.
 	const todayGroups = [
-		{ title: 'Overdue follow-ups', color: '#e11d48' },
-		{ title: 'Due today', color: '#c0362c' },
-		{ title: 'Replied — strike while warm', color: '#7c3aed' },
-		{ title: 'Going cold (>30d no reply)', color: '#c2710c' }
+		{ title: 'Overdue follow-ups', color: '#dc2626' },
+		{ title: 'Due today', color: '#e11d2a' },
+		{ title: 'Replied', color: '#7c3aed' },
+		{ title: 'Going cold (>30d no reply)', color: '#d97706' }
 	];
 </script>
 
 {#if isToday}
-	<div class="mx-auto max-w-[940px] px-7 pb-16 pt-6">
+	<div class="px-7 pb-16 pt-6">
 		<PageHeader title="Today" subtitle="Your queue is sorted by urgency — clear the top first." />
 
 		<div class="my-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -61,7 +61,7 @@
 		{/each}
 	</div>
 {:else if isLeadNew}
-	<div class="mx-auto max-w-[940px] px-7 pb-16 pt-6">
+	<div class="px-7 pb-16 pt-6">
 		<PageHeader title="New lead" subtitle="Fill in what you know — you can update later." />
 		<CardSkeleton />
 	</div>
@@ -117,7 +117,7 @@
 		<TableSkeleton rows={6} cols={6} />
 	</div>
 {:else if isReminders}
-	<div class="mx-auto max-w-[940px] px-7 pb-16 pt-6">
+	<div class="px-7 pb-16 pt-6">
 		<PageHeader
 			title="Reminders"
 			subtitle="Follow-ups booked from your logged touches. Activities drive these dates — log a touch to rebook."
@@ -136,7 +136,7 @@
 		</div>
 	</div>
 {:else if isTeam}
-	<div class="mx-auto max-w-[940px] px-7 pb-16 pt-6">
+	<div class="px-7 pb-16 pt-6">
 		<PageHeader
 			title="Team management"
 			subtitle="This list is the magic-link allowlist. Add a rep here and they can sign in."

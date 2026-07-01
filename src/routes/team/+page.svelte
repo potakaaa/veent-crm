@@ -119,7 +119,7 @@
 
 <svelte:head><title>Team · Veent CRM</title></svelte:head>
 
-<div class="mx-auto max-w-[940px] px-7 pb-16 pt-6">
+<div class="px-7 pb-16 pt-6">
 	<PageHeader
 		title="Team management"
 		subtitle="This list is the magic-link allowlist. Add a rep here and they can sign in."
@@ -146,7 +146,7 @@
 		<Table>
 			<TableHeader>
 				{#each table.getHeaderGroups() as headerGroup}
-					<TableRow class="bg-[#fdf7f5] hover:bg-[#fdf7f5]">
+					<TableRow class="bg-[#faf9fb] hover:bg-[#faf9fb]">
 						{#each headerGroup.headers as header}
 							{#if header.id === '_leads'}
 								<TableHead class="text-right">{header.column.columnDef.header}</TableHead>
@@ -205,8 +205,8 @@
 									variant="outline"
 									class="font-mono text-[11px]"
 									style={u.role === 'manager'
-										? 'color:#c0362c;background:rgba(192,54,44,0.1);border-color:transparent'
-										: 'color:#5a4a48;background:#f5ecea;border-color:transparent'}
+										? 'color:#e11d2a;background:#fdeceb;border-color:transparent'
+										: 'color:#6b6470;background:#f1eff3;border-color:transparent'}
 								>
 									{roleLabel(u.role)}
 								</Badge>
@@ -216,8 +216,8 @@
 									variant="outline"
 									class="font-mono text-[11px]"
 									style={u.active
-										? 'color:#0e9f6e;background:rgba(14,159,110,0.1);border-color:transparent'
-										: 'color:#a89490;background:#f5ecea;border-color:transparent'}
+										? 'color:#059669;background:#f0fbf5;border-color:transparent'
+										: 'color:#b7b1bc;background:#f1eff3;border-color:transparent'}
 								>
 									{statusLabel(u.active)}
 								</Badge>

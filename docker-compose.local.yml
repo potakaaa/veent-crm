@@ -1,8 +1,0 @@
-# Opt-in: exposes Postgres to the host so drizzle-kit and seed scripts can
-# connect from outside the compose network. Bound to 127.0.0.1 only.
-#
-# Usage: docker compose -f docker-compose.yml -f docker-compose.local.yml up
-services:
-  db:
-    ports:
-      - '127.0.0.1:5432:5432'

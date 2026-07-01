@@ -11,6 +11,8 @@
 	import { Select, SelectTrigger, SelectContent, SelectItem } from '$lib/components/ui/select';
 	import { Calendar } from '$lib/components/ui/calendar';
 	import * as Dialog from '$lib/components/ui/dialog';
+	import * as Popover from '$lib/components/ui/popover';
+	import OrganizerHoverCard from '$lib/components/OrganizerHoverCard.svelte';
 	import { toasts } from '$lib/stores/toasts.svelte';
 	import { hasPotentialDuplicate } from '$lib/utils/dedup';
 	import { formatEventDate } from '$lib/utils/dates';
@@ -41,6 +43,30 @@
 
 	// Advisory only — duplicates are surfaced but never block "Create anyway".
 	const dupes = $derived(name.length > 1 ? hasPotentialDuplicate({ name }, data.leads) : []);
+
+	// Hover/focus-controlled duplicate detail card. `openDupeId` holds the id of the
+	// row whose card is open; a short grace-period timer keeps the card from
+	// flicker-closing when the pointer travels from the row into the card content.
+	let openDupeId = $state<string | null>(null);
+	let closeTimer: ReturnType<typeof setTimeout> | undefined;
+
+	function openDupe(id: string) {
+		clearTimeout(closeTimer);
+		openDupeId = id;
+	}
+	function scheduleCloseDupe() {
+		clearTimeout(closeTimer);
+		closeTimer = setTimeout(() => {
+			openDupeId = null;
+		}, 200);
+	}
+	function closeDupeNow() {
+		clearTimeout(closeTimer);
+		openDupeId = null;
+	}
+	function ownerNameFor(ownerId: string | null) {
+		return ownerId ? (data.users.find((u) => u.id === ownerId)?.name ?? null) : null;
+	}
 
 	async function create() {
 		if (saving) return; // duplicate-submit guard
@@ -103,15 +129,43 @@
 				still create anyway).
 			</div>
 			{#each dupes as d (d.id)}
-				<a
-					href="/leads/{d.id}"
-					class="flex items-center gap-2.5 rounded-[7px] px-2 py-1.5 hover:bg-panel"
-				>
-					<PlatformBadge platform={d.platform} />
-					<span class="flex-1 text-[13px] font-semibold">{d.name}</span>
-					<span class="font-mono text-[11px] text-ink-400">{d.handle}</span>
-					<StageChip stage={d.stage} />
-				</a>
+				<Popover.Root open={openDupeId === d.id}>
+					<Popover.Trigger>
+						{#snippet child({ props })}
+							<div
+								{...props}
+								tabindex="0"
+								role="button"
+								aria-haspopup="dialog"
+								class="flex items-center gap-2.5 rounded-[7px] px-2 py-1.5 hover:bg-panel focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+								onmouseenter={() => openDupe(d.id)}
+								onmouseleave={scheduleCloseDupe}
+								onfocus={() => openDupe(d.id)}
+								onblur={scheduleCloseDupe}
+								onkeydown={(e) => {
+									if (e.key === 'Escape') closeDupeNow();
+								}}
+							>
+								<PlatformBadge platform={d.platform} />
+								<span class="flex-1 text-[13px] font-semibold">{d.name}</span>
+								<span class="font-mono text-[11px] text-ink-400">{d.handle}</span>
+								<StageChip stage={d.stage} />
+							</div>
+						{/snippet}
+					</Popover.Trigger>
+					<Popover.Portal>
+						<Popover.Content
+							side="right"
+							onmouseenter={() => openDupe(d.id)}
+							onmouseleave={scheduleCloseDupe}
+							onkeydown={(e) => {
+								if (e.key === 'Escape') closeDupeNow();
+							}}
+						>
+							<OrganizerHoverCard lead={d} ownerName={ownerNameFor(d.ownerId)} />
+						</Popover.Content>
+					</Popover.Portal>
+				</Popover.Root>
 			{/each}
 		</div>
 	{/if}
@@ -204,7 +258,7 @@
 				</Dialog.Root>
 			</div>
 
-			{#if error}<p class="text-[12.5px] text-overdue sm:col-span-2">{error}</p>{/if}
+			{#if error}<p class="text-[12.5px] font-medium text-overdue sm:col-span-2">{error}</p>{/if}
 
 			<div class="flex items-center justify-end gap-2.5 sm:col-span-2">
 				<Button variant="outline" href="/leads">Cancel</Button>

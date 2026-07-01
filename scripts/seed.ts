@@ -1,6 +1,6 @@
 // Dev/demo seed: 10 crm_users + 25 crm_leads + 17 crm_activities + 3 crm_lead_history rows.
 // Lights up every DB-backed surface (Today urgency buckets, pipeline stages, won/lost,
-// unassigned + needs-review badges, activity-rich timelines).
+// unassigned badge, activity-rich timelines).
 //
 // Fixed UUID namespaces (stable across re-seeds → idempotent):
 //   users      00000000-…
@@ -335,8 +335,7 @@ const leads: (typeof crmLeads.$inferInsert)[] = [
 		stage: 'new',
 		source: 'manual',
 		ownerId: U.JOHN,
-		lastActivityAt: daysAgo(2),
-		needsReview: true
+		lastActivityAt: daysAgo(2)
 	},
 	{
 		id: L(21),
@@ -347,8 +346,7 @@ const leads: (typeof crmLeads.$inferInsert)[] = [
 		stage: 'contacted',
 		source: 'manual',
 		ownerId: U.JONNA,
-		lastActivityAt: daysAgo(5),
-		needsReview: true
+		lastActivityAt: daysAgo(5)
 	},
 	{
 		id: L(22),
@@ -651,11 +649,10 @@ Routes to visit after logging in:
   /pipeline      Kanban: new(11), contacted(7), replied(2), in_discussion(3), won(1), lost(1)
   /leads/[id]    Detail with history — try lead IDs ending in ...0015, ...0024, ...0025
   /unassigned    Badge: 3 unassigned leads (page content still mock-backed)
-  /review        Badge: 2 needs-review leads (page content still mock-backed)
   /team          All users
 
 Login: magic-link to john.sabuga@test.com or jonna@test.com
-NOTE: /unassigned and /review page content is still mock-backed — only badge counts are real DB.`);
+NOTE: /unassigned page content is still mock-backed — only badge counts are real DB.`);
 } finally {
 	await client.end();
 }

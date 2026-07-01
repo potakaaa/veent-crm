@@ -355,11 +355,15 @@
 				</div>
 
 				<div class="mb-4">
-					<ActivityTimeline activities={data.activities} users={data.users} />
+					<ActivityTimeline
+						activities={data.activities}
+						leadHistory={data.leadHistory}
+						users={data.users}
+					/>
 				</div>
 
 				{#if canEdit}
-					<LogTouchForm onSubmit={logTouch} />
+					<LogTouchForm {lead} onSubmit={logTouch} />
 				{/if}
 			</div>
 
@@ -413,12 +417,6 @@
 							<span class="text-ink-300">last activity</span><span
 								>{formatDate(lead.lastActivityAt)}</span
 							>
-						</div>
-						<div class="flex justify-between">
-							<span class="text-ink-300">needs review</span>
-							<span style="color:{lead.needsReview ? '#dc2626' : '#059669'}">
-								{lead.needsReview ? 'flagged' : 'clear'}
-							</span>
 						</div>
 					</div>
 				</div>

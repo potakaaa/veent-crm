@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { authClient } from '$lib/auth-client';
 
+	let { data } = $props();
+
 	let sent = $state(false);
 	let email = $state('');
 	let error = $state('');
@@ -16,7 +18,7 @@
 		submitting = true;
 		const { error: err } = await authClient.signIn.magicLink({
 			email: normalizedEmail,
-			callbackURL: '/'
+			callbackURL: data.from ?? '/'
 		});
 		submitting = false;
 		if (err) {
@@ -69,6 +71,11 @@
 				<div class="mb-6 text-[13.5px] leading-relaxed text-[#a8a1ab]">
 					Magic-link sign-in for the Veent sales team. Allowlisted reps only.
 				</div>
+				{#if data.from}
+					<div class="mb-6 text-[12.5px] leading-relaxed text-[#8a7270]">
+						You were trying to reach <span class="font-mono text-[#cdbab8]">{data.from}</span>.
+					</div>
+				{/if}
 				<label for="email" class="mb-2 block text-[12px] font-medium text-[#cdbab8]"
 					>Work email</label
 				>

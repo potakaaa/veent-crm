@@ -147,7 +147,6 @@ export const crmLeads = pgTable(
 		ownerId: uuid('owner_id').references(() => crmUsers.id, { onDelete: 'set null' }),
 
 		source: leadSource('source').notNull().default('manual'),
-		needsReview: boolean('needs_review').notNull().default(false),
 
 		// maintained from activities; powers stale filter + fresh-first sort
 		lastActivityAt: timestamp('last_activity_at', { withTimezone: true }),

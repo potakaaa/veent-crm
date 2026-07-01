@@ -61,20 +61,18 @@ For most substantial tasks:
 ## Current Root Entry Points
 
 <!-- GENERATED:routing -->
-
-| File                                       | Read when                                                                                       |
-| ------------------------------------------ | ----------------------------------------------------------------------------------------------- |
-| `process/context/all-context.md`           | any substantial planning, research, review, or implementation task                              |
+| File | Read when |
+|---|---|
+| `process/context/all-context.md` | any substantial planning, research, review, or implementation task |
 | `process/context/planning/all-planning.md` | creating a new plan, calibrating SIMPLE vs COMPLEX plan shape, or checking planning conventions |
-| `process/context/tests/all-tests.md`       | task involves testing, verification, running tests, or debugging test failures                  |
+| `process/context/tests/all-tests.md` | task involves testing, verification, running tests, or debugging test failures |
 
 ## Current Context Groups
 
-| Group       | Entry point                                | Scope                                                                 |
-| ----------- | ------------------------------------------ | --------------------------------------------------------------------- |
-| `planning/` | `process/context/planning/all-planning.md` | Plan shape calibration and planning conventions for veent-crm         |
-| `tests/`    | `process/context/tests/all-tests.md`       | Test runner selection, commands, and verification guide for veent-crm |
-
+| Group | Entry point | Scope |
+|---|---|---|
+| `planning/` | `process/context/planning/all-planning.md` | Plan shape calibration and planning conventions for veent-crm |
+| `tests/` | `process/context/tests/all-tests.md` | Test runner selection, commands, and verification guide for veent-crm |
 <!-- /GENERATED:routing -->
 
 ## Task Routing Table
@@ -96,8 +94,8 @@ For most substantial tasks:
 | Feature   | Guide                                  | Status                                   |
 | --------- | -------------------------------------- | ---------------------------------------- |
 | auth      | `process/features/auth/_GUIDE.md`      | not-started (v0 stub, DEV_BYPASS active) |
-| leads     | `process/features/leads/_GUIDE.md`     | not-started (mock data only)             |
-| pipeline  | `process/features/pipeline/_GUIDE.md`  | not-started (mock data only)             |
+| leads     | `process/features/leads/_GUIDE.md`     | in-progress (leads list, lead detail, lead creation, and Up for Grabs query the real DB via `src/lib/server/db/leads.ts`; Review Queue removed 01-07-26) |
+| pipeline  | `process/features/pipeline/_GUIDE.md`  | in-progress (`/pipeline` also queries the real DB via `src/lib/server/db/leads.ts`) |
 | import    | `process/features/import/_GUIDE.md`    | not-started (stub pipeline)              |
 | reminders | `process/features/reminders/_GUIDE.md` | in-progress (code-complete, EVL green; manual UI/DB gates pending) |
 | reports   | `process/features/reports/_GUIDE.md`   | not-started (mock data only)             |
@@ -116,6 +114,8 @@ veent-crm/
       assets/favicon.svg
       components/
         StubNote.svelte        # visual stub indicator (remove as surfaces go live)
+      data/
+        templates.ts            # static Log Touch snippet templates + fillTemplate() helper
       index.ts
       server/
         auth.ts                # Better Auth stub (getSession + sendMagicLink placeholders)
@@ -236,12 +236,12 @@ veent-crm/
 - Public env vars: `import { env } from '$env/dynamic/public'`
 - Locals type: `app.d.ts` declares `interface Locals { user: SessionUser | null }`
 
-### Auth / session conventions (current v0)
+### Auth / session conventions
 
-- `DEV_BYPASS = true` in `hooks.server.ts` injects a fake manager — remove when Better Auth is wired
-- Public routes (no auth required): `/login`, `/unauthorized`, `/health`, `/api/reminders/due`, `/api/leads/ingest`
+- Better Auth is live-wired in `src/lib/server/auth.ts` (real `betterAuth()` config: `drizzleAdapter` + `magicLink` plugin + Resend email delivery via `email.ts`). `hooks.server.ts` has no `DEV_BYPASS` reference — that stub was removed.
+- Public routes (no auth required): `/login`, `/unauthorized`, `/health`, `/api/reminders/due`, `/api/reminders/notify`, `/api/leads/ingest`, `/api/auth`
 - `/api/reminders/due` and `/api/leads/ingest` use secret-based auth (not session-based)
-- Unauthenticated hits on protected routes redirect to `/unauthorized?from=[encoded-path]` (not `/login`). The `from` param is sanitized server-side — only same-origin relative paths (single leading `/`) pass through; off-origin and scheme-containing values are stripped to `null`.
+- Unauthenticated hits on protected routes split into two branches: no Better Auth session at all → `/login?from=[encoded-path]`; session exists but the email has no active `crm_users` allowlist row → `/unauthorized?from=[encoded-path]`. The `from` param is sanitized server-side via the shared `sanitizeFrom` helper (`src/lib/server/sanitize-redirect.ts`, used by both `/login` and `/unauthorized`) — only same-origin relative paths (single leading `/`) pass through; off-origin and scheme-containing values are stripped to `null`.
 - `src/routes/+error.svelte` is the global SvelteKit error page (404 + generic errors). It renders outside the layout tree — chrome-less by default, no bare-mode edit needed.
 
 ### Audit trail

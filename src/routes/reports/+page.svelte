@@ -1,17 +1,40 @@
 <script lang="ts">
-	import { navigating } from '$app/state';
 	import PageHeader from '$lib/components/shared/PageHeader.svelte';
 	import Avatar from '$lib/components/shared/Avatar.svelte';
 	import { CardSkeleton } from '$lib/components/shared/skeletons';
+	import CalendarHeatmap from '$lib/components/reports/CalendarHeatmap.svelte';
+	import MonthCalendar from '$lib/components/reports/MonthCalendar.svelte';
 	import { formatMoney } from '$lib/utils/currency';
-	import type { FunnelStage } from '$lib/types';
+	import type { HeatmapDay } from '$lib/types';
 
 	let { data } = $props();
-	const report = $derived(data.report);
-	const maxCount = $derived(Math.max(...report.funnel.map((f: FunnelStage) => f.count), 1));
-	const maxTouches = $derived(Math.max(...report.leaderboard.map((r) => r.touches), 1));
 
-	const navLoading = $derived(navigating.to?.url.pathname === '/reports');
+	// Heatmap state — synced from the streaming server promise, then updated
+	// client-side when the metric toggle fires a fetch to /api/reports/heatmap.
+	let heatmap = $state<HeatmapDay[]>([]);
+	let heatMetric = $state<'event_date' | 'created_at'>('event_date');
+	let heatLoading = $state(false);
+
+	$effect(() => {
+		heatMetric = data.heatMetric;
+		// data.heatmap is a streaming Promise — resolve before syncing state
+		Promise.resolve(data.heatmap).then((h) => {
+			heatmap = h;
+		});
+	});
+
+	async function changeMetric(metric: string) {
+		const m = metric === 'created_at' ? 'created_at' : ('event_date' as const);
+		if (m === heatMetric) return;
+		heatLoading = true;
+		heatMetric = m;
+		try {
+			const res = await fetch(`/api/reports/heatmap?metric=${m}`);
+			if (res.ok) heatmap = (await res.json()) as HeatmapDay[];
+		} finally {
+			heatLoading = false;
+		}
+	}
 </script>
 
 <svelte:head><title>Reports · Veent CRM</title></svelte:head>
@@ -44,12 +67,15 @@
 		{/snippet}
 	</PageHeader>
 
-	{#if navLoading}
-		<div class="grid grid-cols-1 gap-[18px] lg:grid-cols-[1.1fr_1fr]">
+	{#await data.report}
+		<div class="mb-[18px] grid grid-cols-1 gap-[18px] lg:grid-cols-[1.1fr_1fr]">
 			<CardSkeleton />
 			<CardSkeleton />
 		</div>
-	{:else}
+		<CardSkeleton />
+	{:then report}
+		{@const maxCount = Math.max(...report.funnel.map((f) => f.count), 1)}
+		{@const maxTouches = Math.max(...report.leaderboard.map((r) => r.touches), 1)}
 		<div class="mb-[18px] grid grid-cols-1 gap-[18px] lg:grid-cols-[1.1fr_1fr]">
 			<!-- funnel -->
 			<div class="rounded-control border border-hairline bg-panel p-5">
@@ -76,7 +102,7 @@
 			</div>
 
 			<!-- leaderboard -->
-			<div class="rounded-control border border-hairline bg-panel p-5 flex flex-col">
+			<div class="flex flex-col rounded-control border border-hairline bg-panel p-5">
 				<div class="mb-4 text-[14px] font-bold">Rep leaderboard</div>
 				{#if report.leaderboard.length > 0}
 					<div class="mb-5 space-y-[7px]">
@@ -170,5 +196,16 @@
 				{/each}
 			</div>
 		</div>
-	{/if}
+	{/await}
+
+	<!-- Calendar views — below all summary cards -->
+	<div class="mt-[18px] flex flex-col gap-[18px]">
+		<MonthCalendar data={heatmap} metric={heatMetric} />
+		<CalendarHeatmap
+			data={heatmap}
+			metric={heatMetric}
+			loading={heatLoading}
+			onchange={changeMetric}
+		/>
+	</div>
 </div>

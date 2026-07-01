@@ -49,6 +49,8 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			eventDate: data.eventDate || undefined,
 			eventDateRaw: data.eventDateRaw || undefined,
 			eventLink: data.eventLink || undefined,
+			firstAnnouncedDate: data.firstAnnouncedDate || undefined,
+			firstReachedOutDate: data.firstReachedOutDate || undefined,
 			notes: data.notes || undefined
 		},
 		locals.user.id

@@ -60,6 +60,8 @@ export interface Lead {
 	eventName?: string;
 	eventDate?: string;
 	eventLink?: string;
+	firstAnnouncedDate?: string;
+	firstReachedOutDate?: string;
 	email?: string;
 	phone?: string;
 	pageUrl?: string;

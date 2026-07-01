@@ -71,6 +71,13 @@
       "when": 1782881339255,
       "tag": "0009_mushy_vapor",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1782887482061,
+      "tag": "0010_lethal_caretaker",
+      "breakpoints": true
     }
   ]
 }

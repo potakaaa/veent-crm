@@ -69,7 +69,13 @@
 			label: 'Event',
 			value: lead.eventDate ? `${lead.eventName} · ${lead.eventDate}` : (lead.eventName ?? '—'),
 			href: lead.eventLink
-		}
+		},
+		...(lead.firstAnnouncedDate
+			? [{ label: 'First announced', value: lead.firstAnnouncedDate }]
+			: []),
+		...(lead.firstReachedOutDate
+			? [{ label: 'First reached out', value: lead.firstReachedOutDate }]
+			: [])
 	]);
 
 	async function logTouch(input: AddActivityInput) {

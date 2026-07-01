@@ -19,6 +19,9 @@ All pages currently render mock data; v1 replaces all mocks with real Drizzle qu
 - `src/lib/server/db/schema.ts` — `crm_leads`, `crm_lead_history`, `crm_activities` tables
 - `src/lib/zod/schemas.ts` — Zod validators for lead forms
 - `src/lib/server/mock.ts` — mock data (must stay isolated from real queries)
+- `src/lib/components/leads/LogTouchForm.svelte` — inline log-touch card on `/leads/[id]`; includes
+  the Templates snippet picker (Popover-based)
+- `src/lib/data/templates.ts` — static Log Touch snippet templates (`TEMPLATES`, `fillTemplate()`)
 
 ## Related Context
 

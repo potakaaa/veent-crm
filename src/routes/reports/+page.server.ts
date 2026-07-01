@@ -1,8 +1,8 @@
 import type { PageServerLoad } from './$types';
 import { db } from '$lib/server/db';
-import { crmLeads, crmActivities, crmUsers, crmMeetings } from '$lib/server/db/schema';
-import { eq, isNull, isNotNull, gte, lte, count, sum, and, sql } from 'drizzle-orm';
-import type { ReportData, FunnelStage, Currency, HeatmapDay, OutreachMetrics } from '$lib/types';
+import { crmLeads, crmActivities, crmUsers } from '$lib/server/db/schema';
+import { eq, isNull, count, sum, and, sql } from 'drizzle-orm';
+import type { ReportData, FunnelStage, Currency, HeatmapDay } from '$lib/types';
 import { getLeadHeatmapData } from '$lib/server/db/leads';
 import { currencyLabel } from '$lib/utils/currency';
 
@@ -101,55 +101,6 @@ async function fetchReport(): Promise<ReportData> {
 	return { funnel, leaderboard, currencyTotals, conversionRate };
 }
 
-async function fetchOutreach(filters: {
-	from?: string;
-	to?: string;
-	repId?: string;
-}): Promise<OutreachMetrics> {
-	const { from, to, repId } = filters;
-
-	// 1. Leads reached out: firstReachedOutDate is set
-	const reachedConds = [isNull(crmLeads.deletedAt), isNotNull(crmLeads.firstReachedOutDate)];
-	if (from) reachedConds.push(gte(crmLeads.firstReachedOutDate, from));
-	if (to) reachedConds.push(lte(crmLeads.firstReachedOutDate, to));
-	if (repId) reachedConds.push(eq(crmLeads.ownerId, repId));
-
-	// 2. Leads that replied: distinct leads with at least one outcome='replied' activity
-	const repliedConds = [isNull(crmLeads.deletedAt), eq(crmActivities.outcome, 'replied')];
-	if (from) repliedConds.push(sql`${crmActivities.occurredAt} >= ${from}::date`);
-	if (to) repliedConds.push(sql`${crmActivities.occurredAt} < (${to}::date + interval '1 day')`);
-	if (repId) repliedConds.push(eq(crmActivities.repId, repId));
-
-	// 3. Leads with at least one meeting logged
-	const meetingConds = [isNull(crmMeetings.deletedAt), isNull(crmLeads.deletedAt)];
-	if (from) meetingConds.push(sql`${crmMeetings.startAt} >= ${from}::date`);
-	if (to) meetingConds.push(sql`${crmMeetings.startAt} < (${to}::date + interval '1 day')`);
-	if (repId) meetingConds.push(eq(crmMeetings.organizerId, repId));
-
-	const [reachedRow, repliedRow, meetingRow] = await Promise.all([
-		db
-			.select({ n: count() })
-			.from(crmLeads)
-			.where(and(...reachedConds)),
-		db
-			.select({ n: sql<number>`COUNT(DISTINCT ${crmActivities.leadId})` })
-			.from(crmActivities)
-			.innerJoin(crmLeads, eq(crmActivities.leadId, crmLeads.id))
-			.where(and(...repliedConds)),
-		db
-			.select({ n: sql<number>`COUNT(DISTINCT ${crmMeetings.leadId})` })
-			.from(crmMeetings)
-			.innerJoin(crmLeads, eq(crmMeetings.leadId, crmLeads.id))
-			.where(and(...meetingConds))
-	]);
-
-	return {
-		leadsReachedOut: Number(reachedRow[0]?.n ?? 0),
-		leadsThatReplied: Number(repliedRow[0]?.n ?? 0),
-		leadsWithMeeting: Number(meetingRow[0]?.n ?? 0)
-	};
-}
-
 async function fetchHeatmap(metric: 'event_date' | 'created_at'): Promise<HeatmapDay[]> {
 	const rawRows = await getLeadHeatmapData(metric);
 	const dayMap = new Map<string, HeatmapDay>();
@@ -167,24 +118,9 @@ export const load: PageServerLoad = async ({ url }) => {
 	const heatMetric: 'event_date' | 'created_at' =
 		rawMetric === 'created_at' ? 'created_at' : 'event_date';
 
-	const from = url.searchParams.get('from') || undefined;
-	const to = url.searchParams.get('to') || undefined;
-	const repId = url.searchParams.get('repId') || undefined;
-
-	const users = await db
-		.select({ id: crmUsers.id, name: crmUsers.name })
-		.from(crmUsers)
-		.where(eq(crmUsers.active, true))
-		.orderBy(crmUsers.name);
-
 	return {
 		heatMetric,
-		from: from ?? null,
-		to: to ?? null,
-		repId: repId ?? null,
-		users,
 		report: fetchReport(),
-		outreach: fetchOutreach({ from, to, repId }),
 		heatmap: fetchHeatmap(heatMetric)
 	};
 };

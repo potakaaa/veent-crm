@@ -7,7 +7,7 @@
 <header
 	class="relative z-30 flex h-[60px] shrink-0 items-center gap-4 border-b border-hairline bg-panel px-5"
 >
-	<div class="flex items-center gap-2">
+	<div class="ml-auto flex items-center gap-2">
 		<a
 			href="/review"
 			title="Review queue"

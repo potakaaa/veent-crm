@@ -44,17 +44,31 @@
 	let outreachLoading = $state(false);
 
 	$effect(() => {
+		let cancelled = false;
 		Promise.resolve(data.report).then((r) => {
-			reportData = r;
+			if (!cancelled) reportData = r;
 		});
+		return () => {
+			cancelled = true;
+		};
 	});
 
 	$effect(() => {
+		let cancelled = false;
 		outreachLoading = true;
-		Promise.resolve(data.outreach).then((o) => {
-			outreachData = o;
-			outreachLoading = false;
-		});
+		Promise.resolve(data.outreach)
+			.then((o) => {
+				if (!cancelled) {
+					outreachData = o;
+					outreachLoading = false;
+				}
+			})
+			.catch(() => {
+				if (!cancelled) outreachLoading = false;
+			});
+		return () => {
+			cancelled = true;
+		};
 	});
 
 	// Outreach filter state — synced from URL params on navigation
@@ -78,28 +92,38 @@
 		return qs ? `?${qs}` : '?';
 	}
 
-	function applyFilters(e: Event) {
+	async function applyFilters(e: Event) {
 		e.preventDefault();
 		outreachLoading = true;
-		goto(
-			buildQuery([
-				['from', filterFrom],
-				['to', filterTo],
-				['repId', filterRepId],
-				['heatMetric', heatMetric !== 'event_date' ? heatMetric : '']
-			]),
-			{ keepFocus: true }
-		);
+		try {
+			await goto(
+				buildQuery([
+					['from', filterFrom],
+					['to', filterTo],
+					['repId', filterRepId],
+					['heatMetric', heatMetric !== 'event_date' ? heatMetric : '']
+				]),
+				{ keepFocus: true }
+			);
+		} finally {
+			// Reset if goto was a no-op (same URL) or failed; the $effect resets it
+			// on a real navigation before this runs, so it's safe to always clear here.
+			outreachLoading = false;
+		}
 	}
 
-	function clearFilters() {
+	async function clearFilters() {
 		filterFrom = '';
 		filterTo = '';
 		filterRepId = '';
 		outreachLoading = true;
-		goto(buildQuery([['heatMetric', heatMetric !== 'event_date' ? heatMetric : '']]), {
-			keepFocus: true
-		});
+		try {
+			await goto(buildQuery([['heatMetric', heatMetric !== 'event_date' ? heatMetric : '']]), {
+				keepFocus: true
+			});
+		} finally {
+			outreachLoading = false;
+		}
 	}
 </script>
 

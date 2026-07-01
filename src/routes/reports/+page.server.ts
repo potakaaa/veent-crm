@@ -167,8 +167,11 @@ export const load: PageServerLoad = async ({ url }) => {
 	const heatMetric: 'event_date' | 'created_at' =
 		rawMetric === 'created_at' ? 'created_at' : 'event_date';
 
-	const from = url.searchParams.get('from') || undefined;
-	const to = url.searchParams.get('to') || undefined;
+	const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+	const rawFrom = url.searchParams.get('from');
+	const rawTo = url.searchParams.get('to');
+	const from = rawFrom && ISO_DATE.test(rawFrom) ? rawFrom : undefined;
+	const to = rawTo && ISO_DATE.test(rawTo) ? rawTo : undefined;
 	const repId = url.searchParams.get('repId') || undefined;
 
 	const users = await db

@@ -16,6 +16,8 @@
 	import { canReassign } from '$lib/utils/permissions';
 	import { sourceLabel } from '$lib/utils/sources';
 	import { Button } from '$lib/components/ui/button';
+	import * as Popover from '$lib/components/ui/popover';
+	import OrganizerHoverCard from '$lib/components/OrganizerHoverCard.svelte';
 	import type { Lead } from '$lib/types';
 
 	let { data } = $props();
@@ -245,6 +247,26 @@
 	}
 
 	const grid = 'grid grid-cols-[36px_2fr_1.6fr_1fr_90px_100px_110px_1fr_110px] gap-3';
+
+	let openHoverId = $state<string | null>(null);
+	let hoverCloseTimer: ReturnType<typeof setTimeout> | undefined;
+
+	const openHover = (id: string) => {
+		clearTimeout(hoverCloseTimer);
+		openHoverId = id;
+	};
+	const scheduleCloseHover = () => {
+		clearTimeout(hoverCloseTimer);
+		hoverCloseTimer = setTimeout(() => {
+			openHoverId = null;
+		}, 200);
+	};
+	const closeHoverNow = () => {
+		clearTimeout(hoverCloseTimer);
+		openHoverId = null;
+	};
+	const ownerNameFor = (ownerId: string | null) =>
+		ownerId ? (data.users.find((u) => u.id === ownerId)?.name ?? null) : null;
 </script>
 
 <svelte:head><title>Up for grabs · Veent CRM</title></svelte:head>
@@ -357,16 +379,44 @@
 					>
 						{#if selected[l.id]}<Icon name="check" size={12} stroke={3} />{/if}
 					</button>
-					<a href="/leads/{l.id}" class="min-w-0">
-						<div class="flex items-center gap-1.5 text-[13px] font-semibold">
-							{l.name}
-							{#if l.siblings}<span
-									class="rounded-[4px] bg-[rgba(194,113,12,0.1)] px-[5px] py-px font-mono text-[9.5px] text-stale"
-									>{l.siblings} events</span
-								>{/if}
-						</div>
-						<div class="font-mono text-[11px] text-ink-400">{l.handle} · {l.category}</div>
-					</a>
+					<Popover.Root open={openHoverId === l.id}>
+						<Popover.Trigger>
+							{#snippet child({ props })}
+								<div
+									{...props}
+									class="min-w-0"
+									onmouseenter={() => openHover(l.id)}
+									onmouseleave={scheduleCloseHover}
+									onkeydown={(e) => {
+										if (e.key === 'Escape') closeHoverNow();
+									}}
+								>
+									<a href="/leads/{l.id}" class="min-w-0 block">
+										<div class="flex items-center gap-1.5 text-[13px] font-semibold">
+											{l.name}
+											{#if l.siblings}<span
+													class="rounded-[4px] bg-[rgba(194,113,12,0.1)] px-[5px] py-px font-mono text-[9.5px] text-stale"
+													>{l.siblings} events</span
+												>{/if}
+										</div>
+										<div class="font-mono text-[11px] text-ink-400">{l.handle} · {l.category}</div>
+									</a>
+								</div>
+							{/snippet}
+						</Popover.Trigger>
+						<Popover.Portal>
+							<Popover.Content
+								side="right"
+								onmouseenter={() => openHover(l.id)}
+								onmouseleave={scheduleCloseHover}
+								onkeydown={(e) => {
+									if (e.key === 'Escape') closeHoverNow();
+								}}
+							>
+								<OrganizerHoverCard lead={l} ownerName={ownerNameFor(l.ownerId)} />
+							</Popover.Content>
+						</Popover.Portal>
+					</Popover.Root>
 					<div class="min-w-0">
 						<div class="flex items-center gap-1.5">
 							<span class="truncate text-[12.5px] text-ink-600">{l.eventName ?? '—'}</span>

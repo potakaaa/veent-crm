@@ -1116,3 +1116,49 @@ export async function snoozeLead(
 		return dbRowToLead(existing, followUpAt);
 	});
 }
+
+// ---------------------------------------------------------------------------
+// Heatmap aggregation
+// ---------------------------------------------------------------------------
+
+export async function getLeadHeatmapData(
+	metric: 'event_date' | 'created_at'
+): Promise<Array<{ date: string; stage: string; count: number }>> {
+	const today = new Date();
+	const past = new Date(today);
+	past.setFullYear(past.getFullYear() - 1);
+	const future = new Date(today);
+	future.setDate(future.getDate() + 30);
+
+	const pastStr = past.toISOString().split('T')[0];
+	const futureStr = future.toISOString().split('T')[0];
+
+	if (metric === 'event_date') {
+		return db
+			.select({
+				date: sql<string>`${crmLeads.eventDate}::text`,
+				stage: crmLeads.stage,
+				count: sql<number>`COUNT(*)::int`
+			})
+			.from(crmLeads)
+			.where(
+				and(
+					isNull(crmLeads.deletedAt),
+					isNotNull(crmLeads.eventDate),
+					sql`${crmLeads.eventDate} >= ${pastStr}`,
+					sql`${crmLeads.eventDate} <= ${futureStr}`
+				)
+			)
+			.groupBy(crmLeads.eventDate, crmLeads.stage);
+	}
+
+	return db
+		.select({
+			date: sql<string>`DATE(${crmLeads.createdAt})::text`,
+			stage: crmLeads.stage,
+			count: sql<number>`COUNT(*)::int`
+		})
+		.from(crmLeads)
+		.where(and(isNull(crmLeads.deletedAt), sql`${crmLeads.createdAt} >= ${pastStr}`))
+		.groupBy(sql`DATE(${crmLeads.createdAt})`, crmLeads.stage);
+}

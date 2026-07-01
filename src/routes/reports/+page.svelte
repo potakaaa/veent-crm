@@ -1,8 +1,10 @@
 <script lang="ts">
+	import { goto } from '$app/navigation';
 	import { navigating } from '$app/state';
 	import PageHeader from '$lib/components/shared/PageHeader.svelte';
 	import Avatar from '$lib/components/shared/Avatar.svelte';
 	import { CardSkeleton } from '$lib/components/shared/skeletons';
+	import CalendarHeatmap from '$lib/components/reports/CalendarHeatmap.svelte';
 	import { formatMoney } from '$lib/utils/currency';
 	import type { FunnelStage } from '$lib/types';
 
@@ -43,6 +45,14 @@
 			</button>
 		{/snippet}
 	</PageHeader>
+
+	<div class="mb-[18px]">
+		<CalendarHeatmap
+			data={data.heatmap}
+			metric={data.heatMetric}
+			onchange={(m) => goto(`?heatMetric=${m}`, { keepFocus: true })}
+		/>
+	</div>
 
 	{#if navLoading}
 		<div class="grid grid-cols-1 gap-[18px] lg:grid-cols-[1.1fr_1fr]">

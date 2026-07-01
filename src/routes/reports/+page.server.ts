@@ -2,7 +2,8 @@ import type { PageServerLoad } from './$types';
 import { db } from '$lib/server/db';
 import { crmLeads, crmActivities, crmUsers } from '$lib/server/db/schema';
 import { eq, isNull, count, sum, and, sql } from 'drizzle-orm';
-import type { ReportData, FunnelStage, Currency } from '$lib/types';
+import type { ReportData, FunnelStage, Currency, HeatmapDay } from '$lib/types';
+import { getLeadHeatmapData } from '$lib/server/db/leads';
 import { currencyLabel } from '$lib/utils/currency';
 
 const STAGE_META: Record<string, { label: string; color: string; order: number }> = {
@@ -14,7 +15,10 @@ const STAGE_META: Record<string, { label: string; color: string; order: number }
 	lost: { label: 'Lost', color: '#ef4444', order: 5 }
 };
 
-export const load: PageServerLoad = async () => {
+export const load: PageServerLoad = async ({ url }) => {
+	const heatMetric = (url.searchParams.get('heatMetric') ?? 'event_date') as
+		| 'event_date'
+		| 'created_at';
 	// 1. Funnel counts
 	const stageCounts = await db
 		.select({ stage: crmLeads.stage, count: count() })
@@ -103,5 +107,16 @@ export const load: PageServerLoad = async () => {
 		}));
 
 	const report: ReportData = { funnel, leaderboard, currencyTotals, conversionRate };
-	return { report };
+
+	// Heatmap
+	const rawRows = await getLeadHeatmapData(heatMetric);
+	const dayMap = new Map<string, HeatmapDay>();
+	for (const row of rawRows) {
+		if (!dayMap.has(row.date)) dayMap.set(row.date, { date: row.date, total: 0, stages: {} });
+		const day = dayMap.get(row.date)!;
+		day.total += row.count;
+		day.stages[row.stage] = (day.stages[row.stage] ?? 0) + row.count;
+	}
+
+	return { report, heatmap: [...dayMap.values()], heatMetric };
 };

@@ -11,7 +11,7 @@ feature: calendar
 **Status**: ✅ EXECUTE complete, EVL green — archived 01-07-26 (2 pre-accepted known-gaps: e2e self-skip pending shared auth fixture; AC2/AC3 DB-backed Hybrid halves pending live-DB CI harness). See `calendar_REPORT_01-07-26.md` for the full EVL confirmation.
 **Complexity**: COMPLEX (5 phases, ~6 touchpoints, one hard external precondition — Meetings PR merge — plus a new route surface and a new DB query with an owner-scoping regression risk called out by INNOVATE). Calibrated against `process/context/planning/all-planning.md`.
 
-Locked SPEC: `process/features/calendar/active/calendar_01-07-26/calendar_SPEC_01-07-26.md`
+Locked SPEC: `process/features/calendar/completed/calendar_01-07-26/calendar_SPEC_01-07-26.md`
 INNOVATE Decision Summary: embedded in the orchestrator handoff (see git history / session log for this task folder) — chosen approaches locked below, not re-litigated here.
 
 ## Overview
@@ -273,7 +273,7 @@ Post-phase testing follows `process/context/tests/all-tests.md` default order: `
 
 ## Resume and Execution Handoff
 
-1. **Selected plan file path:** `process/features/calendar/active/calendar_01-07-26/calendar_PLAN_01-07-26.md`
+1. **Selected plan file path:** `process/features/calendar/completed/calendar_01-07-26/calendar_PLAN_01-07-26.md`
 2. **Last completed phase or step:** VALIDATE phase — validate-contract written, gate CONDITIONAL, EXECUTE-ready.
 3. **Validate-contract status:** written 01-07-26 — Gate: CONDITIONAL (see below).
 4. **Supporting context files loaded:** `process/context/all-context.md`, `process/context/tests/all-tests.md`, `process/context/planning/all-planning.md`, locked SPEC (`calendar_SPEC_01-07-26.md`), live repo reads of `src/lib/server/db/leads.ts`, `src/lib/components/layout/AppSidebar.svelte`, `src/lib/components/shared/Icon.svelte`, `src/routes/leads/+page.svelte`, `src/lib/server/db/schema.ts`, `src/tests/leads-db.spec.ts`, `src/hooks.server.ts`, `src/app.d.ts`, and live reads of `origin/feat/meetings-and-reminders` (`src/lib/server/db/meetings.ts`, `src/lib/types/index.ts`, `src/lib/components/layout/AppSidebar.svelte`, route tree) — re-confirmed via `git show`/`git ls-tree` at VALIDATE time, plus a live `gh pr view 112` check.

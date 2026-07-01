@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { SvelteMap } from 'svelte/reactivity';
 	import CalendarEntryChip from './CalendarEntry.svelte';
 	import { monthGridDays, weekDays, sameLocalDay, type CalendarView } from '$lib/utils/calendar';
 	import type { CalendarEntry } from '$lib/types';
@@ -19,10 +20,25 @@
 	const anchorMonth = $derived(visibleDate.getMonth());
 	const today = new Date();
 
+	// Group once per `entries` change instead of re-filtering+sorting the full
+	// array for every one of the (up to 42) rendered day cells.
+	const entriesByDay = $derived.by(() => {
+		const sorted = [...entries].sort(
+			(a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime()
+		);
+		const map = new SvelteMap<string, CalendarEntry[]>();
+		for (const entry of sorted) {
+			const day = new Date(entry.startAt);
+			const key = `${day.getFullYear()}-${day.getMonth()}-${day.getDate()}`;
+			const bucket = map.get(key);
+			if (bucket) bucket.push(entry);
+			else map.set(key, [entry]);
+		}
+		return map;
+	});
+
 	function entriesForDay(day: Date): CalendarEntry[] {
-		return entries
-			.filter((e) => sameLocalDay(new Date(e.startAt), day))
-			.sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime());
+		return entriesByDay.get(`${day.getFullYear()}-${day.getMonth()}-${day.getDate()}`) ?? [];
 	}
 </script>
 

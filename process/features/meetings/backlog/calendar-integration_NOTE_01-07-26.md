@@ -24,11 +24,10 @@ history.
 
 **TL;DR:** The Meetings feature ships CRUD + a lead-detail tab + a top-level list, but NOT a calendar view. This note records the descoped calendar acceptance criterion so it is not lost.
 
-## What's needed (future feature)
+## What Was Needed (historical — resolved, kept for context)
 
-- A calendar view (month/week/day) that renders meetings by `crm_meetings.startAt`.
-- Likely a new `/calendar` route (or a calendar mode on `/meetings`).
-- The repo has **no calendar view component today** — only a bits-ui date-*picker* under `src/lib/components/ui/calendar/` (not a calendar view). A real calendar rendering surface (library choice: ECharts is already a dep, or a dedicated calendar lib) must be evaluated and spec'd.
+- A calendar view (month/week) rendering meetings by `crm_meetings.startAt`. Shipped as the `/calendar` route (day view was descoped — see the calendar feature's SPEC).
+- At the time this note was written, the repo had **no calendar view component** — only a bits-ui date-*picker* under `src/lib/components/ui/calendar/` (not a calendar view). The shipped grid is a custom Svelte 5 component; no new charting dependency was added (`layerchart` remains the only charting library in the repo — ECharts was never installed).
 
 ## Why it's out of scope now
 

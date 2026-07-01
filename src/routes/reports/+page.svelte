@@ -80,6 +80,7 @@
 
 	function applyFilters(e: Event) {
 		e.preventDefault();
+		outreachLoading = true;
 		goto(
 			buildQuery([
 				['from', filterFrom],
@@ -95,6 +96,7 @@
 		filterFrom = '';
 		filterTo = '';
 		filterRepId = '';
+		outreachLoading = true;
 		goto(buildQuery([['heatMetric', heatMetric !== 'event_date' ? heatMetric : '']]), {
 			keepFocus: true
 		});
@@ -167,9 +169,10 @@
 		</div>
 		<button
 			type="submit"
-			class="h-[34px] rounded-control bg-primary px-3.5 font-mono text-[12.5px] font-semibold text-white hover:bg-primary-strong"
+			disabled={outreachLoading}
+			class="h-[34px] rounded-control bg-primary px-3.5 font-mono text-[12.5px] font-semibold text-white transition-opacity hover:bg-primary-strong disabled:cursor-not-allowed disabled:opacity-50"
 		>
-			Apply
+			{outreachLoading ? 'Applying…' : 'Apply'}
 		</button>
 		{#if hasFilter}
 			<button

@@ -348,7 +348,7 @@
 				</div>
 
 				{#if canEdit}
-					<LogTouchForm onSubmit={logTouch} />
+					<LogTouchForm {lead} onSubmit={logTouch} />
 				{/if}
 			</div>
 

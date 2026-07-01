@@ -1,14 +1,41 @@
 <script lang="ts">
 	import { Textarea } from '$lib/components/ui/textarea';
 	import { Button } from '$lib/components/ui/button';
+	import * as Popover from '$lib/components/ui/popover';
 	import { ACTIVITY_CHANNELS } from '$lib/zod/schemas';
 	import { OUTCOME_TOKENS } from '$lib/design/tokens';
-	import type { ActivityChannel, ActivityOutcome, AddActivityInput } from '$lib/types';
+	import type { ActivityChannel, ActivityOutcome, AddActivityInput, Lead } from '$lib/types';
+	import {
+		TEMPLATES,
+		TEMPLATE_CATEGORY_LABELS,
+		fillTemplate,
+		type Template,
+		type TemplateCategory
+	} from '$lib/data/templates';
 
 	let {
+		lead,
 		onSubmit,
 		disabled = false
-	}: { onSubmit: (input: AddActivityInput) => void | Promise<void>; disabled?: boolean } = $props();
+	}: {
+		lead: Pick<Lead, 'name' | 'eventName'>;
+		onSubmit: (input: AddActivityInput) => void | Promise<void>;
+		disabled?: boolean;
+	} = $props();
+
+	const templateGroups = (['intro', 'follow-up', 'pricing'] as const).map((category) => ({
+		category,
+		label: TEMPLATE_CATEGORY_LABELS[category],
+		items: TEMPLATES.filter((t) => t.category === category)
+	})) satisfies { category: TemplateCategory; label: string; items: Template[] }[];
+
+	let templatesOpen = $state(false);
+
+	function applyTemplate(t: Template) {
+		const filled = fillTemplate(t.body, { page: lead.name, event: lead.eventName ?? '' });
+		note = note.trim() ? `${note.trimEnd()}\n\n${filled}` : filled;
+		templatesOpen = false;
+	}
 
 	const channelLabels: Record<ActivityChannel, string> = {
 		fb_dm: 'FB DM',
@@ -87,6 +114,41 @@
 				{/each}
 			</div>
 		</div>
+	</div>
+	<div class="mb-2 flex items-center justify-between">
+		<div class="text-[11px] text-ink-300">Notes</div>
+		<Popover.Root bind:open={templatesOpen}>
+			<Popover.Trigger>
+				{#snippet child({ props })}
+					<button
+						{...props}
+						disabled={disabled || submitting}
+						class="h-7 rounded-[7px] border border-hairline bg-panel px-2.5 text-[12px] font-medium text-ink-600 disabled:cursor-not-allowed disabled:opacity-40"
+					>
+						Templates
+					</button>
+				{/snippet}
+			</Popover.Trigger>
+			<Popover.Content align="end" sideOffset={6} class="w-80">
+				{#each templateGroups as group (group.category)}
+					<div>
+						<div class="mb-1 font-mono text-[10px] uppercase tracking-[0.5px] text-ink-300">
+							{group.label}
+						</div>
+						<div class="flex flex-col gap-1">
+							{#each group.items as t (t.id)}
+								<button
+									class="rounded-[7px] border border-hairline bg-panel px-2.5 py-1.5 text-left text-[12px] text-ink-600 hover:border-primary hover:text-primary"
+									onclick={() => applyTemplate(t)}
+								>
+									{t.label}
+								</button>
+							{/each}
+						</div>
+					</div>
+				{/each}
+			</Popover.Content>
+		</Popover.Root>
 	</div>
 	<Textarea
 		bind:value={note}

@@ -3,7 +3,8 @@ import { error } from '@sveltejs/kit';
 import { db } from '$lib/server/db/index';
 import { crmUsers } from '$lib/server/db/schema';
 import { asc, desc } from 'drizzle-orm';
-import { dbUserToUser } from '$lib/server/db/leads';
+import { dbUserToUser, listPipelineLeads } from '$lib/server/db/leads';
+import type { User } from '$lib/types';
 
 const SORT_COLS = ['name', 'email', 'role', 'active'] as const;
 type SortCol = (typeof SORT_COLS)[number];
@@ -28,7 +29,23 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	const dir = url.searchParams.get('dir') === 'desc' ? ('desc' as const) : ('asc' as const);
 	const fn = dir === 'asc' ? asc : desc;
 
-	const rows = await db.select().from(crmUsers).orderBy(fn(COL_MAP[sort]), asc(crmUsers.id));
+	const [rows, { leads }] = await Promise.all([
+		db.select().from(crmUsers).orderBy(fn(COL_MAP[sort]), asc(crmUsers.id)),
+		listPipelineLeads()
+	]);
 
-	return { users: rows.map(dbUserToUser), sort, dir };
+	const users = rows.map(dbUserToUser).map((u) => ({
+		...u,
+		leadCount: leads.filter((l) => l.ownerId === u.id).length
+	}));
+
+	const currentUser: User = {
+		id: locals.user.id,
+		email: locals.user.email,
+		name: locals.user.name,
+		role: locals.user.role,
+		active: true
+	};
+
+	return { users, leads, sort, dir, currentUser };
 };

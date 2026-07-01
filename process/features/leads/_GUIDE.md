@@ -31,6 +31,10 @@ data) — see Current Status below.
 - `src/lib/zod/schemas.ts` — Zod validators for lead forms
 - `src/lib/server/mock.ts` — mock data (isolated; still used by other not-yet-wired surfaces —
   see `process/context/all-context.md` Feature Folders table for per-feature status)
+- `src/lib/server/mock.ts` — mock data (must stay isolated from real queries)
+- `src/lib/components/leads/LogTouchForm.svelte` — inline log-touch card on `/leads/[id]`; includes
+  the Templates snippet picker (Popover-based)
+- `src/lib/data/templates.ts` — static Log Touch snippet templates (`TEMPLATES`, `fillTemplate()`)
 
 ## Related Context
 

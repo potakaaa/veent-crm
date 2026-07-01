@@ -127,6 +127,9 @@ export interface LeadFilters {
 
 // --- Reports ----------------------------------------------------------------
 
+export type HeatmapRow = { date: string; stage: string; count: number };
+export type HeatmapDay = { date: string; total: number; stages: Record<string, number> };
+
 export interface FunnelStage {
 	stage: Stage;
 	label: string;

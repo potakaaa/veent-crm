@@ -827,8 +827,8 @@ Test gates (C3 5-column table — ADDITIVE; legacy line form retained below):
 | AC4 | Currency totals per-currency, never summed across currencies | Hybrid | Visual: PHP and SGD in separate cards; cross-check `... GROUP BY currency` | D — no Drizzle DB test harness in scope |
 | AC5, AC7 | `?type=won` CSV: correct columns + UTF-8 BOM, opens clean in Excel | Hybrid | `curl '/api/reports/export?type=won'` (authed session) -> inspect header row + BOM bytes; open in Excel | D — no Drizzle DB test harness in scope |
 | AC6, AC7 | `?type=view` CSV: all non-deleted leads + BOM | Hybrid | `curl '/api/reports/export?type=view'` -> row count matches `SELECT COUNT(*) ... WHERE deleted_at IS NULL` | D — no Drizzle DB test harness in scope |
-| AC8 | `/review` lists `needs_review=true AND deleted_at IS NULL` | Hybrid | Load `/review`; `SELECT COUNT(*) FROM crm_leads WHERE needs_review = true AND deleted_at IS NULL;` matches list | D — no Drizzle DB test harness in scope |
-| AC9 | Resolve clears flag + removes row | Hybrid | Click Resolve; `SELECT needs_review FROM crm_leads WHERE id = '[id]';` -> false; row gone after reload | D — no Drizzle DB test harness in scope |
+| AC8 | **OBSOLETE (see superseded banner)** — `/review` lists `needs_review=true AND deleted_at IS NULL` | Hybrid | Load `/review`; `SELECT COUNT(*) FROM crm_leads WHERE needs_review = true AND deleted_at IS NULL;` matches list | D — no Drizzle DB test harness in scope |
+| AC9 | **OBSOLETE (see superseded banner)** — Resolve clears flag + removes row | Hybrid | Click Resolve; `SELECT needs_review FROM crm_leads WHERE id = '[id]';` -> false; row gone after reload | D — no Drizzle DB test harness in scope |
 
 Failing stubs: N/A. The two Fully-Automated rows are aggregate command gates (`bun run check`, `bun run test:unit`), not new per-scenario unit functions — this plan introduces no DB-free pure function amenable to a TDD stub (all new logic lives in server loaders/endpoints that require a live DB). No `test(...)` stub is generated; the command gates are the red-first signal (`bun run check` currently fails on the currency type until note E1 is applied).
 

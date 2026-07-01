@@ -10,7 +10,7 @@ plan: process/features/leads/active/ufg-inline-edit-review-removal_01-07-26/ufg-
 
 ## What Was Done
 
-All Implementation Checklist items applied (Sections A–E), including VALIDATE-added items 6b and 19b.
+All Implementation Checklist items applied (Sections A–E), including VALIDATE-added items 6b and 19b — implementation is code-complete; two verification steps remain deferred (see "What Was Skipped or Deferred" below).
 
 - **Section A (permission + inline edit):** widened `canEditLead()` with explicit `lead.ownerId === null` branch; added `editTarget`/`editSaving` state + `saveEdit()` + `LeadEditModal` render + a per-row edit affordance to `src/routes/unassigned/+page.svelte`. Made `LeadEditModal.onresolve` optional, guarded the call (`onresolve?.(...)`), and wrapped the "Resolve" button in `{#if onresolve}` (item 6b).
 - **Section B (route/nav removal):** deleted `src/routes/review/{+page.server.ts,+page.svelte}` (and the now-empty dir); removed `/review` nav item + `review` count from `AppSidebar`, `reviewCount` + review icon button from `AppTopbar`, `review` from `AppShell` counts type + prop pass, the `isReview` branch from `RouteShells`, and `listReviewLeads()` + its exclusive sort helpers (`REVIEW_SORT_COLS`/`ReviewSortCol`/`REVIEW_COL_MAP`) + the `review` nav count from `getNavCounts()`.

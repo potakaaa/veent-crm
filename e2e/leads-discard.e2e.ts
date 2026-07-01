@@ -14,7 +14,9 @@ import { test, type Page } from '@playwright/test';
 
 async function firstLeadDetailPath(page: Page): Promise<string | null> {
 	await page.goto('/unassigned');
-	const link = page.locator('a[href^="/leads/"]').first();
+	// Scoped to <main> so the topbar's "New lead" link (also `/leads/*`-prefixed,
+	// rendered before page content) can never be picked up as the first match.
+	const link = page.locator('main a[href^="/leads/"]').first();
 	if ((await link.count()) === 0) return null;
 	const href = await link.getAttribute('href');
 	return href && href !== '/leads/new' ? href : null;
@@ -39,11 +41,9 @@ test.describe('Lead detail discard flow', () => {
 		const del = page.waitForRequest(
 			(req) => /\/api\/leads\/[0-9a-f-]+\/discard$/.test(req.url()) && req.method() === 'DELETE'
 		);
-		// Confirm inside the modal (a second discard/confirm control).
-		await page
-			.getByRole('button', { name: /discard|confirm/i })
-			.last()
-			.click();
+		// Confirm inside the modal — scoped to the dialog so it can never match the
+		// trigger button that opened it.
+		await page.getByRole('dialog').getByRole('button', { name: 'Yes, discard' }).click();
 		await del;
 	});
 });

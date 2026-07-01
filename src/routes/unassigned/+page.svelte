@@ -47,17 +47,25 @@
 				body: JSON.stringify(leadData)
 			});
 			if (!res.ok) {
-				const msg = await res.text().catch(() => 'Server error');
+				const msg = await res
+					.json()
+					.then((body) => body?.message ?? 'Server error')
+					.catch(() => 'Server error');
 				toasts.push(`Could not save: ${msg}`);
 				return; // keep modal open
 			}
-			editTarget = null;
+		} catch {
+			toasts.push('Could not save — please try again');
+			return;
+		} finally {
+			editSaving = false;
+		}
+		editTarget = null;
+		try {
 			await invalidateAll();
 			toasts.success('Lead updated');
 		} catch {
-			toasts.push('Could not save — please try again');
-		} finally {
-			editSaving = false;
+			toasts.push('Saved, but the list could not refresh — reload to see the change');
 		}
 	}
 

@@ -62,7 +62,7 @@ low-quality unclaimed leads instead of two overlapping ones.
 
 **Happy path — inline edit in Up for Grabs**
 
-```
+```text
 [Up for Grabs list]
    |
    | rep/manager clicks an editable field on a row
@@ -80,7 +80,7 @@ low-quality unclaimed leads instead of two overlapping ones.
 
 **Discard flow — relocated**
 
-```
+```text
 Before:                                   After:
 [Review Queue row]                        [Lead detail page]
    |-- Discard button --> lead soft-deleted   |-- Discard action --> lead soft-deleted
@@ -90,7 +90,7 @@ Before:                                   After:
 
 **Review Queue removal — state before/after**
 
-```
+```text
 BEFORE                                    AFTER
 Nav: Sidebar/Topbar --> /review           Nav: Sidebar/Topbar has no /review entry
 /review page exists, shows                /review route does not exist (404/removed)

@@ -99,6 +99,27 @@ export interface Activity {
 	followUpAt?: string;
 }
 
+export interface MeetingAttendee {
+	userId: string;
+	name: string;
+}
+
+export interface Meeting {
+	id: string;
+	leadId: string;
+	/** Lead name — populated on the cross-lead /meetings list. */
+	leadName?: string;
+	organizerId: string | null;
+	organizerName?: string;
+	/** ISO datetime the meeting starts. */
+	startAt: string;
+	meetingUrl?: string;
+	notes?: string;
+	outcome?: string;
+	attendees: MeetingAttendee[];
+	createdAt: string;
+}
+
 /** A row from the sheet import that needs a human before it joins the pool. */
 export interface ReviewItem {
 	id: string;

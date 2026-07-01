@@ -248,6 +248,50 @@ export const crmLeadHistory = pgTable(
 );
 
 // ---------------------------------------------------------------------------
+// crm_meetings — scheduled/logged meetings with a lead (organizer + attendees)
+// ---------------------------------------------------------------------------
+export const crmMeetings = pgTable(
+	'crm_meetings',
+	{
+		id: uuid('id').primaryKey().defaultRandom(),
+		leadId: uuid('lead_id')
+			.notNull()
+			.references(() => crmLeads.id, { onDelete: 'cascade' }),
+		// distinct FK (not just an attendee flag); null if the organizing user leaves
+		organizerId: uuid('organizer_id').references(() => crmUsers.id, { onDelete: 'set null' }),
+		startAt: timestamp('start_at', { withTimezone: true }).notNull(),
+		meetingUrl: text('meeting_url'),
+		notes: text('notes'),
+		outcome: text('outcome'),
+		// soft delete; no hard deletes
+		deletedAt: timestamp('deleted_at', { withTimezone: true }),
+		// meeting-reminder checkpoints — nullable until the reminder for that checkpoint
+		// is sent; flipped NULL->timestamp via an atomic compare-and-set (at-most-once send).
+		dayReminderSentAt: timestamp('day_reminder_sent_at', { withTimezone: true }),
+		hourReminderSentAt: timestamp('hour_reminder_sent_at', { withTimezone: true }),
+		createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+		updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
+	},
+	(t) => [index('crm_meetings_lead_idx').on(t.leadId)]
+);
+
+// ---------------------------------------------------------------------------
+// crm_meeting_attendees — join of crm_users to a meeting (no dup rows)
+// ---------------------------------------------------------------------------
+export const crmMeetingAttendees = pgTable(
+	'crm_meeting_attendees',
+	{
+		id: uuid('id').primaryKey().defaultRandom(),
+		meetingId: uuid('meeting_id')
+			.notNull()
+			.references(() => crmMeetings.id, { onDelete: 'cascade' }),
+		userId: uuid('user_id').references(() => crmUsers.id, { onDelete: 'set null' }),
+		createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow()
+	},
+	(t) => [uniqueIndex('crm_meeting_attendees_meeting_user_uq').on(t.meetingId, t.userId)]
+);
+
+// ---------------------------------------------------------------------------
 // Better Auth tables (managed by drizzle-kit)
 // ---------------------------------------------------------------------------
 export const baUser = pgTable('user', {
@@ -309,3 +353,5 @@ export type CrmUser = typeof crmUsers.$inferSelect;
 export type CrmLead = typeof crmLeads.$inferSelect;
 export type CrmActivity = typeof crmActivities.$inferSelect;
 export type CrmLeadHistory = typeof crmLeadHistory.$inferSelect;
+export type CrmMeeting = typeof crmMeetings.$inferSelect;
+export type CrmMeetingAttendee = typeof crmMeetingAttendees.$inferSelect;

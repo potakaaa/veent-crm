@@ -98,6 +98,32 @@ export const activityFormSchema = z.object({
 });
 export type ActivityForm = z.infer<typeof activityFormSchema>;
 
+// --- Create a meeting (API endpoint: POST /api/meetings) --------------------
+export const meetingFormSchema = z.object({
+	leadId: z.string().uuid(),
+	startAt: z.string().datetime(), // ISO datetime
+	organizerId: z.string().uuid().optional(),
+	meetingUrl: z.string().url().optional().or(z.literal('')),
+	notes: z.string().optional(),
+	outcome: z.string().optional(),
+	attendeeIds: z.array(z.string().uuid()).default([])
+});
+export type MeetingForm = z.infer<typeof meetingFormSchema>;
+
+// --- Update a meeting (PATCH /api/meetings/[id]) ----------------------------
+// Same fields as meetingFormSchema but all optional (partial edit); lead is
+// immutable after create so `leadId` is intentionally absent.
+export const meetingUpdateSchema = z.object({
+	startAt: z.string().datetime().optional(),
+	// Accept null so the unassign path (organizer cleared on edit) reaches the DB layer.
+	organizerId: z.string().uuid().nullable().optional(),
+	meetingUrl: z.string().url().optional().or(z.literal('')),
+	notes: z.string().optional(),
+	outcome: z.string().optional(),
+	attendeeIds: z.array(z.string().uuid()).optional()
+});
+export type MeetingUpdate = z.infer<typeof meetingUpdateSchema>;
+
 // --- Won capture (manual) --------------------------------------------------
 export const wonFormSchema = z.object({
 	leadId: z.string().uuid(),

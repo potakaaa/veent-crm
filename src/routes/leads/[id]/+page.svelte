@@ -16,6 +16,7 @@
 	import LostReasonModal from '$lib/components/leads/LostReasonModal.svelte';
 	import ReassignModal from '$lib/components/leads/ReassignModal.svelte';
 	import DiscardIssueModal from '$lib/components/leads/DiscardIssueModal.svelte';
+	import MeetingsPanel from '$lib/components/meetings/MeetingsPanel.svelte';
 	import { toasts } from '$lib/stores/toasts.svelte';
 	import { canEditLead, canReassign } from '$lib/utils/permissions';
 	import { riskMeta } from '$lib/utils/risk';
@@ -32,6 +33,10 @@
 	const canEdit = $derived(canEditLead(data.me, lead));
 	const ownerName = $derived(data.users.find((u) => u.id === lead.ownerId)?.name ?? null);
 	const risk = $derived(riskMeta(lead.urgency));
+
+	// Lead-detail tabs (first-ever tab UI on this page). Overview wraps the
+	// existing content unchanged; Meetings is the new surface.
+	let activeTab = $state<'overview' | 'meetings'>('overview');
 
 	let wonOpen = $state(false);
 	let lostOpen = $state(false);
@@ -327,7 +332,38 @@
 			</div>
 		{/if}
 
-		<div class="grid grid-cols-1 items-start gap-[18px] lg:grid-cols-[1fr_320px]">
+		<!-- tab bar -->
+		<div role="tablist" class="mb-4 flex gap-1 border-b border-hairline">
+			<button
+				role="tab"
+				aria-selected={activeTab === 'overview'}
+				onclick={() => (activeTab = 'overview')}
+				class="border-b-2 px-3 py-2 text-[13px] font-medium {activeTab === 'overview'
+					? 'border-primary text-ink'
+					: 'border-transparent text-ink-400 hover:text-ink'}"
+			>
+				Overview
+			</button>
+			<button
+				role="tab"
+				aria-selected={activeTab === 'meetings'}
+				onclick={() => (activeTab = 'meetings')}
+				class="border-b-2 px-3 py-2 text-[13px] font-medium {activeTab === 'meetings'
+					? 'border-primary text-ink'
+					: 'border-transparent text-ink-400 hover:text-ink'}"
+			>
+				Meetings
+			</button>
+		</div>
+
+		{#if activeTab === 'meetings'}
+			<MeetingsPanel meetings={data.meetings} users={data.users} me={data.me} leadId={lead.id} />
+		{/if}
+
+		<div
+			class="grid grid-cols-1 items-start gap-[18px] lg:grid-cols-[1fr_320px]"
+			class:hidden={activeTab !== 'overview'}
+		>
 			<!-- LEFT -->
 			<div>
 				<div class="mb-4 rounded-control border border-hairline bg-panel p-4">

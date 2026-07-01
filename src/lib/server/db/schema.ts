@@ -136,6 +136,9 @@ export const crmLeads = pgTable(
 		eventDate: date('event_date'), // wall-clock, nullable
 		eventDateRaw: text('event_date_raw'),
 		eventLink: text('event_link'),
+		// appeal-score inputs (derived score is never persisted — recomputed at render/sort time)
+		announcedAt: date('announced_at'), // when the event was publicly announced, nullable
+		firstReachedOutAt: timestamp('first_reached_out_at', { withTimezone: true }), // first outreach touch, nullable
 
 		stage: leadStage('stage').notNull().default('new'),
 		lostReason: lostReason('lost_reason'),

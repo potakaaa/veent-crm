@@ -1,5 +1,7 @@
 <script lang="ts">
 	import StubNote from '$lib/components/StubNote.svelte';
+	import AppealScoreBadge from '$lib/components/AppealScoreBadge.svelte';
+	import SortToggle from '$lib/components/SortToggle.svelte';
 
 	let { data } = $props();
 
@@ -19,7 +21,10 @@
 
 <div class="mb-4 flex items-center gap-3">
 	<h1 class="text-2xl font-semibold">Leads</h1>
-	<a href="/leads/new" class="ml-auto rounded bg-gray-900 px-3 py-1.5 text-sm text-white">+ Add lead</a>
+	<div class="ml-auto flex items-center gap-3">
+		<SortToggle sort={data.sort} />
+		<a href="/leads/new" class="rounded bg-gray-900 px-3 py-1.5 text-sm text-white">+ Add lead</a>
+	</div>
 </div>
 
 <form class="mb-4" method="get">
@@ -39,6 +44,7 @@
 				<th class="px-3 py-2 font-medium">Category</th>
 				<th class="px-3 py-2 font-medium">Platform</th>
 				<th class="px-3 py-2 font-medium">Stage</th>
+				<th class="px-3 py-2 font-medium">Appeal</th>
 				<th class="px-3 py-2 font-medium">Owner</th>
 				<th class="px-3 py-2 font-medium">Last activity</th>
 			</tr>
@@ -59,6 +65,7 @@
 					<td class="px-3 py-2">
 						<span class="rounded px-2 py-0.5 text-xs {stageClass[lead.stage]}">{lead.stage}</span>
 					</td>
+					<td class="px-3 py-2"><AppealScoreBadge score={lead.appealScore} /></td>
 					<td class="px-3 py-2 text-gray-600">{lead.ownerName ?? '—'}</td>
 					<td class="px-3 py-2 text-gray-500">
 						{lead.lastActivityAt ? lead.lastActivityAt.slice(0, 10) : '—'}

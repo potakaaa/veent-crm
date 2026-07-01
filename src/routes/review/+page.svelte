@@ -1,5 +1,6 @@
 <script lang="ts">
 	import StubNote from '$lib/components/StubNote.svelte';
+	import AppealScoreBadge from '$lib/components/AppealScoreBadge.svelte';
 
 	let { data } = $props();
 </script>
@@ -15,6 +16,7 @@
 	{#each data.leads as lead}
 		<div class="flex items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 p-3">
 			<a href={`/leads/${lead.id}`} class="font-medium text-blue-600 hover:underline">{lead.name}</a>
+			<AppealScoreBadge score={lead.appealScore} />
 			<span class="text-xs text-gray-500">{lead.category} · {lead.source}</span>
 			<button type="button" class="ml-auto rounded border border-gray-300 bg-white px-3 py-1 text-sm" disabled>
 				Resolve

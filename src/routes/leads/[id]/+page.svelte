@@ -1,5 +1,6 @@
 <script lang="ts">
 	import StubNote from '$lib/components/StubNote.svelte';
+	import AppealScoreBadge from '$lib/components/AppealScoreBadge.svelte';
 
 	let { data } = $props();
 </script>
@@ -13,6 +14,7 @@
 <div class="mt-2 mb-6 flex items-center gap-3">
 	<h1 class="text-2xl font-semibold">{data.lead.name}</h1>
 	<span class="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-700">{data.lead.stage}</span>
+	<AppealScoreBadge score={data.lead.appealScore} />
 </div>
 
 <div class="grid gap-6 lg:grid-cols-3">

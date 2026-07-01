@@ -34,18 +34,28 @@ export type MockLead = {
 	lastActivityAt: string | null;
 	needsReview: boolean;
 	source: string;
+	// appeal-score inputs (all nullable — score is null "Not enough data" when eventDate/announcedAt missing)
+	eventDate: string | null;
+	announcedAt: string | null;
+	firstReachedOutAt: string | null;
 };
 
 export const MOCK_LEADS: MockLead[] = [
-	{ id: 'l-1', name: 'USWAG Davao', category: 'Sports', platform: 'Facebook', location: 'Davao', stage: 'won', ownerName: 'Jonna', lastActivityAt: '2026-05-02T03:00:00Z', needsReview: false, source: 'sheet_import' },
-	{ id: 'l-2', name: 'DAC Events', category: 'Concert', platform: 'Instagram', location: 'Cebu', stage: 'won', ownerName: 'Ethyl', lastActivityAt: '2026-05-10T03:00:00Z', needsReview: false, source: 'sheet_import' },
-	{ id: 'l-3', name: 'Sayaw Mindanao', category: 'Theater', platform: 'Facebook', location: 'CDO', stage: 'won', ownerName: 'Shane', lastActivityAt: '2026-05-18T03:00:00Z', needsReview: false, source: 'sheet_import' },
-	{ id: 'l-4', name: 'ENHYPEN-Philippines', category: 'Fan Fair', platform: 'Twitter/X', location: 'Manila', stage: 'lost', ownerName: 'Angel', lastActivityAt: '2026-03-01T03:00:00Z', needsReview: false, source: 'sheet_import' },
-	{ id: 'l-5', name: 'Bar Cumbia Nights', category: 'Bar/DJ', platform: 'Instagram', location: 'Makati', stage: 'in_discussion', ownerName: 'Meybelle', lastActivityAt: '2026-06-20T03:00:00Z', needsReview: false, source: 'sheet_import' },
-	{ id: 'l-6', name: 'Iloilo Music Fest', category: 'Music Fest', platform: 'Facebook', location: 'Iloilo', stage: 'replied', ownerName: 'Elay', lastActivityAt: '2026-06-22T03:00:00Z', needsReview: false, source: 'sheet_import' },
-	{ id: 'l-7', name: 'Unknown Org (recovered row)', category: 'Other', platform: 'Facebook', location: '', stage: 'contacted', ownerName: null, lastActivityAt: null, needsReview: true, source: 'sheet_import' },
-	{ id: 'l-8', name: 'Cagayan Expo 2026', category: 'Expo', platform: 'Facebook', location: 'CDO', stage: 'new', ownerName: null, lastActivityAt: null, needsReview: false, source: 'sheet_import' },
-	{ id: 'l-9', name: 'Scraped: Baguio Camp Org', category: 'Camp', platform: 'Instagram', location: 'Baguio', stage: 'new', ownerName: null, lastActivityAt: null, needsReview: false, source: 'scraper' }
+	// high-appeal: announced recently, reached out same day, event still far out
+	{ id: 'l-1', name: 'USWAG Davao', category: 'Sports', platform: 'Facebook', location: 'Davao', stage: 'won', ownerName: 'Jonna', lastActivityAt: '2026-05-02T03:00:00Z', needsReview: false, source: 'sheet_import', eventDate: '2026-11-01', announcedAt: '2026-06-20', firstReachedOutAt: '2026-06-21T03:00:00Z' },
+	{ id: 'l-2', name: 'DAC Events', category: 'Concert', platform: 'Instagram', location: 'Cebu', stage: 'won', ownerName: 'Ethyl', lastActivityAt: '2026-05-10T03:00:00Z', needsReview: false, source: 'sheet_import', eventDate: '2026-10-15', announcedAt: '2026-06-10', firstReachedOutAt: '2026-06-18T03:00:00Z' },
+	{ id: 'l-3', name: 'Sayaw Mindanao', category: 'Theater', platform: 'Facebook', location: 'CDO', stage: 'won', ownerName: 'Shane', lastActivityAt: '2026-05-18T03:00:00Z', needsReview: false, source: 'sheet_import', eventDate: '2026-09-01', announcedAt: '2026-05-01', firstReachedOutAt: '2026-05-25T03:00:00Z' },
+	// near-event → low runway
+	{ id: 'l-4', name: 'ENHYPEN-Philippines', category: 'Fan Fair', platform: 'Twitter/X', location: 'Manila', stage: 'lost', ownerName: 'Angel', lastActivityAt: '2026-03-01T03:00:00Z', needsReview: false, source: 'sheet_import', eventDate: '2026-07-05', announcedAt: '2026-04-01', firstReachedOutAt: '2026-05-20T03:00:00Z' },
+	{ id: 'l-5', name: 'Bar Cumbia Nights', category: 'Bar/DJ', platform: 'Instagram', location: 'Makati', stage: 'in_discussion', ownerName: 'Meybelle', lastActivityAt: '2026-06-20T03:00:00Z', needsReview: false, source: 'sheet_import', eventDate: '2026-08-15', announcedAt: '2026-06-15', firstReachedOutAt: '2026-06-18T03:00:00Z' },
+	// firstReachedOutAt null but both other dates set → still scores via delay-so-far
+	{ id: 'l-6', name: 'Iloilo Music Fest', category: 'Music Fest', platform: 'Facebook', location: 'Iloilo', stage: 'replied', ownerName: 'Elay', lastActivityAt: '2026-06-22T03:00:00Z', needsReview: false, source: 'sheet_import', eventDate: '2026-12-01', announcedAt: '2026-06-25', firstReachedOutAt: null },
+	// unscoreable: announcedAt null → "Not enough data"
+	{ id: 'l-7', name: 'Unknown Org (recovered row)', category: 'Other', platform: 'Facebook', location: '', stage: 'contacted', ownerName: null, lastActivityAt: null, needsReview: true, source: 'sheet_import', eventDate: '2026-09-10', announcedAt: null, firstReachedOutAt: null },
+	// unscoreable: both eventDate and announcedAt null → "Not enough data"
+	{ id: 'l-8', name: 'Cagayan Expo 2026', category: 'Expo', platform: 'Facebook', location: 'CDO', stage: 'new', ownerName: null, lastActivityAt: null, needsReview: false, source: 'sheet_import', eventDate: null, announcedAt: null, firstReachedOutAt: null },
+	// long delay + not reached out yet → low early-mover
+	{ id: 'l-9', name: 'Scraped: Baguio Camp Org', category: 'Camp', platform: 'Instagram', location: 'Baguio', stage: 'new', ownerName: null, lastActivityAt: null, needsReview: false, source: 'scraper', eventDate: '2026-08-01', announcedAt: '2026-04-01', firstReachedOutAt: null }
 ];
 
 export const MOCK_FUNNEL = [

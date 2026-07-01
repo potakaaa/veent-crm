@@ -47,15 +47,6 @@
 		{/snippet}
 	</PageHeader>
 
-	<div class="mb-[18px] flex flex-col gap-[18px]">
-		<MonthCalendar data={data.heatmap} />
-		<CalendarHeatmap
-			data={data.heatmap}
-			metric={data.heatMetric}
-			onchange={(m) => goto(`?heatMetric=${m}`, { keepFocus: true })}
-		/>
-	</div>
-
 	{#if navLoading}
 		<div class="grid grid-cols-1 gap-[18px] lg:grid-cols-[1.1fr_1fr]">
 			<CardSkeleton />
@@ -183,4 +174,14 @@
 			</div>
 		</div>
 	{/if}
+
+	<!-- Calendar views — below all summary cards -->
+	<div class="mt-[18px] flex flex-col gap-[18px]">
+		<MonthCalendar data={data.heatmap} />
+		<CalendarHeatmap
+			data={data.heatmap}
+			metric={data.heatMetric}
+			onchange={(m) => goto(`?heatMetric=${m}`, { keepFocus: true })}
+		/>
+	</div>
 </div>

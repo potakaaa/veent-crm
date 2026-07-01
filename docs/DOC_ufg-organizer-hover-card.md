@@ -163,4 +163,4 @@ None. This change is entirely client-side UI. No server load changes, no API cha
 
 - **No touch / mobile support.** Hover events do not fire on touch screens. The card is invisible on mobile viewports.
 
-- **The feature has not been manually verified in a browser this session.** Only `bun run check` was not explicitly run post-edit — the change is a pure template + script addition with no logic that could fail type-check (all types flow from the existing `Lead` interface and existing imports). Manual visual confirmation of popover positioning, z-index stacking, and grace-period timer behavior is pending.
+- **The feature has not been manually verified in a browser this session.** `bun run check` was not explicitly run after this edit; the change is a pure template + script addition whose types flow entirely from the existing `Lead` interface and existing imports, so type-check failures are unlikely but not confirmed. Manual visual confirmation of popover positioning, z-index stacking, and grace-period timer behavior is pending.

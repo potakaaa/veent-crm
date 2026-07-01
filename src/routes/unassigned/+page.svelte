@@ -265,6 +265,9 @@
 		clearTimeout(hoverCloseTimer);
 		openHoverId = null;
 	};
+	const handleEscape = (e: KeyboardEvent) => {
+		if (e.key === 'Escape') closeHoverNow();
+	};
 	const ownerNameFor = (ownerId: string | null) =>
 		ownerId ? (data.users.find((u) => u.id === ownerId)?.name ?? null) : null;
 </script>
@@ -379,7 +382,12 @@
 					>
 						{#if selected[l.id]}<Icon name="check" size={12} stroke={3} />{/if}
 					</button>
-					<Popover.Root open={openHoverId === l.id}>
+					<Popover.Root
+						open={openHoverId === l.id}
+						onOpenChange={(open) => {
+							if (!open) closeHoverNow();
+						}}
+					>
 						<Popover.Trigger>
 							{#snippet child({ props })}
 								<div
@@ -387,9 +395,7 @@
 									class="min-w-0"
 									onmouseenter={() => openHover(l.id)}
 									onmouseleave={scheduleCloseHover}
-									onkeydown={(e) => {
-										if (e.key === 'Escape') closeHoverNow();
-									}}
+									onkeydown={handleEscape}
 								>
 									<a href="/leads/{l.id}" class="min-w-0 block">
 										<div class="flex items-center gap-1.5 text-[13px] font-semibold">
@@ -409,9 +415,7 @@
 								side="right"
 								onmouseenter={() => openHover(l.id)}
 								onmouseleave={scheduleCloseHover}
-								onkeydown={(e) => {
-									if (e.key === 'Escape') closeHoverNow();
-								}}
+								onkeydown={handleEscape}
 							>
 								<OrganizerHoverCard lead={l} ownerName={ownerNameFor(l.ownerId)} />
 							</Popover.Content>

@@ -46,7 +46,6 @@ describe.skipIf(SKIP_DB)('createLead + getLead roundtrip (DB)', () => {
 		expect(lead.stage).toBe('new');
 		expect(lead.source).toBe('manual');
 		expect(lead.ownerId).toBe(MANAGER_UUID);
-		expect(lead.needsReview).toBe(false);
 		expect(lead.handle).toMatch(/^@/);
 
 		const fetched = await getLead(lead.id);

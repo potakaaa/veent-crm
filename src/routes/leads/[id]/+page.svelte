@@ -403,12 +403,6 @@
 								>{formatDate(lead.lastActivityAt)}</span
 							>
 						</div>
-						<div class="flex justify-between">
-							<span class="text-ink-300">needs review</span>
-							<span style="color:{lead.needsReview ? '#e11d48' : '#0e9f6e'}">
-								{lead.needsReview ? 'flagged' : 'clear'}
-							</span>
-						</div>
 					</div>
 				</div>
 			</div>

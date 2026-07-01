@@ -68,7 +68,6 @@ export interface Lead {
 	/** Count of sibling leads that share the same page (advisory dedup only). */
 	siblings?: number;
 	source: LeadSource;
-	needsReview: boolean;
 	notes?: string;
 
 	// Won capture (manually entered — never read from external systems)
@@ -123,7 +122,6 @@ export interface LeadFilters {
 	search?: string;
 	/** Hide lost leads unless explicitly requested (product rule). */
 	includeLost?: boolean;
-	needsReview?: boolean;
 	ownerId?: string | null;
 }
 

@@ -7,6 +7,7 @@
 	import PageHeader from '$lib/components/shared/PageHeader.svelte';
 	import StageChip from '$lib/components/shared/StageChip.svelte';
 	import ReassignModal from '$lib/components/leads/ReassignModal.svelte';
+	import LeadEditModal from '$lib/components/leads/LeadEditModal.svelte';
 	import EventBadge from '$lib/components/shared/EventBadge.svelte';
 	import Icon from '$lib/components/shared/Icon.svelte';
 	import { toasts } from '$lib/stores/toasts.svelte';
@@ -32,6 +33,41 @@
 	afterNavigate(() => {
 		paging = false;
 	});
+
+	let editTarget = $state<Lead | null>(null);
+	let editSaving = $state(false);
+
+	async function saveEdit(leadData: Record<string, unknown>) {
+		if (!editTarget || editSaving) return;
+		editSaving = true;
+		try {
+			const res = await fetch(`/api/leads/${editTarget.id}`, {
+				method: 'PATCH',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(leadData)
+			});
+			if (!res.ok) {
+				const msg = await res
+					.json()
+					.then((body) => body?.message ?? 'Server error')
+					.catch(() => 'Server error');
+				toasts.push(`Could not save: ${msg}`);
+				return; // keep modal open
+			}
+		} catch {
+			toasts.push('Could not save — please try again');
+			return;
+		} finally {
+			editSaving = false;
+		}
+		editTarget = null;
+		try {
+			await invalidateAll();
+			toasts.success('Lead updated');
+		} catch {
+			toasts.push('Saved, but the list could not refresh — reload to see the change');
+		}
+	}
 
 	const navLoading = $derived(paging || navigating.to?.url.pathname === '/unassigned');
 
@@ -317,11 +353,20 @@
 						>
 					</div>
 					<div class="font-mono text-[12px] text-ink-400">{formerOwner(l.formerOwnerId)}</div>
-					<div>
+					<div class="flex items-center gap-1.5">
+						<button
+							onclick={() => (editTarget = l)}
+							disabled={claiming[l.id] || editSaving}
+							aria-label="Edit {l.name}"
+							title="Edit lead"
+							class="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-[7px] border border-hairline text-ink-500 hover:border-primary hover:text-primary disabled:opacity-50"
+						>
+							<Icon name="edit" size={14} stroke={2} />
+						</button>
 						<button
 							onclick={() => claim(l)}
 							disabled={claiming[l.id]}
-							class="h-[30px] w-full rounded-[7px] bg-primary text-[12.5px] font-semibold text-white hover:bg-primary-strong disabled:opacity-50"
+							class="h-[30px] flex-1 rounded-[7px] bg-primary text-[12.5px] font-semibold text-white hover:bg-primary-strong disabled:opacity-50"
 						>
 							{claiming[l.id] ? 'Claiming…' : 'Claim'}
 						</button>
@@ -377,5 +422,15 @@
 		users={data.users}
 		onclose={() => (assignOpen = false)}
 		onconfirm={assignTo}
+	/>
+{/if}
+
+{#if editTarget}
+	<LeadEditModal
+		open={true}
+		lead={editTarget}
+		saving={editSaving}
+		onclose={() => (editTarget = null)}
+		onsave={saveEdit}
 	/>
 {/if}

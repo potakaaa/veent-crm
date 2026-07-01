@@ -1,7 +1,7 @@
 /**
  * Lead-source humanizing helper. Shared source of truth for the source badge
  * label + Tailwind color class, extracted from the inline maps that used to
- * live in review/ and unassigned/ so both pages render identical labels.
+ * live in the lead list pages so they render identical labels.
  */
 import type { LeadSource } from '$lib/types';
 

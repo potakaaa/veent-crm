@@ -17,7 +17,7 @@ function parseCountryFromLocation(location?: string | null): string | null {
 
 // Scraper intake. Secret-authed (INGEST_SECRET); the scraper never gets DATABASE_URL. The CRM
 // owns validation + dedup-at-the-door (normalized_handle): match = skip, never blind-create.
-// All ingested leads land unassigned (owner_id NULL), source='scraper', needs_review=true.
+// All ingested leads land unassigned (owner_id NULL), source='scraper'.
 export const POST: RequestHandler = async ({ request }) => {
 	const secret = env.INGEST_SECRET;
 	if (!secret) throw error(500, 'server misconfigured');
@@ -30,7 +30,6 @@ export const POST: RequestHandler = async ({ request }) => {
 	let created = 0;
 	let skipped = 0;
 	let patched = 0;
-	let review = 0;
 
 	for (const lead of parsed.data.leads) {
 		// Normalize handle for dedup: prefer an explicit handle, else derive from url/pageName.
@@ -98,23 +97,12 @@ export const POST: RequestHandler = async ({ request }) => {
 			eventLink: lead.eventLink ?? null,
 			source: 'scraper',
 			stage: 'new',
-			// Flag for review when category fell back to Other or no contact method is present.
-			needsReview:
-				!lead.category ||
-				lead.category === 'Other' ||
-				(!lead.url && !lead.facebookUrl && !lead.instagramUrl && !lead.email && !lead.phone),
 			ownerId: null,
 			createdAt: now,
 			updatedAt: now
 		});
 		created++;
-		if (
-			!lead.category ||
-			lead.category === 'Other' ||
-			(!lead.url && !lead.facebookUrl && !lead.instagramUrl && !lead.email && !lead.phone)
-		)
-			review++;
 	}
 
-	return json({ received: parsed.data.leads.length, created, skipped, patched, review });
+	return json({ received: parsed.data.leads.length, created, skipped, patched });
 };

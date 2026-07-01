@@ -1,9 +1,22 @@
 # Reports (ECharts) + Review Queue — Implementation Plan
 
+> **⚠️ SUPERSEDED (01-07-26):** RFC-004 (Review Queue Real Data + Resolve Action) and its
+> acceptance criteria AC8/AC9 target `/review` and the `needs_review` column. Both were
+> **fully removed** by
+> `process/features/leads/active/ufg-inline-edit-review-removal_01-07-26/ufg-inline-edit-review-removal_PLAN_01-07-26.md`
+> (GitHub #90) — `src/routes/review/` deleted, `crm_leads.needs_review` column dropped
+> (migration generated, not yet applied — see that plan's Status block). RFC-004's scope,
+> resolve-action design, and DB queries referencing `needs_review`/`listReviewLeads` are
+> **obsolete and must not be resumed**. RFC-001/002/003 (Reports page real-data wiring, CSV
+> export) are unaffected and remain valid — do not treat the whole plan as dead, only
+> RFC-004 + AC8/AC9. Do not resume RFC-004 work from this file; if the Reports feature still
+> needs a "leads needing attention" surface, that requires a new SPEC (no replacement signal
+> currently exists per the superseding plan's SPEC).
+
 **Date**: 29-06-26
 **Complexity**: COMPLEX (multi-RFC, multi-session)
 **Feature folder**: `process/features/reports/`
-**Status**: 🔨 CODE DONE
+**Status**: 🔨 CODE DONE — RFC-004 superseded/obsolete (see note above); RFC-001/002/003 status unaffected
 
 ---
 
@@ -814,8 +827,8 @@ Test gates (C3 5-column table — ADDITIVE; legacy line form retained below):
 | AC4 | Currency totals per-currency, never summed across currencies | Hybrid | Visual: PHP and SGD in separate cards; cross-check `... GROUP BY currency` | D — no Drizzle DB test harness in scope |
 | AC5, AC7 | `?type=won` CSV: correct columns + UTF-8 BOM, opens clean in Excel | Hybrid | `curl '/api/reports/export?type=won'` (authed session) -> inspect header row + BOM bytes; open in Excel | D — no Drizzle DB test harness in scope |
 | AC6, AC7 | `?type=view` CSV: all non-deleted leads + BOM | Hybrid | `curl '/api/reports/export?type=view'` -> row count matches `SELECT COUNT(*) ... WHERE deleted_at IS NULL` | D — no Drizzle DB test harness in scope |
-| AC8 | `/review` lists `needs_review=true AND deleted_at IS NULL` | Hybrid | Load `/review`; `SELECT COUNT(*) FROM crm_leads WHERE needs_review = true AND deleted_at IS NULL;` matches list | D — no Drizzle DB test harness in scope |
-| AC9 | Resolve clears flag + removes row | Hybrid | Click Resolve; `SELECT needs_review FROM crm_leads WHERE id = '[id]';` -> false; row gone after reload | D — no Drizzle DB test harness in scope |
+| AC8 | **OBSOLETE (see superseded banner)** — `/review` lists `needs_review=true AND deleted_at IS NULL` | Hybrid | Load `/review`; `SELECT COUNT(*) FROM crm_leads WHERE needs_review = true AND deleted_at IS NULL;` matches list | D — no Drizzle DB test harness in scope |
+| AC9 | **OBSOLETE (see superseded banner)** — Resolve clears flag + removes row | Hybrid | Click Resolve; `SELECT needs_review FROM crm_leads WHERE id = '[id]';` -> false; row gone after reload | D — no Drizzle DB test harness in scope |
 
 Failing stubs: N/A. The two Fully-Automated rows are aggregate command gates (`bun run check`, `bun run test:unit`), not new per-scenario unit functions — this plan introduces no DB-free pure function amenable to a TDD stub (all new logic lives in server loaders/endpoints that require a live DB). No `test(...)` stub is generated; the command gates are the red-first signal (`bun run check` currently fails on the currency type until note E1 is applied).
 

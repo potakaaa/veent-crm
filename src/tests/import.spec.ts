@@ -67,16 +67,16 @@ describe('normalizeHandle', () => {
 
 describe('mapCategory', () => {
 	it('maps known scraper values to the CRM enum', () => {
-		expect(mapCategory('Fun Run')).toEqual({ category: 'Sports', needsReview: false });
-		expect(mapCategory('Club')).toEqual({ category: 'Bar/DJ', needsReview: false });
-		expect(mapCategory('Festival')).toEqual({ category: 'Music Fest', needsReview: false });
+		expect(mapCategory('Fun Run')).toEqual({ category: 'Sports' });
+		expect(mapCategory('Club')).toEqual({ category: 'Bar/DJ' });
+		expect(mapCategory('Festival')).toEqual({ category: 'Music Fest' });
 	});
-	it('maps unknown values to Other + needsReview', () => {
-		expect(mapCategory('Pottery')).toEqual({ category: 'Other', needsReview: true });
-		expect(mapCategory('')).toEqual({ category: 'Other', needsReview: true });
+	it('maps unknown values to Other', () => {
+		expect(mapCategory('Pottery')).toEqual({ category: 'Other' });
+		expect(mapCategory('')).toEqual({ category: 'Other' });
 	});
 	it('trims surrounding whitespace before mapping', () => {
-		expect(mapCategory('  Concert  ')).toEqual({ category: 'Concert', needsReview: false });
+		expect(mapCategory('  Concert  ')).toEqual({ category: 'Concert' });
 	});
 });
 
@@ -282,12 +282,9 @@ describe('plan (fixture integration)', () => {
 		expect(mm.lead.notes).toContain('phone: 0917000');
 		expect(mm.lead.notes).toContain('imported scraper event_id=');
 	});
-	it('flags name-only and unmapped-category leads for review', () => {
-		const bazaar = groups.find((g) => g.handle === 'pop-up-bazaar')!;
-		expect(bazaar.lead.needsReview).toBe(true); // no socials
+	it('maps unmapped scraper categories to Other', () => {
 		const clay = groups.find((g) => g.lead.name === 'Clay Studio')!;
-		expect(clay.lead.category).toBe('Other');
-		expect(clay.lead.needsReview).toBe(true); // unmapped "Pottery"
+		expect(clay.lead.category).toBe('Other'); // unmapped "Pottery"
 	});
 	it('builds one activity per source event row (20 total)', () => {
 		expect(report.activitiesBuilt).toBe(20);

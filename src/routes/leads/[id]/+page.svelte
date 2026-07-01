@@ -344,7 +344,11 @@
 				</div>
 
 				<div class="mb-4">
-					<ActivityTimeline activities={data.activities} users={data.users} />
+					<ActivityTimeline
+						activities={data.activities}
+						leadHistory={data.leadHistory}
+						users={data.users}
+					/>
 				</div>
 
 				{#if canEdit}

@@ -125,6 +125,17 @@ export interface LeadFilters {
 	ownerId?: string | null;
 }
 
+// --- Lead ownership history -------------------------------------------------
+
+export interface OwnerHistoryRow {
+	id: string;
+	field: string;
+	actorUserId: string | null;
+	oldValue: string | null;
+	newValue: string | null;
+	at: string;
+}
+
 // --- Reports ----------------------------------------------------------------
 
 export type HeatmapRow = { date: string; stage: string; count: number };

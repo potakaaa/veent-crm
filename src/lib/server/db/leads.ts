@@ -495,6 +495,37 @@ export async function listActivities(leadId: string): Promise<Activity[]> {
 	return rows.map(dbActivityToActivity);
 }
 
+/**
+ * Single-stage, paginated pipeline listing (10 per page by default).
+ * Mirrors listPipelineLeads ordering: upcoming events float to the top,
+ * then last-activity order. Returns the page rows plus the stage total.
+ */
+export async function listPipelineStage(
+	stage: Stage,
+	page: number = 1,
+	limit: number = 10
+): Promise<{ leads: Lead[]; total: number }> {
+	const where = and(isNull(crmLeads.deletedAt), sql`${crmLeads.stage} = ${stage}`);
+	const eventOrder = [
+		sql`CASE WHEN ${crmLeads.eventDate} >= CURRENT_DATE THEN 0 ELSE 1 END`,
+		sql`CASE WHEN ${crmLeads.eventDate} >= CURRENT_DATE THEN ${crmLeads.eventDate} END ASC NULLS LAST`,
+		desc(sql`coalesce(${crmLeads.lastActivityAt}, ${crmLeads.createdAt})`),
+		asc(crmLeads.id)
+	];
+	const offset = (Math.max(1, page) - 1) * limit;
+	const [rows, [{ total }]] = await Promise.all([
+		db
+			.select()
+			.from(crmLeads)
+			.where(where)
+			.orderBy(...eventOrder)
+			.limit(limit)
+			.offset(offset),
+		db.select({ total: count() }).from(crmLeads).where(where)
+	]);
+	return { leads: rows.map((row) => dbRowToLead(row)), total };
+}
+
 // ---------------------------------------------------------------------------
 // Mutations
 // ---------------------------------------------------------------------------

@@ -1,0 +1,34 @@
+{
+  "feature": "meetings",
+  "plan": "process/features/meetings/active/meetings_01-07-26/meetings_PLAN_01-07-26.md",
+  "evl_run": {
+    "agent": "vc-tester",
+    "date": "2026-07-01",
+    "mode": "EVL confirmation run (exact validate-contract gates, no diff-aware selection)",
+    "verdict": "DONE"
+  },
+  "gates": {
+    "fully_automated": [
+      { "id": "bun run check", "result": "PASS", "detail": "0 errors, 1 pre-existing warning (leads/[id]/edit state_referenced_locally) — unrelated, not a regression" },
+      { "id": "bun run test:unit:ci (full suite)", "result": "PASS", "detail": "195 passed, 54 skipped (pre-existing), 0 failures" },
+      { "id": "meetings.spec.ts meaningfulness", "result": "PASS", "detail": "12 tests exercise meetingFormSchema/meetingUpdateSchema valid+invalid and dbRowToMeeting mapper (full + null-coercion cases)" }
+    ],
+    "hybrid_dev_postgres": [
+      { "id": "insert meeting + 2 attendees", "result": "PASS", "detail": "meeting row + 2 attendee rows created via disposable test lead" },
+      { "id": "unique constraint (meetingId,userId)", "result": "PASS", "detail": "crm_meeting_attendees_meeting_user_uq rejects duplicate insert" },
+      { "id": "soft-delete", "result": "PASS", "detail": "deleted_at set, row retained, excluded by WHERE deleted_at IS NULL" },
+      { "id": "FK cascade (lead->meetings)", "result": "PASS", "detail": "confdeltype: crm_meetings.lead_id=c (cascade), organizer_id=n (set null); crm_meeting_attendees.meeting_id=c, user_id=n. Empirically: deleting disposable lead cascade-deleted meeting + attendee rows" },
+      { "id": "E1 no N+1 attendee queries", "result": "PASS", "detail": "attendeesByMeeting uses single inArray query grouped in memory; list fns = 1 meetings query + 1 attendees query" },
+      { "id": "E4 authorization (403 guard)", "result": "PASS (code-read)", "detail": "PATCH/DELETE: 401 -> 404 (getMeeting) -> 403 (role!=manager && organizerId!=user.id) before write; POST auth-only, organizer defaults to creator. Empirical HTTP round-trip not feasible (no running server/session) — guard verified unreachable-safe by code read, mirrors touch/+server.ts" },
+      { "id": "E10 no crm_lead_history writes", "result": "PASS", "detail": "grep confirms zero lead_history references in meetings code paths" }
+    ],
+    "agent_probe": [
+      { "id": "new-tab meeting URL link", "result": "PASS (code-read)", "detail": "shared MeetingsPanel.svelte renders href={m.meetingUrl} target=\"_blank\" rel=\"noopener noreferrer\"; used by both lead-detail Meetings tab and top-level /meetings page. Visual render not performed (no running dev server) — verified by code read" }
+    ]
+  },
+  "cleanup": "All disposable test rows removed; residual EVL-TEST leads = 0. Only schema change persists.",
+  "known_gaps": [
+    "E4 403 guard and Agent-Probe new-tab link verified by code read, not by live HTTP round-trip / browser render (no running dev server / session available)",
+    "DB integration harness still absent (pre-existing repo-wide gap); Hybrid gates were run manually this session, not regression-protected in CI"
+  ]
+}

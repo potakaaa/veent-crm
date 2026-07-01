@@ -3,7 +3,9 @@
 import { Resend } from 'resend';
 import { env } from '$env/dynamic/private';
 import type { DueReminder } from './reminders';
+import type { MeetingReminderDue } from './db/meeting-reminders';
 import { buildReminderDigestHtml } from './email-templates/reminder';
+import { buildMeetingReminderDigestHtml } from './email-templates/meeting-reminder';
 
 export type EmailMessage = {
 	to: string;
@@ -63,6 +65,48 @@ export async function sendReminderDigest({
 		return 'sent';
 	} catch (err) {
 		console.error('[reminders] sendReminderDigest threw:', err);
+		return 'failed';
+	}
+}
+
+/**
+ * Meeting-reminder digest for n8n — sibling to sendReminderDigest, same no-throw contract:
+ * no-ops with a warning ('skipped') when RESEND_API_KEY / RESEND_FROM / APP_URL is unset,
+ * logs (does not throw) on send failure ('failed'), else 'sent'. Fully separate from the
+ * follow-up digest path — a recipient due for both types gets two emails.
+ */
+export async function sendMeetingReminderDigest({
+	recipientEmail,
+	reminders
+}: {
+	recipientEmail: string;
+	reminders: MeetingReminderDue[];
+}): Promise<'sent' | 'skipped' | 'failed'> {
+	const from = env.RESEND_FROM;
+	const appUrl = env.APP_URL;
+	if (!env.RESEND_API_KEY || !from || !appUrl) {
+		console.warn(
+			'[meeting-reminders] RESEND_API_KEY/RESEND_FROM/APP_URL not set — skipping email digest'
+		);
+		return 'skipped';
+	}
+
+	try {
+		const html = buildMeetingReminderDigestHtml({ appUrl, reminders });
+		const resend = new Resend(env.RESEND_API_KEY);
+		const { error } = await resend.emails.send({
+			from,
+			to: recipientEmail,
+			subject: `You have ${reminders.length} meeting reminder${reminders.length > 1 ? 's' : ''} — Veent`,
+			html
+		});
+		if (error) {
+			console.error(`[meeting-reminders] sendMeetingReminderDigest failed: ${error.message}`);
+			return 'failed';
+		}
+		return 'sent';
+	} catch (err) {
+		console.error('[meeting-reminders] sendMeetingReminderDigest threw:', err);
 		return 'failed';
 	}
 }

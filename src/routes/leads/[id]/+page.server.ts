@@ -1,6 +1,7 @@
 import type { PageServerLoad } from './$types';
 import { error } from '@sveltejs/kit';
 import { getLead, listUsers, listActivities } from '$lib/server/db/leads';
+import { listMeetingsForLead } from '$lib/server/db/meetings';
 import type { User } from '$lib/types';
 
 export const load: PageServerLoad = async ({ params, locals }) => {
@@ -10,7 +11,10 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 
 	if (!lead) throw error(404, 'Lead not found');
 
-	const activities = await listActivities(lead.id);
+	const [activities, meetings] = await Promise.all([
+		listActivities(lead.id),
+		listMeetingsForLead(lead.id)
+	]);
 
 	const me: User = {
 		id: locals.user.id,
@@ -20,5 +24,5 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		active: true
 	};
 
-	return { lead, activities, me, users };
+	return { lead, activities, meetings, me, users };
 };

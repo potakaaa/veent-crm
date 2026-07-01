@@ -84,6 +84,8 @@ export function dbRowToLead(row: DbLead, followUpAt?: string | Date | null): Lea
 		eventName: row.eventName ?? undefined,
 		eventDate: row.eventDate ?? undefined,
 		eventLink: row.eventLink ?? undefined,
+		firstAnnouncedDate: row.firstAnnouncedDate ?? undefined,
+		firstReachedOutDate: row.firstReachedOutDate ?? undefined,
 		email: row.contactEmail ?? undefined,
 		phone: row.contactPhone ?? undefined,
 		pageUrl: row.pageUrl ?? undefined,
@@ -577,6 +579,8 @@ export async function createLead(
 		eventName?: string;
 		eventLink?: string;
 		eventDateRaw?: string;
+		firstAnnouncedDate?: string;
+		firstReachedOutDate?: string;
 		notes?: string;
 	},
 	ownerId: string
@@ -600,6 +604,8 @@ export async function createLead(
 			eventName: input.eventName ?? null,
 			eventLink: input.eventLink ?? null,
 			eventDateRaw: input.eventDateRaw ?? null,
+			firstAnnouncedDate: input.firstAnnouncedDate ?? null,
+			firstReachedOutDate: input.firstReachedOutDate ?? null,
 			notes: input.notes ?? null,
 			normalizedHandle,
 			ownerId,
@@ -627,6 +633,8 @@ export async function updateLead(
 		eventDate?: string;
 		eventDateRaw?: string;
 		eventLink?: string;
+		firstAnnouncedDate?: string | null;
+		firstReachedOutDate?: string | null;
 		notes?: string;
 	},
 	actorId: string
@@ -665,6 +673,8 @@ export async function updateLead(
 				eventDate: input.eventDate ?? null,
 				eventDateRaw: input.eventDateRaw ?? null,
 				eventLink: input.eventLink ?? null,
+				firstAnnouncedDate: input.firstAnnouncedDate ?? null,
+				firstReachedOutDate: input.firstReachedOutDate ?? null,
 				notes: input.notes ?? null,
 				updatedAt: now
 			})
@@ -687,6 +697,16 @@ export async function updateLead(
 			['event_name', existing.eventName ?? null, updated.eventName ?? null],
 			['event_date_raw', existing.eventDateRaw ?? null, updated.eventDateRaw ?? null],
 			['event_link', existing.eventLink ?? null, updated.eventLink ?? null],
+			[
+				'first_announced_date',
+				existing.firstAnnouncedDate ?? null,
+				updated.firstAnnouncedDate ?? null
+			],
+			[
+				'first_reached_out_date',
+				existing.firstReachedOutDate ?? null,
+				updated.firstReachedOutDate ?? null
+			],
 			['notes', existing.notes ?? null, updated.notes ?? null]
 		];
 

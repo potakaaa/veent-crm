@@ -31,6 +31,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			eventName: data.eventName || undefined,
 			eventLink: data.eventLink || undefined,
 			eventDateRaw: data.eventDateRaw || undefined,
+			firstAnnouncedDate: data.firstAnnouncedDate || undefined,
+			firstReachedOutDate: data.firstReachedOutDate || undefined,
 			notes: data.notes || undefined
 		},
 		locals.user.id

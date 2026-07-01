@@ -38,6 +38,8 @@ function makeLeadRow(overrides: Partial<Parameters<typeof dbRowToLead>[0]> = {})
 		eventDate: null,
 		eventDateRaw: null,
 		eventLink: null,
+		firstAnnouncedDate: null,
+		firstReachedOutDate: null,
 		sourceRef: null,
 		scraperOrgId: null,
 		stage: 'contacted' as const,

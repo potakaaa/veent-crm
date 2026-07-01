@@ -61,6 +61,8 @@ export const leadFormSchema = z.object({
 	eventName: z.string().optional(),
 	eventLink: z.string().url().optional().or(z.literal('')),
 	eventDateRaw: z.string().optional(),
+	firstAnnouncedDate: z.iso.date().or(z.literal('')).optional(),
+	firstReachedOutDate: z.iso.date().or(z.literal('')).optional(),
 	notes: z.string().optional()
 });
 export type LeadForm = z.infer<typeof leadFormSchema>;
@@ -83,6 +85,14 @@ export const leadUpdateSchema = z.object({
 		.optional(),
 	eventDateRaw: z.string().optional(),
 	eventLink: z.string().url().optional().or(z.literal('')),
+	firstAnnouncedDate: z
+		.union([z.iso.date(), z.literal(''), z.null()])
+		.optional()
+		.transform((v) => (v === '' ? null : v)),
+	firstReachedOutDate: z
+		.union([z.iso.date(), z.literal(''), z.null()])
+		.optional()
+		.transform((v) => (v === '' ? null : v)),
 	notes: z.string().optional()
 });
 export type LeadUpdate = z.infer<typeof leadUpdateSchema>;

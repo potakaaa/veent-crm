@@ -139,6 +139,8 @@ export const crmLeads = pgTable(
 		eventDate: date('event_date'), // wall-clock, nullable
 		eventDateRaw: text('event_date_raw'),
 		eventLink: text('event_link'),
+		firstAnnouncedDate: date('first_announced_date'), // when event was first publicly announced
+		firstReachedOutDate: date('first_reached_out_date'), // when team first contacted organizer
 
 		stage: leadStage('stage').notNull().default('new'),
 		lostReason: lostReason('lost_reason'),

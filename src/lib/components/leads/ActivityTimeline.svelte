@@ -2,6 +2,7 @@
 	import OutcomeChip from '$lib/components/shared/OutcomeChip.svelte';
 	import { OUTCOME_TOKENS } from '$lib/design/tokens';
 	import { formatDate } from '$lib/utils/dates';
+	import { stageLabel } from '$lib/utils/stages';
 	import type { Activity, OwnerHistoryRow, User } from '$lib/types';
 
 	let {
@@ -18,15 +19,6 @@
 		call: 'Call',
 		meeting: 'Meeting',
 		other: 'Other'
-	};
-
-	const STAGE_LABEL: Record<string, string> = {
-		new: 'New',
-		contacted: 'Contacted',
-		replied: 'Replied',
-		in_discussion: 'In Discussion',
-		won: 'Won',
-		lost: 'Lost'
 	};
 
 	type Entry = { kind: 'activity'; data: Activity } | { kind: 'history'; data: OwnerHistoryRow };
@@ -55,10 +47,7 @@
 		return 'Ownership transferred';
 	}
 
-	function stageLabel(s: string | null): string {
-		if (!s) return '—';
-		return STAGE_LABEL[s] ?? s;
-	}
+	const fmtStage = (s: string | null) => (s ? stageLabel(s as import('$lib/types').Stage) : '—');
 </script>
 
 <div class="rounded-control border border-hairline bg-panel p-4">
@@ -112,9 +101,9 @@
 							<span class="ml-auto font-mono text-[11px] text-ink-200">{when(o.at)}</span>
 						</div>
 						<div class="mt-0.5 flex items-center gap-1 font-mono text-[11.5px] text-ink-400">
-							<span>{stageLabel(o.oldValue)}</span>
+							<span>{fmtStage(o.oldValue)}</span>
 							<span class="text-ink-200">→</span>
-							<span class="font-medium text-ink">{stageLabel(o.newValue)}</span>
+							<span class="font-medium text-ink">{fmtStage(o.newValue)}</span>
 							{#if o.actorUserId}
 								<span class="text-ink-200">· by {nameOf(o.actorUserId)}</span>
 							{/if}
@@ -131,7 +120,7 @@
 							<span>{nameOf(o.oldValue)}</span>
 							<span class="text-ink-200">→</span>
 							<span class="font-medium text-ink">{nameOf(o.newValue)}</span>
-							{#if o.actorUserId && o.actorUserId !== o.newValue}
+							{#if o.actorUserId}
 								<span class="text-ink-200">· by {nameOf(o.actorUserId)}</span>
 							{/if}
 						</div>

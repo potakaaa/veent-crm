@@ -14,6 +14,7 @@ export const isManager = (user: User | null | undefined): boolean => user?.role 
 export const canEditLead = (user: User | null | undefined, lead: Lead): boolean => {
 	if (!user) return false;
 	if (isManager(user)) return true;
+	if (lead.ownerId === null) return true;
 	return lead.ownerId === user.id;
 };
 

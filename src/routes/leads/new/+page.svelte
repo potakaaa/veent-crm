@@ -7,10 +7,13 @@
 	import { Card, CardContent } from '$lib/components/ui/card';
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
+	import { Textarea } from '$lib/components/ui/textarea';
 	import { Button } from '$lib/components/ui/button';
 	import { Select, SelectTrigger, SelectContent, SelectItem } from '$lib/components/ui/select';
 	import { Calendar } from '$lib/components/ui/calendar';
 	import * as Dialog from '$lib/components/ui/dialog';
+	import * as Popover from '$lib/components/ui/popover';
+	import OrganizerHoverCard from '$lib/components/OrganizerHoverCard.svelte';
 	import { toasts } from '$lib/stores/toasts.svelte';
 	import { hasPotentialDuplicate } from '$lib/utils/dedup';
 	import { formatEventDate } from '$lib/utils/dates';
@@ -27,6 +30,7 @@
 	let email = $state('');
 	let eventName = $state('');
 	let eventLink = $state('');
+	let notes = $state('');
 	let selectedDate = $state<DateValue | undefined>(undefined);
 	let dateOpen = $state(false);
 	let tempDate = $state<DateValue | undefined>(undefined);
@@ -42,6 +46,30 @@
 	// Advisory only — duplicates are surfaced but never block "Create anyway".
 	const dupes = $derived(name.length > 1 ? hasPotentialDuplicate({ name }, data.leads) : []);
 
+	// Hover/focus-controlled duplicate detail card. `openDupeId` holds the id of the
+	// row whose card is open; a short grace-period timer keeps the card from
+	// flicker-closing when the pointer travels from the row into the card content.
+	let openDupeId = $state<string | null>(null);
+	let closeTimer: ReturnType<typeof setTimeout> | undefined;
+
+	function openDupe(id: string) {
+		clearTimeout(closeTimer);
+		openDupeId = id;
+	}
+	function scheduleCloseDupe() {
+		clearTimeout(closeTimer);
+		closeTimer = setTimeout(() => {
+			openDupeId = null;
+		}, 200);
+	}
+	function closeDupeNow() {
+		clearTimeout(closeTimer);
+		openDupeId = null;
+	}
+	function ownerNameFor(ownerId: string | null) {
+		return ownerId ? (data.users.find((u) => u.id === ownerId)?.name ?? null) : null;
+	}
+
 	async function create() {
 		if (saving) return; // duplicate-submit guard
 		const parsed = leadFormSchema.safeParse({
@@ -53,7 +81,8 @@
 			contactEmail: email || '',
 			eventName: eventName || undefined,
 			eventLink: eventLink || '',
-			eventDateRaw: eventDateDisplay || undefined
+			eventDateRaw: eventDateDisplay || undefined,
+			notes: notes.trim() || undefined
 		});
 		if (!parsed.success) {
 			error = parsed.error.issues[0]?.message ?? 'Please check the form.';
@@ -103,15 +132,43 @@
 				still create anyway).
 			</div>
 			{#each dupes as d (d.id)}
-				<a
-					href="/leads/{d.id}"
-					class="flex items-center gap-2.5 rounded-[7px] px-2 py-1.5 hover:bg-panel"
-				>
-					<PlatformBadge platform={d.platform} />
-					<span class="flex-1 text-[13px] font-semibold">{d.name}</span>
-					<span class="font-mono text-[11px] text-ink-400">{d.handle}</span>
-					<StageChip stage={d.stage} />
-				</a>
+				<Popover.Root open={openDupeId === d.id}>
+					<Popover.Trigger>
+						{#snippet child({ props })}
+							<div
+								{...props}
+								tabindex="0"
+								role="button"
+								aria-haspopup="dialog"
+								class="flex items-center gap-2.5 rounded-[7px] px-2 py-1.5 hover:bg-panel focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+								onmouseenter={() => openDupe(d.id)}
+								onmouseleave={scheduleCloseDupe}
+								onfocus={() => openDupe(d.id)}
+								onblur={scheduleCloseDupe}
+								onkeydown={(e) => {
+									if (e.key === 'Escape') closeDupeNow();
+								}}
+							>
+								<PlatformBadge platform={d.platform} />
+								<span class="flex-1 text-[13px] font-semibold">{d.name}</span>
+								<span class="font-mono text-[11px] text-ink-400">{d.handle}</span>
+								<StageChip stage={d.stage} />
+							</div>
+						{/snippet}
+					</Popover.Trigger>
+					<Popover.Portal>
+						<Popover.Content
+							side="right"
+							onmouseenter={() => openDupe(d.id)}
+							onmouseleave={scheduleCloseDupe}
+							onkeydown={(e) => {
+								if (e.key === 'Escape') closeDupeNow();
+							}}
+						>
+							<OrganizerHoverCard lead={d} ownerName={ownerNameFor(d.ownerId)} />
+						</Popover.Content>
+					</Popover.Portal>
+				</Popover.Root>
 			{/each}
 		</div>
 	{/if}
@@ -204,7 +261,17 @@
 				</Dialog.Root>
 			</div>
 
-			{#if error}<p class="text-[12.5px] text-overdue sm:col-span-2">{error}</p>{/if}
+			<div class="grid gap-1.5 sm:col-span-2">
+				<Label for="notes">Notes <span class="text-ink-400">(optional)</span></Label>
+				<Textarea
+					id="notes"
+					bind:value={notes}
+					placeholder="Anything worth noting about this lead…"
+					class="min-h-[72px] resize-y"
+				/>
+			</div>
+
+			{#if error}<p class="text-[12.5px] font-medium text-overdue sm:col-span-2">{error}</p>{/if}
 
 			<div class="flex items-center justify-end gap-2.5 sm:col-span-2">
 				<Button variant="outline" href="/leads">Cancel</Button>

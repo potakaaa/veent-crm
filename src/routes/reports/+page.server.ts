@@ -2,7 +2,8 @@ import type { PageServerLoad } from './$types';
 import { db } from '$lib/server/db';
 import { crmLeads, crmActivities, crmUsers } from '$lib/server/db/schema';
 import { eq, isNull, count, sum, and, sql } from 'drizzle-orm';
-import type { ReportData, FunnelStage, Currency } from '$lib/types';
+import type { ReportData, FunnelStage, Currency, HeatmapDay } from '$lib/types';
+import { getLeadHeatmapData } from '$lib/server/db/leads';
 import { currencyLabel } from '$lib/utils/currency';
 
 const STAGE_META: Record<string, { label: string; color: string; order: number }> = {
@@ -14,13 +15,42 @@ const STAGE_META: Record<string, { label: string; color: string; order: number }
 	lost: { label: 'Lost', color: '#ef4444', order: 5 }
 };
 
-export const load: PageServerLoad = async () => {
-	// 1. Funnel counts
-	const stageCounts = await db
-		.select({ stage: crmLeads.stage, count: count() })
-		.from(crmLeads)
-		.where(isNull(crmLeads.deletedAt))
-		.groupBy(crmLeads.stage);
+async function fetchReport(): Promise<ReportData> {
+	const [stageCounts, touchRows, winRows, users, currencyRows] = await Promise.all([
+		db
+			.select({ stage: crmLeads.stage, count: count() })
+			.from(crmLeads)
+			.where(isNull(crmLeads.deletedAt))
+			.groupBy(crmLeads.stage),
+		db
+			.select({
+				repId: crmActivities.repId,
+				total: count(),
+				replies: sql<number>`SUM(CASE WHEN ${crmActivities.outcome} = 'replied' THEN 1 ELSE 0 END)`
+			})
+			.from(crmActivities)
+			.leftJoin(crmLeads, eq(crmActivities.leadId, crmLeads.id))
+			.where(isNull(crmLeads.deletedAt))
+			.groupBy(crmActivities.repId),
+		db
+			.select({ ownerId: crmLeads.ownerId, wins: count() })
+			.from(crmLeads)
+			.where(and(isNull(crmLeads.deletedAt), eq(crmLeads.stage, 'won')))
+			.groupBy(crmLeads.ownerId),
+		db
+			.select({ id: crmUsers.id, name: crmUsers.name })
+			.from(crmUsers)
+			.where(eq(crmUsers.active, true)),
+		db
+			.select({
+				currency: crmLeads.currency,
+				total: sum(crmLeads.dealValueCents),
+				deals: count()
+			})
+			.from(crmLeads)
+			.where(and(isNull(crmLeads.deletedAt), eq(crmLeads.stage, 'won')))
+			.groupBy(crmLeads.currency)
+	]);
 
 	const total = stageCounts.reduce((s, r) => s + Number(r.count), 0);
 	const wonRow = stageCounts.find((r) => r.stage === 'won');
@@ -44,29 +74,6 @@ export const load: PageServerLoad = async () => {
 			};
 		});
 
-	// 2. Leaderboard — touches + replies per rep
-	const touchRows = await db
-		.select({
-			repId: crmActivities.repId,
-			total: count(),
-			replies: sql<number>`SUM(CASE WHEN ${crmActivities.outcome} = 'replied' THEN 1 ELSE 0 END)`
-		})
-		.from(crmActivities)
-		.leftJoin(crmLeads, eq(crmActivities.leadId, crmLeads.id))
-		.where(isNull(crmLeads.deletedAt))
-		.groupBy(crmActivities.repId);
-
-	const winRows = await db
-		.select({ ownerId: crmLeads.ownerId, wins: count() })
-		.from(crmLeads)
-		.where(and(isNull(crmLeads.deletedAt), eq(crmLeads.stage, 'won')))
-		.groupBy(crmLeads.ownerId);
-
-	const users = await db
-		.select({ id: crmUsers.id, name: crmUsers.name })
-		.from(crmUsers)
-		.where(eq(crmUsers.active, true));
-
 	const winMap = Object.fromEntries(winRows.map((r) => [r.ownerId, Number(r.wins)]));
 	const touchMap = Object.fromEntries(
 		touchRows.map((r) => [r.repId, { total: Number(r.total), replies: Number(r.replies) }])
@@ -82,17 +89,6 @@ export const load: PageServerLoad = async () => {
 		}))
 		.sort((a, b) => b.wins - a.wins || b.touches - a.touches);
 
-	// 3. Currency totals (NEVER sum across currencies)
-	const currencyRows = await db
-		.select({
-			currency: crmLeads.currency,
-			total: sum(crmLeads.dealValueCents),
-			deals: count()
-		})
-		.from(crmLeads)
-		.where(and(isNull(crmLeads.deletedAt), eq(crmLeads.stage, 'won')))
-		.groupBy(crmLeads.currency);
-
 	const currencyTotals = currencyRows
 		.filter((r) => r.currency)
 		.map((r) => ({
@@ -102,6 +98,29 @@ export const load: PageServerLoad = async () => {
 			deals: Number(r.deals)
 		}));
 
-	const report: ReportData = { funnel, leaderboard, currencyTotals, conversionRate };
-	return { report };
+	return { funnel, leaderboard, currencyTotals, conversionRate };
+}
+
+async function fetchHeatmap(metric: 'event_date' | 'created_at'): Promise<HeatmapDay[]> {
+	const rawRows = await getLeadHeatmapData(metric);
+	const dayMap = new Map<string, HeatmapDay>();
+	for (const row of rawRows) {
+		if (!dayMap.has(row.date)) dayMap.set(row.date, { date: row.date, total: 0, stages: {} });
+		const day = dayMap.get(row.date)!;
+		day.total += row.count;
+		day.stages[row.stage] = (day.stages[row.stage] ?? 0) + row.count;
+	}
+	return [...dayMap.values()];
+}
+
+export const load: PageServerLoad = async ({ url }) => {
+	const rawMetric = url.searchParams.get('heatMetric');
+	const heatMetric: 'event_date' | 'created_at' =
+		rawMetric === 'created_at' ? 'created_at' : 'event_date';
+
+	return {
+		heatMetric,
+		report: fetchReport(),
+		heatmap: fetchHeatmap(heatMetric)
+	};
 };

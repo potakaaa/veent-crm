@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { authClient } from '$lib/auth-client';
 
+	let { data } = $props();
+
 	let sent = $state(false);
 	let email = $state('');
 	let error = $state('');
@@ -16,7 +18,7 @@
 		submitting = true;
 		const { error: err } = await authClient.signIn.magicLink({
 			email: normalizedEmail,
-			callbackURL: '/'
+			callbackURL: data.from ?? '/'
 		});
 		submitting = false;
 		if (err) {
@@ -41,7 +43,7 @@
 				</div>
 				<div>
 					<div class="text-[15px] font-bold tracking-[-0.2px]">Veent CRM</div>
-					<div class="font-mono text-[10px] uppercase tracking-[1px] text-[#8a7270]">
+					<div class="font-mono text-[10px] uppercase tracking-[1px] text-[#8a828f]">
 						Outreach Console
 					</div>
 				</div>
@@ -60,15 +62,20 @@
 					>
 						Use a different email
 					</button>
-					<a href="/" class="mt-4 block text-[12px] text-[#8a7270] hover:text-white"
+					<a href="/" class="mt-4 block text-[12px] text-[#8a828f] hover:text-white"
 						>→ Continue to the console (demo)</a
 					>
 				</div>
 			{:else}
 				<div class="mb-1.5 text-[22px] font-bold tracking-[-0.4px]">Sign in</div>
-				<div class="mb-6 text-[13.5px] leading-relaxed text-[#b89e9c]">
+				<div class="mb-6 text-[13.5px] leading-relaxed text-[#a8a1ab]">
 					Magic-link sign-in for the Veent sales team. Allowlisted reps only.
 				</div>
+				{#if data.from}
+					<div class="mb-6 text-[12.5px] leading-relaxed text-[#8a7270]">
+						You were trying to reach <span class="font-mono text-[#cdbab8]">{data.from}</span>.
+					</div>
+				{/if}
 				<label for="email" class="mb-2 block text-[12px] font-medium text-[#cdbab8]"
 					>Work email</label
 				>
@@ -76,7 +83,7 @@
 					id="email"
 					bind:value={email}
 					placeholder="jonna@test.com"
-					class="h-11 w-full rounded-[9px] border border-[#43282a] bg-[#2e1a1b] px-3.5 font-mono text-[14px] text-white outline-none"
+					class="h-11 w-full rounded-[9px] border border-[#312c37] bg-[#221e27] px-3.5 font-mono text-[14px] text-white outline-none"
 				/>
 				<button
 					onclick={sendMagic}
@@ -88,7 +95,7 @@
 				{#if error}
 					<div class="mt-3 text-[12px] text-[#e08a82]">{error}</div>
 				{/if}
-				<div class="mt-[18px] text-[11.5px] leading-relaxed text-[#8a7270]">
+				<div class="mt-[18px] text-[11.5px] leading-relaxed text-[#8a828f]">
 					Not on the team yet? Ask a manager to add you in Team management — that list is the
 					allowlist.
 				</div>
@@ -98,8 +105,8 @@
 
 	<!-- right: the cardinal rule -->
 	<div
-		class="flex flex-1 items-center justify-center border-l border-[#3a2122] p-10 max-[880px]:hidden"
-		style="background:linear-gradient(160deg,#3a1e1f,#261617)"
+		class="flex flex-1 items-center justify-center border-l border-[#26222b] p-10 max-[880px]:hidden"
+		style="background:radial-gradient(circle at 78% 18%, rgba(225,29,42,0.28), transparent 42%), #1a171c"
 	>
 		<div class="max-w-[380px]">
 			<div class="mb-3.5 font-mono text-[11px] uppercase tracking-[1.5px] text-primary">
@@ -115,7 +122,7 @@
 			<div class="mt-7 flex flex-wrap gap-2">
 				{#each ['dedup on', 'Asia/Manila', 'keyboard-first'] as tag (tag)}
 					<div
-						class="rounded-[6px] border border-[#43282a] bg-white/5 px-[9px] py-[5px] font-mono text-[11px] text-[#b89e9c]"
+						class="rounded-[6px] border border-[#312c37] bg-white/5 px-[9px] py-[5px] font-mono text-[11px] text-[#a8a1ab]"
 					>
 						{tag}
 					</div>

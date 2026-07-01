@@ -275,7 +275,6 @@ type LeadInsert = {
 	name: string;
 	normalizedHandle: string;
 	category: ReturnType<typeof mapCategory>['category'];
-	needsReview: boolean;
 	socialFacebook: string | null;
 	socialInstagram: string | null;
 	pageUrl: string | null;
@@ -330,11 +329,7 @@ function buildLeadGroup(handle: string, events: TsvRow[]): LeadGroup {
 	const phone = firstNonEmpty(events, 'organizer_phone');
 
 	const rep = pickRepresentativeEvent(events);
-	const { category, needsReview: catReview } = mapCategory(
-		(rep.event_category_clean.split('|')[0] ?? '').trim()
-	);
-	const hasSocials = Boolean(fb || ig);
-	const needsReview = catReview || !hasSocials;
+	const { category } = mapCategory((rep.event_category_clean.split('|')[0] ?? '').trim());
 
 	const location =
 		[rep.venue_city.trim(), rep.venue_country.trim()].filter(Boolean).join(', ') || null;
@@ -349,7 +344,6 @@ function buildLeadGroup(handle: string, events: TsvRow[]): LeadGroup {
 		name,
 		normalizedHandle: handle,
 		category,
-		needsReview,
 		socialFacebook: emptyToNull(fb),
 		socialInstagram: emptyToNull(ig),
 		pageUrl: emptyToNull(website),
@@ -383,7 +377,6 @@ type ReconciliationReport = {
 	activitiesBuilt: number;
 	eventsPerLead: { min: number; median: number; max: number };
 	skipped: Record<string, number>;
-	needsReviewCount: number;
 	categoryToOtherCount: number;
 	categoryHistogram: Record<string, number>;
 };
@@ -417,7 +410,6 @@ function buildReport(
 			max: perLead.length ? Math.max(...perLead) : 0
 		},
 		skipped: skipByReason,
-		needsReviewCount: groups.filter((g) => g.lead.needsReview).length,
 		categoryToOtherCount: groups.filter((g) => g.lead.category === 'Other').length,
 		categoryHistogram: histogram
 	};
@@ -555,7 +547,6 @@ if (import.meta.main) {
 				rowsRead: report.rowsRead,
 				leadsBuilt: report.leadsBuilt,
 				activitiesBuilt: report.activitiesBuilt,
-				needsReviewCount: report.needsReviewCount,
 				categoryToOtherCount: report.categoryToOtherCount,
 				eventsPerLead_min: report.eventsPerLead.min,
 				eventsPerLead_median: report.eventsPerLead.median,

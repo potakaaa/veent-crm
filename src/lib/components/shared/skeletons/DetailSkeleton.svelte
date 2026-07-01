@@ -3,7 +3,7 @@
 </script>
 
 <!-- Mirrors the lead-detail layout: header + two-column (info/timeline | right rail). -->
-<div class="mx-auto max-w-[1080px] px-7 pb-16 pt-5">
+<div class="px-7 pb-16 pt-6">
 	<Skeleton class="mb-3.5 h-3.5 w-28" />
 
 	<div class="mb-3.5 flex items-center gap-3.5">

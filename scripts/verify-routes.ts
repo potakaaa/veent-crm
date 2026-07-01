@@ -79,14 +79,6 @@ await check('unassigned badge (/unassigned)', () =>
 		)
 );
 
-// /review count
-await check('review badge (/review)', () =>
-	db
-		.select({ count: sql<number>`COUNT(*)` })
-		.from(crmLeads)
-		.where(and(eq(crmLeads.needsReview, true), isNull(crmLeads.deletedAt)))
-);
-
 // /team
 await check('listUsers (/team)', () => db.select().from(crmUsers).orderBy(crmUsers.name));
 

@@ -97,15 +97,15 @@ const CATEGORY_MAP: Record<string, CrmLeadCategory> = {
 	Club: 'Bar/DJ'
 };
 
-export function mapCategory(value: string): { category: CrmLeadCategory; needsReview: boolean } {
+export function mapCategory(value: string): { category: CrmLeadCategory } {
 	const trimmed = value.trim();
 	// Pass through values already valid in the CRM enum (e.g. Camp, Modelling, Resort).
 	if ((leadCategory.enumValues as readonly string[]).includes(trimmed)) {
-		return { category: trimmed as CrmLeadCategory, needsReview: false };
+		return { category: trimmed as CrmLeadCategory };
 	}
 	const mapped = CATEGORY_MAP[trimmed];
-	if (mapped) return { category: mapped, needsReview: false };
-	return { category: 'Other', needsReview: true };
+	if (mapped) return { category: mapped };
+	return { category: 'Other' };
 }
 
 const PLATFORM_HOSTNAME_MAP: Array<[string, CrmLeadPlatform]> = [

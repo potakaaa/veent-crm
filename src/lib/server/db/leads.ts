@@ -77,6 +77,7 @@ export function dbRowToLead(row: DbLead, followUpAt?: string | Date | null): Lea
 		handle,
 		category: row.category as Lead['category'],
 		location: row.location ?? '—',
+		country: row.country ?? '—',
 		platform: (row.platform ?? 'Other') as Lead['platform'],
 		stage: row.stage as Stage,
 		ownerId: row.ownerId,
@@ -89,7 +90,6 @@ export function dbRowToLead(row: DbLead, followUpAt?: string | Date | null): Lea
 		socialFacebook: row.socialFacebook ?? undefined,
 		socialInstagram: row.socialInstagram ?? undefined,
 		source: row.source as Lead['source'],
-		needsReview: row.needsReview,
 		notes: row.notes ?? undefined,
 		signedOrg: row.wonOrgName ?? undefined,
 		dealValue: row.dealValueCents != null ? row.dealValueCents / 100 : undefined,
@@ -125,6 +125,22 @@ export function dbActivityToActivity(row: DbActivity): Activity {
 		createdAt: row.occurredAt.toISOString(),
 		followUpAt: row.followUpAt?.toISOString()
 	};
+}
+
+/**
+ * Parse a comma-joined CSV filter value (e.g. `?country=US,PH`) into a string array,
+ * stripping empty elements. The `.filter(Boolean)` is required: a trailing comma or an
+ * empty param value would otherwise yield a stray `''` element that becomes an
+ * `inArray(col, [''])` clause matching nothing while misrepresenting "no filter."
+ * Each segment is trimmed, so a hand-edited or shared URL with stray spaces
+ * (e.g. `?country=US, PH`) still resolves correctly.
+ * Pure — unit-testable without a DB.
+ */
+export function parseFilterCsv(raw: string | null | undefined): string[] {
+	return (raw ?? '')
+		.split(',')
+		.map((s) => s.trim())
+		.filter(Boolean);
 }
 
 /**
@@ -212,6 +228,8 @@ export interface ListLeadsParams {
 	country?: string;
 	staleOnly?: boolean;
 	search?: string;
+	date?: string;
+	dateField?: 'event_date' | 'created_at';
 	page?: number;
 	pageSize?: number;
 	sort?: string;
@@ -234,6 +252,8 @@ export async function listLeadsFiltered(
 		country,
 		staleOnly = false,
 		search,
+		date,
+		dateField,
 		page = 1,
 		pageSize = 25,
 		sort,
@@ -281,6 +301,15 @@ export async function listLeadsFiltered(
 				ilike(sql`COALESCE(${crmLeads.normalizedHandle}, '')`, handleLike)
 			)!
 		);
+	}
+
+	// Date filter (from calendar click-through)
+	if (date && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
+		if (dateField === 'created_at') {
+			conditions.push(sql`DATE(${crmLeads.createdAt}) = ${date}::date`);
+		} else {
+			conditions.push(sql`${crmLeads.eventDate} = ${date}::date`);
+		}
 	}
 
 	const where = and(...conditions);
@@ -338,62 +367,6 @@ export async function getLead(id: string): Promise<Lead | null> {
 	return row ? dbRowToLead(row) : null;
 }
 
-const REVIEW_SORT_COLS = [
-	'name',
-	'category',
-	'platform',
-	'stage',
-	'source',
-	'createdAt',
-	'event'
-] as const;
-type ReviewSortCol = (typeof REVIEW_SORT_COLS)[number];
-
-const REVIEW_COL_MAP = {
-	name: crmLeads.name,
-	category: crmLeads.category,
-	platform: crmLeads.platform,
-	stage: crmLeads.stage,
-	source: crmLeads.source,
-	createdAt: crmLeads.createdAt
-} satisfies Record<Exclude<ReviewSortCol, 'event'>, unknown>;
-
-export async function listReviewLeads(
-	page = 1,
-	pageSize = 25,
-	sort = 'createdAt',
-	dir: 'asc' | 'desc' = 'asc'
-): Promise<{ leads: Lead[]; total: number }> {
-	const where = and(isNull(crmLeads.deletedAt), eq(crmLeads.needsReview, true));
-	const validSort: ReviewSortCol = (REVIEW_SORT_COLS as readonly string[]).includes(sort)
-		? (sort as ReviewSortCol)
-		: 'createdAt';
-	const sortFn = dir === 'asc' ? asc : desc;
-
-	let order: SQL<unknown>[];
-	if (validSort === 'event') {
-		order =
-			dir === 'asc'
-				? [sql`${crmLeads.eventDate} ASC NULLS LAST`, asc(crmLeads.id)]
-				: [sql`${crmLeads.eventDate} DESC NULLS LAST`, asc(crmLeads.id)];
-	} else {
-		order = [sortFn(REVIEW_COL_MAP[validSort]), asc(crmLeads.id)];
-	}
-
-	const [rows, [{ total }]] = await Promise.all([
-		db
-			.select()
-			.from(crmLeads)
-			.where(where)
-			.orderBy(...order)
-			.limit(pageSize)
-			.offset((Math.max(1, page) - 1) * pageSize),
-		db.select({ total: count() }).from(crmLeads).where(where)
-	]);
-
-	return { leads: rows.map((row) => dbRowToLead(row)), total };
-}
-
 const UNASSIGNED_SORT_COLS = ['name', 'event', 'stage', 'source'] as const;
 type UnassignedSortCol = (typeof UNASSIGNED_SORT_COLS)[number];
 
@@ -403,18 +376,53 @@ const UNASSIGNED_COL_MAP = {
 	source: crmLeads.source
 } satisfies Record<Exclude<UnassignedSortCol, 'event'>, unknown>;
 
+/**
+ * Base predicate for the Up for Grabs (unassigned) queue: unowned, not soft-deleted,
+ * and not in a terminal (won/lost) stage. Shared so the country-options helper and the
+ * list query stay in scope-parity — if this predicate changes, both callers change together.
+ */
+const unassignedBaseConditions = (): SQL[] => [
+	isNull(crmLeads.ownerId) as SQL,
+	isNull(crmLeads.deletedAt) as SQL,
+	ne(crmLeads.stage, 'won'),
+	ne(crmLeads.stage, 'lost')
+];
+
+/**
+ * Distinct non-null countries among leads currently in the Up for Grabs queue.
+ * Powers the Country filter on `/unassigned`. Scoped to the SAME predicate as
+ * listUnassignedLeads() (unowned / active / non-deleted) — do NOT swap for
+ * getLeadCountries(), which is unscoped and would offer countries for leads that
+ * are not even in this queue.
+ */
+export async function getUnassignedLeadCountries(): Promise<string[]> {
+	const rows = await db
+		.selectDistinct({ country: crmLeads.country })
+		.from(crmLeads)
+		.where(and(...unassignedBaseConditions(), isNotNull(crmLeads.country)))
+		.orderBy(asc(crmLeads.country));
+	return rows.map((r) => r.country as string);
+}
+
 export async function listUnassignedLeads(
 	page = 1,
 	pageSize = 25,
 	sort?: string,
-	dir?: 'asc' | 'desc'
+	dir?: 'asc' | 'desc',
+	filters?: { country?: string[]; category?: string[] }
 ): Promise<{ leads: Lead[]; total: number }> {
-	const where = and(
-		isNull(crmLeads.ownerId),
-		isNull(crmLeads.deletedAt),
-		ne(crmLeads.stage, 'won'),
-		ne(crmLeads.stage, 'lost')
-	);
+	const conditions = unassignedBaseConditions();
+
+	// Multi-select filters: OR within a filter (inArray), AND across filters (separate conditions).
+	// Empty/omitted array = no restriction (existing behavior preserved — backward compatible).
+	if (filters?.country && filters.country.length > 0) {
+		conditions.push(inArray(crmLeads.country, filters.country));
+	}
+	if (filters?.category && filters.category.length > 0) {
+		conditions.push(inArray(crmLeads.category, filters.category as DbLead['category'][]));
+	}
+
+	const where = and(...conditions);
 
 	const validSort: UnassignedSortCol | null =
 		sort && (UNASSIGNED_SORT_COLS as readonly string[]).includes(sort)
@@ -596,8 +604,7 @@ export async function createLead(
 			normalizedHandle,
 			ownerId,
 			source: 'manual',
-			stage: 'new',
-			needsReview: false
+			stage: 'new'
 		})
 		.returning();
 
@@ -1047,8 +1054,8 @@ export async function logLeadTouch(
 
 export async function getNavCounts(
 	userId: string
-): Promise<{ overdue: number; unassigned: number; review: number }> {
-	const [todayLeads, [unassignedRow], [reviewRow]] = await Promise.all([
+): Promise<{ overdue: number; unassigned: number }> {
+	const [todayLeads, [unassignedRow]] = await Promise.all([
 		getTodayQueue(userId),
 		db
 			.select({ count: sql<number>`COUNT(*)` })
@@ -1060,17 +1067,12 @@ export async function getNavCounts(
 					ne(crmLeads.stage, 'won'),
 					ne(crmLeads.stage, 'lost')
 				)
-			),
-		db
-			.select({ count: sql<number>`COUNT(*)` })
-			.from(crmLeads)
-			.where(and(eq(crmLeads.needsReview, true), isNull(crmLeads.deletedAt)))
+			)
 	]);
 
 	return {
 		overdue: todayLeads.filter((l) => l.urgency === 'overdue').length,
-		unassigned: Number(unassignedRow?.count ?? 0),
-		review: Number(reviewRow?.count ?? 0)
+		unassigned: Number(unassignedRow?.count ?? 0)
 	};
 }
 
@@ -1146,4 +1148,84 @@ export async function snoozeLead(
 
 		return dbRowToLead(existing, followUpAt);
 	});
+}
+
+// ---------------------------------------------------------------------------
+// Lead history (ownership + stage changes)
+// ---------------------------------------------------------------------------
+
+export async function getLeadHistory(leadId: string): Promise<
+	Array<{
+		id: string;
+		field: string;
+		actorUserId: string | null;
+		oldValue: string | null;
+		newValue: string | null;
+		at: string;
+	}>
+> {
+	const rows = await db
+		.select({
+			id: crmLeadHistory.id,
+			field: crmLeadHistory.field,
+			actorUserId: crmLeadHistory.actorUserId,
+			oldValue: crmLeadHistory.oldValue,
+			newValue: crmLeadHistory.newValue,
+			at: crmLeadHistory.at
+		})
+		.from(crmLeadHistory)
+		.where(
+			and(eq(crmLeadHistory.leadId, leadId), inArray(crmLeadHistory.field, ['owner_id', 'stage']))
+		)
+		.orderBy(asc(crmLeadHistory.at));
+	return rows.map((r) => ({
+		id: r.id,
+		field: r.field,
+		actorUserId: r.actorUserId,
+		oldValue: r.oldValue,
+		newValue: r.newValue,
+		at: r.at.toISOString()
+	}));
+}
+
+// Heatmap aggregation
+// ---------------------------------------------------------------------------
+
+export async function getLeadHeatmapData(
+	metric: 'event_date' | 'created_at'
+): Promise<Array<{ date: string; stage: string; count: number }>> {
+	const today = new Date();
+	const todayStr = today.toISOString().split('T')[0];
+	const aheadStr = new Date(+today + 380 * 86400_000).toISOString().split('T')[0]; // 53+ weeks
+
+	if (metric === 'event_date') {
+		return db
+			.select({
+				date: sql<string>`${crmLeads.eventDate}::text`,
+				stage: crmLeads.stage,
+				count: sql<number>`COUNT(*)::int`
+			})
+			.from(crmLeads)
+			.where(
+				and(
+					isNull(crmLeads.deletedAt),
+					isNotNull(crmLeads.eventDate),
+					sql`${crmLeads.eventDate} >= ${todayStr}`,
+					sql`${crmLeads.eventDate} <= ${aheadStr}`
+				)
+			)
+			.groupBy(crmLeads.eventDate, crmLeads.stage);
+	}
+
+	// created_at: past 12 months — future rows don't exist so keep backward window
+	const pastStr = new Date(+today - 365 * 86400_000).toISOString().split('T')[0];
+	return db
+		.select({
+			date: sql<string>`DATE(${crmLeads.createdAt})::text`,
+			stage: crmLeads.stage,
+			count: sql<number>`COUNT(*)::int`
+		})
+		.from(crmLeads)
+		.where(and(isNull(crmLeads.deletedAt), sql`${crmLeads.createdAt} >= ${pastStr}`))
+		.groupBy(sql`DATE(${crmLeads.createdAt})`, crmLeads.stage);
 }

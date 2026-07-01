@@ -27,8 +27,8 @@
 	});
 
 	const COLORS: Record<Variant, { text: string; bg: string; border: string }> = {
-		urgent: { text: '#c0362c', bg: '#c0362c14', border: '#c0362c30' },
-		soon: { text: '#c2710c', bg: '#c2710c14', border: '#c2710c30' },
+		urgent: { text: '#e11d2a', bg: '#e11d2a14', border: '#e11d2a30' },
+		soon: { text: '#d97706', bg: '#d9770614', border: '#d9770630' },
 		later: { text: '#0e7490', bg: '#0e749014', border: '#0e749030' },
 		past: { text: '#71717a', bg: '#71717a0d', border: '#71717a25' }
 	};

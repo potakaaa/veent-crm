@@ -38,6 +38,7 @@
 	});
 
 	let editTarget = $state<Lead | null>(null);
+	let assignTarget = $state<Lead | null>(null);
 	let editSaving = $state(false);
 
 	async function saveEdit(leadData: Record<string, unknown>) {
@@ -210,12 +211,13 @@
 	async function assignTo(ownerId: string) {
 		if (assignPending) return; // duplicate-submit guard
 		assignPending = true;
-		// Capture IDs BEFORE mutating shadowLeads — selectedIds is $derived and re-computes
-		// to [] immediately after the filter below, so using it later in Promise.all sends nothing.
-		const ids = selectedIds;
+		// Capture BEFORE mutating shadowLeads/assignTarget — selectedIds is $derived and
+		// assignTarget resets on close, so both must be captured up front.
+		const target = assignTarget;
+		const ids = target ? [target.id] : selectedIds;
 		const count = ids.length;
 		const snapshot = shadowLeads;
-		shadowLeads = shadowLeads.filter((l) => !selected[l.id]); // optimistic remove
+		shadowLeads = shadowLeads.filter((l) => !ids.includes(l.id)); // optimistic remove
 		let responses: Response[];
 		try {
 			responses = await Promise.all(
@@ -240,13 +242,14 @@
 			return;
 		}
 		assignOpen = false;
+		assignTarget = null;
 		const name = data.users.find((u) => u.id === ownerId)?.name ?? 'rep';
-		toasts.success(`Assigned ${count} to ${name}`);
+		toasts.success(target ? `Assigned ${target.name} to ${name}` : `Assigned ${count} to ${name}`);
 		selected = {};
 		await invalidateAll(); // $effect reconciles shadow with server truth
 	}
 
-	const grid = 'grid grid-cols-[36px_2fr_1.6fr_1fr_90px_100px_110px_1fr_110px] gap-3';
+	const grid = 'grid grid-cols-[36px_2fr_1.6fr_1fr_90px_100px_110px_1fr_150px] gap-3';
 
 	let openHoverId = $state<string | null>(null);
 	let hoverCloseTimer: ReturnType<typeof setTimeout> | undefined;
@@ -457,6 +460,20 @@
 						>
 							<Icon name="edit" size={14} stroke={2} />
 						</button>
+						{#if canReassign(data.currentUser)}
+							<button
+								onclick={() => {
+									assignTarget = l;
+									assignOpen = true;
+								}}
+								disabled={claiming[l.id]}
+								aria-label="Assign {l.name}"
+								title="Assign to…"
+								class="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-[7px] border border-primary text-primary hover:bg-primary hover:text-white disabled:opacity-50"
+							>
+								<Icon name="team" size={14} stroke={2} />
+							</button>
+						{/if}
 						<button
 							onclick={() => claim(l)}
 							disabled={claiming[l.id]}
@@ -518,7 +535,10 @@
 	<ReassignModal
 		open={true}
 		users={data.users}
-		onclose={() => (assignOpen = false)}
+		onclose={() => {
+			assignOpen = false;
+			assignTarget = null;
+		}}
 		onconfirm={assignTo}
 	/>
 {/if}

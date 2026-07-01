@@ -122,6 +122,22 @@ export interface Meeting {
 	createdAt: string;
 }
 
+/**
+ * Unified calendar entry — the common shape both meetings and follow-up reminders
+ * map into before reaching the calendar grid. `type` drives visual distinction (AC4)
+ * and `href` drives click-through (AC5 meeting → /meetings/[id], AC6 followup → /leads/[id]).
+ */
+export interface CalendarEntry {
+	id: string;
+	type: 'meeting' | 'followup';
+	/** ISO datetime the entry falls on (meeting start, or follow-up due date). */
+	startAt: string;
+	title: string;
+	href: string;
+	/** Optional secondary line (e.g. organizer name, lead handle). */
+	subtitle?: string;
+}
+
 /** A row from the sheet import that needs a human before it joins the pool. */
 export interface ReviewItem {
 	id: string;

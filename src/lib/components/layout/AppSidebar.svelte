@@ -44,6 +44,7 @@
 			badge: counts.unassigned || undefined
 		},
 		{ href: '/reminders', label: 'Reminders', icon: 'reminders' },
+		{ href: '/calendar', label: 'Calendar', icon: 'calendarDays' },
 		{ href: '/meetings', label: 'Meetings', icon: 'calendar' }
 	]);
 	const manager: NavItem[] = $derived([

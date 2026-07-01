@@ -996,6 +996,81 @@ export async function getTodayQueue(userId: string): Promise<Lead[]> {
 }
 
 // ---------------------------------------------------------------------------
+// Follow-ups in a date range — calendar read model (owner-scoped)
+// ---------------------------------------------------------------------------
+
+/**
+ * Lead-level predicate for the calendar follow-up query. Isolated as a pure,
+ * DB-free helper so the AC3 regression guard can assert the `ownerId` scoping
+ * predicate is present WITHOUT a live DB connection (see Validate Contract E1).
+ *
+ * MUST keep `eq(crmLeads.ownerId, userId)` — dropping it would leak other reps'
+ * follow-ups onto the signed-in user's calendar (the single flagged regression risk).
+ */
+export function buildFollowUpsRangeLeadConditions(userId: string): SQL[] {
+	return [
+		isNull(crmLeads.deletedAt) as SQL,
+		eq(crmLeads.ownerId, userId),
+		ne(crmLeads.stage, 'won'),
+		ne(crmLeads.stage, 'lost')
+	];
+}
+
+/**
+ * Pure inclusive range check (DB-free — unit-testable). A follow-up timestamp
+ * falls in the visible calendar window when rangeStart <= value <= rangeEnd.
+ */
+export function isWithinRange(
+	value: Date | string | null | undefined,
+	rangeStart: Date,
+	rangeEnd: Date
+): boolean {
+	if (!value) return false;
+	const t = (value instanceof Date ? value : new Date(value)).getTime();
+	if (Number.isNaN(t)) return false;
+	return t >= rangeStart.getTime() && t <= rangeEnd.getTime();
+}
+
+/**
+ * Returns the signed-in user's own leads whose CURRENT follow-up falls within
+ * [rangeStart, rangeEnd] — the read model for follow-up entries on the calendar.
+ *
+ * Adapts getTodayQueue's DISTINCT ON "current follow-up per lead" pattern: the
+ * latest touch's follow-up wins per lead, then leads are filtered to those whose
+ * current follow-up lands in the visible window. Owner scoping is preserved via
+ * buildFollowUpsRangeLeadConditions (AC3). Does NOT modify getTodayQueue/getRemindersQueue.
+ */
+export async function getFollowUpsInRange(
+	userId: string,
+	rangeStart: Date,
+	rangeEnd: Date
+): Promise<Lead[]> {
+	const rows = await db
+		.select()
+		.from(crmLeads)
+		.where(and(...buildFollowUpsRangeLeadConditions(userId)))
+		.orderBy(desc(sql`coalesce(${crmLeads.lastActivityAt}, ${crmLeads.createdAt})`));
+
+	if (rows.length === 0) return [];
+
+	const leadIds = rows.map((r) => r.id);
+	const followUps = await db
+		.selectDistinctOn([crmActivities.leadId], {
+			leadId: crmActivities.leadId,
+			followUpAt: crmActivities.followUpAt
+		})
+		.from(crmActivities)
+		.where(and(inArray(crmActivities.leadId, leadIds), isNotNull(crmActivities.followUpAt)))
+		.orderBy(crmActivities.leadId, desc(crmActivities.occurredAt));
+
+	const followUpMap = new Map(followUps.map((f) => [f.leadId, f.followUpAt ?? null]));
+
+	return rows
+		.filter((row) => isWithinRange(followUpMap.get(row.id) ?? null, rangeStart, rangeEnd))
+		.map((row) => dbRowToLead(row, followUpMap.get(row.id) ?? undefined));
+}
+
+// ---------------------------------------------------------------------------
 // Log touch — persist a real outreach activity
 // ---------------------------------------------------------------------------
 

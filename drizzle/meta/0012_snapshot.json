@@ -1,6 +1,6 @@
 {
-  "id": "df7e2461-ba6b-4583-ac58-2bd1a8d2dcfa",
-  "prevId": "6d8be76c-2b8b-490f-ae3f-fb9f2f3326d8",
+  "id": "f1a2b3c4-d5e6-7890-abcd-ef1234567890",
+  "prevId": "85a0e3ee-4c07-4b67-8419-f602c766aef6",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -840,6 +840,18 @@
           "primaryKey": false,
           "notNull": true,
           "default": "now()"
+        },
+        "first_announced_date": {
+          "name": "first_announced_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "first_reached_out_date": {
+          "name": "first_reached_out_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
         }
       },
       "indexes": {
@@ -1093,6 +1105,18 @@
         },
         "deleted_at": {
           "name": "deleted_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "day_reminder_sent_at": {
+          "name": "day_reminder_sent_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "hour_reminder_sent_at": {
+          "name": "hour_reminder_sent_at",
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": false

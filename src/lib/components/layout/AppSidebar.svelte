@@ -43,7 +43,8 @@
 			icon: 'unassigned',
 			badge: counts.unassigned || undefined
 		},
-		{ href: '/reminders', label: 'Reminders', icon: 'reminders' }
+		{ href: '/reminders', label: 'Reminders', icon: 'reminders' },
+		{ href: '/meetings', label: 'Meetings', icon: 'calendar' }
 	]);
 	const manager: NavItem[] = $derived([
 		{ href: '/reports', label: 'Reports', icon: 'reports' },

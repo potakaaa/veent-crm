@@ -1,6 +1,6 @@
 {
-  "id": "df7e2461-ba6b-4583-ac58-2bd1a8d2dcfa",
-  "prevId": "6d8be76c-2b8b-490f-ae3f-fb9f2f3326d8",
+  "id": "85a0e3ee-4c07-4b67-8419-f602c766aef6",
+  "prevId": "df7e2461-ba6b-4583-ac58-2bd1a8d2dcfa",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -1093,6 +1093,18 @@
         },
         "deleted_at": {
           "name": "deleted_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "day_reminder_sent_at": {
+          "name": "day_reminder_sent_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "hour_reminder_sent_at": {
+          "name": "hour_reminder_sent_at",
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": false

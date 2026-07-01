@@ -1,5 +1,11 @@
 import type { PageServerLoad } from './$types';
-import { listUnassignedLeads, listUsers } from '$lib/server/db/leads';
+import {
+	listUnassignedLeads,
+	listUsers,
+	getUnassignedLeadCountries,
+	parseFilterCsv
+} from '$lib/server/db/leads';
+import { leadCategory } from '$lib/server/db/schema';
 
 const PAGE_SIZE = 25;
 
@@ -11,9 +17,15 @@ export const load: PageServerLoad = async ({ url }) => {
 	const sort = UNASSIGNED_SORT_COLS_SET.has(rawSort) ? rawSort : undefined;
 	const dir = url.searchParams.get('dir') === 'asc' ? ('asc' as const) : ('desc' as const);
 
-	const [result, users] = await Promise.all([
-		listUnassignedLeads(page, PAGE_SIZE, sort, dir),
-		listUsers()
+	const country = parseFilterCsv(url.searchParams.get('country'));
+	const rawCategory = parseFilterCsv(url.searchParams.get('category'));
+	const validCategories = new Set<string>(leadCategory.enumValues);
+	const category = rawCategory.filter((c) => validCategories.has(c));
+
+	const [result, users, countryOptions] = await Promise.all([
+		listUnassignedLeads(page, PAGE_SIZE, sort, dir, { country, category }),
+		listUsers(),
+		getUnassignedLeadCountries()
 	]);
 
 	return {
@@ -21,6 +33,9 @@ export const load: PageServerLoad = async ({ url }) => {
 		users,
 		sort: sort ?? '',
 		dir,
+		categoryOptions: [...leadCategory.enumValues],
+		countryOptions,
+		filters: { country, category },
 		pagination: {
 			page,
 			pageSize: PAGE_SIZE,

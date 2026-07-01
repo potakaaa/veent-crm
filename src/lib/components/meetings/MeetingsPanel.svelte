@@ -64,7 +64,9 @@
 						headers: { 'Content-Type': 'application/json' },
 						body: JSON.stringify({
 							startAt: payload.startAt,
-							organizerId: payload.organizerId,
+							// Empty string means "unassign" — send explicit null so JSON.stringify
+							// keeps the key (undefined would be dropped, leaving organizer unchanged).
+							organizerId: payload.organizerId ? payload.organizerId : null,
 							meetingUrl: payload.meetingUrl ?? '',
 							notes: payload.notes ?? '',
 							outcome: payload.outcome ?? '',

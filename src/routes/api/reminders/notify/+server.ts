@@ -35,9 +35,17 @@ export const POST: RequestHandler = async ({ request }) => {
 	// 1. fetch due candidates (empty-recipient candidates already excluded by the query)
 	const meetingDue = await getDueMeetingReminders();
 	// 2. atomic mark-sent per candidate; keep ONLY winners (exactly-once — no duplicate send)
+	// Stop the batch on the first mark-sent failure: a later throw must not leave some
+	// checkpoints flipped-sent-but-never-emailed. Aborting keeps unmarked candidates NULL
+	// so the next poll retries them.
 	const winners: typeof meetingDue = [];
 	for (const candidate of meetingDue) {
-		const won = await markMeetingReminderSent(candidate.meetingId, candidate.checkpoint);
+		let won: boolean;
+		try {
+			won = await markMeetingReminderSent(candidate.meetingId, candidate.checkpoint);
+		} catch {
+			break;
+		}
 		if (won) winners.push(candidate);
 	}
 	// 3. group winners into one digest per recipient email
@@ -45,6 +53,7 @@ export const POST: RequestHandler = async ({ request }) => {
 	// 4. send one meeting digest per recipient
 	let meetingSent = 0;
 	let meetingSkipped = 0;
+	let meetingFailed = 0;
 	for (const group of meetingGroups) {
 		const status = await sendMeetingReminderDigest({
 			recipientEmail: group.recipientEmail,
@@ -52,7 +61,8 @@ export const POST: RequestHandler = async ({ request }) => {
 		});
 		if (status === 'sent') meetingSent++;
 		else if (status === 'skipped') meetingSkipped++;
+		else meetingFailed++;
 	}
 
-	return json({ sent, skipped, meetingSent, meetingSkipped });
+	return json({ sent, skipped, meetingSent, meetingSkipped, meetingFailed });
 };

@@ -237,7 +237,7 @@ export async function markMeetingReminderSent(
 	const rows = await db
 		.update(crmMeetings)
 		.set({ [checkpoint === 'day' ? 'dayReminderSentAt' : 'hourReminderSentAt']: new Date() })
-		.where(and(eq(crmMeetings.id, meetingId), isNull(sentCol)))
+		.where(and(eq(crmMeetings.id, meetingId), isNull(sentCol), isNull(crmMeetings.deletedAt)))
 		.returning({ id: crmMeetings.id });
 	return rows.length > 0;
 }

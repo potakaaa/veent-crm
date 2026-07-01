@@ -34,7 +34,11 @@ describe('meetingFormSchema', () => {
 	});
 
 	it('accepts an empty-string meetingUrl (cleared field)', () => {
-		const r = meetingFormSchema.safeParse({ leadId: UUID_A, startAt: 'x', meetingUrl: '' });
+		const r = meetingFormSchema.safeParse({
+			leadId: UUID_A,
+			startAt: '2026-07-10T14:00:00Z',
+			meetingUrl: ''
+		});
 		expect(r.success).toBe(true);
 	});
 

@@ -99,7 +99,9 @@
 		onsubmit({
 			leadId: effectiveLeadId,
 			startAt: startAt.toISOString(),
-			organizerId: organizerId || undefined,
+			// On edit keep the empty-string value so unassigning is distinct from
+			// "field untouched"; on create collapse empty to undefined (omit).
+			organizerId: isEdit ? organizerId : organizerId || undefined,
 			meetingUrl: meetingUrl.trim() || undefined,
 			notes: notes.trim() || undefined,
 			outcome: outcome.trim() || undefined,

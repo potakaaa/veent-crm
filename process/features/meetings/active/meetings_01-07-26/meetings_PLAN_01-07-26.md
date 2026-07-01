@@ -255,7 +255,7 @@ Legacy line form (retained for existing consumers):
 - Tab + new-tab-link render: Agent-probe: render both surfaces, judge tab switching + link attributes
 
 Failing stub (Fully-Automated rows only):
-```
+```text
 test("should accept a valid meetingForm and reject missing startAt/bad uuid", () => {
   throw new Error("NOT IMPLEMENTED — TDD stub: meetingFormSchema/meetingUpdateSchema accept valid + reject invalid input")
 })
@@ -301,7 +301,7 @@ Accepted by: session (autonomous re-validation cycle 1). Accepted concerns by na
 
 ## Autonomous Goal Block
 
-```
+```text
 SESSION GOAL: Ship the Meetings feature — 2 soft-deletable Drizzle tables (crm_meetings + crm_meeting_attendees), 5 JSON CRUD API routes, lead-detail Meetings tab (first-ever tab scaffold), top-level /meetings page. Real Postgres via Drizzle, repo fetch→+server.ts→Zod→Drizzle→optimistic+invalidateAll+toast pattern (NOT Superforms). Calendar view is OUT OF SCOPE (backlog stub).
 Charter + umbrella plan: N/A — single plan (process/features/meetings/active/meetings_01-07-26/meetings_PLAN_01-07-26.md)
 Autonomy: reversible edits auto-proceed; per feedback_autonomous_phase_execution — CONDITIONAL → apply fixes and continue; BLOCKED → backlog + continue.

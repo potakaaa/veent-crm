@@ -16,7 +16,7 @@ import { describe, it, expect, afterAll } from 'vitest';
 import { getDueMeetingReminders, markMeetingReminderSent } from '$lib/server/db/meeting-reminders';
 import { db } from '$lib/server/db/index';
 import { crmLeads, crmMeetings } from '$lib/server/db/schema';
-import { inArray } from 'drizzle-orm';
+import { eq, inArray } from 'drizzle-orm';
 
 const SKIP_DB = !process.env.DATABASE_URL;
 
@@ -150,6 +150,25 @@ describe.skipIf(SKIP_DB)('markMeetingReminderSent — atomic race (DB)', () => {
 		// A third, later call also loses (already sent).
 		const third = await markMeetingReminderSent(meetingId, 'day');
 		expect(third).toBe(false);
+	});
+
+	it('meeting soft-deleted after being fetched as due still fails markMeetingReminderSent', async () => {
+		const now = new Date();
+		const leadId = await makeLead('DeletedAfterDue');
+		const meetingId = await makeMeeting({ leadId, startAt: new Date(now.getTime() + 20 * HOUR) });
+
+		// It is due (day checkpoint) while still live.
+		const due = await getDueMeetingReminders(now);
+		expect(due.find((d) => d.meetingId === meetingId && d.checkpoint === 'day')).toBeDefined();
+
+		// Soft-delete the meeting AFTER it was fetched as a due candidate.
+		await db
+			.update(crmMeetings)
+			.set({ deletedAt: new Date() })
+			.where(eq(crmMeetings.id, meetingId));
+
+		// The deleted-at guard must make the atomic mark-sent lose (no send for a cancelled meeting).
+		expect(await markMeetingReminderSent(meetingId, 'day')).toBe(false);
 	});
 
 	it('day and hour checkpoints are independent (marking day leaves hour winnable)', async () => {

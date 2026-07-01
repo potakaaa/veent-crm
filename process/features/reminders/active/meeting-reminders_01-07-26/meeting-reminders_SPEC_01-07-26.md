@@ -60,7 +60,7 @@ else invited) shouldn't miss a scheduled meeting because they forgot to check th
 
 ## Flow / State Diagram
 
-```
+```text
 Meeting created/updated (crm_meetings.start_at = T)
         |
         v

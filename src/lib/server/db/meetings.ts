@@ -189,13 +189,6 @@ export async function updateMeeting(
 	}
 ): Promise<Meeting | null> {
 	const found = await db.transaction(async (tx) => {
-		const [existing] = await tx
-			.select({ id: crmMeetings.id })
-			.from(crmMeetings)
-			.where(and(eq(crmMeetings.id, id), isNull(crmMeetings.deletedAt)))
-			.limit(1);
-		if (!existing) return false;
-
 		const set: Partial<typeof crmMeetings.$inferInsert> = { updatedAt: new Date() };
 		if (patch.startAt !== undefined) set.startAt = patch.startAt;
 		if (patch.organizerId !== undefined) set.organizerId = patch.organizerId;
@@ -203,10 +196,13 @@ export async function updateMeeting(
 		if (patch.notes !== undefined) set.notes = patch.notes;
 		if (patch.outcome !== undefined) set.outcome = patch.outcome;
 
-		await tx
+		// UPDATE ... RETURNING detects the missing/soft-deleted row without a preliminary SELECT.
+		const updated = await tx
 			.update(crmMeetings)
 			.set(set)
-			.where(and(eq(crmMeetings.id, id), isNull(crmMeetings.deletedAt)));
+			.where(and(eq(crmMeetings.id, id), isNull(crmMeetings.deletedAt)))
+			.returning({ id: crmMeetings.id });
+		if (updated.length === 0) return false;
 
 		// Reconcile attendees only when the caller supplied a new set.
 		if (patch.attendeeIds !== undefined) {

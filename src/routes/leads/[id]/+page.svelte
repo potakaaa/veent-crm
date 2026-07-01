@@ -322,8 +322,10 @@
 		{/if}
 
 		<!-- tab bar -->
-		<div class="mb-4 flex gap-1 border-b border-hairline">
+		<div role="tablist" class="mb-4 flex gap-1 border-b border-hairline">
 			<button
+				role="tab"
+				aria-selected={activeTab === 'overview'}
 				onclick={() => (activeTab = 'overview')}
 				class="border-b-2 px-3 py-2 text-[13px] font-medium {activeTab === 'overview'
 					? 'border-primary text-ink'
@@ -332,6 +334,8 @@
 				Overview
 			</button>
 			<button
+				role="tab"
+				aria-selected={activeTab === 'meetings'}
 				onclick={() => (activeTab = 'meetings')}
 				class="border-b-2 px-3 py-2 text-[13px] font-medium {activeTab === 'meetings'
 					? 'border-primary text-ink'

@@ -109,7 +109,7 @@ Verification Evidence table below.
 ## Public Contracts
 
 ### New schema columns (`crm_meetings`)
-```
+```ts
 dayReminderSentAt:  timestamp('day_reminder_sent_at',  { withTimezone: true })  // nullable
 hourReminderSentAt: timestamp('hour_reminder_sent_at', { withTimezone: true })  // nullable
 ```
@@ -196,7 +196,7 @@ export async function sendMeetingReminderDigest(
 
 ## Data Flow
 
-```
+```text
 n8n poll ──GET /api/reminders/due──► getDueMeetingReminders(now)   [read-only preview, no marking]
                                        └─ returns MeetingReminderDue[]  (empty-recipient candidates excluded)
 
@@ -221,7 +221,7 @@ duplicate-send window).
 Two overlapping `notify` calls both run `getDueMeetingReminders` and both see `<col> IS NULL`. A
 naive check-then-write (`SELECT ... IF null THEN UPDATE`) has a race window → two emails. The ONLY
 sanctioned mechanism is the single atomic compare-and-set:
-```
+```sql
 UPDATE crm_meetings SET day_reminder_sent_at = now()
   WHERE id = $1 AND day_reminder_sent_at IS NULL
   RETURNING id;   -- empty result set ⇒ lost the race ⇒ do NOT send
@@ -521,7 +521,7 @@ Accepted by: session (PVL re-validation cycle 1, autonomous). Accepted concerns:
 
 ## Autonomous Goal Block
 
-```
+```text
 SESSION GOAL: Meeting reminders — two per-meeting email reminders (1 day + 1 hour before startAt) to organizer + attendees, batched digest, exactly-once per checkpoint.
 Charter + umbrella plan: N/A — single self-contained COMPLEX plan (not a phase program)
 Autonomy: standard RIPER-5 — EXECUTE requires explicit "ENTER EXECUTE MODE"; validate-contract is CONDITIONAL (terminal, >=1 PVL fix cycle recorded).

@@ -61,20 +61,18 @@ For most substantial tasks:
 ## Current Root Entry Points
 
 <!-- GENERATED:routing -->
-
-| File                                       | Read when                                                                                       |
-| ------------------------------------------ | ----------------------------------------------------------------------------------------------- |
-| `process/context/all-context.md`           | any substantial planning, research, review, or implementation task                              |
+| File | Read when |
+|---|---|
+| `process/context/all-context.md` | any substantial planning, research, review, or implementation task |
 | `process/context/planning/all-planning.md` | creating a new plan, calibrating SIMPLE vs COMPLEX plan shape, or checking planning conventions |
-| `process/context/tests/all-tests.md`       | task involves testing, verification, running tests, or debugging test failures                  |
+| `process/context/tests/all-tests.md` | task involves testing, verification, running tests, or debugging test failures |
 
 ## Current Context Groups
 
-| Group       | Entry point                                | Scope                                                                 |
-| ----------- | ------------------------------------------ | --------------------------------------------------------------------- |
-| `planning/` | `process/context/planning/all-planning.md` | Plan shape calibration and planning conventions for veent-crm         |
-| `tests/`    | `process/context/tests/all-tests.md`       | Test runner selection, commands, and verification guide for veent-crm |
-
+| Group | Entry point | Scope |
+|---|---|---|
+| `planning/` | `process/context/planning/all-planning.md` | Plan shape calibration and planning conventions for veent-crm |
+| `tests/` | `process/context/tests/all-tests.md` | Test runner selection, commands, and verification guide for veent-crm |
 <!-- /GENERATED:routing -->
 
 ## Task Routing Table
@@ -116,6 +114,8 @@ veent-crm/
       assets/favicon.svg
       components/
         StubNote.svelte        # visual stub indicator (remove as surfaces go live)
+      data/
+        templates.ts            # static Log Touch snippet templates + fillTemplate() helper
       index.ts
       server/
         auth.ts                # Better Auth stub (getSession + sendMagicLink placeholders)

@@ -3,7 +3,7 @@ phase: touch-log-templates
 date: 2026-07-01
 status: COMPLETE
 feature: leads
-plan: process/features/leads/active/touch-log-templates_01-07-26/touch-log-templates_PLAN_01-07-26.md
+plan: process/features/leads/completed/touch-log-templates_01-07-26/touch-log-templates_PLAN_01-07-26.md
 ---
 
 # Touch Log Templates — Execute Report
@@ -49,7 +49,7 @@ None new. Existing gap (no component-test harness for LogTouchForm) confirmed, a
 
 ## Closeout Packet
 
-- Selected plan: `process/features/leads/active/touch-log-templates_01-07-26/touch-log-templates_PLAN_01-07-26.md`
+- Selected plan: `process/features/leads/completed/touch-log-templates_01-07-26/touch-log-templates_PLAN_01-07-26.md`
 - Finished: all 4 checklist items; both Fully-Automated gates green.
 - Verified: `fillTemplate` substitution (unit), no type/Svelte regressions (check).
 - Unverified: AC-3/AC-4 Agent-Probe browser walkthrough (paste-only UX, category rendering).

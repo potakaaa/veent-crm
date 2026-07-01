@@ -32,7 +32,8 @@
 	let templatesOpen = $state(false);
 
 	function applyTemplate(t: Template) {
-		note = fillTemplate(t.body, { page: lead.name, event: lead.eventName ?? '' });
+		const filled = fillTemplate(t.body, { page: lead.name, event: lead.eventName ?? '' });
+		note = note.trim() ? `${note.trimEnd()}\n\n${filled}` : filled;
 		templatesOpen = false;
 	}
 
@@ -121,7 +122,8 @@
 				{#snippet child({ props })}
 					<button
 						{...props}
-						class="h-7 rounded-[7px] border border-hairline bg-panel px-2.5 text-[12px] font-medium text-ink-600"
+						disabled={disabled || submitting}
+						class="h-7 rounded-[7px] border border-hairline bg-panel px-2.5 text-[12px] font-medium text-ink-600 disabled:cursor-not-allowed disabled:opacity-40"
 					>
 						Templates
 					</button>

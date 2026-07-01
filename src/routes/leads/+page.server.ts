@@ -26,7 +26,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	const rawDate = url.searchParams.get('date') ?? '';
 	const date = (() => {
 		if (!/^\d{4}-\d{2}-\d{2}$/.test(rawDate)) return '';
-		const d = new Date(rawDate + 'T00:00:00');
+		const d = new Date(rawDate + 'T00:00:00Z');
 		return isNaN(d.getTime()) || d.toISOString().slice(0, 10) !== rawDate ? '' : rawDate;
 	})();
 	const rawDateField = url.searchParams.get('dateField') ?? '';

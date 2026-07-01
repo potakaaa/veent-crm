@@ -1125,13 +1125,8 @@ export async function getLeadHeatmapData(
 	metric: 'event_date' | 'created_at'
 ): Promise<Array<{ date: string; stage: string; count: number }>> {
 	const today = new Date();
-	const past = new Date(today);
-	past.setFullYear(past.getFullYear() - 1);
-	const future = new Date(today);
-	future.setDate(future.getDate() + 30);
-
-	const pastStr = past.toISOString().split('T')[0];
-	const futureStr = future.toISOString().split('T')[0];
+	const todayStr = today.toISOString().split('T')[0];
+	const aheadStr = new Date(+today + 380 * 86400_000).toISOString().split('T')[0]; // 53+ weeks
 
 	if (metric === 'event_date') {
 		return db
@@ -1145,13 +1140,15 @@ export async function getLeadHeatmapData(
 				and(
 					isNull(crmLeads.deletedAt),
 					isNotNull(crmLeads.eventDate),
-					sql`${crmLeads.eventDate} >= ${pastStr}`,
-					sql`${crmLeads.eventDate} <= ${futureStr}`
+					sql`${crmLeads.eventDate} >= ${todayStr}`,
+					sql`${crmLeads.eventDate} <= ${aheadStr}`
 				)
 			)
 			.groupBy(crmLeads.eventDate, crmLeads.stage);
 	}
 
+	// created_at: past 12 months — future rows don't exist so keep backward window
+	const pastStr = new Date(+today - 365 * 86400_000).toISOString().split('T')[0];
 	return db
 		.select({
 			date: sql<string>`DATE(${crmLeads.createdAt})::text`,

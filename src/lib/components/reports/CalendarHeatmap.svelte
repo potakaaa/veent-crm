@@ -66,16 +66,19 @@
 		// Build a lookup map
 		const map = new Map<string, HeatmapDay>(data.map((d) => [d.date, d]));
 
-		// Start from today - 364 days, aligned back to Monday
 		// eslint-disable-next-line svelte/prefer-svelte-reactivity
 		const today = new Date();
 		today.setHours(0, 0, 0, 0);
+
+		// event_date: start TODAY (forward-looking — upcoming events)
+		// created_at: start 52 weeks ago (backward-looking — creation history)
 		// eslint-disable-next-line svelte/prefer-svelte-reactivity
 		const start = new Date(today);
-		start.setDate(start.getDate() - 364);
-		// Align to Monday (getDay: 0=Sun, 1=Mon … 6=Sat)
+		if (metric === 'created_at') start.setDate(start.getDate() - 364);
+
+		// Align to Monday of the start week (getDay: 0=Sun, 1=Mon … 6=Sat)
 		const dow = start.getDay();
-		const offset = dow === 0 ? 6 : dow - 1; // days to subtract to reach Monday
+		const offset = dow === 0 ? 6 : dow - 1;
 		start.setDate(start.getDate() - offset);
 
 		const weeks: Array<Array<{ date: string; day: HeatmapDay | null }>> = [];

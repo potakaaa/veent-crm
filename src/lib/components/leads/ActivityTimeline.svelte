@@ -6,9 +6,9 @@
 
 	let {
 		activities,
-		ownerHistory = [],
+		leadHistory = [],
 		users
-	}: { activities: Activity[]; ownerHistory?: OwnerHistoryRow[]; users: User[] } = $props();
+	}: { activities: Activity[]; leadHistory?: OwnerHistoryRow[]; users: User[] } = $props();
 
 	const CHANNEL_LABEL: Record<string, string> = {
 		fb_dm: 'FB DM',
@@ -20,12 +20,21 @@
 		other: 'Other'
 	};
 
-	type Entry = { kind: 'activity'; data: Activity } | { kind: 'ownership'; data: OwnerHistoryRow };
+	const STAGE_LABEL: Record<string, string> = {
+		new: 'New',
+		contacted: 'Contacted',
+		replied: 'Replied',
+		in_discussion: 'In Discussion',
+		won: 'Won',
+		lost: 'Lost'
+	};
+
+	type Entry = { kind: 'activity'; data: Activity } | { kind: 'history'; data: OwnerHistoryRow };
 
 	const entries = $derived.by((): Entry[] => {
 		const all: Entry[] = [
 			...activities.map((a) => ({ kind: 'activity' as const, data: a })),
-			...ownerHistory.map((o) => ({ kind: 'ownership' as const, data: o }))
+			...leadHistory.map((o) => ({ kind: 'history' as const, data: o }))
 		];
 		return all.sort((a, b) => {
 			const ta = a.kind === 'activity' ? a.data.createdAt : a.data.at;
@@ -45,6 +54,11 @@
 		if (!row.newValue) return 'Lead released';
 		return 'Ownership transferred';
 	}
+
+	function stageLabel(s: string | null): string {
+		if (!s) return '—';
+		return STAGE_LABEL[s] ?? s;
+	}
 </script>
 
 <div class="rounded-control border border-hairline bg-panel p-4">
@@ -54,55 +68,76 @@
 			>{entries.length} event{entries.length === 1 ? '' : 's'}</span
 		>
 	</div>
-	{#each entries as entry (entry.kind === 'activity' ? `a-${entry.data.id}` : `o-${entry.data.id}`)}
-		<div class="flex gap-3 pb-4 last:pb-0">
-			<div class="flex flex-col items-center">
-				{#if entry.kind === 'activity'}
-					<span
-						class="mt-1 h-[9px] w-[9px] rounded-full border-2 border-panel"
-						style="background:{OUTCOME_TOKENS[entry.data.outcome]
-							?.hex};box-shadow:0 0 0 1px {OUTCOME_TOKENS[entry.data.outcome]?.hex}"
-					></span>
-				{:else}
-					<span class="mt-1 h-[9px] w-[9px] rounded-full border-2 border-panel bg-ink-200"></span>
-				{/if}
-				<span class="mt-1 w-px flex-1 bg-hairline"></span>
-			</div>
-
-			{#if entry.kind === 'activity'}
-				{@const a = entry.data}
-				<div class="flex-1">
-					<div class="flex flex-wrap items-center gap-2">
-						<span class="text-[12.5px] font-semibold">{nameOf(a.repId)}</span>
+	<div class="max-h-[420px] overflow-y-auto pr-1">
+		{#each entries as entry (entry.kind === 'activity' ? `a-${entry.data.id}` : `h-${entry.data.id}`)}
+			<div class="flex gap-3 pb-4 last:pb-0">
+				<div class="flex flex-col items-center">
+					{#if entry.kind === 'activity'}
 						<span
-							class="rounded-[4px] bg-panel-sunken px-1.5 py-px font-mono text-[10.5px] text-ink-600"
-						>
-							{CHANNEL_LABEL[a.channel] ?? a.channel}
-						</span>
-						<OutcomeChip outcome={a.outcome} />
-						<span class="ml-auto font-mono text-[11px] text-ink-200">{when(a.createdAt)}</span>
-					</div>
-					{#if a.note}
-						<div class="mt-1.5 text-[13px] leading-relaxed text-ink-600">{a.note}</div>
+							class="mt-1 h-[9px] w-[9px] rounded-full border-2 border-panel"
+							style="background:{OUTCOME_TOKENS[entry.data.outcome]
+								?.hex};box-shadow:0 0 0 1px {OUTCOME_TOKENS[entry.data.outcome]?.hex}"
+						></span>
+					{:else if entry.data.field === 'stage'}
+						<span class="mt-1 h-[9px] w-[9px] rounded-full border-2 border-panel bg-primary/60"
+						></span>
+					{:else}
+						<span class="mt-1 h-[9px] w-[9px] rounded-full border-2 border-panel bg-ink-200"></span>
 					{/if}
+					<span class="mt-1 w-px flex-1 bg-hairline"></span>
 				</div>
-			{:else}
-				{@const o = entry.data}
-				<div class="flex-1 pb-0.5">
-					<div class="flex flex-wrap items-center gap-2">
-						<span class="text-[12.5px] font-semibold text-ink-600">{ownershipLabel(o)}</span>
-						<span class="ml-auto font-mono text-[11px] text-ink-200">{when(o.at)}</span>
-					</div>
-					<div class="mt-0.5 flex items-center gap-1 font-mono text-[11.5px] text-ink-400">
-						<span>{nameOf(o.oldValue)}</span>
-						<span class="text-ink-200">→</span>
-						<span class="font-medium text-ink">{nameOf(o.newValue)}</span>
-						{#if o.actorUserId && o.actorUserId !== o.newValue}
-							<span class="text-ink-200">· by {nameOf(o.actorUserId)}</span>
+
+				{#if entry.kind === 'activity'}
+					{@const a = entry.data}
+					<div class="flex-1">
+						<div class="flex flex-wrap items-center gap-2">
+							<span class="text-[12.5px] font-semibold">{nameOf(a.repId)}</span>
+							<span
+								class="rounded-[4px] bg-panel-sunken px-1.5 py-px font-mono text-[10.5px] text-ink-600"
+							>
+								{CHANNEL_LABEL[a.channel] ?? a.channel}
+							</span>
+							<OutcomeChip outcome={a.outcome} />
+							<span class="ml-auto font-mono text-[11px] text-ink-200">{when(a.createdAt)}</span>
+						</div>
+						{#if a.note}
+							<div class="mt-1.5 text-[13px] leading-relaxed text-ink-600">{a.note}</div>
 						{/if}
 					</div>
-				</div>
-			{/if}
-		</div>
-	{/each}
+				{:else if entry.data.field === 'stage'}
+					{@const o = entry.data}
+					<div class="flex-1 pb-0.5">
+						<div class="flex flex-wrap items-center gap-2">
+							<span class="text-[12.5px] font-semibold text-ink-600">Stage changed</span>
+							<span class="ml-auto font-mono text-[11px] text-ink-200">{when(o.at)}</span>
+						</div>
+						<div class="mt-0.5 flex items-center gap-1 font-mono text-[11.5px] text-ink-400">
+							<span>{stageLabel(o.oldValue)}</span>
+							<span class="text-ink-200">→</span>
+							<span class="font-medium text-ink">{stageLabel(o.newValue)}</span>
+							{#if o.actorUserId}
+								<span class="text-ink-200">· by {nameOf(o.actorUserId)}</span>
+							{/if}
+						</div>
+					</div>
+				{:else}
+					{@const o = entry.data}
+					<div class="flex-1 pb-0.5">
+						<div class="flex flex-wrap items-center gap-2">
+							<span class="text-[12.5px] font-semibold text-ink-600">{ownershipLabel(o)}</span>
+							<span class="ml-auto font-mono text-[11px] text-ink-200">{when(o.at)}</span>
+						</div>
+						<div class="mt-0.5 flex items-center gap-1 font-mono text-[11.5px] text-ink-400">
+							<span>{nameOf(o.oldValue)}</span>
+							<span class="text-ink-200">→</span>
+							<span class="font-medium text-ink">{nameOf(o.newValue)}</span>
+							{#if o.actorUserId && o.actorUserId !== o.newValue}
+								<span class="text-ink-200">· by {nameOf(o.actorUserId)}</span>
+							{/if}
+						</div>
+					</div>
+				{/if}
+			</div>
+		{/each}
+	</div>
 </div>

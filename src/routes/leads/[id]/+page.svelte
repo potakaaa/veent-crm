@@ -346,7 +346,7 @@
 				<div class="mb-4">
 					<ActivityTimeline
 						activities={data.activities}
-						ownerHistory={data.ownerHistory}
+						leadHistory={data.leadHistory}
 						users={data.users}
 					/>
 				</div>

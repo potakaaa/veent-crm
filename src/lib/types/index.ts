@@ -131,6 +131,7 @@ export interface LeadFilters {
 
 export interface OwnerHistoryRow {
 	id: string;
+	field: string;
 	actorUserId: string | null;
 	oldValue: string | null;
 	newValue: string | null;

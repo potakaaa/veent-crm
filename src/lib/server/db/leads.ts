@@ -1162,12 +1162,13 @@ export async function snoozeLead(
 }
 
 // ---------------------------------------------------------------------------
-// Ownership history
+// Lead history (ownership + stage changes)
 // ---------------------------------------------------------------------------
 
-export async function getOwnershipHistory(leadId: string): Promise<
+export async function getLeadHistory(leadId: string): Promise<
 	Array<{
 		id: string;
+		field: string;
 		actorUserId: string | null;
 		oldValue: string | null;
 		newValue: string | null;
@@ -1177,16 +1178,20 @@ export async function getOwnershipHistory(leadId: string): Promise<
 	const rows = await db
 		.select({
 			id: crmLeadHistory.id,
+			field: crmLeadHistory.field,
 			actorUserId: crmLeadHistory.actorUserId,
 			oldValue: crmLeadHistory.oldValue,
 			newValue: crmLeadHistory.newValue,
 			at: crmLeadHistory.at
 		})
 		.from(crmLeadHistory)
-		.where(and(eq(crmLeadHistory.leadId, leadId), eq(crmLeadHistory.field, 'owner_id')))
+		.where(
+			and(eq(crmLeadHistory.leadId, leadId), inArray(crmLeadHistory.field, ['owner_id', 'stage']))
+		)
 		.orderBy(asc(crmLeadHistory.at));
 	return rows.map((r) => ({
 		id: r.id,
+		field: r.field,
 		actorUserId: r.actorUserId,
 		oldValue: r.oldValue,
 		newValue: r.newValue,

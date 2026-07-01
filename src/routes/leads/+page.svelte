@@ -167,6 +167,24 @@
 		/>
 	</div>
 
+	{#if data.filters.date}
+		<div
+			class="mb-3 flex items-center gap-2 rounded-control border border-hairline bg-panel-sunken px-3 py-2 text-[12.5px]"
+		>
+			<span class="text-ink-500">Filtered by date:</span>
+			<span class="font-mono font-semibold text-ink">{data.filters.date}</span>
+			<span class="text-ink-400"
+				>({data.filters.dateField === 'created_at' ? 'created' : 'event date'})</span
+			>
+			<a
+				href="/leads?segment={data.filters.segment}"
+				class="ml-auto font-mono text-[11.5px] text-primary hover:underline"
+			>
+				Clear
+			</a>
+		</div>
+	{/if}
+
 	<LeadGrid
 		leads={data.leads}
 		users={data.users}

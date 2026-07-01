@@ -212,6 +212,8 @@ export interface ListLeadsParams {
 	country?: string;
 	staleOnly?: boolean;
 	search?: string;
+	date?: string;
+	dateField?: 'event_date' | 'created_at';
 	page?: number;
 	pageSize?: number;
 	sort?: string;
@@ -234,6 +236,8 @@ export async function listLeadsFiltered(
 		country,
 		staleOnly = false,
 		search,
+		date,
+		dateField,
 		page = 1,
 		pageSize = 25,
 		sort,
@@ -281,6 +285,15 @@ export async function listLeadsFiltered(
 				ilike(sql`COALESCE(${crmLeads.normalizedHandle}, '')`, handleLike)
 			)!
 		);
+	}
+
+	// Date filter (from calendar click-through)
+	if (date && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
+		if (dateField === 'created_at') {
+			conditions.push(sql`DATE(${crmLeads.createdAt}) = ${date}::date`);
+		} else {
+			conditions.push(sql`${crmLeads.eventDate} = ${date}::date`);
+		}
 	}
 
 	const where = and(...conditions);

@@ -1,7 +1,10 @@
 <script lang="ts">
 	import type { HeatmapDay } from '$lib/types';
 
-	let { data }: { data: HeatmapDay[] } = $props();
+	let {
+		data,
+		metric = 'event_date'
+	}: { data: HeatmapDay[]; metric?: 'event_date' | 'created_at' } = $props();
 
 	const MONTH_NAMES = [
 		'January',
@@ -193,29 +196,36 @@
 					{#if cell.date === null}
 						<div class="min-h-[80px] rounded-[6px]"></div>
 					{:else}
-						<!-- svelte-ignore a11y_no_static_element_interactions -->
-						<div
-							class="relative flex min-h-[80px] flex-col items-start justify-start rounded-[6px] p-2 {densityBg(
-								cell.day?.total ?? 0
-							)} {cell.date === todayStr ? 'ring-2 ring-primary ring-offset-1' : ''} {cell.day
-								? 'cursor-default'
-								: ''}"
-							onmouseenter={cell.day ? (e) => showTooltip(e, cell.day!) : undefined}
-							onmouseleave={hideTooltip}
-						>
-							<span
-								class="font-mono text-[12px] font-semibold {densityText(
-									cell.day?.total ?? 0
-								)} {!cell.day ? 'text-ink-400' : ''}"
+						{#if cell.day && cell.day.total > 0}
+							<a
+								href="/leads?date={cell.date}&dateField={metric}&segment=all"
+								class="relative flex min-h-[80px] flex-col items-start justify-start rounded-[6px] p-2 {densityBg(
+									cell.day.total
+								)} {cell.date === todayStr
+									? 'ring-2 ring-primary ring-offset-1'
+									: ''} cursor-pointer transition-opacity hover:opacity-80"
+								onmouseenter={(e) => showTooltip(e, cell.day!)}
+								onmouseleave={hideTooltip}
 							>
-								{cell.date.split('-')[2].replace(/^0/, '')}
-							</span>
-							{#if cell.day && cell.day.total > 0}
+								<span class="font-mono text-[12px] font-semibold {densityText(cell.day.total)}">
+									{cell.date.split('-')[2].replace(/^0/, '')}
+								</span>
 								<span class="mt-auto font-mono text-[13px] font-bold {densityText(cell.day.total)}">
 									{cell.day.total}
 								</span>
-							{/if}
-						</div>
+							</a>
+						{:else}
+							<div
+								class="relative flex min-h-[80px] flex-col items-start justify-start rounded-[6px] p-2 {cell.date ===
+								todayStr
+									? 'ring-2 ring-primary ring-offset-1'
+									: ''}"
+							>
+								<span class="font-mono text-[12px] font-semibold text-ink-400">
+									{cell.date.split('-')[2].replace(/^0/, '')}
+								</span>
+							</div>
+						{/if}
 					{/if}
 				{/each}
 			</div>

@@ -177,7 +177,7 @@
 
 	<!-- Calendar views — below all summary cards -->
 	<div class="mt-[18px] flex flex-col gap-[18px]">
-		<MonthCalendar data={data.heatmap} />
+		<MonthCalendar data={data.heatmap} metric={data.heatMetric} />
 		<CalendarHeatmap
 			data={data.heatmap}
 			metric={data.heatMetric}

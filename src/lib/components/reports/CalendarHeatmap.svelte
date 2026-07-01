@@ -184,16 +184,24 @@
 				>
 					{#each grid.weeks as week, wi (wi)}
 						{#each week as cell, di (di)}
-							<!-- svelte-ignore a11y_no_static_element_interactions -->
-							<div
-								class="rounded-[2px] {densityClass(
-									cell.day?.total ?? 0
-								)} cursor-default transition-opacity hover:opacity-80"
-								style="grid-column: {wi + 1}; grid-row: {di + 1};"
-								onmouseenter={cell.day ? (e) => showTooltip(e, cell.day!) : undefined}
-								onmouseleave={hideTooltip}
-								aria-label={cell.day ? `${cell.date}: ${cell.day.total} leads` : cell.date}
-							></div>
+							{#if cell.day}
+								<a
+									href="/leads?date={cell.date}&dateField={metric}&segment=all"
+									class="rounded-[2px] {densityClass(
+										cell.day.total
+									)} transition-opacity hover:opacity-70"
+									style="grid-column: {wi + 1}; grid-row: {di + 1};"
+									onmouseenter={(e) => showTooltip(e, cell.day!)}
+									onmouseleave={hideTooltip}
+									aria-label="{cell.date}: {cell.day.total} leads"
+								></a>
+							{:else}
+								<div
+									class="rounded-[2px] {densityClass(0)}"
+									style="grid-column: {wi + 1}; grid-row: {di + 1};"
+									aria-label={cell.date}
+								></div>
+							{/if}
 						{/each}
 					{/each}
 				</div>

@@ -3,7 +3,7 @@ phase: login-redirect-callback
 date: 2026-07-01
 status: COMPLETE
 feature: auth
-plan: process/features/auth/active/login-redirect-callback_01-07-26/login-redirect-callback_PLAN_01-07-26.md
+plan: process/features/auth/completed/login-redirect-callback_01-07-26/login-redirect-callback_PLAN_01-07-26.md
 ---
 
 # Login Redirect Callback — EXECUTE Report
@@ -74,7 +74,7 @@ remains a known-gap (infra availability), unchanged.
 
 ## Closeout Packet
 
-- **Selected plan:** `process/features/auth/active/login-redirect-callback_01-07-26/login-redirect-callback_PLAN_01-07-26.md`
+- **Selected plan:** `process/features/auth/completed/login-redirect-callback_01-07-26/login-redirect-callback_PLAN_01-07-26.md`
 - **Finished:** all 6 touchpoint files implemented; 3 verification gates green.
 - **Verified:** hooks redirect routing (7a–7d), shared sanitizer branches (7e), login load() (7f),
   type-safety, full-suite regression — all via automated Vitest + svelte-check.

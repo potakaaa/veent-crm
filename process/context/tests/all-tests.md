@@ -1,18 +1,18 @@
 ---
 name: context:tests
 description: Test runner selection, commands, and verification guide for veent-crm
+keywords: testing, vitest, playwright, test commands, verification, unit tests, e2e, appeal score
 metadata:
   node_type: group-entrypoint
   type: context
   read_order: 2
   required: false
   read_when: task involves testing, verification, running tests, or debugging test failures
-  keywords: [testing, vitest, playwright, test commands, verification, unit tests, e2e]
 ---
 
 # veent-crm - All Tests
 
-Last updated: 2026-06-25
+Last updated: 2026-07-01
 
 Attach this file first when the task involves testing, verification, or test debugging.
 
@@ -68,20 +68,20 @@ Unless the task clearly needs a different path:
 | Runner | Command | Notes |
 |---|---|---|
 | Type check | `bun run check` | svelte-check + tsc — run first |
-| Vitest (unit) | `bun run test:unit` | Runs `vitest --run` |
+| Vitest (unit) | `bun run test:unit` | Runs plain `vitest` (**watch mode** — does not exit). Pass `-- --run` explicitly for a one-shot deterministic run: `bun run test:unit -- --run`. The `--run` flag lives in the separate `test` script (`bun run test`), not in `test:unit` itself. |
 | Playwright (e2e) | `bun run test:e2e` | Installs browsers first, then runs |
 | All tests | `bun run test` | unit + e2e (sequential) |
 | Lint | `bun run lint` | Prettier + ESLint |
 | Format | `bun run format` | Prettier write |
 
-**Single file (vitest):**
+**Single file, one-shot (vitest — always add `--run` for CI/agent use, otherwise it hangs in watch mode):**
 ```bash
-bun run test:unit -- src/tests/schemas.spec.ts
+bun run test:unit -- --run src/tests/schemas.spec.ts
 ```
 
-**Watch mode (vitest):**
+**Watch mode (vitest — this is the bare `bun run test:unit` default):**
 ```bash
-bun run test:unit -- --watch
+bun run test:unit
 ```
 
 **DB commands (need live Postgres):**
@@ -99,6 +99,7 @@ bun run db:migrate    # apply migrations (needs DATABASE_URL)
 - **DEV_BYPASS in e2e** — Playwright tests will hit the real session gate; set `DEV_BYPASS = true` during e2e to avoid auth flows until Better Auth is wired
 - **Playwright browser install** — `playwright install` is run automatically by `test:e2e` script; if browsers are missing, run `bunx playwright install` manually
 - **Type errors vs test errors** — always run `bun run check` first; many "test failures" are actually TypeScript errors caught earlier
+- **`test:unit` hangs? You forgot `-- --run`** — bare `bun run test:unit` is watch mode and never exits in a non-TTY/agent shell. Any automated gate command must be `bun run test:unit -- --run [optional path]`.
 
 ---
 
@@ -106,6 +107,6 @@ bun run db:migrate    # apply migrations (needs DATABASE_URL)
 
 - Only one unit test file exists: `src/tests/schemas.spec.ts` (Zod schema validation)
 - No unit tests yet for `src/lib/server/` logic (auth stubs, reminders, mock data)
-- No e2e test specs written yet — Playwright is configured but has no test files
+- No e2e test specs written yet — Playwright is configured but has no test files (e.g. Lead Appeal Score badge-render + `?sort=appeal` ordering are Agent-Probe only for this reason — see `process/features/leads/backlog/`)
 - No test coverage for Drizzle queries (all surfaces still on mock data)
 - Integration tests (real DB) are not set up — will be needed for v1 DB wiring

@@ -10,7 +10,7 @@ metadata:
 ---
 # veent-crm - All Context
 
-Last updated: 2026-06-25
+Last updated: 2026-07-01
 
 This file is the root context entrypoint for the repo.
 
@@ -111,8 +111,11 @@ veent-crm/
     app.html                   # HTML shell
     lib/
       assets/favicon.svg
+      appeal-score.ts           # Pure computeAppealScore/appealTier — derived, never persisted
       components/
         StubNote.svelte        # visual stub indicator (remove as surfaces go live)
+        AppealScoreBadge.svelte # Shared badge (score + tier color, null "Not enough data" state)
+        SortToggle.svelte       # Shared ?sort=appeal toggle control
       index.ts
       server/
         auth.ts                # Better Auth stub (getSession + sendMagicLink placeholders)
@@ -161,6 +164,7 @@ veent-crm/
       layout.css               # Global CSS (Tailwind imports)
     tests/
       schemas.spec.ts          # Vitest schema tests
+      appeal-score.spec.ts     # Vitest unit tests for computeAppealScore formula
   scripts/
     import.ts                  # One-time TSV importer (stub pipeline)
   drizzle/                     # Generated Drizzle migrations
@@ -215,6 +219,8 @@ veent-crm/
 
 **Mock data isolation** — `src/lib/server/mock.ts` is stub-only. Real Drizzle queries must never import from or depend on `mock.ts`.
 
+**Derived/computed display values are never persisted** — e.g. `computeAppealScore()` (`src/lib/appeal-score.ts`) is a pure function of stored date fields, recomputed at render/sort time in `+page.server.ts` loads. It has no DB column of its own and writes no `crm_lead_history` row (that trail is for human-actor field changes only — stage/owner/deal-value — not derived values). Follow this pattern for any future "always fresh, recomputed" indicator instead of caching/storing it.
+
 ### Drizzle conventions
 
 - Table naming: snake_case, prefixed with `crm_` (e.g., `crm_leads`, `crm_activities`)
@@ -258,6 +264,8 @@ veent-crm/
 ## Current Project State (v0 → v1)
 
 **v0 (current):** All 10 route surfaces render mock data from `src/lib/server/mock.ts`. Auth is bypassed via `DEV_BYPASS`. No real DB queries. No real email. No real Sentry.
+
+**Exception:** the Lead Appeal Score (badge + `?sort=appeal`, all 5 lead views) is a real, fully-implemented derived-value feature layered on top of the mock data — `crm_leads` also gained 2 additive-nullable columns (`announced_at`, `first_reached_out_at`) ready for when real leads CRUD lands. It does not change the "mock data only" status of leads CRUD itself.
 
 **v1 target (in priority order):**
 1. Better Auth magic-link login — real sessions replacing DEV_BYPASS

@@ -77,6 +77,7 @@ export function dbRowToLead(row: DbLead, followUpAt?: string | Date | null): Lea
 		handle,
 		category: row.category as Lead['category'],
 		location: row.location ?? '—',
+		country: row.country ?? '—',
 		platform: (row.platform ?? 'Other') as Lead['platform'],
 		stage: row.stage as Stage,
 		ownerId: row.ownerId,
@@ -124,6 +125,17 @@ export function dbActivityToActivity(row: DbActivity): Activity {
 		createdAt: row.occurredAt.toISOString(),
 		followUpAt: row.followUpAt?.toISOString()
 	};
+}
+
+/**
+ * Parse a comma-joined CSV filter value (e.g. `?country=US,PH`) into a string array,
+ * stripping empty elements. The `.filter(Boolean)` is required: a trailing comma or an
+ * empty param value would otherwise yield a stray `''` element that becomes an
+ * `inArray(col, [''])` clause matching nothing while misrepresenting "no filter."
+ * Pure — unit-testable without a DB.
+ */
+export function parseFilterCsv(raw: string | null | undefined): string[] {
+	return (raw ?? '').split(',').filter(Boolean);
 }
 
 /**
@@ -359,18 +371,53 @@ const UNASSIGNED_COL_MAP = {
 	source: crmLeads.source
 } satisfies Record<Exclude<UnassignedSortCol, 'event'>, unknown>;
 
+/**
+ * Base predicate for the Up for Grabs (unassigned) queue: unowned, not soft-deleted,
+ * and not in a terminal (won/lost) stage. Shared so the country-options helper and the
+ * list query stay in scope-parity — if this predicate changes, both callers change together.
+ */
+const unassignedBaseConditions = (): SQL[] => [
+	isNull(crmLeads.ownerId) as SQL,
+	isNull(crmLeads.deletedAt) as SQL,
+	ne(crmLeads.stage, 'won'),
+	ne(crmLeads.stage, 'lost')
+];
+
+/**
+ * Distinct non-null countries among leads currently in the Up for Grabs queue.
+ * Powers the Country filter on `/unassigned`. Scoped to the SAME predicate as
+ * listUnassignedLeads() (unowned / active / non-deleted) — do NOT swap for
+ * getLeadCountries(), which is unscoped and would offer countries for leads that
+ * are not even in this queue.
+ */
+export async function getUnassignedLeadCountries(): Promise<string[]> {
+	const rows = await db
+		.selectDistinct({ country: crmLeads.country })
+		.from(crmLeads)
+		.where(and(...unassignedBaseConditions(), isNotNull(crmLeads.country)))
+		.orderBy(asc(crmLeads.country));
+	return rows.map((r) => r.country as string);
+}
+
 export async function listUnassignedLeads(
 	page = 1,
 	pageSize = 25,
 	sort?: string,
-	dir?: 'asc' | 'desc'
+	dir?: 'asc' | 'desc',
+	filters?: { country?: string[]; category?: string[] }
 ): Promise<{ leads: Lead[]; total: number }> {
-	const where = and(
-		isNull(crmLeads.ownerId),
-		isNull(crmLeads.deletedAt),
-		ne(crmLeads.stage, 'won'),
-		ne(crmLeads.stage, 'lost')
-	);
+	const conditions = unassignedBaseConditions();
+
+	// Multi-select filters: OR within a filter (inArray), AND across filters (separate conditions).
+	// Empty/omitted array = no restriction (existing behavior preserved — backward compatible).
+	if (filters?.country && filters.country.length > 0) {
+		conditions.push(inArray(crmLeads.country, filters.country));
+	}
+	if (filters?.category && filters.category.length > 0) {
+		conditions.push(inArray(crmLeads.category, filters.category as DbLead['category'][]));
+	}
+
+	const where = and(...conditions);
 
 	const validSort: UnassignedSortCol | null =
 		sort && (UNASSIGNED_SORT_COLS as readonly string[]).includes(sort)

@@ -18,8 +18,9 @@
 	import DiscardIssueModal from '$lib/components/leads/DiscardIssueModal.svelte';
 	import { toasts } from '$lib/stores/toasts.svelte';
 	import { canEditLead, canReassign } from '$lib/utils/permissions';
+	import { riskMeta } from '$lib/utils/risk';
 	import { formatDate, followUpDate } from '$lib/utils/dates';
-	import { stageLabel } from '$lib/utils/stages';
+	import { stageColor, stageLabel } from '$lib/utils/stages';
 	import type { AddActivityInput, LostReason, MoveStagePayload, Stage } from '$lib/types';
 
 	let { data } = $props();
@@ -30,6 +31,7 @@
 	let lead = $derived(data.lead);
 	const canEdit = $derived(canEditLead(data.me, lead));
 	const ownerName = $derived(data.users.find((u) => u.id === lead.ownerId)?.name ?? null);
+	const risk = $derived(riskMeta(lead.urgency));
 
 	let wonOpen = $state(false);
 	let lostOpen = $state(false);
@@ -256,7 +258,7 @@
 {#if navLoading}
 	<DetailSkeleton />
 {:else}
-	<div class="mx-auto max-w-[1080px] px-7 pb-16 pt-5">
+	<div class="px-7 pb-16 pt-6">
 		<a
 			href="/leads"
 			class="mb-3.5 flex items-center gap-1.5 text-[12.5px] text-ink-400 hover:text-ink"
@@ -265,38 +267,47 @@
 		</a>
 
 		<!-- header -->
-		<div class="mb-3.5 flex items-center gap-3.5">
-			<PlatformBadge platform={lead.platform} size="lg" />
-			<div class="min-w-0 flex-1">
-				<div class="flex items-center gap-2.5">
-					<h1 class="font-serif text-[24px] font-semibold tracking-[-0.5px] text-ink">
-						{lead.name}
-					</h1>
-					<StageChip stage={lead.stage} />
-					<AgeBadge label={lead.age.label} type={lead.age.type} />
+		<div class="mb-4 overflow-hidden rounded-frame border border-hairline bg-panel shadow-frame">
+			<div class="h-[3px]" style="background:{stageColor(lead.stage)}"></div>
+			<div class="flex items-center gap-3.5 px-[18px] py-4">
+				<PlatformBadge platform={lead.platform} size="lg" />
+				<div class="min-w-0 flex-1">
+					<div class="flex flex-wrap items-center gap-2.5">
+						<h1 class="text-[23px] font-extrabold tracking-[-0.6px] text-ink">
+							{lead.name}
+						</h1>
+						<StageChip stage={lead.stage} />
+						<AgeBadge label={lead.age.label} type={lead.age.type} />
+					</div>
+					<div class="mt-[5px] font-mono text-[12px] text-ink-300">
+						{lead.handle} · {lead.category} · {lead.location}
+					</div>
 				</div>
-				<div class="mt-1 font-mono text-[12.5px] text-ink-400">
-					{lead.handle} · {lead.category} · {lead.location}
+				<div class="text-right">
+					<div class="font-mono text-[9.5px] uppercase tracking-[0.6px] text-ink-200">
+						next action
+					</div>
+					<div class="mt-0.5 text-[13.5px] font-bold" style="color:{risk.color}">{risk.label}</div>
 				</div>
-			</div>
-			<div class="flex items-center gap-3">
-				{#if canEdit}
-					<a
-						href="/leads/{lead.id}/edit"
-						class="rounded-control border border-hairline bg-panel px-3 py-1.5 text-[12.5px] font-medium text-ink hover:bg-panel-sunken"
-					>
-						Edit
-					</a>
-					<button
-						disabled={mutating}
-						onclick={() => (discardOpen = true)}
-						class="rounded-control border border-hairline bg-panel px-3 py-1.5 text-[12.5px] font-medium text-red-500 hover:border-red-300 hover:bg-red-50 disabled:opacity-50"
-					>
-						Discard
-					</button>
-				{/if}
-				<div class="flex items-center gap-2 text-[12.5px] text-ink-500">
-					owner <Avatar name={ownerName} />
+				<div class="flex items-center gap-3 border-l border-hairline pl-3.5">
+					{#if canEdit}
+						<a
+							href="/leads/{lead.id}/edit"
+							class="rounded-control border border-hairline bg-panel px-3 py-1.5 text-[12.5px] font-medium text-ink hover:bg-panel-sunken"
+						>
+							Edit
+						</a>
+						<button
+							disabled={mutating}
+							onclick={() => (discardOpen = true)}
+							class="rounded-control border border-hairline bg-panel px-3 py-1.5 text-[12.5px] font-medium text-red-500 hover:border-red-300 hover:bg-red-50 disabled:opacity-50"
+						>
+							Discard
+						</button>
+					{/if}
+					<div class="flex items-center gap-2 text-[12.5px] text-ink-500">
+						owner <Avatar name={ownerName} />
+					</div>
 				</div>
 			</div>
 		</div>

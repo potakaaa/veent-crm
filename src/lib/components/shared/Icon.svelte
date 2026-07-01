@@ -19,7 +19,9 @@
 		palette:
 			'M12 2a10 10 0 100 20 2 2 0 002-2 1.5 1.5 0 00-1.5-1.5H11a2 2 0 010-4h3a5 5 0 005-5c0-4-3.5-7.5-6-7.5z',
 		calendar:
-			'M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V6a2 2 0 012-2z'
+			'M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V6a2 2 0 012-2z',
+		snowflake: 'M12 2v20M4.5 7L19.5 17M19.5 7L4.5 17',
+		reply: 'M9 17l-5-5 5-5M4 12h11a4 4 0 014 4v2'
 	} as const;
 	export type IconName = keyof typeof ICONS;
 </script>

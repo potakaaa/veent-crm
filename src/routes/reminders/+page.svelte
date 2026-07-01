@@ -16,10 +16,10 @@
 		{
 			key: 'overdue',
 			title: 'Overdue',
-			color: '#e11d48',
+			color: '#dc2626',
 			hint: 'past their booked follow-up date'
 		},
-		{ key: 'cold', title: 'Going cold', color: '#c2710c', hint: 're-touch before they lapse' }
+		{ key: 'cold', title: 'Going cold', color: '#d97706', hint: 're-touch before they lapse' }
 	];
 
 	const groups = $derived(
@@ -57,7 +57,7 @@
 
 <svelte:head><title>Reminders · Veent CRM</title></svelte:head>
 
-<div class="mx-auto max-w-[940px] px-7 pb-16 pt-6">
+<div class="px-7 pb-16 pt-6">
 	<PageHeader
 		title="Reminders"
 		subtitle="Follow-ups booked from your logged touches. Activities drive these dates — log a touch to rebook."

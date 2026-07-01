@@ -5,11 +5,11 @@
 	let { label, type }: { label: string; type: AgeType } = $props();
 
 	const COLOR: Record<AgeType, string> = {
-		overdue: '#e11d48',
-		due: '#c0362c',
-		stale: '#c2710c',
-		fresh: '#0e9f6e',
-		normal: '#71717a'
+		overdue: '#dc2626',
+		due: '#e11d2a',
+		stale: '#d97706',
+		fresh: '#059669',
+		normal: '#6b7280'
 	};
 	const hex = $derived(COLOR[type]);
 </script>

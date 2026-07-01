@@ -16,7 +16,7 @@
 
 <div class="mb-4 flex items-end justify-between gap-4">
 	<div>
-		<h1 class="font-serif text-[25px] font-semibold tracking-[-0.5px] text-ink">{title}</h1>
+		<h1 class="text-[25px] font-extrabold tracking-[-0.8px] text-ink">{title}</h1>
 		{#if subtitle}
 			<p class="mt-1.5 text-[13.5px] text-ink-500">{subtitle}</p>
 		{/if}

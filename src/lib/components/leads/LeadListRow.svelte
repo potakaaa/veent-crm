@@ -2,6 +2,7 @@
 	import PlatformBadge from '$lib/components/shared/PlatformBadge.svelte';
 	import StageChip from '$lib/components/shared/StageChip.svelte';
 	import AgeBadge from '$lib/components/shared/AgeBadge.svelte';
+	import { riskMeta } from '$lib/utils/risk';
 	import type { Lead } from '$lib/types';
 
 	let {
@@ -19,10 +20,11 @@
 	const eventLine = $derived(
 		lead.eventDate ? `${lead.eventName ?? '—'} · ${lead.eventDate}` : (lead.eventName ?? '—')
 	);
+	const risk = $derived(riskMeta(lead.urgency));
 </script>
 
 <div
-	class="flex min-h-10 items-center gap-3 border-b border-panel-sunken px-3.5 py-[9px] last:border-b-0 hover:bg-[#fdf7f5]"
+	class="flex min-h-10 items-center gap-3 border-b border-panel-sunken px-3.5 py-[9px] last:border-b-0 hover:bg-[#fcfbfd]"
 >
 	<PlatformBadge platform={lead.platform} />
 	<a href="/leads/{lead.id}" class="min-w-0 flex-1">
@@ -30,7 +32,7 @@
 			{lead.name}
 			{#if lead.siblings}
 				<span
-					class="rounded-[4px] bg-[rgba(194,113,12,0.1)] px-[5px] py-px font-mono text-[10px] text-stale"
+					class="rounded-[4px] bg-[rgba(217,119,6,0.1)] px-[5px] py-px font-mono text-[10px] text-stale"
 				>
 					{lead.siblings} events
 				</span>
@@ -38,8 +40,14 @@
 		</div>
 		<div class="mt-0.5 font-mono text-[12px] text-ink-400">{eventLine}</div>
 	</a>
-	<StageChip stage={lead.stage} />
-	<AgeBadge label={lead.age.label} type={lead.age.type} />
+	<div class="flex shrink-0 flex-col items-end gap-1">
+		<StageChip stage={lead.stage} />
+		<AgeBadge label={lead.age.label} type={lead.age.type} />
+	</div>
+	<div class="w-[150px] shrink-0 max-[1100px]:hidden">
+		<div class="font-mono text-[9px] uppercase tracking-[0.5px] text-ink-200">next</div>
+		<div class="text-[12px] font-semibold" style="color:{risk.color}">{risk.label}</div>
+	</div>
 	<div class="flex shrink-0 gap-1.5">
 		<a
 			href="/leads/{lead.id}"

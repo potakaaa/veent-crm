@@ -7,6 +7,7 @@
 	import AgeBadge from '$lib/components/shared/AgeBadge.svelte';
 	import EventBadge from '$lib/components/shared/EventBadge.svelte';
 	import EmptyState from '$lib/components/shared/EmptyState.svelte';
+	import { riskMeta } from '$lib/utils/risk';
 	import type { Lead, User } from '$lib/types';
 
 	let {
@@ -26,7 +27,7 @@
 	} = $props();
 	const ownerName = (id: string | null) => users.find((u) => u.id === id)?.name ?? null;
 
-	const cols = 'grid grid-cols-[2.4fr_1.7fr_1fr_0.9fr_1fr_0.7fr] gap-3';
+	const cols = 'grid grid-cols-[28px_2.4fr_1.7fr_1fr_0.9fr_1fr_0.7fr] gap-3';
 
 	const table = $derived(
 		makeSortTable({
@@ -50,8 +51,9 @@
 
 <div class="overflow-hidden rounded-control border border-hairline bg-panel">
 	<div
-		class="{cols} border-b border-hairline bg-[#fdf7f5] px-4 py-[9px] font-mono text-[10.5px] uppercase tracking-[0.4px] text-ink-300"
+		class="{cols} border-b border-hairline bg-panel-subtle px-4 py-[9px] font-mono text-[10.5px] uppercase tracking-[0.4px] text-ink-300"
 	>
+		<span></span>
 		{#each table.getHeaderGroups()[0].headers as header}
 			{#if header.column.getCanSort()}
 				<button
@@ -76,6 +78,7 @@
 			<div
 				class="{cols} min-h-[42px] items-center border-b border-panel-sunken px-4 last:border-b-0"
 			>
+				<Skeleton class="h-2 w-2 rounded-full" />
 				<Skeleton class="h-3.5 w-3/4" />
 				<Skeleton class="h-3.5 w-2/3" />
 				<Skeleton class="h-3.5 w-1/2" />
@@ -88,8 +91,13 @@
 		{#each leads as l (l.id)}
 			<a
 				href="/leads/{l.id}"
-				class="{cols} min-h-[42px] items-center border-b border-panel-sunken px-4 last:border-b-0 hover:bg-[#fdf7f5]"
+				class="{cols} min-h-[42px] items-center border-b border-panel-sunken px-4 last:border-b-0 hover:bg-[#fcfbfd]"
 			>
+				<span
+					class="h-2 w-2 rounded-full"
+					style="background:{riskMeta(l.urgency).color}"
+					title={riskMeta(l.urgency).label}
+				></span>
 				<div class="min-w-0">
 					<div class="flex items-center gap-1.5 text-[13px] font-semibold">
 						<span class="truncate">{l.name}</span>

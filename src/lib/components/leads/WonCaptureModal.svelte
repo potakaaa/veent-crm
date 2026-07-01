@@ -56,7 +56,7 @@
 		class="mb-[18px] flex items-start gap-2 rounded-control border border-primary/20 bg-[rgba(192,54,44,0.07)] px-3 py-2.5"
 	>
 		<span class="mt-px shrink-0 text-primary"><Icon name="info" size={15} stroke={2} /></span>
-		<div class="text-[12px] leading-relaxed text-[#7a2a24]">
+		<div class="text-[12px] leading-relaxed text-[#9b2c2c]">
 			Everything here is <strong>typed in, never looked up in Veent.</strong> The console is standalone
 			— it doesn't read GMV or org records from ticketing.
 		</div>

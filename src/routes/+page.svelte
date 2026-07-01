@@ -29,14 +29,14 @@
 		{
 			key: 'overdue',
 			title: 'Overdue follow-ups',
-			color: '#e11d48',
+			color: '#dc2626',
 			hint: 'past their booked follow-up date',
 			empty: 'Nothing overdue — nice.'
 		},
 		{
 			key: 'due',
 			title: 'Due today',
-			color: '#c0362c',
+			color: '#e11d2a',
 			hint: 'follow-ups booked for today (Manila)',
 			empty: 'Nothing due — go prospect.'
 		},
@@ -50,7 +50,7 @@
 		{
 			key: 'cold',
 			title: 'Going cold (>30d no reply)',
-			color: '#c2710c',
+			color: '#d97706',
 			hint: "don't auto-lose these — re-touch",
 			empty: 'Nothing going cold.'
 		}
@@ -99,7 +99,7 @@
 
 <svelte:head><title>Today · Veent CRM</title></svelte:head>
 
-<div class="mx-auto max-w-[940px] px-7 pb-16 pt-6">
+<div class="px-7 pb-16 pt-6">
 	<PageHeader
 		title="Today"
 		subtitle={`Good morning, ${data.me?.name ?? 'there'}. Your queue is sorted by urgency — clear the top first.`}
@@ -110,10 +110,10 @@
 	</PageHeader>
 
 	<div class="my-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-		<Stat value={count('due')} label="due today" accent="#c0362c" />
-		<Stat value={count('overdue')} label="overdue" accent="#e11d48" emphasize />
-		<Stat value={count('cold')} label="going cold" accent="#c2710c" emphasize />
-		<Stat value={count('replied')} label="replied — strike while warm" accent="#0e9f6e" emphasize />
+		<Stat value={count('due')} label="due today" icon="reminders" accent="#e11d2a" />
+		<Stat value={count('overdue')} label="overdue" icon="alert" accent="#dc2626" />
+		<Stat value={count('cold')} label="going cold" icon="snowflake" accent="#d97706" />
+		<Stat value={count('replied')} label="replied" icon="reply" accent="#7c3aed" />
 	</div>
 
 	{#each groupDefs as g (g.key)}

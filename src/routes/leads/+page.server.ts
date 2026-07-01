@@ -24,7 +24,11 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	const staleOnly = url.searchParams.get('staleOnly') === '1';
 	const search = url.searchParams.get('q') ?? '';
 	const rawDate = url.searchParams.get('date') ?? '';
-	const date = /^\d{4}-\d{2}-\d{2}$/.test(rawDate) ? rawDate : '';
+	const date = (() => {
+		if (!/^\d{4}-\d{2}-\d{2}$/.test(rawDate)) return '';
+		const d = new Date(rawDate + 'T00:00:00');
+		return isNaN(d.getTime()) || d.toISOString().slice(0, 10) !== rawDate ? '' : rawDate;
+	})();
 	const rawDateField = url.searchParams.get('dateField') ?? '';
 	const dateField: 'event_date' | 'created_at' =
 		rawDateField === 'created_at' ? 'created_at' : 'event_date';

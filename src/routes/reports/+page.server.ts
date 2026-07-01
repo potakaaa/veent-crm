@@ -16,9 +16,9 @@ const STAGE_META: Record<string, { label: string; color: string; order: number }
 };
 
 export const load: PageServerLoad = async ({ url }) => {
-	const heatMetric = (url.searchParams.get('heatMetric') ?? 'event_date') as
-		| 'event_date'
-		| 'created_at';
+	const rawMetric = url.searchParams.get('heatMetric');
+	const heatMetric: 'event_date' | 'created_at' =
+		rawMetric === 'created_at' ? 'created_at' : 'event_date';
 	// 1. Funnel counts
 	const stageCounts = await db
 		.select({ stage: crmLeads.stage, count: count() })

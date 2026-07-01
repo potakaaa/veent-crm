@@ -79,6 +79,9 @@
 			weeks.push(cells);
 		}
 
+		// Pad to always render 6 rows so the card height is stable month-to-month
+		while (weeks.length < 6) weeks.push(Array(7).fill({ date: null, day: null }));
+
 		return weeks;
 	});
 
@@ -216,7 +219,7 @@
 							</a>
 						{:else}
 							<div
-								class="relative flex min-h-[80px] flex-col items-start justify-start rounded-[6px] p-2 {cell.date ===
+								class="relative flex min-h-[80px] flex-col items-start justify-start rounded-[6px] border border-hairline/40 bg-panel-sunken/50 p-2 {cell.date ===
 								todayStr
 									? 'ring-2 ring-primary ring-offset-1'
 									: ''}"

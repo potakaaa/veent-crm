@@ -10,7 +10,6 @@
 	import AgeBadge from '$lib/components/shared/AgeBadge.svelte';
 	import DedupBanner from '$lib/components/leads/DedupBanner.svelte';
 	import ActivityTimeline from '$lib/components/leads/ActivityTimeline.svelte';
-	import OwnershipTimeline from '$lib/components/leads/OwnershipTimeline.svelte';
 	import LogTouchForm from '$lib/components/leads/LogTouchForm.svelte';
 	import StageControl from '$lib/components/leads/StageControl.svelte';
 	import WonCaptureModal from '$lib/components/leads/WonCaptureModal.svelte';
@@ -345,11 +344,11 @@
 				</div>
 
 				<div class="mb-4">
-					<ActivityTimeline activities={data.activities} users={data.users} />
-				</div>
-
-				<div class="mb-4">
-					<OwnershipTimeline ownerHistory={data.ownerHistory} users={data.users} />
+					<ActivityTimeline
+						activities={data.activities}
+						ownerHistory={data.ownerHistory}
+						users={data.users}
+					/>
 				</div>
 
 				{#if canEdit}

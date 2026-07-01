@@ -13,13 +13,29 @@
 
 	let { data } = $props();
 
-	// Optimistic shadow of the board. E1: a writable `$derived` IS the reconcile mechanism —
-	// reassign for an optimistic move; it auto-resyncs to server truth when `data.leads`
-	// changes after invalidateAll().
+	// Base leads from server (10 per stage). Reconciled after invalidateAll().
 	let shadowLeads = $derived(data.leads);
+	// Extra leads loaded lazily beyond the initial 10. Cleared on server reload.
+	let extraLeads = $state<Lead[]>([]);
+	// Current page per stage (1 = initial server load already covers this).
+	let pagesPerStage = $state<Partial<Record<Stage, number>>>({});
+	// Loading flag per stage.
+	let loadingPerStage = $state<Partial<Record<Stage, boolean>>>({});
+	// Lazy-load total overrides — populated from each /api/leads/pipeline-stage response.
+	let stageTotalOverrides = $state<Partial<Record<Stage, number>>>({});
+	// Live totals: server snapshot merged with any lazy-load updates.
+	const totalsPerStage = $derived({ ...data.totalsPerStage, ...stageTotalOverrides });
 
-	// Per-lead move pending state (also the duplicate-submit guard).
-	let moving = $state<Record<string, boolean>>({});
+	// Combined flat list for the board.
+	const allLeads = $derived([...shadowLeads, ...extraLeads]);
+
+	// Clear lazy-loaded extras whenever server data refreshes.
+	$effect(() => {
+		void data.leads; // track
+		extraLeads = [];
+		pagesPerStage = {};
+		stageTotalOverrides = {};
+	});
 
 	const navLoading = $derived(navigating.to?.url.pathname === '/pipeline');
 
@@ -27,17 +43,48 @@
 	let lostLead = $state<Lead | null>(null);
 	let savingWon = $state(false);
 	let savingLost = $state(false);
+	let moving = $state<Record<string, boolean>>({});
+
+	async function loadMoreForStage(stage: Stage) {
+		if (loadingPerStage[stage]) return;
+		const total = totalsPerStage[stage] ?? 0;
+		const currentCount = allLeads.filter((l) => l.stage === stage).length;
+		if (currentCount >= total) return;
+
+		const nextPage = (pagesPerStage[stage] ?? 1) + 1;
+		loadingPerStage = { ...loadingPerStage, [stage]: true };
+		try {
+			const res = await fetch(`/api/leads/pipeline-stage?stage=${stage}&page=${nextPage}&limit=10`);
+			if (!res.ok) return;
+			const { leads: newLeads, total: newTotal } = (await res.json()) as {
+				leads: Lead[];
+				total: number;
+			};
+			// Deduplicate: don't add leads already in allLeads.
+			const existingIds = new Set(allLeads.map((l) => l.id));
+			const fresh = newLeads.filter((l) => !existingIds.has(l.id));
+			extraLeads = [...extraLeads, ...fresh];
+			pagesPerStage = { ...pagesPerStage, [stage]: nextPage };
+			stageTotalOverrides = { ...stageTotalOverrides, [stage]: newTotal };
+		} catch {
+			// silently ignore — user can scroll again
+		} finally {
+			loadingPerStage = { ...loadingPerStage, [stage]: false };
+		}
+	}
 
 	async function onMove(leadId: string, stage: Stage) {
-		const lead = shadowLeads.find((l: Lead) => l.id === leadId);
+		const lead = allLeads.find((l: Lead) => l.id === leadId);
 		if (!lead || lead.stage === stage) return;
 		if (stage === 'won') return void (wonLead = lead);
 		if (stage === 'lost') return void (lostLead = lead);
-		if (moving[leadId]) return; // duplicate-submit guard
+		if (moving[leadId]) return;
 		moving = { ...moving, [leadId]: true };
 
-		const prevStage = lead.stage; // capture for targeted rollback
-		shadowLeads = patchInList(shadowLeads, leadId, { stage }); // optimistic move
+		const prevStage = lead.stage;
+		// Optimistic move in both lists.
+		shadowLeads = patchInList(shadowLeads, leadId, { stage });
+		extraLeads = patchInList(extraLeads, leadId, { stage });
 		try {
 			const res = await fetch(`/api/leads/${leadId}/stage`, {
 				method: 'PATCH',
@@ -46,30 +93,30 @@
 			});
 			if (!res.ok) {
 				const msg = await res.text().catch(() => 'Server error');
-				// Targeted rollback: restore only this lead's stage so concurrent moves aren't undone.
 				shadowLeads = patchInList(shadowLeads, leadId, { stage: prevStage });
+				extraLeads = patchInList(extraLeads, leadId, { stage: prevStage });
 				toasts.push(`Failed to move stage: ${msg}`);
 				return;
 			}
 		} catch {
 			shadowLeads = patchInList(shadowLeads, leadId, { stage: prevStage });
+			extraLeads = patchInList(extraLeads, leadId, { stage: prevStage });
 			toasts.push('Failed to move stage — server error');
 			return;
 		} finally {
 			moving = { ...moving, [leadId]: false };
 		}
-		await invalidateAll(); // $effect reconciles shadow with server truth
+		await invalidateAll();
 		toasts.push(`Moved ${lead.name} to ${stageLabel(stage)}`);
 	}
 
 	async function confirmWon(payload: MoveStagePayload) {
 		if (!wonLead || savingWon) return;
 		const lead = wonLead;
-		// Don't clear wonLead yet — modal stays open (showing "Saving…") so user input is
-		// preserved if the request fails and the user needs to retry.
 		savingWon = true;
 		const prevStage = lead.stage;
-		shadowLeads = patchInList(shadowLeads, lead.id, { stage: 'won' }); // optimistic
+		shadowLeads = patchInList(shadowLeads, lead.id, { stage: 'won' });
+		extraLeads = patchInList(extraLeads, lead.id, { stage: 'won' });
 		try {
 			const res = await fetch(`/api/leads/${lead.id}/stage`, {
 				method: 'PATCH',
@@ -78,18 +125,20 @@
 			});
 			if (!res.ok) {
 				const msg = await res.text().catch(() => 'Server error');
-				shadowLeads = patchInList(shadowLeads, lead.id, { stage: prevStage }); // targeted rollback
+				shadowLeads = patchInList(shadowLeads, lead.id, { stage: prevStage });
+				extraLeads = patchInList(extraLeads, lead.id, { stage: prevStage });
 				toasts.push(`Won capture failed: ${msg}`);
-				return; // wonLead stays set → modal stays open
+				return;
 			}
 		} catch {
 			shadowLeads = patchInList(shadowLeads, lead.id, { stage: prevStage });
+			extraLeads = patchInList(extraLeads, lead.id, { stage: prevStage });
 			toasts.push('Won capture failed — server error');
 			return;
 		} finally {
 			savingWon = false;
 		}
-		wonLead = null; // close modal only on success
+		wonLead = null;
 		await invalidateAll();
 		toasts.success(`${lead.name} — deal won 🎉`);
 	}
@@ -97,10 +146,10 @@
 	async function confirmLost(reason: LostReason) {
 		if (!lostLead || savingLost) return;
 		const lead = lostLead;
-		// Same pattern: keep modal open until success so user's reason isn't lost on failure.
 		savingLost = true;
 		const prevStage = lead.stage;
-		shadowLeads = patchInList(shadowLeads, lead.id, { stage: 'lost' }); // optimistic
+		shadowLeads = patchInList(shadowLeads, lead.id, { stage: 'lost' });
+		extraLeads = patchInList(extraLeads, lead.id, { stage: 'lost' });
 		try {
 			const res = await fetch(`/api/leads/${lead.id}/stage`, {
 				method: 'PATCH',
@@ -109,18 +158,20 @@
 			});
 			if (!res.ok) {
 				const msg = await res.text().catch(() => 'Server error');
-				shadowLeads = patchInList(shadowLeads, lead.id, { stage: prevStage }); // targeted rollback
+				shadowLeads = patchInList(shadowLeads, lead.id, { stage: prevStage });
+				extraLeads = patchInList(extraLeads, lead.id, { stage: prevStage });
 				toasts.push(`Mark lost failed: ${msg}`);
-				return; // lostLead stays set → modal stays open
+				return;
 			}
 		} catch {
 			shadowLeads = patchInList(shadowLeads, lead.id, { stage: prevStage });
+			extraLeads = patchInList(extraLeads, lead.id, { stage: prevStage });
 			toasts.push('Mark lost failed — server error');
 			return;
 		} finally {
 			savingLost = false;
 		}
-		lostLead = null; // close modal only on success
+		lostLead = null;
 		await invalidateAll();
 		toasts.push('Marked lost — still searchable');
 	}
@@ -150,7 +201,14 @@
 			{/each}
 		</div>
 	{:else}
-		<PipelineBoard leads={shadowLeads} users={data.users} {onMove} />
+		<PipelineBoard
+			leads={allLeads}
+			{totalsPerStage}
+			{loadingPerStage}
+			users={data.users}
+			{onMove}
+			onLoadMore={loadMoreForStage}
+		/>
 	{/if}
 </div>
 

@@ -8,14 +8,18 @@
 
 	let {
 		leads,
-		lostCount = 0,
+		totalsPerStage = {},
+		loadingPerStage = {},
 		users,
-		onMove
+		onMove,
+		onLoadMore
 	}: {
 		leads: Lead[];
-		lostCount?: number;
+		totalsPerStage?: Partial<Record<Stage, number>>;
+		loadingPerStage?: Partial<Record<Stage, boolean>>;
 		users: User[];
 		onMove?: (leadId: string, stage: Stage) => void;
+		onLoadMore?: (stage: Stage) => void;
 	} = $props();
 
 	const ownerName = (id: string | null) => users.find((u) => u.id === id)?.name ?? null;
@@ -28,17 +32,32 @@
 	);
 
 	let dragId = $state<string | null>(null);
+
 	function drop(stage: Stage) {
 		if (dragId && onMove) onMove(dragId, stage);
 		dragId = null;
+	}
+
+	function sentinel(el: HTMLElement, stage: Stage) {
+		const obs = new IntersectionObserver(
+			(entries) => {
+				if (entries[0]?.isIntersecting) onLoadMore?.(stage);
+			},
+			{ threshold: 0.1 }
+		);
+		obs.observe(el);
+		return { destroy: () => obs.disconnect() };
 	}
 </script>
 
 <div class="flex min-h-0 flex-1 gap-3.5 overflow-x-auto pb-2">
 	{#each columns as col (col.stage)}
+		{@const total = totalsPerStage[col.stage] ?? col.cards.length}
+		{@const loading = loadingPerStage[col.stage] ?? false}
+		{@const hasMore = col.cards.length < total}
 		<!-- svelte-ignore a11y_no_static_element_interactions -->
 		<div
-			class="flex w-[268px] shrink-0 flex-col"
+			class="flex min-w-[220px] flex-1 flex-col"
 			ondragover={(e) => e.preventDefault()}
 			ondrop={() => drop(col.stage)}
 		>
@@ -48,7 +67,7 @@
 				<span
 					class="rounded-[5px] bg-panel-sunken px-[7px] py-px font-mono text-[11px] text-ink-300"
 				>
-					{col.cards.length}
+					{col.cards.length}{hasMore ? `/${total}` : ''}
 				</span>
 			</div>
 			<div
@@ -85,24 +104,18 @@
 						</div>
 					</a>
 				{/each}
+
+				{#if hasMore}
+					<div use:sentinel={col.stage} class="flex items-center justify-center py-2">
+						{#if loading}
+							<span class="font-mono text-[11px] text-ink-400">Loading…</span>
+						{:else}
+							<span class="font-mono text-[11px] text-ink-300">{total - col.cards.length} more</span
+							>
+						{/if}
+					</div>
+				{/if}
 			</div>
 		</div>
 	{/each}
-
-	<!-- collapsed lost column -->
-	<div
-		class="flex w-14 shrink-0 flex-col items-center gap-2.5 rounded-control border border-hairline bg-[#f4f2ed] py-3"
-	>
-		<span
-			class="rounded-[5px] border border-hairline bg-panel px-[7px] py-px font-mono text-[11px] text-[#71717a]"
-		>
-			{lostCount}
-		</span>
-		<div
-			class="text-[12px] font-semibold tracking-[0.5px] text-[#71717a]"
-			style="writing-mode:vertical-rl;transform:rotate(180deg)"
-		>
-			lost — collapsed
-		</div>
-	</div>
 </div>

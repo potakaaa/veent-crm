@@ -1,9 +1,7 @@
 <script lang="ts">
-	import { enhance } from '$app/forms';
 	import { goto, afterNavigate, invalidateAll } from '$app/navigation';
 	import { navigating, page } from '$app/state';
 	import { SvelteURLSearchParams } from 'svelte/reactivity';
-	import type { SubmitFunction } from '@sveltejs/kit';
 	import { makeSortTable } from '$lib/utils/tableSort';
 	import { Skeleton } from '$lib/components/ui/skeleton';
 	import { Button } from '$lib/components/ui/button';
@@ -11,9 +9,11 @@
 	import EmptyState from '$lib/components/shared/EmptyState.svelte';
 	import StageChip from '$lib/components/shared/StageChip.svelte';
 	import DiscardIssueModal from '$lib/components/leads/DiscardIssueModal.svelte';
+	import LeadEditModal from '$lib/components/leads/LeadEditModal.svelte';
 	import { toasts } from '$lib/stores/toasts.svelte';
 	import { removeFromList } from '$lib/utils/optimistic';
 	import { sourceLabel } from '$lib/utils/sources';
+	import type { Lead } from '$lib/types';
 
 	let { data } = $props();
 
@@ -23,6 +23,81 @@
 
 	let discardTarget = $state<{ id: string; name: string } | null>(null);
 	let discarding = $state<Record<string, boolean>>({});
+
+	let editTarget = $state<Lead | null>(null);
+	let editSaving = $state(false);
+
+	async function saveEdit(leadData: Record<string, unknown>) {
+		if (!editTarget || editSaving) return;
+		editSaving = true;
+		try {
+			const res = await fetch(`/api/leads/${editTarget.id}`, {
+				method: 'PATCH',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(leadData)
+			});
+			if (!res.ok) {
+				const msg = await res.text().catch(() => 'Server error');
+				toasts.push(`Could not save: ${msg}`);
+				return; // keep modal open
+			}
+			editTarget = null;
+			await invalidateAll();
+			toasts.success('Lead updated');
+		} catch {
+			toasts.push('Could not save — please try again');
+		} finally {
+			editSaving = false;
+		}
+	}
+
+	async function saveAndResolve(leadData: Record<string, unknown>) {
+		if (!editTarget || editSaving) return;
+		editSaving = true;
+		const leadId = editTarget.id;
+		let failedLead: (typeof shadowLeads)[number] | undefined;
+		try {
+			// Save edits first; keep modal open on failure.
+			const patchRes = await fetch(`/api/leads/${leadId}`, {
+				method: 'PATCH',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(leadData)
+			});
+			if (!patchRes.ok) {
+				const msg = await patchRes.text().catch(() => 'Server error');
+				toasts.push(`Could not save: ${msg}`);
+				return;
+			}
+			// Optimistically remove from list and call the resolve action.
+			editTarget = null;
+			failedLead = shadowLeads.find((l) => l.id === leadId);
+			shadowLeads = removeFromList(shadowLeads, leadId);
+			resolving = { ...resolving, [leadId]: true };
+			const formData = new FormData();
+			formData.set('leadId', leadId);
+			formData.set('page', String(data.pagination.page));
+			const resolveRes = await fetch('?/resolve', { method: 'POST', body: formData });
+			if (resolveRes.ok) {
+				await invalidateAll();
+				toasts.success('Lead updated and resolved');
+			} else {
+				const lead = failedLead;
+				if (lead && !shadowLeads.some((l) => l.id === lead.id)) {
+					shadowLeads = [...shadowLeads, lead];
+				}
+				toasts.push('Saved but could not resolve — please try again');
+			}
+		} catch {
+			const lead = failedLead;
+			if (lead && !shadowLeads.some((l) => l.id === lead.id)) {
+				shadowLeads = [...shadowLeads, lead];
+			}
+			toasts.push('Could not complete — please try again');
+		} finally {
+			editSaving = false;
+			resolving = { ...resolving, [leadId]: false };
+		}
+	}
 
 	const navLoading = $derived(paging || navigating.to?.url.pathname === '/review');
 
@@ -59,27 +134,6 @@
 			}
 		})
 	);
-
-	function resolveEnhance(leadId: string): SubmitFunction {
-		return ({ cancel }) => {
-			if (resolving[leadId]) return cancel();
-			resolving = { ...resolving, [leadId]: true };
-			const failedLead = shadowLeads.find((l) => l.id === leadId);
-			shadowLeads = removeFromList(shadowLeads, leadId);
-
-			return async ({ result }) => {
-				resolving = { ...resolving, [leadId]: false };
-				if (result.type === 'success' || result.type === 'redirect') {
-					await invalidateAll();
-				} else {
-					if (failedLead && !shadowLeads.some((l) => l.id === failedLead.id)) {
-						shadowLeads = [...shadowLeads, failedLead];
-					}
-					toasts.push('Could not resolve — please try again');
-				}
-			};
-		};
-	}
 
 	async function confirmDiscard() {
 		const target = discardTarget;
@@ -191,19 +245,16 @@
 								</td>
 								<td class="px-4 py-2.5 text-right">
 									<div class="flex items-center justify-end gap-2">
-										<form method="POST" action="?/resolve" use:enhance={resolveEnhance(lead.id)}>
-											<input type="hidden" name="leadId" value={lead.id} />
-											<input type="hidden" name="page" value={data.pagination.page} />
-											<button
-												disabled={resolving[lead.id] || discarding[lead.id]}
-												class="h-[28px] rounded-control border border-hairline px-2.5 font-mono text-[11px] text-ink-600 hover:border-fresh hover:text-fresh disabled:opacity-50"
-												aria-label="Resolve {lead.name}"
-											>
-												{resolving[lead.id] ? 'Saving…' : 'Resolve'}
-											</button>
-										</form>
 										<button
-											disabled={resolving[lead.id] || discarding[lead.id]}
+											disabled={resolving[lead.id] || discarding[lead.id] || editSaving}
+											onclick={() => (editTarget = lead)}
+											class="h-[28px] rounded-control border border-hairline px-2.5 font-mono text-[11px] text-ink-600 hover:border-fresh hover:text-fresh disabled:opacity-50"
+											aria-label="Resolve {lead.name}"
+										>
+											{resolving[lead.id] ? 'Resolving…' : 'Resolve'}
+										</button>
+										<button
+											disabled={resolving[lead.id] || discarding[lead.id] || editSaving}
 											onclick={() => (discardTarget = { id: lead.id, name: lead.name })}
 											class="h-[28px] rounded-control border border-hairline px-2.5 font-mono text-[11px] text-ink-600 hover:border-red-400 hover:text-red-500 disabled:opacity-50"
 											aria-label="Discard {lead.name}"
@@ -258,5 +309,16 @@
 		saving={discarding[discardTarget.id] ?? false}
 		onclose={() => (discardTarget = null)}
 		onconfirm={confirmDiscard}
+	/>
+{/if}
+
+{#if editTarget}
+	<LeadEditModal
+		open={true}
+		lead={editTarget}
+		saving={editSaving}
+		onclose={() => (editTarget = null)}
+		onsave={saveEdit}
+		onresolve={saveAndResolve}
 	/>
 {/if}

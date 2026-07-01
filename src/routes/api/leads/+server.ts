@@ -29,6 +29,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			pageUrl: data.pageUrl || undefined,
 			contactEmail: data.contactEmail || undefined,
 			eventName: data.eventName || undefined,
+			eventLink: data.eventLink || undefined,
 			eventDateRaw: data.eventDateRaw || undefined,
 			notes: data.notes || undefined
 		},

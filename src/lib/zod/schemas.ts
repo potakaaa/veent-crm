@@ -59,6 +59,7 @@ export const leadFormSchema = z.object({
 	pageUrl: z.string().url().optional().or(z.literal('')),
 	contactEmail: z.string().email().optional().or(z.literal('')),
 	eventName: z.string().optional(),
+	eventLink: z.string().url().optional().or(z.literal('')),
 	eventDateRaw: z.string().optional(),
 	notes: z.string().optional()
 });

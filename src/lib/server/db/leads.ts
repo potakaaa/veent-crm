@@ -508,6 +508,7 @@ export async function createLead(
 		pageUrl?: string;
 		contactEmail?: string;
 		eventName?: string;
+		eventLink?: string;
 		eventDateRaw?: string;
 		notes?: string;
 	},
@@ -530,6 +531,7 @@ export async function createLead(
 			pageUrl: input.pageUrl ?? null,
 			contactEmail: input.contactEmail ?? null,
 			eventName: input.eventName ?? null,
+			eventLink: input.eventLink ?? null,
 			eventDateRaw: input.eventDateRaw ?? null,
 			notes: input.notes ?? null,
 			normalizedHandle,

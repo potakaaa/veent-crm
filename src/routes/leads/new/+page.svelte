@@ -26,6 +26,7 @@
 	let pageUrl = $state('');
 	let email = $state('');
 	let eventName = $state('');
+	let eventLink = $state('');
 	let selectedDate = $state<DateValue | undefined>(undefined);
 	let dateOpen = $state(false);
 	let tempDate = $state<DateValue | undefined>(undefined);
@@ -51,6 +52,7 @@
 			pageUrl: pageUrl || '',
 			contactEmail: email || '',
 			eventName: eventName || undefined,
+			eventLink: eventLink || '',
 			eventDateRaw: eventDateDisplay || undefined
 		});
 		if (!parsed.success) {
@@ -154,6 +156,10 @@
 			<div class="grid gap-1.5">
 				<Label for="eventName">Event name</Label>
 				<Input id="eventName" bind:value={eventName} placeholder="Worship Night Vol. 4" />
+			</div>
+			<div class="grid gap-1.5">
+				<Label for="eventLink">Event link</Label>
+				<Input id="eventLink" bind:value={eventLink} placeholder="https://facebook.com/events/…" />
 			</div>
 			<div class="grid gap-1.5 sm:col-span-2">
 				<Label for="eventDate">Event date</Label>

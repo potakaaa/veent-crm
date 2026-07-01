@@ -8,7 +8,8 @@
  */
 import { describe, it, expect } from 'vitest';
 import { leadFormSchema } from '$lib/zod/schemas';
-import { dbRowToLead, dbActivityToActivity } from '$lib/server/db/leads';
+import { dbRowToLead, dbActivityToActivity, parseFilterCsv } from '$lib/server/db/leads';
+import { leadCategory } from '$lib/server/db/schema';
 import { canEditLead } from '$lib/utils/permissions';
 import type { Lead, User } from '$lib/types';
 
@@ -334,6 +335,66 @@ describe('canEditLead permission gate', () => {
 
 	it('denies a signed-out user (no user) regardless of ownership', () => {
 		expect(canEditLead(null, leadOwnedBy(null))).toBe(false);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// parseFilterCsv — Up for Grabs country/category CSV param parsing (#91)
+// Fully-Automated gate: proves the .filter(Boolean) empty-strip (decision 8).
+// ---------------------------------------------------------------------------
+
+describe('parseFilterCsv (Up for Grabs filter param parsing)', () => {
+	it('splits a comma-joined value into an array', () => {
+		expect(parseFilterCsv('US,PH')).toEqual(['US', 'PH']);
+	});
+
+	it('returns a single-element array for one value', () => {
+		expect(parseFilterCsv('Concert')).toEqual(['Concert']);
+	});
+
+	it('returns an empty array for null (param absent)', () => {
+		expect(parseFilterCsv(null)).toEqual([]);
+	});
+
+	it('returns an empty array for undefined', () => {
+		expect(parseFilterCsv(undefined)).toEqual([]);
+	});
+
+	it('returns an empty array for an empty string (no stray "" element)', () => {
+		expect(parseFilterCsv('')).toEqual([]);
+	});
+
+	it('strips empty elements from a trailing comma via .filter(Boolean)', () => {
+		expect(parseFilterCsv('US,')).toEqual(['US']);
+	});
+
+	it('strips empty elements from a leading comma', () => {
+		expect(parseFilterCsv(',PH')).toEqual(['PH']);
+	});
+
+	it('strips all empty elements from consecutive/only commas', () => {
+		expect(parseFilterCsv(',,')).toEqual([]);
+		expect(parseFilterCsv('US,,PH')).toEqual(['US', 'PH']);
+	});
+
+	it('trims whitespace from each segment', () => {
+		expect(parseFilterCsv(' US , PH ')).toEqual(['US', 'PH']);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Category filter options — must equal leadCategory.enumValues exactly (AC#12)
+// Fully-Automated gate: enum-derived, never DB-queried.
+// ---------------------------------------------------------------------------
+
+describe('category filter options (AC#12 — enum-derived)', () => {
+	it('includes known categories from the enum and preserves order', () => {
+		const options = [...leadCategory.enumValues];
+		expect(options[0]).toBe('Sports');
+		expect(options).toContain('Concert');
+		expect(options).toContain('Other');
+		// No duplicates.
+		expect(new Set(options).size).toBe(options.length);
 	});
 });
 

@@ -124,6 +124,7 @@ class MockCrmClient implements CrmClient {
 				: '@' + input.name.toLowerCase().replace(/[^a-z0-9]/g, ''),
 			category: input.category,
 			location: input.location ?? '—',
+			country: '—',
 			platform: input.platform ?? 'Other',
 			stage: 'new',
 			ownerId: currentUserId,

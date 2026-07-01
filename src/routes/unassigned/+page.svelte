@@ -8,6 +8,7 @@
 	import StageChip from '$lib/components/shared/StageChip.svelte';
 	import ReassignModal from '$lib/components/leads/ReassignModal.svelte';
 	import LeadEditModal from '$lib/components/leads/LeadEditModal.svelte';
+	import MultiSelectFilter from '$lib/components/leads/MultiSelectFilter.svelte';
 	import EventBadge from '$lib/components/shared/EventBadge.svelte';
 	import Icon from '$lib/components/shared/Icon.svelte';
 	import { toasts } from '$lib/stores/toasts.svelte';
@@ -80,6 +81,18 @@
 		goto(`?${params}`, { keepFocus: true });
 	}
 
+	// Filters: comma-join the selection into the URL param (or drop it when empty), and always
+	// reset to page 1 so the filtered result starts at the beginning.
+	function setFilter(key: 'country' | 'category', values: string[]) {
+		navigate({ [key]: values.join(',') || undefined, page: undefined });
+	}
+	function clearAllFilters() {
+		navigate({ country: undefined, category: undefined, page: undefined });
+	}
+	const hasActiveFilters = $derived(
+		data.filters.country.length > 0 || data.filters.category.length > 0
+	);
+
 	const table = $derived(
 		makeSortTable({
 			data: shadowLeads,
@@ -89,6 +102,8 @@
 				{ id: 'event', header: 'Event' },
 				{ id: 'stage', header: 'Stage' },
 				{ id: 'source', header: 'Source' },
+				{ id: 'country', header: 'Country', enableSorting: false },
+				{ id: 'category', header: 'Category', enableSorting: false },
 				{ id: '_lastOwner', header: 'Last owner', enableSorting: false },
 				{ id: '_actions', header: '', enableSorting: false }
 			],
@@ -229,7 +244,7 @@
 		await invalidateAll(); // $effect reconciles shadow with server truth
 	}
 
-	const grid = 'grid grid-cols-[36px_2.2fr_1.8fr_1fr_90px_1.1fr_110px] gap-3';
+	const grid = 'grid grid-cols-[36px_2fr_1.6fr_1fr_90px_100px_110px_1fr_110px] gap-3';
 </script>
 
 <svelte:head><title>Up for grabs · Veent CRM</title></svelte:head>
@@ -260,6 +275,29 @@
 			{/if}
 		{/snippet}
 	</PageHeader>
+
+	<div class="mb-3.5 flex flex-wrap items-center gap-2">
+		<MultiSelectFilter
+			label="Country"
+			options={data.countryOptions}
+			selected={data.filters.country}
+			onchange={(values) => setFilter('country', values)}
+		/>
+		<MultiSelectFilter
+			label="Category"
+			options={data.categoryOptions}
+			selected={data.filters.category}
+			onchange={(values) => setFilter('category', values)}
+		/>
+		{#if hasActiveFilters}
+			<button
+				onclick={clearAllFilters}
+				class="h-[34px] rounded-control px-2.5 text-[12.5px] font-medium text-ink-400 hover:text-primary hover:underline"
+			>
+				Clear all filters
+			</button>
+		{/if}
+	</div>
 
 	<div class="overflow-hidden rounded-control border border-hairline bg-panel">
 		<div
@@ -298,7 +336,7 @@
 		{#if navLoading}
 			{#each Array(8) as _, i (i)}
 				<div class="{grid} min-h-11 items-center border-b border-panel-sunken px-4 last:border-b-0">
-					{#each Array(7) as _, c (c)}
+					{#each Array(9) as _, c (c)}
 						<Skeleton class="h-3.5 w-full" />
 					{/each}
 				</div>
@@ -352,6 +390,8 @@
 							).class}">{sourceLabel(l.source).label}</span
 						>
 					</div>
+					<div class="truncate font-mono text-[12px] text-ink-400">{l.country}</div>
+					<div class="truncate font-mono text-[12px] text-ink-400">{l.category}</div>
 					<div class="font-mono text-[12px] text-ink-400">{formerOwner(l.formerOwnerId)}</div>
 					<div class="flex items-center gap-1.5">
 						<button
@@ -374,7 +414,11 @@
 				</div>
 			{:else}
 				<div class="p-12 text-center text-[13px] text-ink-200">
-					No leads up for grabs — queue clear.
+					{#if hasActiveFilters}
+						No leads match your filters.
+					{:else}
+						No leads up for grabs — queue clear.
+					{/if}
 				</div>
 			{/each}
 		{/if}

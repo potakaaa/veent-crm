@@ -487,7 +487,15 @@ export async function unclaimLead(id: string, userId: string): Promise<Lead | nu
 		const [row] = await tx
 			.update(crmLeads)
 			.set({ ownerId: null, updatedAt: now })
-			.where(and(eq(crmLeads.id, id), isNull(crmLeads.deletedAt), eq(crmLeads.ownerId, userId)))
+			.where(
+				and(
+					eq(crmLeads.id, id),
+					isNull(crmLeads.deletedAt),
+					eq(crmLeads.ownerId, userId),
+					ne(crmLeads.stage, 'won'),
+					ne(crmLeads.stage, 'lost')
+				)
+			)
 			.returning();
 		if (!row) return null;
 		await tx.insert(crmLeadHistory).values({

@@ -97,16 +97,24 @@
 			claiming = { ...claiming, [lead.id]: false };
 		}
 		await invalidateAll(); // $effect reconciles shadow with server truth
-		toasts.success(`Claimed ${lead.name}`, {
-			label: 'Undo',
-			run: async () => {
-				const res = await fetch(`/api/leads/${lead.id}/claim`, { method: 'DELETE' });
-				if (res.ok) {
-					shadowLeads = [...shadowLeads, lead];
-					await invalidateAll();
-					toasts.success(`Unclaimed ${lead.name}`);
-				} else {
-					toasts.push(`Could not undo — ${lead.name} may have changed`);
+		toasts.push(`Claimed ${lead.name}`, {
+			tone: 'success',
+			timeout: 6000,
+			action: {
+				label: 'Undo',
+				run: async () => {
+					try {
+						const res = await fetch(`/api/leads/${lead.id}/claim`, { method: 'DELETE' });
+						if (res.ok) {
+							shadowLeads = [...shadowLeads, lead];
+							await invalidateAll();
+							toasts.success(`Unclaimed ${lead.name}`);
+						} else {
+							toasts.push(`Could not undo — ${lead.name} may have changed`);
+						}
+					} catch {
+						toasts.push(`Could not undo — ${lead.name} may have changed`);
+					}
 				}
 			}
 		});

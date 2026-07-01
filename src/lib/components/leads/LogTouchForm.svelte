@@ -2,6 +2,9 @@
 	import { Textarea } from '$lib/components/ui/textarea';
 	import { Button } from '$lib/components/ui/button';
 	import * as Popover from '$lib/components/ui/popover';
+	import * as Dialog from '$lib/components/ui/dialog';
+	import { Calendar } from '$lib/components/ui/calendar';
+	import { today, getLocalTimeZone, type DateValue } from '@internationalized/date';
 	import { ACTIVITY_CHANNELS } from '$lib/zod/schemas';
 	import { OUTCOME_TOKENS } from '$lib/design/tokens';
 	import type { ActivityChannel, ActivityOutcome, AddActivityInput, Lead } from '$lib/types';
@@ -61,9 +64,23 @@
 
 	let channel = $state<ActivityChannel>('fb_dm');
 	let outcome = $state<ActivityOutcome>('replied');
-	let followUpInDays = $state(3);
+	let followUpInDays = $state<number | null>(3);
+	let customFollowUpDate = $state<DateValue | undefined>(undefined);
+	let calendarOpen = $state(false);
+	let calendarTemp = $state<DateValue | undefined>(undefined);
 	let note = $state('');
 	let submitting = $state(false);
+
+	const minDate = $derived(today(getLocalTimeZone()));
+
+	const customDateDisplay = $derived(
+		customFollowUpDate
+			? new Date(customFollowUpDate.toString() + 'T00:00:00').toLocaleDateString('en-US', {
+					month: 'short',
+					day: 'numeric'
+				})
+			: ''
+	);
 
 	const pill = (active: boolean, mono = false) =>
 		`h-7 px-2.5 rounded-[7px] text-[12px] ${mono ? 'font-mono' : ''} ${active ? 'font-semibold' : 'font-medium'} border ${active ? 'border-primary bg-[rgba(192,54,44,0.08)] text-primary' : 'border-hairline bg-panel text-ink-600'}`;
@@ -71,7 +88,13 @@
 	async function submit() {
 		submitting = true;
 		try {
-			await onSubmit({ channel, outcome, followUpInDays, note: note.trim() || undefined });
+			await onSubmit({
+				channel,
+				outcome,
+				followUpInDays: customFollowUpDate ? undefined : (followUpInDays ?? undefined),
+				followUpAt: customFollowUpDate ? customFollowUpDate.toString() : undefined,
+				note: note.trim() || undefined
+			});
 			note = '';
 		} catch {
 			// errors already surfaced as toasts by the onSubmit handler
@@ -106,12 +129,70 @@
 		</div>
 		<div class="min-w-[130px]">
 			<div class="mb-1.5 text-[11px] text-ink-300">Follow up in</div>
-			<div class="flex gap-1.5">
+			<div class="flex flex-wrap gap-1.5">
 				{#each followOpts as f (f)}
-					<button class={pill(followUpInDays === f, true)} onclick={() => (followUpInDays = f)}>
+					<button
+						class={pill(followUpInDays === f && !customFollowUpDate, true)}
+						onclick={() => {
+							followUpInDays = f;
+							customFollowUpDate = undefined;
+						}}
+					>
 						{f}d
 					</button>
 				{/each}
+				{#if customFollowUpDate}
+					<button
+						class={pill(true)}
+						onclick={() => (customFollowUpDate = undefined)}
+						aria-label="Clear custom date"
+					>
+						{customDateDisplay} ×
+					</button>
+				{:else}
+					<Dialog.Root
+						bind:open={calendarOpen}
+						onOpenChange={(o) => {
+							if (o) calendarTemp = customFollowUpDate;
+						}}
+					>
+						<Dialog.Trigger class={pill(false)} aria-label="Pick a specific follow-up date">
+							Pick date
+						</Dialog.Trigger>
+						<Dialog.Content class="w-[min(92vw,360px)] gap-0 p-5" showCloseButton={false}>
+							<Dialog.Header class="mb-3 p-0">
+								<Dialog.Title>Follow-up date</Dialog.Title>
+							</Dialog.Header>
+							<div class="rounded-xl bg-panel-sunken p-3">
+								<Calendar
+									type="single"
+									bind:value={calendarTemp}
+									minValue={minDate}
+									class="w-full [--cell-size:--spacing(9)]"
+								/>
+							</div>
+							<div class="mt-4 flex justify-end gap-2">
+								<Dialog.Close
+									class="rounded-control border border-hairline bg-panel px-3 py-1.5 text-[13px] font-medium text-ink hover:bg-panel-sunken"
+								>
+									Cancel
+								</Dialog.Close>
+								<button
+									onclick={() => {
+										if (calendarTemp) {
+											customFollowUpDate = calendarTemp;
+											followUpInDays = null;
+										}
+										calendarOpen = false;
+									}}
+									class="rounded-control bg-primary px-3 py-1.5 text-[13px] font-semibold text-white hover:bg-primary-strong"
+								>
+									Done
+								</button>
+							</div>
+						</Dialog.Content>
+					</Dialog.Root>
+				{/if}
 			</div>
 		</div>
 	</div>

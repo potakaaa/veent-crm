@@ -124,10 +124,26 @@
 			title="Reports"
 			subtitle="Pipeline health and rep activity. Deal value is shown per currency — never summed across PHP and SGD."
 		/>
-		<div class="grid grid-cols-1 gap-[18px] lg:grid-cols-[1.1fr_1fr]">
+		<!-- Outreach metrics skeleton -->
+		<div class="mb-[18px] rounded-control border border-hairline bg-panel p-5">
+			<Skeleton class="mb-4 h-4 w-36" />
+			<div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+				{#each Array(3) as _, i (i)}
+					<div class="rounded-control border border-hairline bg-panel-sunken p-4">
+						<Skeleton class="mb-2 h-3 w-28" />
+						<Skeleton class="mb-1.5 h-8 w-16" />
+						<Skeleton class="h-3 w-36" />
+					</div>
+				{/each}
+			</div>
+		</div>
+		<!-- Funnel + leaderboard skeleton -->
+		<div class="mb-[18px] grid grid-cols-1 gap-[18px] lg:grid-cols-[1.1fr_1fr]">
 			<CardSkeleton />
 			<CardSkeleton />
 		</div>
+		<!-- Won deals skeleton -->
+		<CardSkeleton />
 	</div>
 {:else if isTeam}
 	<div class="px-7 pb-16 pt-6">

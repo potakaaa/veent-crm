@@ -2,11 +2,11 @@
 	import { goto } from '$app/navigation';
 	import PageHeader from '$lib/components/shared/PageHeader.svelte';
 	import Avatar from '$lib/components/shared/Avatar.svelte';
-	import { CardSkeleton } from '$lib/components/shared/skeletons';
+	import { Skeleton } from '$lib/components/shared/skeletons';
 	import CalendarHeatmap from '$lib/components/reports/CalendarHeatmap.svelte';
 	import MonthCalendar from '$lib/components/reports/MonthCalendar.svelte';
 	import { formatMoney } from '$lib/utils/currency';
-	import type { HeatmapDay } from '$lib/types';
+	import type { HeatmapDay, ReportData, OutreachMetrics } from '$lib/types';
 
 	let { data } = $props();
 
@@ -36,6 +36,26 @@
 			heatLoading = false;
 		}
 	}
+
+	// report and outreach kept as stable $state so filter navigations update
+	// the outreach card in-place without skeletonizing the pipeline/leaderboard.
+	let reportData = $state<ReportData | null>(null);
+	let outreachData = $state<OutreachMetrics | null>(null);
+	let outreachLoading = $state(false);
+
+	$effect(() => {
+		Promise.resolve(data.report).then((r) => {
+			reportData = r;
+		});
+	});
+
+	$effect(() => {
+		outreachLoading = true;
+		Promise.resolve(data.outreach).then((o) => {
+			outreachData = o;
+			outreachLoading = false;
+		});
+	});
 
 	// Outreach filter state — synced from URL params on navigation
 	let filterFrom = $state('');
@@ -103,11 +123,6 @@
 			>
 				Export view CSV
 			</a>
-			<button
-				class="h-[34px] rounded-control border border-hairline bg-panel px-3 font-mono text-[12.5px] text-ink-600"
-			>
-				1 Mar – 24 Jun 2026 ▾
-			</button>
 		{/snippet}
 	</PageHeader>
 
@@ -167,19 +182,39 @@
 		{/if}
 	</form>
 
-	<!-- Outreach metrics card -->
-	{#await data.outreach}
-		<div class="mb-[18px]"><CardSkeleton /></div>
-	{:then outreach}
+	<!-- Outreach metrics — skeleton only on initial load; dims in-place on filter change -->
+	{#if outreachData === null}
 		<div class="mb-[18px] rounded-control border border-hairline bg-panel p-5">
-			<div class="mb-4 text-[14px] font-bold">Outreach metrics</div>
+			<Skeleton class="mb-4 h-4 w-36" />
+			<div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+				{#each Array(3) as _, i (i)}
+					<div class="rounded-control border border-hairline bg-panel-sunken p-4">
+						<Skeleton class="mb-2 h-3 w-28" />
+						<Skeleton class="mb-1.5 h-8 w-16" />
+						<Skeleton class="h-3 w-36" />
+					</div>
+				{/each}
+			</div>
+		</div>
+	{:else}
+		<div
+			class="mb-[18px] rounded-control border border-hairline bg-panel p-5 transition-opacity {outreachLoading
+				? 'opacity-50'
+				: ''}"
+		>
+			<div class="mb-4 flex items-center gap-2">
+				<span class="text-[14px] font-bold">Outreach metrics</span>
+				{#if outreachLoading}
+					<span class="font-mono text-[10.5px] text-ink-300">updating…</span>
+				{/if}
+			</div>
 			<div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
 				<div class="rounded-control border border-hairline bg-[#fdf3f2] p-4">
 					<div class="font-mono text-[10.5px] uppercase tracking-[0.8px] text-ink-300">
 						Leads reached out
 					</div>
 					<div class="mt-1 font-mono text-[28px] font-semibold tracking-[-1px] tnum text-ink">
-						{outreach.leadsReachedOut}
+						{outreachData.leadsReachedOut}
 					</div>
 					<div class="mt-0.5 text-[12px] text-ink-400">first reached-out date set</div>
 				</div>
@@ -188,7 +223,7 @@
 						Leads that replied
 					</div>
 					<div class="mt-1 font-mono text-[28px] font-semibold tracking-[-1px] tnum text-ink">
-						{outreach.leadsThatReplied}
+						{outreachData.leadsThatReplied}
 					</div>
 					<div class="mt-0.5 text-[12px] text-ink-400">leads with a replied activity</div>
 				</div>
@@ -197,31 +232,68 @@
 						Leads with meeting
 					</div>
 					<div class="mt-1 font-mono text-[28px] font-semibold tracking-[-1px] tnum text-ink">
-						{outreach.leadsWithMeeting}
+						{outreachData.leadsWithMeeting}
 					</div>
 					<div class="mt-0.5 text-[12px] text-ink-400">at least one meeting logged</div>
 				</div>
 			</div>
 		</div>
-	{/await}
+	{/if}
 
-	{#await data.report}
+	<!-- Pipeline funnel + leaderboard + won deals — skeleton only on initial load, never re-skeletons on filter change -->
+	{#if reportData === null}
 		<div class="mb-[18px] grid grid-cols-1 gap-[18px] lg:grid-cols-[1.1fr_1fr]">
-			<CardSkeleton />
-			<CardSkeleton />
+			<div class="rounded-control border border-hairline bg-panel p-5">
+				<Skeleton class="mb-4 h-4 w-32" />
+				<div class="space-y-3">
+					{#each Array(6) as _, i (i)}
+						<div>
+							<div class="mb-1 flex items-center justify-between">
+								<Skeleton class="h-3 w-24" />
+								<Skeleton class="h-3 w-16" />
+							</div>
+							<Skeleton class="h-[22px] w-full rounded-[5px]" />
+						</div>
+					{/each}
+				</div>
+			</div>
+			<div class="rounded-control border border-hairline bg-panel p-5">
+				<Skeleton class="mb-4 h-4 w-32" />
+				<div class="space-y-2.5">
+					{#each Array(4) as _, i (i)}
+						<Skeleton class="h-[26px] w-full rounded-[5px]" />
+					{/each}
+				</div>
+			</div>
 		</div>
-		<CardSkeleton />
-	{:then report}
-		{@const maxCount = Math.max(...report.funnel.map((f) => f.count), 1)}
-		{@const maxTouches = Math.max(...report.leaderboard.map((r) => r.touches), 1)}
+		<div class="rounded-control border border-hairline bg-panel p-5">
+			<Skeleton class="mb-4 h-4 w-40" />
+			<div class="flex flex-wrap gap-4">
+				{#each Array(2) as _, i (i)}
+					<div
+						class="min-w-[200px] flex-1 rounded-control border border-hairline bg-panel-sunken p-4"
+					>
+						<Skeleton class="mb-2 h-3 w-16" />
+						<Skeleton class="mb-1.5 h-8 w-32" />
+						<Skeleton class="h-3 w-24" />
+					</div>
+				{/each}
+			</div>
+		</div>
+	{:else}
+		{@const maxCount = Math.max(...reportData.funnel.map((f) => f.count), 1)}
+		{@const maxTouches = Math.max(...reportData.leaderboard.map((r) => r.touches), 1)}
+
+		<!-- Pipeline funnel + rep leaderboard -->
 		<div class="mb-[18px] grid grid-cols-1 gap-[18px] lg:grid-cols-[1.1fr_1fr]">
-			<!-- funnel -->
 			<div class="rounded-control border border-hairline bg-panel p-5">
 				<div class="mb-4 flex items-center justify-between">
 					<div class="text-[14px] font-bold">Pipeline funnel</div>
-					<span class="font-mono text-[11px] text-fresh">{report.conversionRate}% new → won</span>
+					<span class="font-mono text-[11px] text-fresh"
+						>{reportData.conversionRate}% new → won</span
+					>
 				</div>
-				{#each report.funnel as f (f.stage)}
+				{#each reportData.funnel as f (f.stage)}
 					<div class="mb-3">
 						<div class="mb-1 flex items-center justify-between">
 							<span class="flex items-center gap-[7px] text-[12.5px] font-medium text-ink">
@@ -239,12 +311,11 @@
 				{/each}
 			</div>
 
-			<!-- leaderboard -->
 			<div class="flex flex-col rounded-control border border-hairline bg-panel p-5">
 				<div class="mb-4 text-[14px] font-bold">Rep leaderboard</div>
-				{#if report.leaderboard.length > 0}
+				{#if reportData.leaderboard.length > 0}
 					<div class="mb-5 space-y-[7px]">
-						{#each report.leaderboard as r (r.repId)}
+						{#each reportData.leaderboard as r (r.repId)}
 							<div class="flex items-center gap-3">
 								<div class="w-[72px] shrink-0 truncate text-right text-[11.5px] text-ink-500">
 									{r.name.split(' ')[0]}
@@ -294,7 +365,7 @@
 						>Replies</span
 					><span class="text-right">Wins</span>
 				</div>
-				{#each report.leaderboard as r (r.repId)}
+				{#each reportData.leaderboard as r (r.repId)}
 					<div
 						class="grid grid-cols-[1.6fr_0.9fr_0.9fr_0.7fr] items-center gap-2 border-b border-panel-sunken py-2 last:border-b-0"
 					>
@@ -314,7 +385,7 @@
 			</div>
 		</div>
 
-		<!-- won deals by currency -->
+		<!-- Won deals by currency -->
 		<div class="rounded-control border border-hairline bg-panel p-5">
 			<div class="mb-3.5 flex items-center justify-between">
 				<div class="text-[14px] font-bold">Won deals — by currency</div>
@@ -323,7 +394,7 @@
 				>
 			</div>
 			<div class="flex flex-wrap gap-4">
-				{#each report.currencyTotals as c (c.currency)}
+				{#each reportData.currencyTotals as c (c.currency)}
 					<div class="min-w-[200px] flex-1 rounded-control border border-hairline bg-[#fdf3f2] p-4">
 						<div class="font-mono text-[11px] tracking-[1px] text-ink-300">{c.label}</div>
 						<div class="mt-1 font-mono text-[26px] font-semibold tracking-[-1px] tnum">
@@ -334,7 +405,7 @@
 				{/each}
 			</div>
 		</div>
-	{/await}
+	{/if}
 
 	<!-- Calendar views — below all summary cards -->
 	<div class="mt-[18px] flex flex-col gap-[18px]">

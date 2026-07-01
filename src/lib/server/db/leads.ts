@@ -132,10 +132,15 @@ export function dbActivityToActivity(row: DbActivity): Activity {
  * stripping empty elements. The `.filter(Boolean)` is required: a trailing comma or an
  * empty param value would otherwise yield a stray `''` element that becomes an
  * `inArray(col, [''])` clause matching nothing while misrepresenting "no filter."
+ * Each segment is trimmed, so a hand-edited or shared URL with stray spaces
+ * (e.g. `?country=US, PH`) still resolves correctly.
  * Pure — unit-testable without a DB.
  */
 export function parseFilterCsv(raw: string | null | undefined): string[] {
-	return (raw ?? '').split(',').filter(Boolean);
+	return (raw ?? '')
+		.split(',')
+		.map((s) => s.trim())
+		.filter(Boolean);
 }
 
 /**

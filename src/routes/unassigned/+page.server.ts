@@ -18,7 +18,9 @@ export const load: PageServerLoad = async ({ url }) => {
 	const dir = url.searchParams.get('dir') === 'asc' ? ('asc' as const) : ('desc' as const);
 
 	const country = parseFilterCsv(url.searchParams.get('country'));
-	const category = parseFilterCsv(url.searchParams.get('category'));
+	const rawCategory = parseFilterCsv(url.searchParams.get('category'));
+	const validCategories = new Set<string>(leadCategory.enumValues);
+	const category = rawCategory.filter((c) => validCategories.has(c));
 
 	const [result, users, countryOptions] = await Promise.all([
 		listUnassignedLeads(page, PAGE_SIZE, sort, dir, { country, category }),

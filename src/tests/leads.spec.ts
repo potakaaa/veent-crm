@@ -376,6 +376,10 @@ describe('parseFilterCsv (Up for Grabs filter param parsing)', () => {
 		expect(parseFilterCsv(',,')).toEqual([]);
 		expect(parseFilterCsv('US,,PH')).toEqual(['US', 'PH']);
 	});
+
+	it('trims whitespace from each segment', () => {
+		expect(parseFilterCsv(' US , PH ')).toEqual(['US', 'PH']);
+	});
 });
 
 // ---------------------------------------------------------------------------
@@ -384,12 +388,6 @@ describe('parseFilterCsv (Up for Grabs filter param parsing)', () => {
 // ---------------------------------------------------------------------------
 
 describe('category filter options (AC#12 — enum-derived)', () => {
-	it('the load-time category options equal leadCategory.enumValues exactly', () => {
-		// +page.server.ts returns categoryOptions: [...leadCategory.enumValues].
-		const categoryOptions = [...leadCategory.enumValues];
-		expect(categoryOptions).toEqual([...leadCategory.enumValues]);
-	});
-
 	it('includes known categories from the enum and preserves order', () => {
 		const options = [...leadCategory.enumValues];
 		expect(options[0]).toBe('Sports');

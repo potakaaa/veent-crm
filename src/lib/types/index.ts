@@ -51,7 +51,7 @@ export interface Lead {
 	handle: string;
 	category: Category;
 	location: string;
-	country?: string;
+	country: string;
 	platform: Platform;
 	stage: Stage;
 	/** Owner user id, or null when the lead is unassigned ("up for grabs"). */

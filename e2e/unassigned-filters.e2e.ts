@@ -40,9 +40,31 @@ test.describe('Up for Grabs — country + category filters (#91)', () => {
 
 	test.fixme('AC#6 — filter selection persists across sort/page/claim', async ({ page }) => {
 		await goToUnassigned(page);
+
+		// Actually select a country option — this must call setFilter()/navigate() and land
+		// the value in the URL, not just open the popover.
 		await page.getByRole('button', { name: /^Country/ }).click();
-		// After a subsequent sort toggle, the country param must remain in the URL.
-		expect(new URL(page.url()).searchParams.get('country')).not.toBeNull();
+		await page.getByRole('checkbox').first().check();
+		const countryValue = new URL(page.url()).searchParams.get('country');
+		expect(countryValue).not.toBeNull();
+
+		// Sorting must not drop the active filter.
+		await page.getByRole('button', { name: 'Stage' }).click();
+		expect(new URL(page.url()).searchParams.get('country')).toBe(countryValue);
+
+		// Paging must not drop the active filter (only asserted when a second page exists).
+		const nextBtn = page.getByRole('button', { name: /Next/ });
+		if (await nextBtn.isEnabled().catch(() => false)) {
+			await nextBtn.click();
+			expect(new URL(page.url()).searchParams.get('country')).toBe(countryValue);
+		}
+
+		// Claiming a lead must not drop the active filter either.
+		const claimBtn = page.getByRole('button', { name: 'Claim' }).first();
+		if (await claimBtn.count()) {
+			await claimBtn.click();
+			expect(new URL(page.url()).searchParams.get('country')).toBe(countryValue);
+		}
 	});
 
 	test.fixme('AC#7 — filter selection persists across a same-URL reload', async ({ page }) => {

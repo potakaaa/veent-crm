@@ -5,6 +5,7 @@
 	import Avatar from '$lib/components/shared/Avatar.svelte';
 	import { CardSkeleton } from '$lib/components/shared/skeletons';
 	import CalendarHeatmap from '$lib/components/reports/CalendarHeatmap.svelte';
+	import MonthCalendar from '$lib/components/reports/MonthCalendar.svelte';
 	import { formatMoney } from '$lib/utils/currency';
 	import type { FunnelStage } from '$lib/types';
 
@@ -46,12 +47,13 @@
 		{/snippet}
 	</PageHeader>
 
-	<div class="mb-[18px]">
+	<div class="mb-[18px] grid grid-cols-1 gap-[18px] lg:grid-cols-[300px_1fr]">
 		<CalendarHeatmap
 			data={data.heatmap}
 			metric={data.heatMetric}
 			onchange={(m) => goto(`?heatMetric=${m}`, { keepFocus: true })}
 		/>
+		<MonthCalendar data={data.heatmap} />
 	</div>
 
 	{#if navLoading}

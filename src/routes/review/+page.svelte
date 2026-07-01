@@ -55,6 +55,7 @@
 		if (!editTarget || editSaving) return;
 		editSaving = true;
 		const leadId = editTarget.id;
+		let failedLead: (typeof shadowLeads)[number] | undefined;
 		try {
 			// Save edits first; keep modal open on failure.
 			const patchRes = await fetch(`/api/leads/${leadId}`, {
@@ -69,7 +70,7 @@
 			}
 			// Optimistically remove from list and call the resolve action.
 			editTarget = null;
-			const failedLead = shadowLeads.find((l) => l.id === leadId);
+			failedLead = shadowLeads.find((l) => l.id === leadId);
 			shadowLeads = removeFromList(shadowLeads, leadId);
 			resolving = { ...resolving, [leadId]: true };
 			const formData = new FormData();
@@ -80,12 +81,17 @@
 				await invalidateAll();
 				toasts.success('Lead updated and resolved');
 			} else {
-				if (failedLead && !shadowLeads.some((l) => l.id === failedLead.id)) {
-					shadowLeads = [...shadowLeads, failedLead];
+				const lead = failedLead;
+				if (lead && !shadowLeads.some((l) => l.id === lead.id)) {
+					shadowLeads = [...shadowLeads, lead];
 				}
 				toasts.push('Saved but could not resolve — please try again');
 			}
 		} catch {
+			const lead = failedLead;
+			if (lead && !shadowLeads.some((l) => l.id === lead.id)) {
+				shadowLeads = [...shadowLeads, lead];
+			}
 			toasts.push('Could not complete — please try again');
 		} finally {
 			editSaving = false;

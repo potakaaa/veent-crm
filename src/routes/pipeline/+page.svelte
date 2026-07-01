@@ -21,6 +21,10 @@
 	let pagesPerStage = $state<Partial<Record<Stage, number>>>({});
 	// Loading flag per stage.
 	let loadingPerStage = $state<Partial<Record<Stage, boolean>>>({});
+	// Lazy-load total overrides — populated from each /api/leads/pipeline-stage response.
+	let stageTotalOverrides = $state<Partial<Record<Stage, number>>>({});
+	// Live totals: server snapshot merged with any lazy-load updates.
+	const totalsPerStage = $derived({ ...data.totalsPerStage, ...stageTotalOverrides });
 
 	// Combined flat list for the board.
 	const allLeads = $derived([...shadowLeads, ...extraLeads]);
@@ -30,6 +34,7 @@
 		void data.leads; // track
 		extraLeads = [];
 		pagesPerStage = {};
+		stageTotalOverrides = {};
 	});
 
 	const navLoading = $derived(navigating.to?.url.pathname === '/pipeline');
@@ -42,7 +47,7 @@
 
 	async function loadMoreForStage(stage: Stage) {
 		if (loadingPerStage[stage]) return;
-		const total = data.totalsPerStage[stage] ?? 0;
+		const total = totalsPerStage[stage] ?? 0;
 		const currentCount = allLeads.filter((l) => l.stage === stage).length;
 		if (currentCount >= total) return;
 
@@ -51,12 +56,16 @@
 		try {
 			const res = await fetch(`/api/leads/pipeline-stage?stage=${stage}&page=${nextPage}&limit=10`);
 			if (!res.ok) return;
-			const { leads: newLeads } = (await res.json()) as { leads: Lead[] };
+			const { leads: newLeads, total: newTotal } = (await res.json()) as {
+				leads: Lead[];
+				total: number;
+			};
 			// Deduplicate: don't add leads already in allLeads.
 			const existingIds = new Set(allLeads.map((l) => l.id));
 			const fresh = newLeads.filter((l) => !existingIds.has(l.id));
 			extraLeads = [...extraLeads, ...fresh];
 			pagesPerStage = { ...pagesPerStage, [stage]: nextPage };
+			stageTotalOverrides = { ...stageTotalOverrides, [stage]: newTotal };
 		} catch {
 			// silently ignore — user can scroll again
 		} finally {
@@ -194,7 +203,7 @@
 	{:else}
 		<PipelineBoard
 			leads={allLeads}
-			totalsPerStage={data.totalsPerStage}
+			{totalsPerStage}
 			{loadingPerStage}
 			users={data.users}
 			{onMove}

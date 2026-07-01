@@ -92,7 +92,7 @@ are loaded).
 
 **File:** `src/routes/api/leads/pipeline-stage/+server.ts` — new file
 
-```
+```text
 GET /api/leads/pipeline-stage?stage=<stage>&page=<n>&limit=<n>
 ```
 
@@ -162,7 +162,7 @@ $effect(() => {
 
 `loadMoreForStage(stage)` is the lazy-fetch handler:
 
-```
+```text
 1. Guard: return if already loading this stage
 2. Count current cards for the stage across allLeads
 3. Return early if count >= totalsPerStage[stage] (all loaded)
@@ -383,7 +383,7 @@ no longer referenced.
 
 #### `saveEdit(leadData)` — "Save changes" handler
 
-```
+```text
 1. Guard: return if editTarget is null or editSaving is true
 2. Set editSaving = true
 3. fetch PATCH /api/leads/{editTarget.id} with JSON payload
@@ -397,7 +397,7 @@ returns the refreshed lead still with `needs_review = true`.
 
 #### `saveAndResolve(leadData)` — "Resolve" handler
 
-```
+```text
 1. Guard: return if editTarget is null or editSaving is true
 2. Set editSaving = true, capture leadId
 3. fetch PATCH /api/leads/{leadId} with JSON payload

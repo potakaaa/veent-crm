@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { goto } from '$app/navigation';
 	import { navigating } from '$app/state';
 	import PageHeader from '$lib/components/shared/PageHeader.svelte';
 	import Avatar from '$lib/components/shared/Avatar.svelte';
@@ -7,7 +6,7 @@
 	import CalendarHeatmap from '$lib/components/reports/CalendarHeatmap.svelte';
 	import MonthCalendar from '$lib/components/reports/MonthCalendar.svelte';
 	import { formatMoney } from '$lib/utils/currency';
-	import type { FunnelStage } from '$lib/types';
+	import type { FunnelStage, HeatmapDay } from '$lib/types';
 
 	let { data } = $props();
 	const report = $derived(data.report);
@@ -15,6 +14,30 @@
 	const maxTouches = $derived(Math.max(...report.leaderboard.map((r) => r.touches), 1));
 
 	const navLoading = $derived(navigating.to?.url.pathname === '/reports');
+
+	// Heatmap state — initialized from SSR, updated client-side on metric change.
+	// $effect keeps state in sync when server data changes (back/forward navigation).
+	let heatmap = $state<HeatmapDay[]>([]);
+	let heatMetric = $state<'event_date' | 'created_at'>('event_date');
+	let heatLoading = $state(false);
+
+	$effect(() => {
+		heatmap = data.heatmap;
+		heatMetric = data.heatMetric;
+	});
+
+	async function changeMetric(metric: string) {
+		const m = metric === 'created_at' ? 'created_at' : ('event_date' as const);
+		if (m === heatMetric) return;
+		heatLoading = true;
+		heatMetric = m;
+		try {
+			const res = await fetch(`/api/reports/heatmap?metric=${m}`);
+			if (res.ok) heatmap = (await res.json()) as HeatmapDay[];
+		} finally {
+			heatLoading = false;
+		}
+	}
 </script>
 
 <svelte:head><title>Reports · Veent CRM</title></svelte:head>
@@ -177,11 +200,12 @@
 
 	<!-- Calendar views — below all summary cards -->
 	<div class="mt-[18px] flex flex-col gap-[18px]">
-		<MonthCalendar data={data.heatmap} metric={data.heatMetric} />
+		<MonthCalendar data={heatmap} metric={heatMetric} />
 		<CalendarHeatmap
-			data={data.heatmap}
-			metric={data.heatMetric}
-			onchange={(m) => goto(`?heatMetric=${m}`, { keepFocus: true })}
+			data={heatmap}
+			metric={heatMetric}
+			loading={heatLoading}
+			onchange={changeMetric}
 		/>
 	</div>
 </div>

@@ -1,16 +1,17 @@
 <script lang="ts">
 	import { Select, SelectTrigger, SelectContent, SelectItem } from '$lib/components/ui/select';
 	import { Skeleton } from '$lib/components/ui/skeleton';
-	import { navigating } from '$app/state';
 	import type { HeatmapDay } from '$lib/types';
 
 	let {
 		data,
 		metric,
+		loading = false,
 		onchange
 	}: {
 		data: HeatmapDay[];
 		metric: 'event_date' | 'created_at';
+		loading?: boolean;
 		onchange: (m: string) => void;
 	} = $props();
 
@@ -132,8 +133,6 @@
 			year: 'numeric'
 		});
 	}
-
-	const navLoading = $derived(navigating.to?.url.pathname === '/reports');
 </script>
 
 <div class="rounded-control border border-hairline bg-panel p-5">
@@ -152,7 +151,7 @@
 		</Select>
 	</div>
 
-	{#if navLoading}
+	{#if loading}
 		<Skeleton class="h-[120px] w-full rounded-control" />
 	{:else}
 		<div class="flex min-w-0 gap-1.5">

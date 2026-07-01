@@ -84,7 +84,7 @@
 				</div>
 				<div class="flex flex-col gap-0.5">
 					{#each dayEntries as entry (entry.id)}
-						<CalendarEntryChip {entry} />
+						<CalendarEntryChip {entry} detailed={view === 'week'} />
 					{/each}
 				</div>
 			</div>

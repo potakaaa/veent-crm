@@ -128,6 +128,7 @@ class MockCrmClient implements CrmClient {
 			platform: input.platform ?? 'Other',
 			stage: 'new',
 			ownerId: currentUserId,
+			visibility: input.visibility ?? 'everyone',
 			eventName: input.eventName,
 			eventDate: input.eventDate,
 			email: input.email,
@@ -174,6 +175,8 @@ class MockCrmClient implements CrmClient {
 		const lead = leads.find((l) => l.id === id);
 		if (!lead) throw new Error(`Lead ${id} not found`);
 		lead.ownerId = currentUserId;
+		lead.visibility = 'everyone';
+		lead.selectedUserIds = undefined;
 		return delay(lead);
 	}
 
@@ -183,6 +186,8 @@ class MockCrmClient implements CrmClient {
 			const lead = leads.find((l) => l.id === id);
 			if (lead) {
 				lead.ownerId = currentUserId;
+				lead.visibility = 'everyone';
+				lead.selectedUserIds = undefined;
 				out.push(lead);
 			}
 		}
@@ -196,6 +201,8 @@ class MockCrmClient implements CrmClient {
 			if (lead) {
 				if (ownerId === null) lead.formerOwnerId = lead.ownerId;
 				lead.ownerId = ownerId;
+				lead.visibility = 'everyone';
+				lead.selectedUserIds = undefined;
 				out.push(lead);
 			}
 		}

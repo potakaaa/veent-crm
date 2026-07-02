@@ -24,7 +24,7 @@ export const POST: RequestHandler = async ({ request, params, locals }) => {
 		);
 	}
 
-	const lead = await getLead(params.id);
+	const lead = await getLead(params.id, locals.user.id, locals.user.role);
 	if (!lead) return json({ error: 'not found' }, { status: 404 });
 	if (locals.user.role !== 'manager' && lead.ownerId !== locals.user.id) {
 		return json({ error: 'forbidden' }, { status: 403 });

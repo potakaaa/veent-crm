@@ -6,7 +6,7 @@ import type { User } from '$lib/types';
 export const load: PageServerLoad = async ({ locals }) => {
 	if (!locals.user) throw redirect(303, '/login');
 
-	const leads = await getTodayQueue(locals.user.id);
+	const leads = await getTodayQueue(locals.user.id, locals.user.role);
 
 	const me: User = {
 		id: locals.user.id,

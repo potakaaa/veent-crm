@@ -10,7 +10,11 @@ export const load: PageServerLoad = async ({ locals }) => {
 	if (!locals.user) throw error(401, 'Unauthorized');
 
 	const [stageResults, users] = await Promise.all([
-		Promise.all(BOARD_STAGES.map((stage) => listPipelineStage(stage, 1, PAGE_LIMIT))),
+		Promise.all(
+			BOARD_STAGES.map((stage) =>
+				listPipelineStage(stage, 1, PAGE_LIMIT, locals.user!.id, locals.user!.role)
+			)
+		),
 		listUsers()
 	]);
 

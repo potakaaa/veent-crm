@@ -33,7 +33,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			eventDateRaw: data.eventDateRaw || undefined,
 			firstAnnouncedDate: data.firstAnnouncedDate || undefined,
 			firstReachedOutDate: data.firstReachedOutDate || undefined,
-			notes: data.notes || undefined
+			notes: data.notes || undefined,
+			visibility: data.visibility,
+			selectedUserIds: data.selectedUserIds
 		},
 		locals.user.id
 	);

@@ -10,7 +10,9 @@ export const load: PageServerLoad = async ({ locals }) => {
 	const [meetings, users, leadsFull] = await Promise.all([
 		listAllMeetings(),
 		listUsers(),
-		listLeads()
+		// Visibility-scoped (GitHub #87): the meetings lead-picker only lists leads the
+		// current rep can see; managers still see all via the manager no-op.
+		listLeads(locals.user.id, locals.user.role)
 	]);
 
 	const leads = leadsFull.map((l) => ({ id: l.id, name: l.name }));

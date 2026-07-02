@@ -6,7 +6,7 @@ import { getLead, snoozeLead } from '$lib/server/db/leads';
 export const POST: RequestHandler = async ({ params, request, locals }) => {
 	if (!locals.user) throw error(401, 'Unauthorized');
 
-	const lead = await getLead(params.id);
+	const lead = await getLead(params.id, locals.user.id, locals.user.role);
 	if (!lead) throw error(404, 'Lead not found');
 	if (locals.user.role !== 'manager' && lead.ownerId !== locals.user.id) {
 		throw error(403, 'Forbidden');

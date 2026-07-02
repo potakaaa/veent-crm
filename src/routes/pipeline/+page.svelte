@@ -198,9 +198,17 @@
 	</p>
 
 	{#if navLoading}
-		<div class="grid flex-1 grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+		<!-- A2: skeleton mirrors the real board's actual layout — a horizontal row of
+		     fixed-width (w-[286px]) scrolling columns — rather than a responsive grid that
+		     misleadingly implied the board reflows at breakpoints. -->
+		<div class="flex min-h-0 flex-1 gap-3.5 overflow-x-auto pb-2" data-testid="pipeline-skeleton">
 			{#each Array(5) as _, i (i)}
-				<CardSkeleton />
+				<div
+					class="flex w-[286px] shrink-0 flex-col gap-2 rounded-frame border border-hairline bg-panel-subtle p-2"
+				>
+					<CardSkeleton />
+					<CardSkeleton />
+				</div>
 			{/each}
 		</div>
 	{:else}

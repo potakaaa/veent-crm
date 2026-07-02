@@ -2,13 +2,13 @@
 	import { goto, afterNavigate, invalidateAll } from '$app/navigation';
 	import { page, navigating } from '$app/state';
 	import { makeSortTable } from '$lib/utils/tableSort';
-	import { Skeleton } from '$lib/components/ui/skeleton';
 	import { SvelteURLSearchParams } from 'svelte/reactivity';
 	import PageHeader from '$lib/components/shared/PageHeader.svelte';
 	import StageChip from '$lib/components/shared/StageChip.svelte';
 	import ReassignModal from '$lib/components/leads/ReassignModal.svelte';
 	import LeadEditModal from '$lib/components/leads/LeadEditModal.svelte';
 	import MultiSelectFilter from '$lib/components/leads/MultiSelectFilter.svelte';
+	import DataGridShell from '$lib/components/leads/DataGridShell.svelte';
 	import EventBadge from '$lib/components/shared/EventBadge.svelte';
 	import AppealScoreBadge from '$lib/components/AppealScoreBadge.svelte';
 	import Icon from '$lib/components/shared/Icon.svelte';
@@ -16,6 +16,8 @@
 	import { removeFromList } from '$lib/utils/optimistic';
 	import { canReassign } from '$lib/utils/permissions';
 	import { sourceLabel } from '$lib/utils/sources';
+	import { ownerNameFor } from '$lib/utils/owner';
+	import { createHoverPopover } from '$lib/utils/hover-popover.svelte';
 	import { Button } from '$lib/components/ui/button';
 	import * as Popover from '$lib/components/ui/popover';
 	import OrganizerHoverCard from '$lib/components/OrganizerHoverCard.svelte';
@@ -254,30 +256,13 @@
 		await invalidateAll(); // $effect reconciles shadow with server truth
 	}
 
-	const grid = 'grid grid-cols-[36px_2fr_1.6fr_1fr_90px_100px_110px_1fr_90px_150px] gap-3';
+	// Desktop column template (10 cells). Below `lg` the DataGridShell collapses this
+	// into a stacked single-column card.
+	const cols = 'lg:grid-cols-[36px_2fr_1.6fr_1fr_90px_100px_110px_1fr_90px_150px]';
 
-	let openHoverId = $state<string | null>(null);
-	let hoverCloseTimer: ReturnType<typeof setTimeout> | undefined;
-
-	const openHover = (id: string) => {
-		clearTimeout(hoverCloseTimer);
-		openHoverId = id;
-	};
-	const scheduleCloseHover = () => {
-		clearTimeout(hoverCloseTimer);
-		hoverCloseTimer = setTimeout(() => {
-			openHoverId = null;
-		}, 200);
-	};
-	const closeHoverNow = () => {
-		clearTimeout(hoverCloseTimer);
-		openHoverId = null;
-	};
-	const handleEscape = (e: KeyboardEvent) => {
-		if (e.key === 'Escape') closeHoverNow();
-	};
-	const ownerNameFor = (ownerId: string | null) =>
-		ownerId ? (data.users.find((u) => u.id === ownerId)?.name ?? null) : null;
+	// Shared hover/focus popover timer hook (200ms grace period) — consolidates the
+	// former local openHoverId/hoverCloseTimer state + handlers.
+	const hover = createHoverPopover();
 </script>
 
 <svelte:head><title>Up for grabs · Veent CRM</title></svelte:head>
@@ -293,7 +278,8 @@
 				<button
 					onclick={bulkClaim}
 					disabled={bulkPending}
-					class="h-[34px] rounded-control bg-primary px-3.5 text-[12.5px] font-semibold text-white disabled:opacity-50"
+					aria-label="Claim {selectedIds.length} selected leads"
+					class="focus-ring h-[34px] rounded-control bg-primary px-3.5 text-[12.5px] font-semibold text-white disabled:opacity-50"
 				>
 					{bulkPending ? 'Claiming…' : `Claim ${selectedIds.length}`}
 				</button>
@@ -332,10 +318,8 @@
 		{/if}
 	</div>
 
-	<div class="overflow-hidden rounded-control border border-hairline bg-panel">
-		<div
-			class="{grid} items-center border-b border-hairline bg-[#faf9fb] px-4 py-[9px] font-mono text-[10.5px] uppercase tracking-[0.4px] text-ink-300"
-		>
+	<DataGridShell {cols} loading={navLoading} skeletonCells={10} isEmpty={shadowLeads.length === 0}>
+		{#snippet header()}
 			{#each table.getHeaderGroups()[0].headers as header (header.id)}
 				<div
 					role="columnheader"
@@ -351,8 +335,8 @@
 						<button
 							onclick={header.column.getToggleSortingHandler()}
 							class={header.column.getIsSorted()
-								? 'text-left font-semibold text-ink-600 underline underline-offset-2 cursor-pointer'
-								: 'text-left text-ink-300 hover:text-ink-600 hover:underline hover:underline-offset-2 cursor-pointer'}
+								? 'cursor-pointer text-left font-semibold text-ink-600 underline underline-offset-2'
+								: 'cursor-pointer text-left text-ink-300 hover:text-ink-600 hover:underline hover:underline-offset-2'}
 						>
 							{header.column.columnDef.header}{header.column.getIsSorted() === 'asc'
 								? ' ↑'
@@ -365,19 +349,12 @@
 					{/if}
 				</div>
 			{/each}
-		</div>
-		{#if navLoading}
-			{#each Array(8) as _, i (i)}
-				<div class="{grid} min-h-11 items-center border-b border-panel-sunken px-4 last:border-b-0">
-					{#each Array(10) as _, c (c)}
-						<Skeleton class="h-3.5 w-full" />
-					{/each}
-				</div>
-			{/each}
-		{:else}
+		{/snippet}
+
+		{#snippet rows(rowClass)}
 			{#each shadowLeads as l (l.id)}
 				<div
-					class="{grid} min-h-11 items-center border-b border-panel-sunken px-4 last:border-b-0 hover:bg-[#fcfbfd]"
+					class="{rowClass} min-h-11 items-center border-b border-panel-sunken px-4 last:border-b-0 hover:bg-[#fcfbfd]"
 				>
 					<button
 						onclick={() => toggle(l.id)}
@@ -391,9 +368,9 @@
 						{#if selected[l.id]}<Icon name="check" size={12} stroke={3} />{/if}
 					</button>
 					<Popover.Root
-						open={openHoverId === l.id}
+						open={hover.openId === l.id}
 						onOpenChange={(open) => {
-							if (!open) closeHoverNow();
+							if (!open) hover.closeNow();
 						}}
 					>
 						<Popover.Trigger>
@@ -401,9 +378,9 @@
 								<div
 									{...props}
 									class="min-w-0"
-									onmouseenter={() => openHover(l.id)}
-									onmouseleave={scheduleCloseHover}
-									onkeydown={handleEscape}
+									onmouseenter={() => hover.open(l.id)}
+									onmouseleave={hover.scheduleClose}
+									onkeydown={hover.handleEscape}
 								>
 									<a href="/leads/{l.id}" class="min-w-0 block">
 										<div class="flex items-center gap-1.5 text-[13px] font-semibold">
@@ -421,11 +398,11 @@
 						<Popover.Portal>
 							<Popover.Content
 								side="right"
-								onmouseenter={() => openHover(l.id)}
-								onmouseleave={scheduleCloseHover}
-								onkeydown={handleEscape}
+								onmouseenter={() => hover.open(l.id)}
+								onmouseleave={hover.scheduleClose}
+								onkeydown={hover.handleEscape}
 							>
-								<OrganizerHoverCard lead={l} ownerName={ownerNameFor(l.ownerId)} />
+								<OrganizerHoverCard lead={l} ownerName={ownerNameFor(data.users, l.ownerId)} />
 							</Popover.Content>
 						</Popover.Portal>
 					</Popover.Root>
@@ -483,23 +460,26 @@
 						<button
 							onclick={() => claim(l)}
 							disabled={claiming[l.id]}
-							class="h-[30px] flex-1 rounded-[7px] bg-primary text-[12.5px] font-semibold text-white hover:bg-primary-strong disabled:opacity-50"
+							aria-label="Claim {l.name}"
+							class="focus-ring h-[30px] flex-1 rounded-[7px] bg-primary text-[12.5px] font-semibold text-white hover:bg-primary-strong disabled:opacity-50"
 						>
 							{claiming[l.id] ? 'Claiming…' : 'Claim'}
 						</button>
 					</div>
 				</div>
-			{:else}
-				<div class="p-12 text-center text-[13px] text-ink-200">
-					{#if hasActiveFilters}
-						No leads match your filters.
-					{:else}
-						No leads up for grabs — queue clear.
-					{/if}
-				</div>
 			{/each}
-		{/if}
-	</div>
+		{/snippet}
+
+		{#snippet empty()}
+			<div class="p-12 text-center text-[13px] text-ink-200">
+				{#if hasActiveFilters}
+					No leads match your filters.
+				{:else}
+					No leads up for grabs — queue clear.
+				{/if}
+			</div>
+		{/snippet}
+	</DataGridShell>
 
 	{#if data.pagination.totalPages > 1}
 		{@const { page: pg, pageSize, total, totalPages } = data.pagination}

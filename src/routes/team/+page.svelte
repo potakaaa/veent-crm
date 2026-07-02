@@ -22,6 +22,7 @@
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
 	import { Select, SelectTrigger, SelectContent, SelectItem } from '$lib/components/ui/select';
+	import { FieldError, fieldErrorAttrs } from '$lib/components/ui/field-error';
 	import { toasts } from '$lib/stores/toasts.svelte';
 	import { canManageUsers, isSuperManager, canPromoteToSuperManager } from '$lib/utils/permissions';
 	import { roleLabel, statusLabel } from '$lib/utils/roles';
@@ -75,13 +76,18 @@
 	let email = $state('');
 	let role = $state<string>('rep');
 	let formError = $state('');
+	// Per-field validation errors for the add-a-rep form, keyed by userFormSchema
+	// field name (Phase 4 — shared field-error component).
+	let fieldErrors = $state<Record<string, string[] | undefined>>({});
 
 	async function addRep() {
 		const parsed = userFormSchema.safeParse({ name, email, role, active: true });
 		if (!parsed.success) {
-			formError = parsed.error.issues[0]?.message ?? 'Check the form.';
+			fieldErrors = parsed.error.flatten().fieldErrors as Record<string, string[] | undefined>;
+			formError = '';
 			return;
 		}
+		fieldErrors = {};
 		try {
 			const res = await fetch('/api/users', {
 				method: 'POST',
@@ -98,6 +104,7 @@
 			}
 			addOpen = false;
 			name = email = formError = '';
+			fieldErrors = {};
 			role = 'rep';
 			await invalidateAll();
 			toasts.success("Invite sent — they'll receive a sign-in link by email");
@@ -410,11 +417,24 @@
 	<div class="flex flex-col gap-3">
 		<div class="grid gap-1.5">
 			<Label for="rep-name">Name</Label>
-			<Input id="rep-name" bind:value={name} placeholder="Marites" />
+			<Input
+				id="rep-name"
+				bind:value={name}
+				placeholder="Marites"
+				{...fieldErrorAttrs('rep-name', fieldErrors.name)}
+			/>
+			<FieldError id="rep-name" errors={fieldErrors.name} />
 		</div>
 		<div class="grid gap-1.5">
 			<Label for="rep-email">Work email</Label>
-			<Input id="rep-email" bind:value={email} placeholder="marites@test.com" class="font-mono" />
+			<Input
+				id="rep-email"
+				bind:value={email}
+				placeholder="marites@test.com"
+				class="font-mono"
+				{...fieldErrorAttrs('rep-email', fieldErrors.email)}
+			/>
+			<FieldError id="rep-email" errors={fieldErrors.email} />
 		</div>
 		<div class="grid gap-1.5">
 			<Label for="rep-role">Role</Label>

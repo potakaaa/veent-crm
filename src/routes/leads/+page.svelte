@@ -8,6 +8,7 @@
 	import { Input } from '$lib/components/ui/input';
 	import { Separator } from '$lib/components/ui/separator';
 	import { Select, SelectTrigger, SelectContent, SelectItem } from '$lib/components/ui/select';
+	import { Tabs } from '$lib/components/ui/tabs';
 	import { LEAD_STAGES, LEAD_PLATFORMS } from '$lib/zod/schemas';
 	import { stageLabel } from '$lib/utils/stages';
 	import type { LeadSegment, Stage } from '$lib/types';
@@ -94,19 +95,15 @@
 	</PageHeader>
 
 	<!-- toolbar -->
-	<div class="mb-1.5 flex items-center gap-2.5">
-		<div class="flex rounded-control bg-panel-sunken p-[3px]">
-			{#each segDefs as s (s.key)}
-				<button
-					onclick={() => setSegment(s.key)}
-					class="h-[26px] rounded-[6px] px-3 text-[12.5px] {data.filters.segment === s.key
-						? 'bg-panel font-semibold text-ink shadow-frame'
-						: 'font-medium text-[#7d6a68]'}"
-				>
-					{s.label}
-				</button>
-			{/each}
-		</div>
+	<div class="mb-1.5 flex flex-wrap items-center gap-2.5">
+		<Tabs
+			variant="segment"
+			ariaLabel="Filter leads by segment"
+			tabs={segDefs.map((s) => ({ value: s.key, label: s.label }))}
+			value={data.filters.segment ?? 'mine'}
+			onValueChange={setSegment}
+		/>
+		<Separator orientation="vertical" class="h-[22px]" />
 	</div>
 
 	<div class="mb-3.5 flex flex-wrap items-center gap-2.5">

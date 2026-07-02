@@ -107,6 +107,16 @@ export function dbRowToLead(row: DbLead, followUpAt?: string | Date | null): Lea
 		dealValue: row.dealValueCents != null ? row.dealValueCents / 100 : undefined,
 		currency: ((row.currency as Lead['currency']) ?? 'PHP') || 'PHP',
 		signedDate: row.signedAt?.toISOString(),
+		onboardingNotes: row.onboardingNotes ?? undefined,
+		contractUrl: row.contractUrl ?? undefined,
+		onboardingStartDate: row.onboardingStartDate ?? undefined,
+		goLiveDate: row.goLiveDate ?? undefined,
+		feeStructure: (row.feeStructure as 'legacy' | 'new' | null) ?? undefined,
+		transactionFeePct: row.transactionFeePct ?? undefined,
+		convenienceFeePesos: row.convenienceFeePesos ?? undefined,
+		serviceFeePct: row.serviceFeePct ?? undefined,
+		serviceFeePerTicketPesos: row.serviceFeePerTicketPesos ?? undefined,
+		bankChargesAbsorbed: row.bankChargesAbsorbed ?? undefined,
 		lostReason: (row.lostReason as Lead['lostReason']) ?? undefined,
 		createdAt,
 		lastActivityAt,
@@ -737,6 +747,16 @@ export async function updateLead(
 		notes?: string;
 		visibility?: Visibility;
 		selectedUserIds?: string[];
+		onboardingNotes?: string | null;
+		contractUrl?: string | null;
+		onboardingStartDate?: string | null;
+		goLiveDate?: string | null;
+		feeStructure?: 'legacy' | 'new' | null;
+		transactionFeePct?: number;
+		convenienceFeePesos?: number;
+		serviceFeePct?: number;
+		serviceFeePerTicketPesos?: number;
+		bankChargesAbsorbed?: boolean;
 	},
 	actorId: string
 ): Promise<Lead | null> {
@@ -779,6 +799,30 @@ export async function updateLead(
 				firstReachedOutDate: input.firstReachedOutDate ?? null,
 				notes: input.notes ?? null,
 				visibility: newVisibility,
+				// Onboarding fields: only overwrite when the key is present in the payload,
+				// so a normal lead edit never wipes onboarding data (and vice versa).
+				...(input.onboardingNotes !== undefined
+					? { onboardingNotes: input.onboardingNotes || null }
+					: {}),
+				...(input.contractUrl !== undefined ? { contractUrl: input.contractUrl || null } : {}),
+				...(input.onboardingStartDate !== undefined
+					? { onboardingStartDate: input.onboardingStartDate || null }
+					: {}),
+				...(input.goLiveDate !== undefined ? { goLiveDate: input.goLiveDate || null } : {}),
+				...(input.feeStructure !== undefined ? { feeStructure: input.feeStructure || null } : {}),
+				...(input.transactionFeePct !== undefined
+					? { transactionFeePct: input.transactionFeePct }
+					: {}),
+				...(input.convenienceFeePesos !== undefined
+					? { convenienceFeePesos: input.convenienceFeePesos }
+					: {}),
+				...(input.serviceFeePct !== undefined ? { serviceFeePct: input.serviceFeePct } : {}),
+				...(input.serviceFeePerTicketPesos !== undefined
+					? { serviceFeePerTicketPesos: input.serviceFeePerTicketPesos }
+					: {}),
+				...(input.bankChargesAbsorbed !== undefined
+					? { bankChargesAbsorbed: input.bankChargesAbsorbed }
+					: {}),
 				updatedAt: now
 			})
 			.where(and(eq(crmLeads.id, id), isNull(crmLeads.deletedAt)))
@@ -811,7 +855,43 @@ export async function updateLead(
 				updated.firstReachedOutDate ?? null
 			],
 			['notes', existing.notes ?? null, updated.notes ?? null],
-			['visibility', existing.visibility, updated.visibility]
+			['visibility', existing.visibility, updated.visibility],
+			['onboarding_notes', existing.onboardingNotes ?? null, updated.onboardingNotes ?? null],
+			['contract_url', existing.contractUrl ?? null, updated.contractUrl ?? null],
+			[
+				'onboarding_start_date',
+				existing.onboardingStartDate ?? null,
+				updated.onboardingStartDate ?? null
+			],
+			['go_live_date', existing.goLiveDate ?? null, updated.goLiveDate ?? null],
+			['fee_structure', existing.feeStructure ?? null, updated.feeStructure ?? null],
+			[
+				'transaction_fee_pct',
+				existing.transactionFeePct != null ? String(existing.transactionFeePct) : null,
+				updated.transactionFeePct != null ? String(updated.transactionFeePct) : null
+			],
+			[
+				'convenience_fee_pesos',
+				existing.convenienceFeePesos != null ? String(existing.convenienceFeePesos) : null,
+				updated.convenienceFeePesos != null ? String(updated.convenienceFeePesos) : null
+			],
+			[
+				'service_fee_pct',
+				existing.serviceFeePct != null ? String(existing.serviceFeePct) : null,
+				updated.serviceFeePct != null ? String(updated.serviceFeePct) : null
+			],
+			[
+				'service_fee_per_ticket_pesos',
+				existing.serviceFeePerTicketPesos != null
+					? String(existing.serviceFeePerTicketPesos)
+					: null,
+				updated.serviceFeePerTicketPesos != null ? String(updated.serviceFeePerTicketPesos) : null
+			],
+			[
+				'bank_charges_absorbed',
+				existing.bankChargesAbsorbed != null ? String(existing.bankChargesAbsorbed) : null,
+				updated.bankChargesAbsorbed != null ? String(updated.bankChargesAbsorbed) : null
+			]
 		];
 
 		const changed = tracked.filter(([, oldVal, newVal]) => oldVal !== newVal);
@@ -1119,6 +1199,81 @@ export async function getTodayQueue(userId: string, role: Role = 'rep'): Promise
 	const followUpMap = new Map(followUps.map((f) => [f.leadId, f.followUpAt ?? null]));
 
 	return rows.map((row) => dbRowToLead(row, followUpMap.get(row.id) ?? undefined));
+}
+
+// ---------------------------------------------------------------------------
+// Follow-ups in a date range — calendar read model (owner-scoped)
+// ---------------------------------------------------------------------------
+
+/**
+ * Lead-level predicate for the calendar follow-up query. Isolated as a pure,
+ * DB-free helper so the AC3 regression guard can assert the `ownerId` scoping
+ * predicate is present WITHOUT a live DB connection (see Validate Contract E1).
+ *
+ * MUST keep `eq(crmLeads.ownerId, userId)` — dropping it would leak other reps'
+ * follow-ups onto the signed-in user's calendar (the single flagged regression risk).
+ */
+export function buildFollowUpsRangeLeadConditions(userId: string): SQL[] {
+	return [
+		isNull(crmLeads.deletedAt) as SQL,
+		eq(crmLeads.ownerId, userId),
+		ne(crmLeads.stage, 'won'),
+		ne(crmLeads.stage, 'lost')
+	];
+}
+
+/**
+ * Pure inclusive range check (DB-free — unit-testable). A follow-up timestamp
+ * falls in the visible calendar window when rangeStart <= value <= rangeEnd.
+ */
+export function isWithinRange(
+	value: Date | string | null | undefined,
+	rangeStart: Date,
+	rangeEnd: Date
+): boolean {
+	if (!value) return false;
+	const t = (value instanceof Date ? value : new Date(value)).getTime();
+	if (Number.isNaN(t)) return false;
+	return t >= rangeStart.getTime() && t <= rangeEnd.getTime();
+}
+
+/**
+ * Returns the signed-in user's own leads whose CURRENT follow-up falls within
+ * [rangeStart, rangeEnd] — the read model for follow-up entries on the calendar.
+ *
+ * Adapts getTodayQueue's DISTINCT ON "current follow-up per lead" pattern: the
+ * latest touch's follow-up wins per lead, then leads are filtered to those whose
+ * current follow-up lands in the visible window. Owner scoping is preserved via
+ * buildFollowUpsRangeLeadConditions (AC3). Does NOT modify getTodayQueue/getRemindersQueue.
+ */
+export async function getFollowUpsInRange(
+	userId: string,
+	rangeStart: Date,
+	rangeEnd: Date
+): Promise<Lead[]> {
+	const rows = await db
+		.select()
+		.from(crmLeads)
+		.where(and(...buildFollowUpsRangeLeadConditions(userId)))
+		.orderBy(desc(sql`coalesce(${crmLeads.lastActivityAt}, ${crmLeads.createdAt})`));
+
+	if (rows.length === 0) return [];
+
+	const leadIds = rows.map((r) => r.id);
+	const followUps = await db
+		.selectDistinctOn([crmActivities.leadId], {
+			leadId: crmActivities.leadId,
+			followUpAt: crmActivities.followUpAt
+		})
+		.from(crmActivities)
+		.where(and(inArray(crmActivities.leadId, leadIds), isNotNull(crmActivities.followUpAt)))
+		.orderBy(crmActivities.leadId, desc(crmActivities.occurredAt));
+
+	const followUpMap = new Map(followUps.map((f) => [f.leadId, f.followUpAt ?? null]));
+
+	return rows
+		.filter((row) => isWithinRange(followUpMap.get(row.id) ?? null, rangeStart, rangeEnd))
+		.map((row) => dbRowToLead(row, followUpMap.get(row.id) ?? undefined));
 }
 
 // ---------------------------------------------------------------------------

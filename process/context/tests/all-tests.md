@@ -12,7 +12,7 @@ metadata:
 
 # veent-crm - All Tests
 
-Last updated: 2026-06-29
+Last updated: 2026-07-01
 
 Attach this file first when the task involves testing, verification, or test debugging.
 
@@ -99,7 +99,7 @@ bun run db:migrate    # apply migrations (needs DATABASE_URL)
 ## Debugging Quick Reference
 
 - **No live DB needed for unit tests** — `src/lib/server/db/index.ts` uses a lazy pool; vitest never opens a connection unless a test calls `db.*`
-- **DEV_BYPASS in e2e** — Playwright tests will hit the real session gate; set `DEV_BYPASS = true` during e2e to avoid auth flows until Better Auth is wired
+- **No DEV_BYPASS anymore — real Better Auth session gate.** `DEV_BYPASS` was removed from `hooks.server.ts`; it is now a real Better Auth session check cross-referenced against a `crm_users` allowlist row. There is NO Playwright auth-bootstrap mechanism (no `globalSetup`, no `storageState`, no test-only login shortcut) — every e2e spec that `goto()`s a protected route redirects to `/login` and must self-skip via an explicit `test.skip()` guard (see the `loading-ux.e2e.ts` / `calendar.e2e.ts` pattern) until the shared auth fixture backlog item is resolved (`process/features/auth/backlog/e2e-auth-bootstrap_NOTE_01-07-26.md`). Do not write an e2e spec that assumes it is signed in without this guard.
 - **Playwright browser install** — `playwright install` is run automatically by `test:e2e` script; if browsers are missing, run `bunx playwright install` manually
 - **Type errors vs test errors** — always run `bun run check` first; many "test failures" are actually TypeScript errors caught earlier
 
@@ -107,11 +107,10 @@ bun run db:migrate    # apply migrations (needs DATABASE_URL)
 
 ## Known Gaps
 
-- Unit test files: `src/tests/schemas.spec.ts` (Zod schema validation) + `src/tests/reminders.spec.ts` (VE-A1 resolveFollowUpAt, VE-B1 dbRowToLead urgency, VE-C2 sendReminderDigest no-key path). 62 unit tests total passing as of 2026-06-29.
-- No unit tests yet for auth stubs or mock data layer
-- No e2e test specs written yet — Playwright is configured but has no test files
-- No test coverage for Drizzle queries (integration tests need a real DB harness)
-- Integration tests (real DB) not set up — 4 Hybrid gates for reminders/activities still manual (VE-A1b/A2/A2b/C1)
+- Unit test files have grown well beyond the original 2 (schemas, reminders) — 263 passed / 70 skipped as of 2026-07-01 (`bun run test:unit:ci`). See individual feature reports for per-feature counts.
+- **e2e specs now exist** (Playwright is no longer empty): `e2e/leads-discard.e2e.ts`, `e2e/leads-new-dedup-hover.e2e.ts`, `e2e/loading-ux.e2e.ts`, `e2e/ufg-inline-edit.e2e.ts`, `e2e/unassigned-filters.e2e.ts`, `e2e/calendar.e2e.ts`. **All of them currently self-skip against protected routes** because there is no Playwright authenticated-session harness — see the auth-gate note above and `process/features/auth/backlog/e2e-auth-bootstrap_NOTE_01-07-26.md`. This is the single highest-leverage test-infra gap in the repo right now (blocks e2e verification for meeting-reminders, GitHub #91 filters, and calendar so far).
+- No test coverage for Drizzle queries beyond what individual features add DB-free (via `.toSQL()`/condition-array assertions) or `SKIP_DB`-gated Hybrid specs
+- Integration tests (real DB) not set up — several Hybrid gates across features (reminders/activities, calendar AC2/AC3) remain manual/one-time-checked until a live-DB CI harness exists
 
 ## Test Patterns (from reminders implementation)
 

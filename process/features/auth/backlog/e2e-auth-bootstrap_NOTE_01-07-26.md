@@ -66,6 +66,25 @@ Auth plugin option (an INNOVATE-level decision, not fixed here).
 3. **Better Auth test utilities** — check whether `better-auth` ships an official testing
    plugin/helper for exactly this use case before building a bespoke one.
 
+### Recurrence (updated 01-07-26)
+
+This gap has now blocked e2e verification for **two more features** since it was first written:
+
+- **meeting-reminders** (`process/features/reminders/active/meeting-reminders_01-07-26/`) — no
+  e2e spec was even attempted for the reminder-dispatch UI surfaces because of this gap.
+- **calendar** (`process/features/calendar/completed/calendar_01-07-26/`) — `e2e/calendar.e2e.ts`
+  (8 scenarios covering AC1, AC4–AC9, and the `/meetings/[id]` 404 defensive gate) is written and
+  discovered by Playwright but every scenario self-skips via `test.skip()` gated on auth-redirect
+  detection, the same pattern as `loading-ux.e2e.ts`. Source-verified as genuinely self-skipping
+  (not silently passing) but genuinely unexercised — none of AC1/AC4/AC5/AC6/AC9/404 have live
+  automated coverage yet.
+
+This is now the single highest-leverage test-infra gap in the repo — resolving it unblocks
+verification for every protected-route e2e spec written so far, not just future ones. Recommend
+prioritizing a standalone test-infra plan for the shared Playwright authenticated-session fixture
+(see "Suggested resolution shapes" below — a `globalSetup` that logs in via magic-link or a direct
+session-row seed, then reuses `storageState` across specs, is the most promising approach).
+
 ### Interim mitigation used by the GitHub #91 filters plan
 
 Server-side filter correctness (AC2, AC3, AC4, AC11) is proven via `Hybrid` Vitest DB-integration

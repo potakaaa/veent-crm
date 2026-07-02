@@ -84,6 +84,20 @@ export interface Lead {
 	currency?: Currency;
 	signedDate?: string;
 
+	// Onboarding capture (post-won; manual)
+	onboardingNotes?: string;
+	contractUrl?: string;
+	onboardingStartDate?: string;
+	goLiveDate?: string;
+
+	// Agreements capture (post-won; manual)
+	feeStructure?: 'legacy' | 'new';
+	transactionFeePct?: number;
+	convenienceFeePesos?: number;
+	serviceFeePct?: number;
+	serviceFeePerTicketPesos?: number;
+	bankChargesAbsorbed?: boolean;
+
 	// Lost capture
 	lostReason?: LostReason;
 
@@ -125,6 +139,22 @@ export interface Meeting {
 	outcome?: string;
 	attendees: MeetingAttendee[];
 	createdAt: string;
+}
+
+/**
+ * Unified calendar entry — the common shape both meetings and follow-up reminders
+ * map into before reaching the calendar grid. `type` drives visual distinction (AC4)
+ * and `href` drives click-through (AC5 meeting → /meetings/[id], AC6 followup → /leads/[id]).
+ */
+export interface CalendarEntry {
+	id: string;
+	type: 'meeting' | 'followup';
+	/** ISO datetime the entry falls on (meeting start, or follow-up due date). */
+	startAt: string;
+	title: string;
+	href: string;
+	/** Optional secondary line (e.g. organizer name, lead handle). */
+	subtitle?: string;
 }
 
 /** A row from the sheet import that needs a human before it joins the pool. */
@@ -191,6 +221,12 @@ export interface CurrencyTotal {
 	label: string;
 	total: number;
 	deals: number;
+}
+
+export interface OutreachMetrics {
+	leadsReachedOut: number;
+	leadsThatReplied: number;
+	leadsWithMeeting: number;
 }
 
 export interface ReportData {

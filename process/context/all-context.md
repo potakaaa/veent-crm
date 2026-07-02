@@ -11,7 +11,7 @@ metadata:
 
 # veent-crm - All Context
 
-Last updated: 2026-06-25
+Last updated: 2026-07-01
 
 This file is the root context entrypoint for the repo.
 
@@ -87,7 +87,8 @@ For most substantial tasks:
 | DB schema changes (Drizzle)             | this file — see Key Patterns §Drizzle conventions |
 | import / ingest pipeline                | `process/features/import/_GUIDE.md`               |
 | reminders / n8n                         | `process/features/reminders/_GUIDE.md`            |
-| reports / ECharts                       | `process/features/reports/_GUIDE.md`              |
+| reports / layerchart charts              | `process/features/reports/_GUIDE.md`              |
+| calendar (meetings + follow-ups grid)   | `process/features/calendar/`                       |
 
 ## Feature Folders
 
@@ -99,6 +100,7 @@ For most substantial tasks:
 | import    | `process/features/import/_GUIDE.md`    | not-started (stub pipeline)              |
 | reminders | `process/features/reminders/_GUIDE.md` | in-progress (code-complete, EVL green; manual UI/DB gates pending) |
 | reports   | `process/features/reports/_GUIDE.md`   | not-started (mock data only)             |
+| calendar  | `process/features/calendar/completed/calendar_01-07-26/` | code-complete, EVL green; e2e written but self-skipping pending shared auth e2e harness (2 known-gaps, pre-accepted) |
 
 ---
 
@@ -107,7 +109,7 @@ For most substantial tasks:
 ```
 veent-crm/
   src/
-    hooks.server.ts            # session gate (DEV_BYPASS stub — injects fake manager)
+    hooks.server.ts            # session gate — real Better Auth session + crm_users allowlist check
     app.d.ts                   # TypeScript locals augmentation (user: SessionUser | null)
     app.html                   # HTML shell
     lib/
@@ -156,8 +158,15 @@ veent-crm/
         +page.svelte
       reminders/+page.svelte   # Follow-up reminders list
       reports/
-        +page.server.ts        # Analytics / ECharts
+        +page.server.ts        # Analytics / layerchart charts
         +page.svelte
+      calendar/
+        +page.server.ts        # Month/week grid: team meetings + owner-scoped follow-ups
+        +page.svelte
+      meetings/
+        [id]/
+          +page.server.ts      # Meeting detail (read-first; Edit opens MeetingFormModal)
+          +page.svelte
       team/
         +page.server.ts        # Team management
         +page.svelte
@@ -199,7 +208,7 @@ veent-crm/
 - **Auth:** Better Auth 1.6.x — magic-link plugin + Resend email (currently stubbed)
 - **Forms:** Superforms 2.x + Zod 4.x (all forms use this pattern — no raw FormData)
 - **UI:** Tailwind CSS 4.x + `@tailwindcss/forms` + `@tailwindcss/typography`
-- **Charts:** ECharts 6.x (reports page)
+- **Charts:** `layerchart` 2.0.0-next.48 (shadcn-svelte chart primitives — bar/line/pie/area; reports page). ECharts is NOT installed — do not assume it is present.
 - **Email:** Resend 6.x (magic-link delivery — stubbed)
 - **Error tracking:** Sentry 10.x (`@sentry/sveltekit` — stubbed)
 - **Testing:** Vitest 4.x (unit) + Playwright 1.60.x (e2e)
@@ -267,14 +276,13 @@ veent-crm/
 
 ## Current Project State (v0 → v1)
 
-**v0 (current):** All 10 route surfaces render mock data from `src/lib/server/mock.ts`. Auth is bypassed via `DEV_BYPASS`. No real DB queries. No real email. No real Sentry.
+**Current state (as of 01-07-26):** Better Auth (magic-link + `crm_users` allowlist) is live-wired in `hooks.server.ts` — `DEV_BYPASS` no longer exists. Leads, pipeline, meetings, reminders, and calendar query the real DB via Drizzle. Reports still renders mock data. No real Sentry yet.
 
-**v1 target (in priority order):**
+**Remaining v1 work (in priority order):**
 
-1. Better Auth magic-link login — real sessions replacing DEV_BYPASS
-2. Full leads CRUD — Drizzle queries replacing all mock data (leads list, detail, create, unassigned, review)
-3. Pipeline stage transitions — real DB writes + `crm_lead_history` audit trail
-4. TSV import end-to-end, n8n reminders (`follow_up_at`), ECharts reports with real data
+1. Reports — replace mock data with real DB-backed `layerchart` charts
+2. Shared Playwright authenticated-session fixture — currently blocks e2e verification for 2+ features (see `process/features/auth/backlog/e2e-auth-bootstrap_NOTE_01-07-26.md`)
+3. Live-DB CI harness for Hybrid-tier test gates (several features carry pre-accepted known-gaps for this)
 
 ---
 

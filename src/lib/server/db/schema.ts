@@ -10,6 +10,7 @@ import {
 	text,
 	boolean,
 	integer,
+	doublePrecision,
 	timestamp,
 	date,
 	uniqueIndex,
@@ -168,6 +169,20 @@ export const crmLeads = pgTable(
 		dealValueCents: integer('deal_value_cents'),
 		currency: text('currency').default('PHP'), // required when value set (enforced in app)
 		signedAt: timestamp('signed_at', { withTimezone: true }),
+
+		// Onboarding capture (post-won; manual) — only surfaced when stage = 'won'
+		onboardingNotes: text('onboarding_notes'),
+		contractUrl: text('contract_url'),
+		onboardingStartDate: date('onboarding_start_date'), // wall-clock
+		goLiveDate: date('go_live_date'), // wall-clock
+
+		// Agreements capture (post-won; manual) — fee structure + bank-charge handling
+		feeStructure: text('fee_structure'),
+		transactionFeePct: doublePrecision('transaction_fee_pct').default(7),
+		convenienceFeePesos: doublePrecision('convenience_fee_pesos').default(20),
+		serviceFeePct: doublePrecision('service_fee_pct').default(3),
+		serviceFeePerTicketPesos: doublePrecision('service_fee_per_ticket_pesos').default(20),
+		bankChargesAbsorbed: boolean('bank_charges_absorbed'),
 
 		// scraper provenance — event ID from the scraper DB; unique per non-null value
 		sourceRef: text('source_ref'),

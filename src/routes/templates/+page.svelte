@@ -15,6 +15,7 @@
 	import { templateFormSchema, LEAD_CATEGORIES } from '$lib/zod/schemas';
 	import type { MessageTemplate } from '$lib/types';
 	import { SvelteMap } from 'svelte/reactivity';
+	import { categoryColor } from '$lib/design/tokens';
 
 	let { data } = $props();
 	const canManage = $derived(isManager(data.currentUser));
@@ -176,11 +177,15 @@
 	{:else if viewMode === 'card'}
 		<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
 			{#each data.templates as t (t.id)}
-				<Card class="flex flex-col gap-3 rounded-control p-4">
+				{@const accent = categoryColor(t.category)}
+				<Card
+					class="flex flex-col gap-3 rounded-control p-4"
+					style="box-shadow: inset 3px 0 0 {accent}, 0 1px 2px rgba(26, 23, 28, 0.05)"
+				>
 					<Badge
 						variant="outline"
 						class="w-fit font-mono text-[11px]"
-						style="color:#6b6470;background:#f1eff3;border-color:transparent"
+						style="color:{accent};background:color-mix(in srgb, {accent} 12%, white);border-color:transparent"
 					>
 						{t.category}
 					</Badge>
@@ -199,18 +204,22 @@
 	{:else}
 		<div class="flex flex-col gap-6">
 			{#each grouped as [cat, items] (cat)}
+				{@const accent = categoryColor(cat)}
 				<section>
 					<div class="mb-2 flex items-center gap-2">
 						<Badge
 							variant="outline"
 							class="font-mono text-[11px]"
-							style="color:#6b6470;background:#f1eff3;border-color:transparent"
+							style="color:{accent};background:color-mix(in srgb, {accent} 12%, white);border-color:transparent"
 						>
 							{cat}
 						</Badge>
 						<span class="text-[12px] text-ink-300">{items.length}</span>
 					</div>
-					<Card class="gap-0 overflow-hidden rounded-control py-0">
+					<Card
+						class="gap-0 overflow-hidden rounded-control py-0"
+						style="box-shadow: inset 3px 0 0 {accent}, 0 1px 2px rgba(26, 23, 28, 0.05)"
+					>
 						{#each items as t (t.id)}
 							<div
 								class="flex items-start justify-between gap-4 border-b border-border px-4 py-3 last:border-b-0"

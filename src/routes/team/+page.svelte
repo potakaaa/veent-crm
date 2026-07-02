@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { goto, invalidateAll } from '$app/navigation';
-	import { navigating } from '$app/state';
+	import { navigating, page } from '$app/state';
+	import { SvelteURLSearchParams } from 'svelte/reactivity';
 	import { makeSortTable } from '$lib/utils/tableSort';
 	import { Skeleton } from '$lib/components/ui/skeleton';
 	import PageHeader from '$lib/components/shared/PageHeader.svelte';
@@ -33,6 +34,22 @@
 	const canPromote = $derived(canPromoteToSuperManager(data.currentUser));
 
 	const navLoading = $derived(navigating.to?.url.pathname === '/team');
+	let paging = $state(false);
+	$effect(() => {
+		if (!navigating.to) paging = false;
+	});
+
+	function navigate(patch: Record<string, string | number | boolean | undefined>) {
+		const params = new SvelteURLSearchParams(page.url.searchParams);
+		for (const [k, v] of Object.entries(patch)) {
+			if (v === undefined || v === '' || v === false || v === 0) {
+				params.delete(k);
+			} else {
+				params.set(k, String(v));
+			}
+		}
+		goto(`?${params}`, { keepFocus: true });
+	}
 
 	const table = $derived(
 		makeSortTable({
@@ -47,8 +64,8 @@
 			],
 			sort: data.sort ?? '',
 			dir: data.dir,
-			onToggle(id, desc) {
-				goto(`?sort=${id}&dir=${desc ? 'desc' : 'asc'}`, { keepFocus: true });
+			onToggle(id, descDir) {
+				navigate({ sort: id, dir: descDir ? 'desc' : 'asc', page: undefined });
 			}
 		})
 	);
@@ -345,6 +362,36 @@
 			</TableBody>
 		</Table>
 	</Card>
+
+	{#if data.pagination.totalPages > 1}
+		{@const { page: pg, pageSize, total, totalPages } = data.pagination}
+		{@const start = (pg - 1) * pageSize + 1}
+		{@const end = Math.min(pg * pageSize, total)}
+		<div class="mt-5 flex items-center justify-between text-[13px] text-ink-300">
+			<span class="font-mono">{start}–{end} of {total}</span>
+			<div class="flex items-center gap-2">
+				<Button
+					variant="outline"
+					size="sm"
+					disabled={pg <= 1 || paging}
+					onclick={() => {
+						paging = true;
+						navigate({ page: pg - 1 });
+					}}>← Prev</Button
+				>
+				<span class="font-mono">Page {pg} of {totalPages}</span>
+				<Button
+					variant="outline"
+					size="sm"
+					disabled={pg >= totalPages || paging}
+					onclick={() => {
+						paging = true;
+						navigate({ page: pg + 1 });
+					}}>Next →</Button
+				>
+			</div>
+		</div>
+	{/if}
 
 	<div class="mt-3.5 flex items-center gap-2 text-[12.5px] text-ink-200">
 		<Icon name="info" size={14} stroke={2} />

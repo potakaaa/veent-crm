@@ -2,10 +2,12 @@ import type { PageServerLoad } from './$types';
 import { error } from '@sveltejs/kit';
 import { db } from '$lib/server/db/index';
 import { crmUsers } from '$lib/server/db/schema';
-import { asc, desc } from 'drizzle-orm';
+import { asc, count, desc } from 'drizzle-orm';
 import { dbUserToUser, listPipelineLeads } from '$lib/server/db/leads';
 import { isManagerRole } from '$lib/utils/permissions';
 import { sessionToUser } from '$lib/server/db/users';
+
+const PAGE_SIZE = 8;
 
 const SORT_COLS = ['name', 'email', 'role', 'active'] as const;
 type SortCol = (typeof SORT_COLS)[number];
@@ -29,9 +31,22 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		: 'name';
 	const dir = url.searchParams.get('dir') === 'desc' ? ('desc' as const) : ('asc' as const);
 	const fn = dir === 'asc' ? asc : desc;
+	const page = Math.max(1, parseInt(url.searchParams.get('page') ?? '1', 10) || 1);
 
-	const [rows, { leads }] = await Promise.all([
-		db.select().from(crmUsers).orderBy(fn(COL_MAP[sort]), asc(crmUsers.id)),
+	const [rows, [{ total }], { leads }] = await Promise.all([
+		db
+			.select()
+			.from(crmUsers)
+			.orderBy(
+				// Always show active users before inactive ones unless the user is
+				// explicitly sorting by the active column.
+				...(sort === 'active' ? [] : [desc(crmUsers.active)]),
+				fn(COL_MAP[sort]),
+				asc(crmUsers.id)
+			)
+			.limit(PAGE_SIZE)
+			.offset((page - 1) * PAGE_SIZE),
+		db.select({ total: count() }).from(crmUsers),
 		listPipelineLeads()
 	]);
 
@@ -41,6 +56,14 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	}));
 
 	const currentUser = sessionToUser(locals.user!);
+	const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
-	return { users, leads, sort, dir, currentUser };
+	return {
+		users,
+		leads,
+		sort,
+		dir,
+		currentUser,
+		pagination: { page, pageSize: PAGE_SIZE, total, totalPages }
+	};
 };

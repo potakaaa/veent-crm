@@ -1,11 +1,19 @@
 import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { meetingFormSchema } from '$lib/zod/schemas';
-import { listAllMeetings, createMeeting } from '$lib/server/db/meetings';
+import {
+	listMeetingsPaginated,
+	createMeeting,
+	parseMeetingFilterParams
+} from '$lib/server/db/meetings';
 
-export const GET: RequestHandler = async ({ locals }) => {
+export const GET: RequestHandler = async ({ url, locals }) => {
 	if (!locals.user) throw error(401, 'Unauthorized');
-	return json(await listAllMeetings());
+	const page = Math.max(1, parseInt(url.searchParams.get('page') ?? '1', 10) || 1);
+	const limit = Math.min(50, Math.max(1, parseInt(url.searchParams.get('limit') ?? '8', 10) || 8));
+	// Trusted server-side meId (locals.user.id) — never client-provided.
+	const filters = parseMeetingFilterParams(url.searchParams, locals.user.id);
+	return json(await listMeetingsPaginated(page, limit, filters));
 };
 
 export const POST: RequestHandler = async ({ request, locals }) => {

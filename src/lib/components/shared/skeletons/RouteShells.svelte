@@ -23,6 +23,10 @@
 	const isReminders = $derived(pathname === '/reminders');
 	const isReports = $derived(pathname === '/reports');
 	const isTeam = $derived(pathname === '/team');
+	const isTemplates = $derived(pathname === '/templates');
+	const isMeetingDetail = $derived(pathname.startsWith('/meetings/') && pathname !== '/meetings');
+	const isMeetings = $derived(pathname === '/meetings');
+	const isCalendar = $derived(pathname === '/calendar');
 
 	// Today section groups — real titles/colors from src/routes/+page.svelte.
 	const todayGroups = [
@@ -152,6 +156,125 @@
 			subtitle="This list is the magic-link allowlist. Add a rep here and they can sign in."
 		/>
 		<TableSkeleton rows={6} cols={5} />
+	</div>
+{:else if isTemplates}
+	<div class="px-7 pb-16 pt-6">
+		<PageHeader
+			title="Message templates"
+			subtitle="Reusable outreach messages reps can insert from a lead. Managed by managers, organized by event category."
+		/>
+
+		<!-- view-toggle shell: real static labels (no interactivity) -->
+		<div class="mb-4 inline-flex gap-1 rounded-control border border-border bg-panel-subtle p-1">
+			<span
+				class="rounded-[6px] bg-white px-3 py-1 text-[12.5px] font-medium text-ink-600 shadow-sm"
+				>Cards</span
+			>
+			<span class="rounded-[6px] px-3 py-1 text-[12.5px] font-medium text-ink-400">List</span>
+		</div>
+
+		<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+			{#each Array(6) as _, i (i)}
+				<CardSkeleton />
+			{/each}
+		</div>
+	</div>
+{:else if isMeetingDetail}
+	<div class="mx-auto max-w-[760px] px-7 pb-16 pt-5">
+		<!-- back link: real static text (no Icon import) -->
+		<div class="mb-4 inline-flex items-center gap-1.5 text-[12.5px] font-medium text-ink-400">
+			All meetings
+		</div>
+
+		<div class="mb-5">
+			<Skeleton class="h-7 w-72" />
+			<Skeleton class="mt-1 h-3.5 w-40" />
+		</div>
+
+		<div class="grid gap-3 rounded-control border border-hairline bg-panel p-4">
+			<div class="grid grid-cols-[120px_1fr] gap-2 text-[13px]">
+				<span class="font-mono text-[11px] uppercase tracking-[0.5px] text-ink-300">Organizer</span>
+				<Skeleton class="h-3.5 w-40" />
+			</div>
+			<div class="grid grid-cols-[120px_1fr] gap-2 text-[13px]">
+				<span class="font-mono text-[11px] uppercase tracking-[0.5px] text-ink-300">Attendees</span>
+				<Skeleton class="h-3.5 w-40" />
+			</div>
+		</div>
+	</div>
+{:else if isMeetings}
+	<div class="px-7 pb-16 pt-6">
+		<div class="mb-4">
+			<h1 class="font-serif text-[24px] font-semibold tracking-[-0.5px] text-ink">Meetings</h1>
+			<div class="mt-1 text-[12.5px] text-ink-400">Every meeting across all leads.</div>
+		</div>
+		<!-- mirrors MeetingsPanel real markup: panel container + header + row cards -->
+		<div class="rounded-control border border-hairline bg-panel p-4">
+			<div class="mb-3 font-mono text-[11px] uppercase tracking-[0.5px] text-ink-300">Meetings</div>
+			<div class="flex flex-col gap-2.5">
+				{#each Array(5) as _, i (i)}
+					<div class="rounded-control border border-hairline bg-panel-subtle p-3">
+						<Skeleton class="h-3.5 w-32" />
+						<Skeleton class="mt-1 h-3 w-24" />
+					</div>
+				{/each}
+			</div>
+		</div>
+	</div>
+{:else if isCalendar}
+	<div class="px-7 pb-16 pt-6">
+		<PageHeader title="Calendar" subtitle="Team meetings and your follow-ups on one grid.">
+			{#snippet actions()}
+				<!-- Month/Week toggle: real static labels (no interactivity) -->
+				<div class="flex rounded-control bg-panel-sunken p-[3px]">
+					<span
+						class="flex h-[26px] items-center gap-1.5 rounded-[6px] bg-panel px-3 text-[12.5px] font-semibold text-ink shadow-frame"
+						>Month</span
+					>
+					<span
+						class="flex h-[26px] items-center gap-1.5 rounded-[6px] px-3 text-[12.5px] font-medium text-[#7d6a68]"
+						>Week</span
+					>
+				</div>
+			{/snippet}
+		</PageHeader>
+
+		<div class="mb-3.5 flex items-center gap-2.5">
+			<!-- prev/next: skeleton squares (chevron glyphs carry no text) -->
+			<Skeleton class="h-8 w-8 rounded-control border border-hairline bg-panel" />
+			<Skeleton class="h-8 w-8 rounded-control border border-hairline bg-panel" />
+			<!-- Today: real static text in a non-interactive real-shaped container -->
+			<div
+				class="flex h-8 items-center gap-1.5 rounded-control border border-hairline bg-panel px-3 text-[12.5px] font-medium text-ink-500"
+			>
+				Today
+			</div>
+			<!-- range label is dynamic (date/view query params) -->
+			<Skeleton class="ml-1 h-4 w-40" />
+		</div>
+
+		<div class="overflow-hidden rounded-control border border-hairline bg-panel">
+			<!-- weekday header: real static labels (mirrors CalendarGrid) -->
+			<div class="grid grid-cols-7 border-b border-hairline bg-panel-sunken">
+				{#each ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as label (label)}
+					<div
+						class="px-2 py-1.5 text-center font-mono text-[10px] uppercase tracking-[1px] text-ink-400"
+					>
+						{label}
+					</div>
+				{/each}
+			</div>
+			<!-- day cells: day-number circle is dynamic (skeleton) -->
+			<div class="grid grid-cols-7">
+				{#each Array(35) as _, i (i)}
+					<div
+						class="flex min-h-[104px] flex-col gap-1 border-b border-r border-hairline bg-panel p-1.5"
+					>
+						<Skeleton class="h-5 w-5 rounded-full" />
+					</div>
+				{/each}
+			</div>
+		</div>
 	</div>
 {:else}
 	<div class="px-7 pb-16 pt-6">

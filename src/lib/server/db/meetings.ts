@@ -7,10 +7,71 @@
  */
 import { db } from './index';
 import { crmMeetings, crmMeetingAttendees, crmUsers, crmLeads } from './schema';
-import { eq, and, isNull, desc, inArray } from 'drizzle-orm';
+import { eq, and, isNull, desc, asc, inArray, count, sql } from 'drizzle-orm';
+import type { SQL } from 'drizzle-orm';
 import type { Meeting, MeetingAttendee } from '$lib/types';
 
 type DbMeeting = typeof crmMeetings.$inferSelect;
+
+// ---------------------------------------------------------------------------
+// Filter/sort param parsing (pure, exported for unit tests)
+// ---------------------------------------------------------------------------
+
+const MEETING_FILTER_UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export interface MeetingListFilters {
+	organizerId?: string;
+	leadId?: string;
+	dateFrom?: string;
+	dateTo?: string;
+	sortDir?: 'asc' | 'desc';
+}
+
+/**
+ * Parse the /meetings filter/sort URL params into resolved DB filter values.
+ * SINGLE source of truth shared by the page loader and the API route, so SSR
+ * page-1 and infinite-scroll fetches never drift. DB-free + pure so the
+ * security-sensitive organizer resolution is unit-testable.
+ *
+ * SECURITY: `meId` is a TRUSTED server-derived arg (locals.user.id) — never a
+ * client value. `organizer` absent/empty/'mine'/junk ALL resolve to `meId`
+ * (the safe default self-view), so a client can never redirect 'mine' to
+ * another identity. 'all' clears the organizer condition; a valid foreign UUID
+ * is used as-is (a normal explicit filter over already-team-visible meetings).
+ */
+export function parseMeetingFilterParams(
+	searchParams: URLSearchParams,
+	meId: string
+): {
+	organizerId?: string;
+	leadId?: string;
+	dateFrom?: string;
+	dateTo?: string;
+	sortDir: 'asc' | 'desc';
+} {
+	const rawOrganizer = searchParams.get('organizer');
+	const organizerId =
+		rawOrganizer === 'all'
+			? undefined
+			: rawOrganizer && rawOrganizer !== 'mine' && MEETING_FILTER_UUID_RE.test(rawOrganizer)
+				? rawOrganizer
+				: meId; // absent, 'mine', or junk → the caller's own id (safe default)
+
+	const rawLead = searchParams.get('lead');
+	const leadId = rawLead && MEETING_FILTER_UUID_RE.test(rawLead) ? rawLead : undefined;
+
+	const validDate = (raw: string | null): string | undefined => {
+		if (!raw || !/^\d{4}-\d{2}-\d{2}$/.test(raw)) return undefined;
+		const d = new Date(raw + 'T00:00:00Z');
+		return isNaN(d.getTime()) || d.toISOString().slice(0, 10) !== raw ? undefined : raw;
+	};
+	const dateFrom = validDate(searchParams.get('dateFrom'));
+	const dateTo = validDate(searchParams.get('dateTo'));
+
+	const sortDir: 'asc' | 'desc' = searchParams.get('sortDir') === 'asc' ? 'asc' : 'desc';
+
+	return { organizerId, leadId, dateFrom, dateTo, sortDir };
+}
 
 // ---------------------------------------------------------------------------
 // Pure mapper (exported for unit tests)
@@ -117,6 +178,55 @@ export async function listAllMeetings(): Promise<Meeting[]> {
 	return rows.map((r) =>
 		dbRowToMeeting(r.meeting, attMap.get(r.meeting.id) ?? [], r.organizerName, r.leadName)
 	);
+}
+
+/**
+ * Offset-paginated cross-lead meetings listing (8 per page by default).
+ * Mirrors listPipelineStage: one page query (limit/offset) + one count() query
+ * in Promise.all. Ordering `startAt DESC, id ASC` — the id tiebreaker is
+ * REQUIRED so meetings sharing a startAt never duplicate/skip across pages.
+ * Reuses the shared attendeesByMeeting helper + dbRowToMeeting mapper.
+ */
+export async function listMeetingsPaginated(
+	page: number = 1,
+	limit: number = 8,
+	filters: MeetingListFilters = {}
+): Promise<{ meetings: Meeting[]; total: number }> {
+	// Build the conditions array (mirrors listLeadsFiltered). The organizer DEFAULT
+	// (absent/'mine' → meId) lives in parseMeetingFilterParams, not here — this
+	// function applies no organizer condition when filters.organizerId is undefined.
+	const conditions: SQL[] = [isNull(crmMeetings.deletedAt) as SQL];
+	if (filters.organizerId) conditions.push(eq(crmMeetings.organizerId, filters.organizerId));
+	if (filters.leadId) conditions.push(eq(crmMeetings.leadId, filters.leadId));
+	if (filters.dateFrom) conditions.push(sql`${crmMeetings.startAt} >= ${filters.dateFrom}::date`);
+	// dateTo uses `< dateTo + 1 day` (not `<= dateTo`) so the "to" date is inclusive
+	// of the whole day given startAt is a timestamp.
+	if (filters.dateTo)
+		conditions.push(sql`${crmMeetings.startAt} < (${filters.dateTo}::date + INTERVAL '1 day')`);
+	// Single shared `where` applied to BOTH the page query and the count() query so
+	// `total` (and therefore hasMore) reflects the filtered set.
+	const where = and(...conditions);
+	const sortFn = filters.sortDir === 'asc' ? asc : desc;
+	const offset = (Math.max(1, page) - 1) * limit;
+	const [rows, [{ total }]] = await Promise.all([
+		db
+			.select({ meeting: crmMeetings, organizerName: crmUsers.name, leadName: crmLeads.name })
+			.from(crmMeetings)
+			.leftJoin(crmUsers, eq(crmMeetings.organizerId, crmUsers.id))
+			.innerJoin(crmLeads, eq(crmMeetings.leadId, crmLeads.id))
+			.where(where)
+			// asc(id) tiebreaker ALWAYS present (both directions) so pages never dup/skip.
+			.orderBy(sortFn(crmMeetings.startAt), asc(crmMeetings.id))
+			.limit(limit)
+			.offset(offset),
+		db.select({ total: count() }).from(crmMeetings).where(where)
+	]);
+
+	const attMap = await attendeesByMeeting(rows.map((r) => r.meeting.id));
+	const meetings = rows.map((r) =>
+		dbRowToMeeting(r.meeting, attMap.get(r.meeting.id) ?? [], r.organizerName, r.leadName)
+	);
+	return { meetings, total };
 }
 
 /**

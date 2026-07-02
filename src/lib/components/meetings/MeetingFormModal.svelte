@@ -5,6 +5,7 @@
 	import { Button } from '$lib/components/ui/button';
 	import { Textarea } from '$lib/components/ui/textarea';
 	import { Select, SelectTrigger, SelectContent, SelectItem } from '$lib/components/ui/select';
+	import LeadCombobox from '$lib/components/meetings/LeadCombobox.svelte';
 	import type { Meeting, User } from '$lib/types';
 
 	export interface MeetingFormPayload {
@@ -20,9 +21,9 @@
 	let {
 		open,
 		users,
-		// Single-lead mode: leadId fixed, no lead selector. Cross-lead mode: pass `leads`.
+		// Single-lead mode: leadId fixed, no lead selector. Cross-lead/create mode: leadId omitted;
+		// the lead is chosen via LeadCombobox (assign mode) backed by GET /api/leads.
 		leadId = undefined,
-		leads = undefined,
 		meeting = null,
 		saving = false,
 		onclose,
@@ -31,7 +32,6 @@
 		open: boolean;
 		users: User[];
 		leadId?: string;
-		leads?: { id: string; name: string }[];
 		meeting?: Meeting | null;
 		saving?: boolean;
 		onclose: () => void;
@@ -117,19 +117,10 @@
 	subtitle={isEdit ? undefined : 'Log a meeting with this lead'}
 	width={520}
 >
-	{#if leads && !leadId}
+	{#if !leadId}
 		<div class="mb-3.5 grid gap-1.5">
 			<Label for="mtg-lead">Lead</Label>
-			<Select type="single" bind:value={selectedLeadId}>
-				<SelectTrigger id="mtg-lead" class="w-full">
-					{leads.find((l) => l.id === selectedLeadId)?.name ?? 'Select a lead'}
-				</SelectTrigger>
-				<SelectContent>
-					{#each leads as l (l.id)}
-						<SelectItem value={l.id} label={l.name}>{l.name}</SelectItem>
-					{/each}
-				</SelectContent>
-			</Select>
+			<LeadCombobox mode="assign" bind:value={selectedLeadId} />
 		</div>
 	{/if}
 

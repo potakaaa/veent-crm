@@ -52,6 +52,18 @@ test.describe('Recurring organizer tag — "Has future events" flag (#94)', () =
 		await checkbox.check();
 		await page.getByRole('button', { name: 'Save changes' }).click();
 		await expect(page.getByText('Future Events')).toBeVisible();
+
+		// Reload the lead and confirm the flag persisted, not just the in-memory UI state.
+		await page.reload();
+		await expect(page.getByText('Future Events')).toBeVisible();
+
+		// Clear it back through the same edit flow and confirm it's gone after reload too.
+		await page.getByRole('link', { name: 'Edit' }).click();
+		await page.getByRole('checkbox', { name: /Has future events/ }).uncheck();
+		await page.getByRole('button', { name: 'Save changes' }).click();
+		await expect(page.getByText('Future Events')).not.toBeVisible();
+		await page.reload();
+		await expect(page.getByText('Future Events')).not.toBeVisible();
 	});
 
 	test.fixme('AC5 — the /leads "Future events" filter toggle round-trips via the URL param', async ({

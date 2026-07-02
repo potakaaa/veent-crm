@@ -34,7 +34,7 @@ Some organizers we talk to aren't a fit for the event we're currently discussing
 
 ## Flow / State Diagram
 
-```
+```text
                      ┌────────────────────────────┐
                      │   Lead / Organizer record   │
                      │   (any pipeline stage)       │

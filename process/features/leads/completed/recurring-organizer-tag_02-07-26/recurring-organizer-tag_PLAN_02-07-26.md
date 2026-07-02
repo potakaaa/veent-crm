@@ -202,14 +202,14 @@ Legacy line form (retained so existing validate-contract consumers still parse):
 - Browser badge/checkbox/filter rendering: known-gap: documented — `test.fixme` stubs; blocked on repo-wide Playwright e2e-auth-bootstrap fixture
 
 Failing stub (AC1/AC2 schema — Fully-Automated):
-```
+```ts
 test("should accept hasFutureEvents true/false and reject non-boolean on leadUpdateSchema", () => {
   throw new Error("NOT IMPLEMENTED — TDD stub: leadUpdateSchema accepts hasFutureEvents boolean, rejects non-boolean")
 })
 ```
 
 Failing stub (AC1 mapping — Fully-Automated):
-```
+```ts
 test("should map has_future_events row column to hasFutureEvents boolean (default false)", () => {
   throw new Error("NOT IMPLEMENTED — TDD stub: dbRowToLead maps has_future_events -> hasFutureEvents")
 })
@@ -240,7 +240,7 @@ Accepted by: session (SPEC-pre-accepted browser-UI Known-Gap, documented in SPEC
 
 ## Autonomous Goal Block
 
-```
+```text
 SESSION GOAL: Implement GitHub #94 — recurring-organizer "Has future events" boolean flag on crm_leads (badge on /leads list + lead detail header, edit checkbox, /leads filter toggle), mirroring the bank_charges_absorbed precedent end-to-end.
 Charter + umbrella plan: N/A — single SIMPLE plan.
 Autonomy: standard /goal autonomous execution — auto-proceed on reversible steps; CONDITIONAL gate already accepted (browser-UI Known-Gap). No user gate required to enter EXECUTE.

@@ -130,16 +130,16 @@ path are identical to the existing entry.
 
 ## Forward Preview
 
-#### Test Infra Found
+### Test Infra Found
 - No new test infra added this session (Hybrid `describe.skipIf(SKIP_DB)` pattern reused as-is).
 
-#### Blast Radius Changes
+### Blast Radius Changes
 - Matches the plan's declared 16-touchpoint blast radius plus the expected test-file extensions (4 spec files) and the new e2e stub file — no undeclared surface touched.
 
-#### Commands to Stay Green
+### Commands to Stay Green
 - `bun run check`
 - `bun run test:unit:ci` (or `bun run test:unit -- src/tests/schemas.spec.ts src/tests/leads.spec.ts src/tests/leads-filters.spec.ts src/tests/leads-db.spec.ts src/tests/reminders.spec.ts`)
 - `DATABASE_URL=... bun run test:unit -- src/tests/leads.spec.ts src/tests/leads-filters.spec.ts` (Hybrid tier, requires live Postgres)
 
-#### Dependency Changes
+### Dependency Changes
 - None. No new npm package, agent, or runtime surface introduced (matches SPEC constraint).

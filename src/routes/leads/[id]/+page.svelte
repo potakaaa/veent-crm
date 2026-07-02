@@ -8,7 +8,7 @@
 	import PlatformBadge from '$lib/components/shared/PlatformBadge.svelte';
 	import StageChip from '$lib/components/shared/StageChip.svelte';
 	import AgeBadge from '$lib/components/shared/AgeBadge.svelte';
-	import { Badge } from '$lib/components/ui/badge';
+	import FutureEventsBadge from '$lib/components/shared/FutureEventsBadge.svelte';
 	import DedupBanner from '$lib/components/leads/DedupBanner.svelte';
 	import ActivityTimeline from '$lib/components/leads/ActivityTimeline.svelte';
 	import LogTouchForm from '$lib/components/leads/LogTouchForm.svelte';
@@ -369,12 +369,7 @@
 						<StageChip stage={lead.stage} />
 						<AgeBadge label={lead.age.label} type={lead.age.type} />
 						{#if lead.hasFutureEvents}
-							<Badge
-								variant="outline"
-								class="border-violet-300 bg-violet-100 text-[10px] font-semibold uppercase tracking-[0.3px] text-violet-700"
-							>
-								Future Events
-							</Badge>
+							<FutureEventsBadge />
 						{/if}
 					</div>
 					<div class="mt-[5px] font-mono text-[12px] text-ink-300">

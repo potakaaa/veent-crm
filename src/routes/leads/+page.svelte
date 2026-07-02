@@ -76,6 +76,7 @@
 		if (data.filters.platform) p.set('platform', data.filters.platform);
 		if (data.filters.country) p.set('country', data.filters.country);
 		if (data.filters.staleOnly) p.set('staleOnly', '1');
+		if (data.filters.hasFutureEvents) p.set('hasFutureEvents', '1');
 		if (data.filters.search) p.set('q', data.filters.search);
 		const qs = p.toString();
 		return `/api/leads/export${qs ? '?' + qs : ''}`;

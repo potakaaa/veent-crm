@@ -59,7 +59,7 @@ export const mockUsers: User[] = [
 /** The signed-in user for this prototype session (a rep). */
 export const CURRENT_USER_ID = 'jonna';
 
-const mockLeadsRaw: Omit<Lead, 'hasFutureEvents'>[] = [
+const mockLeadsRaw: (Omit<Lead, 'hasFutureEvents'> & { hasFutureEvents?: boolean })[] = [
 	{
 		id: 'christian',
 		name: 'Christian Concerts PH',
@@ -121,7 +121,8 @@ const mockLeadsRaw: Omit<Lead, 'hasFutureEvents'>[] = [
 		lastActivityAt: '2026-06-22',
 		followUpAt: '2026-06-24',
 		age: { label: 'due today', type: 'due' },
-		urgency: 'due'
+		urgency: 'due',
+		hasFutureEvents: true
 	},
 	{
 		id: 'tribu',
@@ -236,7 +237,8 @@ const mockLeadsRaw: Omit<Lead, 'hasFutureEvents'>[] = [
 		createdAt: '2026-04-14',
 		lastActivityAt: '2026-05-14',
 		age: { label: '41d cold', type: 'stale' },
-		urgency: 'cold'
+		urgency: 'cold',
+		hasFutureEvents: true
 	},
 	{
 		id: 'cagayanexpo',
@@ -336,7 +338,8 @@ const mockLeadsRaw: Omit<Lead, 'hasFutureEvents'>[] = [
 		createdAt: '2026-05-20',
 		lastActivityAt: '2026-06-05',
 		age: { label: '19d', type: 'normal' },
-		urgency: 'normal'
+		urgency: 'normal',
+		hasFutureEvents: true
 	},
 	{
 		id: 'grace',
@@ -399,8 +402,11 @@ const mockLeadsRaw: Omit<Lead, 'hasFutureEvents'>[] = [
 	}
 ];
 
-/** Recurring-organizer flag (#94) is stub-defaulted to false in the mock dataset. */
-export const mockLeads: Lead[] = mockLeadsRaw.map((l) => ({ ...l, hasFutureEvents: false }));
+/** Recurring-organizer flag (#94) defaults to false; a few fixtures above opt in to true. */
+export const mockLeads: Lead[] = mockLeadsRaw.map((l) => ({
+	...l,
+	hasFutureEvents: l.hasFutureEvents ?? false
+}));
 
 /** Activity timelines keyed by lead id. Leads without an entry get a seeded first touch. */
 export const mockActivities: Record<string, Activity[]> = {

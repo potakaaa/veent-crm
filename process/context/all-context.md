@@ -237,7 +237,7 @@ veent-crm/
 - All PKs: `uuid().primaryKey().defaultRandom()`
 - All tables: `createdAt` + `updatedAt` timestamps with timezone
 - **Never write Drizzle migrations for Better Auth tables** (`user`, `account`, `session`, `verification`) — those are managed by Better Auth's own migration system
-- **Before running `bun run db:generate`**, confirm `drizzle/meta/_journal.json`'s last `idx` matches the highest-numbered `.sql` file in `drizzle/` by filename. A mismatch means an earlier commit added a migration file without registering it in the journal (known instance: `drizzle/0014_agreements_fields.sql` — see `process/general-plans/backlog/drizzle-migration-journal-drift_02-07-26.md`) — flag and reconcile before layering a new migration on top of untracked drift
+- **Before running `bun run db:generate`**, confirm `drizzle/meta/_journal.json`'s last `idx` matches the highest-numbered `.sql` file in `drizzle/` by filename, AND scan `drizzle/` for duplicate-prefix or stray files — multiple `.sql` files sharing one numeric prefix (e.g. two `0015_*.sql`), or any `.sql` file not represented by an `idx` entry in the journal. A mismatch means an earlier commit added a migration file without registering it, or two branches independently claimed the same `idx` (known instances: `drizzle/0014_agreements_fields.sql` and a merge-time `idx: 15` collision — see `process/general-plans/backlog/drizzle-migration-journal-drift_02-07-26.md`) — flag and reconcile before layering a new migration on top of untracked drift
 
 ### SvelteKit conventions
 

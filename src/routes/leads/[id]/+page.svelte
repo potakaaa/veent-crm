@@ -36,7 +36,9 @@
 
 	// Lead-detail tabs (first-ever tab UI on this page). Overview wraps the
 	// existing content unchanged; Meetings is the new surface.
-	let activeTab = $state<'overview' | 'meetings' | 'onboarding'>('overview');
+	let activeTab = $state<'overview' | 'meetings' | 'onboarding'>(
+		lead.stage === 'won' ? 'onboarding' : 'overview'
+	);
 
 	// Onboarding tab is only available for won leads. If the lead moves away from
 	// 'won' while the onboarding tab is active, fall back to Overview.
@@ -51,11 +53,25 @@
 	let goLiveDate = $state('');
 	let savingOnboarding = $state(false);
 
+	// Agreements form fields — resynced whenever server truth changes.
+	let feeStructure = $state<'legacy' | 'new' | null>(null);
+	let transactionFeePct = $state(7);
+	let convenienceFeePesos = $state(20);
+	let serviceFeePct = $state(3);
+	let serviceFeePerTicketPesos = $state(20);
+	let bankChargesAbsorbed = $state<boolean | null>(null);
+
 	$effect(() => {
 		onboardingNotes = lead.onboardingNotes ?? '';
 		contractUrl = lead.contractUrl ?? '';
 		onboardingStartDate = lead.onboardingStartDate ?? '';
 		goLiveDate = lead.goLiveDate ?? '';
+		feeStructure = lead.feeStructure ?? null;
+		transactionFeePct = lead.transactionFeePct ?? 7;
+		convenienceFeePesos = lead.convenienceFeePesos ?? 20;
+		serviceFeePct = lead.serviceFeePct ?? 3;
+		serviceFeePerTicketPesos = lead.serviceFeePerTicketPesos ?? 20;
+		bankChargesAbsorbed = lead.bankChargesAbsorbed ?? null;
 	});
 
 	async function saveOnboarding() {
@@ -71,7 +87,13 @@
 					onboardingNotes,
 					contractUrl,
 					onboardingStartDate,
-					goLiveDate
+					goLiveDate,
+					feeStructure: feeStructure ?? undefined,
+					transactionFeePct,
+					convenienceFeePesos,
+					serviceFeePct,
+					serviceFeePerTicketPesos,
+					bankChargesAbsorbed: bankChargesAbsorbed ?? undefined
 				})
 			});
 			if (!res.ok) {
@@ -521,7 +543,166 @@
 							></textarea>
 						</div>
 					</div>
-					<div class="mt-4 flex justify-end">
+				</div>
+
+				<!-- Agreements -->
+				<div class="rounded-control border border-hairline bg-panel p-4">
+					<div class="mb-4 font-mono text-[11px] uppercase tracking-[0.5px] text-ink-300">
+						Agreements
+					</div>
+					<div class="space-y-5">
+						<!-- Fee structure toggle -->
+						<div>
+							<div class="mb-2 text-[11px] text-ink-300">Fee structure</div>
+							<div
+								class="inline-flex rounded-[11px] border border-hairline bg-panel-sunken p-1 gap-0.5"
+							>
+								<button
+									type="button"
+									onclick={() => (feeStructure = 'legacy')}
+									class="rounded-[6px] px-4 py-1.5 text-[12px] font-medium transition-colors
+										{feeStructure === 'legacy' ? 'bg-primary text-white shadow-sm' : 'text-ink-400 hover:text-ink'}"
+								>
+									Legacy
+								</button>
+								<button
+									type="button"
+									onclick={() => (feeStructure = 'new')}
+									class="rounded-[6px] px-4 py-1.5 text-[12px] font-medium transition-colors
+										{feeStructure === 'new' ? 'bg-primary text-white shadow-sm' : 'text-ink-400 hover:text-ink'}"
+								>
+									New structure
+								</button>
+							</div>
+
+							{#if feeStructure === 'legacy'}
+								<div class="mt-3 grid grid-cols-2 gap-4 max-w-sm">
+									<div>
+										<label class="mb-1.5 block text-[11px] text-ink-300" for="fee-txn"
+											>Transaction fee</label
+										>
+										<div
+											class="flex items-stretch overflow-hidden rounded-control border border-hairline bg-panel focus-within:ring-1 focus-within:ring-primary"
+										>
+											<input
+												id="fee-txn"
+												type="number"
+												min="0"
+												max="100"
+												step="0.1"
+												bind:value={transactionFeePct}
+												class="h-[48px] w-full border-0 bg-transparent px-3 font-mono text-[22px] font-semibold text-ink focus:outline-none focus:ring-0"
+											/>
+											<span
+												class="flex items-center bg-panel-sunken px-3 font-mono text-[16px] font-medium text-ink-400"
+												>%</span
+											>
+										</div>
+									</div>
+									<div>
+										<label class="mb-1.5 block text-[11px] text-ink-300" for="fee-conv"
+											>Convenience fee / ticket</label
+										>
+										<div
+											class="flex items-stretch overflow-hidden rounded-control border border-hairline bg-panel focus-within:ring-1 focus-within:ring-primary"
+										>
+											<span
+												class="flex items-center bg-panel-sunken px-3 font-mono text-[16px] font-medium text-ink-400"
+												>₱</span
+											>
+											<input
+												id="fee-conv"
+												type="number"
+												min="0"
+												step="1"
+												bind:value={convenienceFeePesos}
+												class="h-[48px] w-full border-0 bg-transparent px-3 font-mono text-[22px] font-semibold text-ink focus:outline-none focus:ring-0"
+											/>
+										</div>
+									</div>
+								</div>
+							{:else if feeStructure === 'new'}
+								<div class="mt-3 grid grid-cols-2 gap-4 max-w-sm">
+									<div>
+										<label class="mb-1.5 block text-[11px] text-ink-300" for="fee-svc"
+											>Service fee</label
+										>
+										<div
+											class="flex items-stretch overflow-hidden rounded-control border border-hairline bg-panel focus-within:ring-1 focus-within:ring-primary"
+										>
+											<input
+												id="fee-svc"
+												type="number"
+												min="0"
+												max="100"
+												step="0.1"
+												bind:value={serviceFeePct}
+												class="h-[48px] w-full border-0 bg-transparent px-3 font-mono text-[22px] font-semibold text-ink focus:outline-none focus:ring-0"
+											/>
+											<span
+												class="flex items-center bg-panel-sunken px-3 font-mono text-[16px] font-medium text-ink-400"
+												>%</span
+											>
+										</div>
+									</div>
+									<div>
+										<label class="mb-1.5 block text-[11px] text-ink-300" for="fee-svc-ticket"
+											>Per ticket</label
+										>
+										<div
+											class="flex items-stretch overflow-hidden rounded-control border border-hairline bg-panel focus-within:ring-1 focus-within:ring-primary"
+										>
+											<span
+												class="flex items-center bg-panel-sunken px-3 font-mono text-[16px] font-medium text-ink-400"
+												>₱</span
+											>
+											<input
+												id="fee-svc-ticket"
+												type="number"
+												min="0"
+												step="1"
+												bind:value={serviceFeePerTicketPesos}
+												class="h-[48px] w-full border-0 bg-transparent px-3 font-mono text-[22px] font-semibold text-ink focus:outline-none focus:ring-0"
+											/>
+										</div>
+									</div>
+								</div>
+							{/if}
+						</div>
+
+						<!-- Bank charges -->
+						<div>
+							<div class="mb-2 text-[11px] text-ink-300">Bank charges</div>
+							<div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+								<button
+									type="button"
+									onclick={() => (bankChargesAbsorbed = false)}
+									class="rounded-control border p-4 text-left transition-colors
+										{bankChargesAbsorbed === false
+										? 'border-primary bg-primary/5'
+										: 'border-hairline bg-panel hover:border-primary/40'}"
+								>
+									<div class="mb-0.5 text-[13px] font-semibold text-ink">Pass on to client</div>
+									<div class="text-[11px] text-ink-400">
+										Bank charges are added to the client's invoice
+									</div>
+								</button>
+								<button
+									type="button"
+									onclick={() => (bankChargesAbsorbed = true)}
+									class="rounded-control border p-4 text-left transition-colors
+										{bankChargesAbsorbed === true
+										? 'border-primary bg-primary/5'
+										: 'border-hairline bg-panel hover:border-primary/40'}"
+								>
+									<div class="mb-0.5 text-[13px] font-semibold text-ink">Absorb</div>
+									<div class="text-[11px] text-ink-400">Veent covers the bank charges</div>
+								</button>
+							</div>
+						</div>
+					</div>
+
+					<div class="mt-5 flex justify-end">
 						<button
 							onclick={saveOnboarding}
 							disabled={savingOnboarding}
@@ -591,14 +772,16 @@
 				<StageControl current={lead.stage} disabled={!canEdit || mutating} onSelect={selectStage} />
 
 				<div class="flex flex-col gap-2.5 rounded-control border border-hairline bg-panel p-4">
-					<button
-						disabled={!canEdit || mutating}
-						onclick={() => (wonOpen = true)}
-						class="flex h-[38px] items-center justify-center gap-1.5 rounded-control bg-fresh text-[13px] font-semibold text-white disabled:opacity-50"
-					>
-						<Icon name="check" size={15} stroke={2.2} />
-						Mark won
-					</button>
+					{#if lead.stage !== 'won'}
+						<button
+							disabled={!canEdit || mutating}
+							onclick={() => (wonOpen = true)}
+							class="flex h-[38px] items-center justify-center gap-1.5 rounded-control bg-fresh text-[13px] font-semibold text-white disabled:opacity-50"
+						>
+							<Icon name="check" size={15} stroke={2.2} />
+							Mark won
+						</button>
+					{/if}
 					<button
 						disabled={!canEdit || mutating}
 						onclick={() => (lostOpen = true)}

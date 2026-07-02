@@ -60,7 +60,14 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			contractUrl: data.contractUrl === undefined ? undefined : data.contractUrl || null,
 			onboardingStartDate:
 				data.onboardingStartDate === undefined ? undefined : data.onboardingStartDate || null,
-			goLiveDate: data.goLiveDate === undefined ? undefined : data.goLiveDate || null
+			goLiveDate: data.goLiveDate === undefined ? undefined : data.goLiveDate || null,
+			// Agreements fields — forward only when present.
+			feeStructure: data.feeStructure === undefined ? undefined : (data.feeStructure ?? null),
+			transactionFeePct: data.transactionFeePct,
+			convenienceFeePesos: data.convenienceFeePesos,
+			serviceFeePct: data.serviceFeePct,
+			serviceFeePerTicketPesos: data.serviceFeePerTicketPesos,
+			bankChargesAbsorbed: data.bankChargesAbsorbed
 		},
 		locals.user.id
 	);

@@ -101,6 +101,12 @@ export function dbRowToLead(row: DbLead, followUpAt?: string | Date | null): Lea
 		contractUrl: row.contractUrl ?? undefined,
 		onboardingStartDate: row.onboardingStartDate ?? undefined,
 		goLiveDate: row.goLiveDate ?? undefined,
+		feeStructure: (row.feeStructure as 'legacy' | 'new' | null) ?? undefined,
+		transactionFeePct: row.transactionFeePct ?? undefined,
+		convenienceFeePesos: row.convenienceFeePesos ?? undefined,
+		serviceFeePct: row.serviceFeePct ?? undefined,
+		serviceFeePerTicketPesos: row.serviceFeePerTicketPesos ?? undefined,
+		bankChargesAbsorbed: row.bankChargesAbsorbed ?? undefined,
 		lostReason: (row.lostReason as Lead['lostReason']) ?? undefined,
 		createdAt,
 		lastActivityAt,
@@ -644,6 +650,12 @@ export async function updateLead(
 		contractUrl?: string | null;
 		onboardingStartDate?: string | null;
 		goLiveDate?: string | null;
+		feeStructure?: 'legacy' | 'new' | null;
+		transactionFeePct?: number;
+		convenienceFeePesos?: number;
+		serviceFeePct?: number;
+		serviceFeePerTicketPesos?: number;
+		bankChargesAbsorbed?: boolean;
 	},
 	actorId: string
 ): Promise<Lead | null> {
@@ -694,6 +706,20 @@ export async function updateLead(
 					? { onboardingStartDate: input.onboardingStartDate || null }
 					: {}),
 				...(input.goLiveDate !== undefined ? { goLiveDate: input.goLiveDate || null } : {}),
+				...(input.feeStructure !== undefined ? { feeStructure: input.feeStructure || null } : {}),
+				...(input.transactionFeePct !== undefined
+					? { transactionFeePct: input.transactionFeePct }
+					: {}),
+				...(input.convenienceFeePesos !== undefined
+					? { convenienceFeePesos: input.convenienceFeePesos }
+					: {}),
+				...(input.serviceFeePct !== undefined ? { serviceFeePct: input.serviceFeePct } : {}),
+				...(input.serviceFeePerTicketPesos !== undefined
+					? { serviceFeePerTicketPesos: input.serviceFeePerTicketPesos }
+					: {}),
+				...(input.bankChargesAbsorbed !== undefined
+					? { bankChargesAbsorbed: input.bankChargesAbsorbed }
+					: {}),
 				updatedAt: now
 			})
 			.where(and(eq(crmLeads.id, id), isNull(crmLeads.deletedAt)))
@@ -733,7 +759,35 @@ export async function updateLead(
 				existing.onboardingStartDate ?? null,
 				updated.onboardingStartDate ?? null
 			],
-			['go_live_date', existing.goLiveDate ?? null, updated.goLiveDate ?? null]
+			['go_live_date', existing.goLiveDate ?? null, updated.goLiveDate ?? null],
+			['fee_structure', existing.feeStructure ?? null, updated.feeStructure ?? null],
+			[
+				'transaction_fee_pct',
+				existing.transactionFeePct != null ? String(existing.transactionFeePct) : null,
+				updated.transactionFeePct != null ? String(updated.transactionFeePct) : null
+			],
+			[
+				'convenience_fee_pesos',
+				existing.convenienceFeePesos != null ? String(existing.convenienceFeePesos) : null,
+				updated.convenienceFeePesos != null ? String(updated.convenienceFeePesos) : null
+			],
+			[
+				'service_fee_pct',
+				existing.serviceFeePct != null ? String(existing.serviceFeePct) : null,
+				updated.serviceFeePct != null ? String(updated.serviceFeePct) : null
+			],
+			[
+				'service_fee_per_ticket_pesos',
+				existing.serviceFeePerTicketPesos != null
+					? String(existing.serviceFeePerTicketPesos)
+					: null,
+				updated.serviceFeePerTicketPesos != null ? String(updated.serviceFeePerTicketPesos) : null
+			],
+			[
+				'bank_charges_absorbed',
+				existing.bankChargesAbsorbed != null ? String(existing.bankChargesAbsorbed) : null,
+				updated.bankChargesAbsorbed != null ? String(updated.bankChargesAbsorbed) : null
+			]
 		];
 
 		const changed = tracked.filter(([, oldVal, newVal]) => oldVal !== newVal);

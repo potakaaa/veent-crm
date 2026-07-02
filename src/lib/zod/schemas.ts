@@ -107,7 +107,14 @@ export const leadUpdateSchema = z.object({
 		.string()
 		.regex(/^\d{4}-\d{2}-\d{2}$/)
 		.optional()
-		.or(z.literal(''))
+		.or(z.literal('')),
+	// Agreements fields (surfaced only when stage = 'won'); all optional.
+	feeStructure: z.enum(['legacy', 'new']).optional(),
+	transactionFeePct: z.number().min(0).max(100).optional(),
+	convenienceFeePesos: z.number().min(0).optional(),
+	serviceFeePct: z.number().min(0).max(100).optional(),
+	serviceFeePerTicketPesos: z.number().min(0).optional(),
+	bankChargesAbsorbed: z.boolean().optional()
 });
 export type LeadUpdate = z.infer<typeof leadUpdateSchema>;
 
@@ -124,7 +131,14 @@ export const onboardingUpdateSchema = z.object({
 		.string()
 		.regex(/^\d{4}-\d{2}-\d{2}$/)
 		.optional()
-		.or(z.literal(''))
+		.or(z.literal('')),
+	// Agreements fields
+	feeStructure: z.enum(['legacy', 'new']).optional(),
+	transactionFeePct: z.number().min(0).max(100).optional(),
+	convenienceFeePesos: z.number().min(0).optional(),
+	serviceFeePct: z.number().min(0).max(100).optional(),
+	serviceFeePerTicketPesos: z.number().min(0).optional(),
+	bankChargesAbsorbed: z.boolean().optional()
 });
 export type OnboardingUpdate = z.infer<typeof onboardingUpdateSchema>;
 

@@ -101,6 +101,7 @@ For most substantial tasks:
 | reminders | `process/features/reminders/_GUIDE.md` | in-progress (code-complete, EVL green; manual UI/DB gates pending) |
 | reports   | `process/features/reports/_GUIDE.md`   | not-started (mock data only)             |
 | calendar  | `process/features/calendar/completed/calendar_01-07-26/` | code-complete, EVL green; e2e written but self-skipping pending shared auth e2e harness (2 known-gaps, pre-accepted) |
+| ux-enhancement | `process/features/ux-enhancement/` | in-progress (5-phase program at `process/features/ux-enhancement/active/sitewide-ux-refresh_02-07-26/`; Phase 1 Nav & Shell Foundation ✅ VERIFIED 02-07-26 — mobile nav drawer + `--color-nav-*`/`--color-focus-ring`/`--shadow-nav-*` tokens now in `tokens.css`, see phase report for final token names; Phases 2-4 unblocked and parallel-safe, Phase 5 last) |
 
 ---
 

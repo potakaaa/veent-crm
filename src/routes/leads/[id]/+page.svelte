@@ -763,7 +763,12 @@
 				</div>
 
 				{#if canEdit}
-					<LogTouchForm {lead} onSubmit={logTouch} />
+					<LogTouchForm
+						{lead}
+						templates={data.templates}
+						repName={data.me.name}
+						onSubmit={logTouch}
+					/>
 				{/if}
 			</div>
 

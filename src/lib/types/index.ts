@@ -157,6 +157,19 @@ export interface CalendarEntry {
 	subtitle?: string;
 }
 
+/**
+ * A manager-managed outreach message template. `deletedAt` is intentionally
+ * absent from the surface type — soft-delete is an internal filter concern.
+ */
+export interface MessageTemplate {
+	id: string;
+	category: Category;
+	title: string;
+	body: string;
+	createdAt: string;
+	updatedAt: string;
+}
+
 /** A row from the sheet import that needs a human before it joins the pool. */
 export interface ReviewItem {
 	id: string;

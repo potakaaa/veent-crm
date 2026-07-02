@@ -30,6 +30,35 @@
 	--color-panel-sunken: #f1eff3;
 	--color-selected: #fdeceb;
 
+	/*
+	 * Nav surface — Phase 1 (sitewide-ux-refresh). WRITE here; Phases 2-5 READ-ONLY.
+	 * These name the dark espresso nav chrome (Sidebar/Topbar/Shell) that was previously
+	 * a set of repeated hardcoded hex/rgba literals. Consumed via Tailwind utilities
+	 * (bg-nav-bg, text-nav-fg, text-nav-muted, text-nav-faint, text-nav-section,
+	 * border-nav-border, bg-nav-active-bg, text-nav-active-fg, bg-nav-presence) and via
+	 * var() for the inline-style / JS values (--color-nav-badge, --color-nav-badge-fallback,
+	 * --color-nav-glow).
+	 */
+	--color-nav-bg: #1a171c; /* sidebar/topbar/shell base bg + presence-dot border */
+	--color-nav-fg: #f5f3f4; /* sidebar default text */
+	--color-nav-muted: #a8a1ab; /* inactive nav-link text + badge-fallback text */
+	--color-nav-faint: #8a828f; /* footer role text + sign-out icon */
+	--color-nav-section: #6f6873; /* nav section-label text */
+	--color-nav-border: #26222b; /* footer top hairline */
+	--color-nav-active-bg: rgba(225, 29, 42, 0.14); /* active nav-link background */
+	--color-nav-active-fg: #fca5a0; /* active nav-link text */
+	--color-nav-badge: #e11d2a; /* default badge background (== primary) */
+	--color-nav-badge-fallback: rgba(255, 255, 255, 0.1); /* badge bg when no colour set */
+	--color-nav-presence: #22c55e; /* online presence dot */
+	--color-nav-glow: rgba(225, 29, 42, 0.05); /* shell main radial-gradient accent */
+
+	/*
+	 * Focus ring — Phase 1 (sitewide-ux-refresh). Shared focus-visible ring token, consumed
+	 * by the `.focus-ring` utility (defined in @layer components below). Applied to nav links
+	 * + sign-out in this phase; Phase 5 sweeps it to ui/button, form inputs, calendar cells.
+	 */
+	--color-focus-ring: #e11d2a;
+
 	/* Lines */
 	--color-hairline: #e8e5ea;
 	--color-hairline-strong: #dedae1;
@@ -98,6 +127,12 @@
 	--shadow-frame: 0 1px 2px rgba(26, 23, 28, 0.05);
 	--shadow-raised: 0 6px 18px rgba(26, 23, 28, 0.1);
 	--shadow-pop: 0 20px 50px rgba(26, 23, 28, 0.28);
+
+	/* Nav elevation — Phase 1 (sitewide-ux-refresh). Consumed via shadow-nav-* utilities. */
+	--shadow-nav-active: inset 3px 0 0 #e11d2a; /* active nav-link left accent */
+	--shadow-nav-brand: 0 4px 12px rgba(225, 29, 42, 0.4); /* sidebar brand tile */
+	--shadow-nav-cta: 0 4px 12px rgba(225, 29, 42, 0.34); /* topbar "New lead" CTA */
+	--shadow-nav-presence: 0 0 0 3px rgba(34, 197, 94, 0.18); /* brand presence-dot ring */
 }
 
 @layer base {
@@ -115,5 +150,18 @@
 	/* Tabular, monospace numerals everywhere data appears */
 	.tnum {
 		font-variant-numeric: tabular-nums;
+	}
+}
+
+@layer components {
+	/*
+	 * Shared focus-visible ring — Phase 1 (sitewide-ux-refresh). Keyboard-only ring (no ring on
+	 * mouse click) that stays visible on both the dark nav chrome and the light canvas via a
+	 * 2px offset so a gap always separates the ring from the element. Applied to nav links +
+	 * sign-out in Phase 1; Phase 5 extends it to ui/button, form inputs, and calendar cells.
+	 */
+	.focus-ring:focus-visible {
+		outline: 2px solid var(--color-focus-ring);
+		outline-offset: 2px;
 	}
 }

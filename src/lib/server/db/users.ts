@@ -5,7 +5,7 @@
 import { db } from './index';
 import { crmUsers } from './schema';
 import { dbUserToUser } from './leads';
-import type { User } from '$lib/types';
+import type { User, Role } from '$lib/types';
 
 /**
  * Insert a new team member (rep or manager) into `crm_users`.
@@ -16,7 +16,7 @@ import type { User } from '$lib/types';
 export async function createUser(input: {
 	name: string;
 	email: string;
-	role: 'rep' | 'manager';
+	role: Role;
 }): Promise<User> {
 	const [row] = await db
 		.insert(crmUsers)

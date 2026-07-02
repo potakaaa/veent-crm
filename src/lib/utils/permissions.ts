@@ -7,11 +7,16 @@
  *    layer via visibilityCondition(), not here).
  *  - Reps can only EDIT leads they own.
  *  - Reps can CLAIM unassigned leads.
- *  - Managers can edit and reassign anything; managers access team management.
+ *  - Managers and super_managers can edit and reassign anything; they access team management.
+ *    Use isManagerRole() for raw role-string checks (e.g. in API routes / DB layer).
  */
 import type { Lead, User } from '$lib/types';
 
-export const isManager = (user: User | null | undefined): boolean => user?.role === 'manager';
+/** True for both 'manager' and 'super_manager'. Prefer this over raw role string comparisons. */
+export const isManagerRole = (role: string | null | undefined): boolean =>
+	role === 'manager' || role === 'super_manager';
+
+export const isManager = (user: User | null | undefined): boolean => isManagerRole(user?.role);
 
 export const canEditLead = (user: User | null | undefined, lead: Lead): boolean => {
 	if (!user) return false;

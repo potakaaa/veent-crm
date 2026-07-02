@@ -201,7 +201,7 @@ export function resolveFollowUpAt(
  * place the rule is expressed — never duplicate it inline at a call site.
  */
 export function visibilityCondition(userId: string, role: Role): SQL {
-	if (role === 'manager') return sql`true`;
+	if (role === 'manager' || role === 'super_manager') return sql`true`;
 	return or(
 		eq(crmLeads.ownerId, userId),
 		eq(crmLeads.visibility, 'everyone'),
@@ -984,7 +984,7 @@ export async function moveLeadStage(
 	stage: Stage,
 	payload: MoveStagePayload,
 	actorId: string,
-	actorRole: 'rep' | 'manager'
+	actorRole: Role
 ): Promise<Lead | null | 'forbidden'> {
 	const now = new Date();
 
@@ -1005,7 +1005,7 @@ export async function moveLeadStage(
 
 		if (!existing) return null;
 
-		if (actorRole !== 'manager' && existing.ownerId !== actorId) {
+		if (actorRole !== 'manager' && actorRole !== 'super_manager' && existing.ownerId !== actorId) {
 			return 'forbidden' as const;
 		}
 

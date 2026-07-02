@@ -21,7 +21,7 @@ import { sql } from 'drizzle-orm';
 // ---------------------------------------------------------------------------
 // Enums
 // ---------------------------------------------------------------------------
-export const userRole = pgEnum('crm_user_role', ['rep', 'manager']);
+export const userRole = pgEnum('crm_user_role', ['rep', 'manager', 'super_manager']);
 
 export const leadCategory = pgEnum('crm_lead_category', [
 	'Sports',

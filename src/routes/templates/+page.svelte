@@ -19,6 +19,9 @@
 	let { data } = $props();
 	const canManage = $derived(isManager(data.currentUser));
 
+	// View toggle: card grid (default) vs the existing category-grouped list.
+	let viewMode = $state<'card' | 'list'>('card');
+
 	// Group non-deleted templates by category (server already sorts category→title).
 	const grouped = $derived.by(() => {
 		const map = new SvelteMap<string, MessageTemplate[]>();
@@ -132,10 +135,55 @@
 		</div>
 	{/if}
 
-	{#if grouped.length === 0}
+	<div class="mb-4 inline-flex gap-1 rounded-control border border-border bg-panel-subtle p-1">
+		<button
+			type="button"
+			class="rounded-[6px] px-3 py-1 text-[12.5px] font-medium transition-colors {viewMode ===
+			'card'
+				? 'bg-white text-ink-600 shadow-sm'
+				: 'text-ink-400 hover:text-ink-600'}"
+			onclick={() => (viewMode = 'card')}
+		>
+			Cards
+		</button>
+		<button
+			type="button"
+			class="rounded-[6px] px-3 py-1 text-[12.5px] font-medium transition-colors {viewMode ===
+			'list'
+				? 'bg-white text-ink-600 shadow-sm'
+				: 'text-ink-400 hover:text-ink-600'}"
+			onclick={() => (viewMode = 'list')}
+		>
+			List
+		</button>
+	</div>
+
+	{#if data.templates.length === 0}
 		<Card class="rounded-control px-6 py-10 text-center text-[13px] text-ink-300">
 			No templates yet. {#if canManage}Add your first one above.{/if}
 		</Card>
+	{:else if viewMode === 'card'}
+		<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+			{#each data.templates as t (t.id)}
+				<Card class="flex flex-col gap-3 rounded-control p-4">
+					<Badge
+						variant="outline"
+						class="w-fit font-mono text-[11px]"
+						style="color:#6b6470;background:#f1eff3;border-color:transparent"
+					>
+						{t.category}
+					</Badge>
+					<div class="text-[13px] font-semibold text-ink-600">{t.title}</div>
+					<p class="line-clamp-3 text-[12.5px] text-ink-500">{t.body}</p>
+					{#if canManage}
+						<div class="mt-auto flex gap-1.5 pt-1">
+							<Button variant="outline" size="sm" onclick={() => openEdit(t)}>Edit</Button>
+							<Button variant="outline" size="sm" onclick={() => remove(t)}>Delete</Button>
+						</div>
+					{/if}
+				</Card>
+			{/each}
+		</div>
 	{:else}
 		<div class="flex flex-col gap-6">
 			{#each grouped as [cat, items] (cat)}

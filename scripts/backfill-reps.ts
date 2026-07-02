@@ -31,6 +31,7 @@ export type RepRow = {
 // ---------------------------------------------------------------------------
 export const REPS: RepRow[] = [
 	// Full names confirmed from Meeting.csv
+	// "Jonna" in the events sheet = Jonnavien Grace Asuelo
 	{ name: 'Jonnavien Grace Asuelo', email: 'jonna@test.com', role: 'rep' },
 	{ name: 'Divine Anne Narvasa', email: 'divine@test.com', role: 'rep' },
 	{ name: 'Jela Lephtel Quiamco', email: 'jela@test.com', role: 'rep' },

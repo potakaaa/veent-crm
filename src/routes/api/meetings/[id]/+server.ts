@@ -2,13 +2,14 @@ import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { meetingUpdateSchema } from '$lib/zod/schemas';
 import { getMeeting, updateMeeting, softDeleteMeeting } from '$lib/server/db/meetings';
+import { isManagerRole } from '$lib/utils/permissions';
 
 export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 	if (!locals.user) throw error(401, 'Unauthorized');
 
 	const meeting = await getMeeting(params.id);
 	if (!meeting) throw error(404, 'Meeting not found');
-	if (locals.user.role === 'rep' && meeting.organizerId !== locals.user.id) {
+	if (!isManagerRole(locals.user.role) && meeting.organizerId !== locals.user.id) {
 		throw error(403, 'Forbidden');
 	}
 
@@ -44,7 +45,7 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
 
 	const meeting = await getMeeting(params.id);
 	if (!meeting) throw error(404, 'Meeting not found');
-	if (locals.user.role === 'rep' && meeting.organizerId !== locals.user.id) {
+	if (!isManagerRole(locals.user.role) && meeting.organizerId !== locals.user.id) {
 		throw error(403, 'Forbidden');
 	}
 

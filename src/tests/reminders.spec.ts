@@ -63,6 +63,7 @@ function makeLeadRow(overrides: Partial<Parameters<typeof dbRowToLead>[0]> = {})
 		serviceFeePct: 3,
 		serviceFeePerTicketPesos: 20,
 		bankChargesAbsorbed: null,
+		hasFutureEvents: false,
 		notes: null,
 		createdAt: now,
 		updatedAt: now,

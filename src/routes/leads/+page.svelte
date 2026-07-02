@@ -77,6 +77,7 @@
 		if (data.filters.platform) p.set('platform', data.filters.platform);
 		if (data.filters.country) p.set('country', data.filters.country);
 		if (data.filters.staleOnly) p.set('staleOnly', '1');
+		if (data.filters.hasFutureEvents) p.set('hasFutureEvents', '1');
 		if (data.filters.search) p.set('q', data.filters.search);
 		const qs = p.toString();
 		return `/api/leads/export${qs ? '?' + qs : ''}`;
@@ -94,7 +95,7 @@
 	</PageHeader>
 
 	<!-- toolbar -->
-	<div class="mb-3.5 flex flex-wrap items-center gap-2.5">
+	<div class="mb-1.5 flex flex-wrap items-center gap-2.5">
 		<Tabs
 			variant="segment"
 			ariaLabel="Filter leads by segment"
@@ -103,7 +104,9 @@
 			onValueChange={setSegment}
 		/>
 		<Separator orientation="vertical" class="h-[22px]" />
+	</div>
 
+	<div class="mb-3.5 flex flex-wrap items-center gap-2.5">
 		<Select
 			type="single"
 			value={data.filters.stage}
@@ -146,6 +149,8 @@
 			</Select>
 		{/if}
 
+		<Separator orientation="vertical" class="h-[22px]" />
+
 		<Button
 			variant="outline"
 			size="sm"
@@ -155,10 +160,19 @@
 			<span class="h-[7px] w-[7px] rounded-full bg-stale"></span> Stale only (&gt;30d)
 		</Button>
 
+		<Button
+			variant="outline"
+			size="sm"
+			onclick={() => setFilter('hasFutureEvents', data.filters.hasFutureEvents ? undefined : '1')}
+			class={data.filters.hasFutureEvents ? 'border-violet-400 bg-violet-100 text-violet-700' : ''}
+		>
+			<span class="h-[7px] w-[7px] rounded-full bg-violet-500"></span> Future events
+		</Button>
+
 		<Input
 			value={searchInput}
 			oninput={onSearchInput}
-			placeholder="Filter…"
+			placeholder="Search…"
 			class="ml-auto h-8 w-44"
 		/>
 	</div>

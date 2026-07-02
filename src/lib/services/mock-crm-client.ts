@@ -135,6 +135,7 @@ class MockCrmClient implements CrmClient {
 			pageUrl: input.pageUrl,
 			source: input.source ?? 'manual',
 			notes: input.notes,
+			hasFutureEvents: false,
 			createdAt: new Date().toISOString(),
 			lastActivityAt: new Date().toISOString(),
 			age: { label: 'new', type: 'normal' },

@@ -34,8 +34,9 @@
 	const ownerName = (id: string | null) => ownerNameFor(users, id);
 
 	// Desktop column template (8 cells: risk dot + 7 data columns). Below `lg` the
-	// DataGridShell collapses this into a stacked single-column card.
-	const cols = 'lg:grid-cols-[28px_2.4fr_1.7fr_1fr_0.9fr_1fr_0.7fr_0.7fr]';
+	// DataGridShell collapses this into a stacked single-column card. fr-values adopted
+	// from origin/development's alignment-fix (kept `lg:`-prefixed for the card-collapse).
+	const cols = 'lg:grid-cols-[28px_2fr_1.6fr_1fr_0.85fr_1fr_0.65fr_1fr]';
 
 	const table = $derived(
 		makeSortTable({
@@ -87,11 +88,13 @@
 				href="/leads/{l.id}"
 				class="{rowClass} min-h-[42px] items-center border-b border-panel-sunken px-4 last:border-b-0 hover:bg-[#fcfbfd]"
 			>
-				<span
-					class="h-2 w-2 rounded-full"
-					style="background:{riskMeta(l.urgency).color}"
-					title={riskMeta(l.urgency).label}
-				></span>
+				<div class="flex items-center">
+					<span
+						class="h-2 w-2 rounded-full"
+						style="background:{riskMeta(l.urgency).color}"
+						title={riskMeta(l.urgency).label}
+					></span>
+				</div>
 				<div class="min-w-0">
 					<div class="flex items-center gap-1.5 text-[13px] font-semibold">
 						<span class="truncate">{l.name}</span>
@@ -103,7 +106,6 @@
 							</span>
 						{/if}
 					</div>
-					<div class="mt-px truncate font-mono text-[11px] text-ink-400">{l.handle}</div>
 				</div>
 				<div class="min-w-0">
 					<div class="flex items-center gap-1.5">
@@ -120,11 +122,11 @@
 						</div>
 					{/if}
 				</div>
-				<div><StageChip stage={l.stage} /></div>
-				<div><Avatar name={ownerName(l.ownerId)} /></div>
-				<div><AgeBadge label={l.age.label} type={l.age.type} /></div>
-				<div><PlatformBadge platform={l.platform} /></div>
-				<div><AppealScoreBadge score={l.appealScore} /></div>
+				<div class="flex items-center"><StageChip stage={l.stage} /></div>
+				<div class="flex items-center"><Avatar name={ownerName(l.ownerId)} /></div>
+				<div class="flex items-center"><AgeBadge label={l.age.label} type={l.age.type} /></div>
+				<div class="flex items-center"><PlatformBadge platform={l.platform} /></div>
+				<div class="flex min-w-0 items-center"><AppealScoreBadge score={l.appealScore} /></div>
 			</a>
 		{/each}
 	{/snippet}

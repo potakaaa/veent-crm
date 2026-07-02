@@ -5,6 +5,7 @@
 	import Icon, { type IconName } from '$lib/components/shared/Icon.svelte';
 	import { authClient } from '$lib/auth-client';
 	import { roleLabel } from '$lib/utils/roles';
+	import { isManagerRole } from '$lib/utils/permissions';
 	import type { User } from '$lib/types';
 
 	async function signOut() {
@@ -123,7 +124,7 @@
 		</div>
 		{#each work as item (item.href)}{@render navButton(item, onNavigate)}{/each}
 
-		{#if user?.role === 'manager' || user?.role === 'super_manager'}
+		{#if isManagerRole(user?.role)}
 			<div
 				class="px-2.5 pb-[7px] pt-[18px] font-mono text-[9.5px] uppercase tracking-[1.4px] text-nav-section"
 			>

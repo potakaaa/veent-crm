@@ -2,15 +2,15 @@ import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { userFormSchema } from '$lib/zod/schemas';
 import { createUser } from '$lib/server/db/users';
-import { canManageUsers } from '$lib/utils/permissions';
 import { pendingWelcomeEmails } from '$lib/server/email-templates';
 import { getAuth } from '$lib/server/auth';
+import { isManagerRole } from '$lib/utils/permissions';
 
 // Manager-only: create a team member (the magic-link allowlist) and send them a
 // welcome email containing a ready-to-use sign-in link. Better Auth still owns
 // token issuance — we just trigger signInMagicLink, which fires sendMagicLink.
 export const POST: RequestHandler = async ({ request, locals }) => {
-	if (!canManageUsers(locals.user)) {
+	if (!locals.user || !isManagerRole(locals.user.role)) {
 		throw error(403, 'Manager only');
 	}
 

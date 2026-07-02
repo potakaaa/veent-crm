@@ -2,6 +2,7 @@
 	import PlatformBadge from '$lib/components/shared/PlatformBadge.svelte';
 	import StageChip from '$lib/components/shared/StageChip.svelte';
 	import AgeBadge from '$lib/components/shared/AgeBadge.svelte';
+	import FutureEventsBadge from '$lib/components/shared/FutureEventsBadge.svelte';
 	import { riskMeta } from '$lib/utils/risk';
 	import type { Lead } from '$lib/types';
 
@@ -43,6 +44,9 @@
 	<div class="flex shrink-0 flex-col items-end gap-1">
 		<StageChip stage={lead.stage} />
 		<AgeBadge label={lead.age.label} type={lead.age.type} />
+		{#if lead.hasFutureEvents}
+			<FutureEventsBadge />
+		{/if}
 	</div>
 	<div class="w-[150px] shrink-0 max-[1100px]:hidden">
 		<div class="font-mono text-[9px] uppercase tracking-[0.5px] text-ink-200">next</div>

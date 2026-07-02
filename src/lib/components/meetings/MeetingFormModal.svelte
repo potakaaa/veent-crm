@@ -170,20 +170,22 @@
 
 	<div class="mb-3.5 grid gap-1.5">
 		<Label id="mtg-attendees-label">Attendees</Label>
-		<div class="flex flex-wrap gap-1.5" role="group" aria-labelledby="mtg-attendees-label">
-			{#each activeUsers as u (u.id)}
-				{@const active = attendeeIds.includes(u.id)}
-				<button
-					type="button"
-					aria-pressed={active}
-					onclick={() => toggleAttendee(u.id)}
-					class="focus-ring h-7 rounded-chip border px-2.5 text-[12px] {active
-						? 'border-primary bg-primary/10 font-semibold text-primary'
-						: 'border-hairline bg-panel font-medium text-ink-600'}"
-				>
-					{u.name}
-				</button>
-			{/each}
+		<div class="max-h-32 overflow-y-auto rounded-[8px] border border-hairline bg-panel-subtle p-2">
+			<div class="flex flex-wrap gap-1.5" role="group" aria-labelledby="mtg-attendees-label">
+				{#each activeUsers as u (u.id)}
+					{@const active = attendeeIds.includes(u.id)}
+					<button
+						type="button"
+						aria-pressed={active}
+						onclick={() => toggleAttendee(u.id)}
+						class="focus-ring h-7 rounded-chip border px-2.5 text-[12px] {active
+							? 'border-primary bg-primary/10 font-semibold text-primary'
+							: 'border-hairline bg-panel font-medium text-ink-600'}"
+					>
+						{u.name}
+					</button>
+				{/each}
+			</div>
 		</div>
 	</div>
 

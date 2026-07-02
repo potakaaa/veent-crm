@@ -1,16 +1,34 @@
 import type { PageServerLoad } from './$types';
 import { error } from '@sveltejs/kit';
-import { MOCK_LEADS, MOCK_ACTIVITIES } from '$lib/server/mock';
-import { computeAppealScore } from '$lib/appeal-score';
+import { getLead, listUsers, listActivities, getLeadHistory } from '$lib/server/db/leads';
+import { listMeetingsForLead } from '$lib/server/db/meetings';
+import { listTemplates } from '$lib/server/db/templates';
+import type { User } from '$lib/types';
 
-// STUB: real impl loads the lead + its activity timeline + history from Drizzle.
-export const load: PageServerLoad = async ({ params }) => {
-	const found = MOCK_LEADS.find((l) => l.id === params.id);
-	if (!found) throw error(404, 'Lead not found');
-	const lead = {
-		...found,
-		appealScore: computeAppealScore(found.eventDate, found.announcedAt, found.firstReachedOutAt)
+export const load: PageServerLoad = async ({ params, locals }) => {
+	if (!locals.user) throw error(401, 'Unauthorized');
+
+	const [lead, users, templates] = await Promise.all([
+		getLead(params.id, locals.user.id, locals.user.role),
+		listUsers(),
+		listTemplates()
+	]);
+
+	if (!lead) throw error(404, 'Lead not found');
+
+	const [activities, meetings, leadHistory] = await Promise.all([
+		listActivities(lead.id),
+		listMeetingsForLead(lead.id),
+		getLeadHistory(lead.id)
+	]);
+
+	const me: User = {
+		id: locals.user.id,
+		email: locals.user.email,
+		name: locals.user.name,
+		role: locals.user.role,
+		active: true
 	};
-	const activities = MOCK_ACTIVITIES.filter((a) => a.leadId === lead.id);
-	return { lead, activities };
+
+	return { lead, activities, meetings, leadHistory, me, users, templates };
 };

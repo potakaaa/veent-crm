@@ -1,0 +1,7 @@
+# Production compose override — layer on top of docker-compose.yml.
+# Usage: docker compose -f docker-compose.yml -f docker-compose.prod.yml [command]
+# Requires Docker Compose v2.24+ (for build: !reset null).
+services:
+  app:
+    image: ghcr.io/potakaaa/veent-crm:latest
+    build: !reset null

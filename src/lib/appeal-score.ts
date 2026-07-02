@@ -57,14 +57,18 @@ export function computeAppealScore(
 	return Math.round(earlyMoverScore + runwayScore);
 }
 
-/** Sort by appealScore descending; null (unscoreable) scores are always pushed to the bottom. */
-export function sortByAppealScore<T extends { appealScore: number | null }>(items: T[]): T[] {
-	return [...items].sort((a, b) => {
-		if (a.appealScore == null && b.appealScore == null) return 0;
-		if (a.appealScore == null) return 1;
-		if (b.appealScore == null) return -1;
-		return b.appealScore - a.appealScore;
-	});
+/**
+ * Today, floored to the UTC date boundary (time-of-day stripped).
+ *
+ * The `date`-typed columns (`event_date`, `first_announced_date`, `first_reached_out_date`)
+ * parse as UTC-midnight `Date`s, and Postgres `CURRENT_DATE` is a whole date. Passing this as
+ * `now` to computeAppealScore keeps the displayed badge score in exact parity with the SQL
+ * `?sort=appeal` ORDER BY (which uses CURRENT_DATE), avoiding the ≤1-day wall-clock divergence
+ * that a raw `new Date()` would introduce. See appeal-score-rewire plan Execute Instruction E3.
+ */
+export function today(): Date {
+	const n = new Date();
+	return new Date(Date.UTC(n.getUTCFullYear(), n.getUTCMonth(), n.getUTCDate()));
 }
 
 export type AppealTier = 'high' | 'mid' | 'low' | 'none';

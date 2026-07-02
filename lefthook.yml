@@ -1,0 +1,16 @@
+# Mirrors the CI pipeline — .github/workflows/ci.yml
+# E2E tests are excluded (require browser install; run via: bunx playwright test)
+# Skip all hooks: git commit --no-verify
+# Run all checks manually: bun run ci:check
+
+pre-commit:
+  piped: true
+  commands:
+    lint:
+      run: bun run lint
+    check:
+      run: bun run check
+    test:
+      run: bun run test:unit:ci
+    build:
+      run: bun run build

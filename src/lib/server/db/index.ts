@@ -7,10 +7,16 @@ import postgres from 'postgres';
 import * as schema from './schema';
 import { env } from '$env/dynamic/private';
 
-const connectionString = env.DATABASE_URL ?? 'postgres://crm:crm@localhost:5432/veent_crm';
+const rawUrl = env.DATABASE_URL ?? 'postgres://crm:crm@localhost:5432/veent_crm';
 
-// max ~10 — one long-running process, no PgBouncer needed at this scale.
-const client = postgres(connectionString, { max: 10 });
+// postgres-js doesn't understand channel_binding — strip it from the URL.
+const connectionString = rawUrl.replace(/[&?]channel_binding=[^&]*/g, '');
+
+// Neon pooler uses PgBouncer in transaction mode which doesn't support prepared
+// statements. Detect by checking for the Neon hostname and disable accordingly.
+// Local Docker Postgres keeps prepare: true for performance.
+const isNeon = connectionString.includes('neon.tech');
+const client = postgres(connectionString, { max: 10, prepare: !isNeon });
 
 export const db = drizzle(client, { schema });
 export { schema };

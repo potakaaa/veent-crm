@@ -1,0 +1,119 @@
+/*
+ * Veent Outreach Console — design tokens
+ * Source of truth for the moodboard imported from Claude Design
+ * ("Outreach Console - Command Center"). Operational command-center palette:
+ * bright signal-red on a cool light canvas, dark espresso chrome, and an
+ * Inter (display + body) + IBM Plex Mono (data/labels) type system.
+ *
+ * Tailwind v4 reads `@theme` and generates utilities:
+ *   --color-primary   -> bg-primary / text-primary / border-primary ...
+ *   --font-serif      -> font-serif
+ *   --radius-frame    -> rounded-frame
+ *   --shadow-frame    -> shadow-frame
+ */
+
+@theme {
+	/* Typefaces — Command Center drops the serif display in favour of Inter 800. */
+	--font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+	--font-serif: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+	--font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, monospace;
+
+	/* Brand */
+	--color-primary: #e11d2a;
+	--color-primary-strong: #b3141f;
+	--color-primary-foreground: #ffffff;
+
+	/* Surfaces */
+	--color-canvas: #f5f4f6;
+	--color-panel: #ffffff;
+	--color-panel-subtle: #faf9fb;
+	--color-panel-sunken: #f1eff3;
+	--color-selected: #fdeceb;
+
+	/* Lines */
+	--color-hairline: #e8e5ea;
+	--color-hairline-strong: #dedae1;
+
+	/* Ink — cool espresso neutral ramp (text, from darkest to faintest) */
+	--color-ink: #1e1a1f;
+	--color-ink-800: #2a252e;
+	--color-ink-700: #3a353f;
+	--color-ink-600: #4a444e;
+	--color-ink-500: #6b6470;
+	--color-ink-400: #8a828f;
+	--color-ink-300: #9b95a0;
+	--color-ink-200: #b7b1bc;
+	--color-ink-100: #cfcad4;
+
+	/* Signal / lead age */
+	--color-overdue: #dc2626;
+	--color-stale: #d97706;
+	--color-fresh: #059669;
+
+	/* Pipeline stage accents */
+	--color-stage-new: #6b7280;
+	--color-stage-contacted: #2563eb;
+	--color-stage-replied: #7c3aed;
+	--color-stage-discussion: #d97706;
+	--color-stage-won: #059669;
+	--color-stage-lost: #9ca3af;
+
+	/* Radii */
+	--radius-chip: 5px;
+	--radius-control: 9px;
+	--radius-frame: 13px;
+	--radius-panel: 16px;
+
+	/* shadcn-svelte radius scale (aligned to our control/frame radii) */
+	--radius-sm: 5px;
+	--radius-md: 9px;
+	--radius-lg: 13px;
+	--radius-xl: 16px;
+
+	/*
+	 * shadcn-svelte semantic tokens, bridged to the Command Center palette so every
+	 * `ui/` primitive (bg-background, text-foreground, border-border, bg-card,
+	 * bg-muted, ring-ring, bg-destructive, …) renders on-brand by default.
+	 */
+	--color-background: #f5f4f6;
+	--color-foreground: #1e1a1f;
+	--color-card: #ffffff;
+	--color-card-foreground: #1e1a1f;
+	--color-popover: #ffffff;
+	--color-popover-foreground: #1e1a1f;
+	--color-primary-foreground: #ffffff;
+	--color-secondary: #f1eff3;
+	--color-secondary-foreground: #1e1a1f;
+	--color-muted: #f1eff3;
+	--color-muted-foreground: #6b6470;
+	--color-accent: #fdeceb;
+	--color-accent-foreground: #1e1a1f;
+	--color-destructive: #e11d2a;
+	--color-destructive-foreground: #ffffff;
+	--color-border: #e8e5ea;
+	--color-input: #e8e5ea;
+	--color-ring: #e11d2a;
+
+	/* Elevation — cool espresso-tinted shadows */
+	--shadow-frame: 0 1px 2px rgba(26, 23, 28, 0.05);
+	--shadow-raised: 0 6px 18px rgba(26, 23, 28, 0.1);
+	--shadow-pop: 0 20px 50px rgba(26, 23, 28, 0.28);
+}
+
+@layer base {
+	html {
+		-webkit-font-smoothing: antialiased;
+		text-rendering: optimizeLegibility;
+	}
+
+	body {
+		background-color: var(--color-canvas);
+		color: var(--color-ink);
+		font-family: var(--font-sans);
+	}
+
+	/* Tabular, monospace numerals everywhere data appears */
+	.tnum {
+		font-variant-numeric: tabular-nums;
+	}
+}

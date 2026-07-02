@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX "crm_activities_scraped_event_uq" ON "crm_activities" USING btree ("lead_id","event_url") WHERE "crm_activities"."event_url" IS NOT NULL;

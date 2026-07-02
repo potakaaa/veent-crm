@@ -8,6 +8,7 @@ metadata:
   required: true
   read_when: any substantial planning, research, review, or implementation task
 ---
+
 # veent-crm - All Context
 
 Last updated: 2026-07-01
@@ -76,28 +77,30 @@ For most substantial tasks:
 
 ## Task Routing Table
 
-| If the task involves... | Start with |
-|---|---|
-| architecture or stack questions | this file |
-| testing or verification | `process/context/tests/all-tests.md` |
-| creating a new plan | `process/context/planning/all-planning.md` |
-| auth / Better Auth wiring | this file + `process/features/auth/_GUIDE.md` |
-| leads CRUD, pipeline, stage transitions | this file + relevant feature `_GUIDE.md` |
-| DB schema changes (Drizzle) | this file — see Key Patterns §Drizzle conventions |
-| import / ingest pipeline | `process/features/import/_GUIDE.md` |
-| reminders / n8n | `process/features/reminders/_GUIDE.md` |
-| reports / ECharts | `process/features/reports/_GUIDE.md` |
+| If the task involves...                 | Start with                                        |
+| --------------------------------------- | ------------------------------------------------- |
+| architecture or stack questions         | this file                                         |
+| testing or verification                 | `process/context/tests/all-tests.md`              |
+| creating a new plan                     | `process/context/planning/all-planning.md`        |
+| auth / Better Auth wiring               | this file + `process/features/auth/_GUIDE.md`     |
+| leads CRUD, pipeline, stage transitions | this file + relevant feature `_GUIDE.md`          |
+| DB schema changes (Drizzle)             | this file — see Key Patterns §Drizzle conventions |
+| import / ingest pipeline                | `process/features/import/_GUIDE.md`               |
+| reminders / n8n                         | `process/features/reminders/_GUIDE.md`            |
+| reports / layerchart charts              | `process/features/reports/_GUIDE.md`              |
+| calendar (meetings + follow-ups grid)   | `process/features/calendar/`                       |
 
 ## Feature Folders
 
-| Feature | Guide | Status |
-|---|---|---|
-| auth | `process/features/auth/_GUIDE.md` | not-started (v0 stub, DEV_BYPASS active) |
-| leads | `process/features/leads/_GUIDE.md` | not-started (mock data only) |
-| pipeline | `process/features/pipeline/_GUIDE.md` | not-started (mock data only) |
-| import | `process/features/import/_GUIDE.md` | not-started (stub pipeline) |
-| reminders | `process/features/reminders/_GUIDE.md` | not-started (stub) |
-| reports | `process/features/reports/_GUIDE.md` | not-started (mock data only) |
+| Feature   | Guide                                  | Status                                   |
+| --------- | -------------------------------------- | ---------------------------------------- |
+| auth      | `process/features/auth/_GUIDE.md`      | not-started (v0 stub, DEV_BYPASS active) |
+| leads     | `process/features/leads/_GUIDE.md`     | in-progress (leads list, lead detail, lead creation, and Up for Grabs query the real DB via `src/lib/server/db/leads.ts`; Review Queue removed 01-07-26) |
+| pipeline  | `process/features/pipeline/_GUIDE.md`  | in-progress (`/pipeline` also queries the real DB via `src/lib/server/db/leads.ts`) |
+| import    | `process/features/import/_GUIDE.md`    | not-started (stub pipeline)              |
+| reminders | `process/features/reminders/_GUIDE.md` | in-progress (code-complete, EVL green; manual UI/DB gates pending) |
+| reports   | `process/features/reports/_GUIDE.md`   | not-started (mock data only)             |
+| calendar  | `process/features/calendar/completed/calendar_01-07-26/` | code-complete, EVL green; e2e written but self-skipping pending shared auth e2e harness (2 known-gaps, pre-accepted) |
 
 ---
 
@@ -106,16 +109,15 @@ For most substantial tasks:
 ```
 veent-crm/
   src/
-    hooks.server.ts            # session gate (DEV_BYPASS stub — injects fake manager)
+    hooks.server.ts            # session gate — real Better Auth session + crm_users allowlist check
     app.d.ts                   # TypeScript locals augmentation (user: SessionUser | null)
     app.html                   # HTML shell
     lib/
       assets/favicon.svg
-      appeal-score.ts           # Pure computeAppealScore/appealTier — derived, never persisted
       components/
         StubNote.svelte        # visual stub indicator (remove as surfaces go live)
-        AppealScoreBadge.svelte # Shared badge (score + tier color, null "Not enough data" state)
-        SortToggle.svelte       # Shared ?sort=appeal toggle control
+      data/
+        templates.ts            # static Log Touch snippet templates + fillTemplate() helper
       index.ts
       server/
         auth.ts                # Better Auth stub (getSession + sendMagicLink placeholders)
@@ -133,7 +135,11 @@ veent-crm/
       +layout.svelte           # Nav + global layout
       +page.server.ts          # Today / daily loop home
       +page.svelte
+      +error.svelte            # Global branded error page (404 + generic; chrome-less, outside layout)
       login/+page.svelte       # Magic-link login page
+      unauthorized/
+        +page.server.ts        # Sanitizes ?from= param (same-origin relative paths only)
+        +page.svelte           # Branded "Access restricted" page; sign-in CTA → /login
       leads/
         +page.server.ts        # Leads list
         +page.svelte
@@ -152,8 +158,15 @@ veent-crm/
         +page.svelte
       reminders/+page.svelte   # Follow-up reminders list
       reports/
-        +page.server.ts        # Analytics / ECharts
+        +page.server.ts        # Analytics / layerchart charts
         +page.svelte
+      calendar/
+        +page.server.ts        # Month/week grid: team meetings + owner-scoped follow-ups
+        +page.svelte
+      meetings/
+        [id]/
+          +page.server.ts      # Meeting detail (read-first; Edit opens MeetingFormModal)
+          +page.svelte
       team/
         +page.server.ts        # Team management
         +page.svelte
@@ -164,7 +177,6 @@ veent-crm/
       layout.css               # Global CSS (Tailwind imports)
     tests/
       schemas.spec.ts          # Vitest schema tests
-      appeal-score.spec.ts     # Vitest unit tests for computeAppealScore formula
   scripts/
     import.ts                  # One-time TSV importer (stub pipeline)
   drizzle/                     # Generated Drizzle migrations
@@ -196,7 +208,7 @@ veent-crm/
 - **Auth:** Better Auth 1.6.x — magic-link plugin + Resend email (currently stubbed)
 - **Forms:** Superforms 2.x + Zod 4.x (all forms use this pattern — no raw FormData)
 - **UI:** Tailwind CSS 4.x + `@tailwindcss/forms` + `@tailwindcss/typography`
-- **Charts:** ECharts 6.x (reports page)
+- **Charts:** `layerchart` 2.0.0-next.48 (shadcn-svelte chart primitives — bar/line/pie/area; reports page). ECharts is NOT installed — do not assume it is present.
 - **Email:** Resend 6.x (magic-link delivery — stubbed)
 - **Error tracking:** Sentry 10.x (`@sentry/sveltekit` — stubbed)
 - **Testing:** Vitest 4.x (unit) + Playwright 1.60.x (e2e)
@@ -219,11 +231,9 @@ veent-crm/
 
 **Mock data isolation** — `src/lib/server/mock.ts` is stub-only. Real Drizzle queries must never import from or depend on `mock.ts`.
 
-**Derived/computed display values are never persisted** — e.g. `computeAppealScore()` (`src/lib/appeal-score.ts`) is a pure function of stored date fields, recomputed at render/sort time in `+page.server.ts` loads. It has no DB column of its own and writes no `crm_lead_history` row (that trail is for human-actor field changes only — stage/owner/deal-value — not derived values). Follow this pattern for any future "always fresh, recomputed" indicator instead of caching/storing it.
-
 ### Drizzle conventions
 
-- Table naming: snake_case, prefixed with `crm_` (e.g., `crm_leads`, `crm_activities`)
+- Table naming: snake*case, prefixed with `crm*`(e.g.,`crm_leads`, `crm_activities`)
 - All PKs: `uuid().primaryKey().defaultRandom()`
 - All tables: `createdAt` + `updatedAt` timestamps with timezone
 - **Never write Drizzle migrations for Better Auth tables** (`user`, `account`, `session`, `verification`) — those are managed by Better Auth's own migration system
@@ -235,11 +245,13 @@ veent-crm/
 - Public env vars: `import { env } from '$env/dynamic/public'`
 - Locals type: `app.d.ts` declares `interface Locals { user: SessionUser | null }`
 
-### Auth / session conventions (current v0)
+### Auth / session conventions
 
-- `DEV_BYPASS = true` in `hooks.server.ts` injects a fake manager — remove when Better Auth is wired
-- Public routes (no auth required): `/login`, `/health`, `/api/reminders/due`, `/api/leads/ingest`
+- Better Auth is live-wired in `src/lib/server/auth.ts` (real `betterAuth()` config: `drizzleAdapter` + `magicLink` plugin + Resend email delivery via `email.ts`). `hooks.server.ts` has no `DEV_BYPASS` reference — that stub was removed.
+- Public routes (no auth required): `/login`, `/unauthorized`, `/health`, `/api/reminders/due`, `/api/reminders/notify`, `/api/leads/ingest`, `/api/auth`
 - `/api/reminders/due` and `/api/leads/ingest` use secret-based auth (not session-based)
+- Unauthenticated hits on protected routes split into two branches: no Better Auth session at all → `/login?from=[encoded-path]`; session exists but the email has no active `crm_users` allowlist row → `/unauthorized?from=[encoded-path]`. The `from` param is sanitized server-side via the shared `sanitizeFrom` helper (`src/lib/server/sanitize-redirect.ts`, used by both `/login` and `/unauthorized`) — only same-origin relative paths (single leading `/`) pass through; off-origin and scheme-containing values are stripped to `null`.
+- `src/routes/+error.svelte` is the global SvelteKit error page (404 + generic errors). It renders outside the layout tree — chrome-less by default, no bare-mode edit needed.
 
 ### Audit trail
 
@@ -253,6 +265,7 @@ veent-crm/
 **Config files:** `drizzle.config.ts`, `vite.config.ts`, `playwright.config.ts`, `tsconfig.json`, `.env` (git-ignored)
 
 **Env var groups (names only — never values):**
+
 - Database: `DATABASE_URL`
 - API secrets: `INGEST_SECRET` (scraper ingest endpoint), `REMINDERS_ENDPOINT_SECRET` (n8n reminders)
 - Email: `RESEND_API_KEY`
@@ -263,15 +276,13 @@ veent-crm/
 
 ## Current Project State (v0 → v1)
 
-**v0 (current):** All 10 route surfaces render mock data from `src/lib/server/mock.ts`. Auth is bypassed via `DEV_BYPASS`. No real DB queries. No real email. No real Sentry.
+**Current state (as of 01-07-26):** Better Auth (magic-link + `crm_users` allowlist) is live-wired in `hooks.server.ts` — `DEV_BYPASS` no longer exists. Leads, pipeline, meetings, reminders, and calendar query the real DB via Drizzle. Reports still renders mock data. No real Sentry yet.
 
-**Exception:** the Lead Appeal Score (badge + `?sort=appeal`, all 5 lead views) is a real, fully-implemented derived-value feature layered on top of the mock data — `crm_leads` also gained 2 additive-nullable columns (`announced_at`, `first_reached_out_at`) ready for when real leads CRUD lands. It does not change the "mock data only" status of leads CRUD itself.
+**Remaining v1 work (in priority order):**
 
-**v1 target (in priority order):**
-1. Better Auth magic-link login — real sessions replacing DEV_BYPASS
-2. Full leads CRUD — Drizzle queries replacing all mock data (leads list, detail, create, unassigned, review)
-3. Pipeline stage transitions — real DB writes + `crm_lead_history` audit trail
-4. TSV import end-to-end, n8n reminders (`follow_up_at`), ECharts reports with real data
+1. Reports — replace mock data with real DB-backed `layerchart` charts
+2. Shared Playwright authenticated-session fixture — currently blocks e2e verification for 2+ features (see `process/features/auth/backlog/e2e-auth-bootstrap_NOTE_01-07-26.md`)
+3. Live-DB CI harness for Hybrid-tier test gates (several features carry pre-accepted known-gaps for this)
 
 ---
 

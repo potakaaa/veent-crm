@@ -1,27 +1,133 @@
 <script lang="ts">
-	import StubNote from '$lib/components/StubNote.svelte';
+	import { authClient } from '$lib/auth-client';
+
+	let { data } = $props();
+
+	let sent = $state(false);
+	let email = $state('');
+	let error = $state('');
+	let submitting = $state(false);
+
+	async function sendMagic() {
+		const normalizedEmail = email.trim();
+		if (!normalizedEmail) {
+			error = 'Enter your work email.';
+			return;
+		}
+		error = '';
+		submitting = true;
+		const { error: err } = await authClient.signIn.magicLink({
+			email: normalizedEmail,
+			callbackURL: data.from ?? '/'
+		});
+		submitting = false;
+		if (err) {
+			error = err.message ?? 'Could not send the link. Try again.';
+			return;
+		}
+		sent = true;
+	}
 </script>
 
-<svelte:head><title>Log in · Veent CRM</title></svelte:head>
+<svelte:head><title>Sign in · Veent CRM</title></svelte:head>
 
-<div class="mx-auto max-w-sm pt-10">
-	<h1 class="mb-1 text-2xl font-semibold">Veent CRM</h1>
-	<p class="mb-4 text-sm text-gray-600">Magic-link login (allowlisted to active reps + manager).</p>
+<div class="flex h-screen bg-ink text-white">
+	<!-- left: form -->
+	<div class="flex flex-1 items-center justify-center p-10">
+		<div class="w-[360px] max-w-full">
+			<div class="mb-9 flex items-center gap-2.5">
+				<div
+					class="flex h-[34px] w-[34px] items-center justify-center rounded-control bg-primary text-[17px] font-bold"
+				>
+					V
+				</div>
+				<div>
+					<div class="text-[15px] font-bold tracking-[-0.2px]">Veent CRM</div>
+					<div class="font-mono text-[10px] uppercase tracking-[1px] text-[#8a828f]">
+						Outreach Console
+					</div>
+				</div>
+			</div>
 
-	<StubNote>Better Auth magic link via Resend — not wired in v0.</StubNote>
+			{#if sent}
+				<div class="rounded-control border border-fresh/35 bg-fresh/10 p-[22px]">
+					<div class="mb-2 text-[18px] font-semibold">Check your email</div>
+					<div class="text-[13.5px] leading-relaxed text-[#cdbab8]">
+						We sent a sign-in link to <span class="font-mono text-white">{email}</span>. It expires
+						in 15 minutes — no password needed.
+					</div>
+					<button
+						onclick={() => (sent = false)}
+						class="mt-4 text-[13px] font-medium text-[#e08a82]"
+					>
+						Use a different email
+					</button>
+					<a href="/" class="mt-4 block text-[12px] text-[#8a828f] hover:text-white"
+						>→ Continue to the console (demo)</a
+					>
+				</div>
+			{:else}
+				<div class="mb-1.5 text-[22px] font-bold tracking-[-0.4px]">Sign in</div>
+				<div class="mb-6 text-[13.5px] leading-relaxed text-[#a8a1ab]">
+					Magic-link sign-in for the Veent sales team. Allowlisted reps only.
+				</div>
+				{#if data.from}
+					<div class="mb-6 text-[12.5px] leading-relaxed text-[#8a7270]">
+						You were trying to reach <span class="font-mono text-[#cdbab8]">{data.from}</span>.
+					</div>
+				{/if}
+				<label for="email" class="mb-2 block text-[12px] font-medium text-[#cdbab8]"
+					>Work email</label
+				>
+				<input
+					id="email"
+					bind:value={email}
+					placeholder="jonna@test.com"
+					class="h-11 w-full rounded-[9px] border border-[#312c37] bg-[#221e27] px-3.5 font-mono text-[14px] text-white outline-none"
+				/>
+				<button
+					onclick={sendMagic}
+					disabled={submitting}
+					class="mt-3.5 h-11 w-full rounded-[9px] bg-primary text-[14px] font-semibold text-white hover:bg-primary-strong disabled:opacity-60"
+				>
+					{submitting ? 'Sending…' : 'Send magic link'}
+				</button>
+				{#if error}
+					<div class="mt-3 text-[12px] text-[#e08a82]">{error}</div>
+				{/if}
+				<div class="mt-[18px] text-[11.5px] leading-relaxed text-[#8a828f]">
+					Not on the team yet? Ask a manager to add you in Team management — that list is the
+					allowlist.
+				</div>
+			{/if}
+		</div>
+	</div>
 
-	<form class="space-y-3" method="post">
-		<input
-			name="email"
-			type="email"
-			placeholder="you@veent.io"
-			class="w-full rounded border border-gray-300 px-3 py-2 text-sm"
-		/>
-		<button type="button" class="w-full rounded bg-gray-900 px-4 py-2 text-sm text-white" disabled>
-			Send magic link (stub)
-		</button>
-	</form>
-	<p class="mt-4 text-center text-xs text-gray-400">
-		Dev: the session gate currently injects a manager via <code>hooks.server.ts</code>.
-	</p>
+	<!-- right: the cardinal rule -->
+	<div
+		class="flex flex-1 items-center justify-center border-l border-[#26222b] p-10 max-[880px]:hidden"
+		style="background:radial-gradient(circle at 78% 18%, rgba(225,29,42,0.28), transparent 42%), #1a171c"
+	>
+		<div class="max-w-[380px]">
+			<div class="mb-3.5 font-mono text-[11px] uppercase tracking-[1.5px] text-primary">
+				The cardinal rule
+			</div>
+			<div class="text-[26px] font-semibold leading-[1.3] tracking-[-0.5px] text-[#f2e6e4]">
+				Search a page before reaching out.
+			</div>
+			<div class="mt-4 text-[14px] leading-relaxed text-[#a98e8c]">
+				2,000 leads, five reps, one shared inbox. Dedup is baked into the chrome so two reps never
+				DM the same organizer twice.
+			</div>
+			<div class="mt-7 flex flex-wrap gap-2">
+				{#each ['dedup on', 'Asia/Manila', 'keyboard-first'] as tag (tag)}
+					<div
+						class="rounded-[6px] border border-[#312c37] bg-white/5 px-[9px] py-[5px] font-mono text-[11px] text-[#a8a1ab]"
+					>
+						{tag}
+					</div>
+				{/each}
+			</div>
+		</div>
+	</div>
 </div>

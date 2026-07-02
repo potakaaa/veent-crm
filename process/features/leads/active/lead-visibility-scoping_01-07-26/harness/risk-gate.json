@@ -1,0 +1,13 @@
+{
+  "task": "lead-visibility-scoping (GitHub #87)",
+  "planPath": "process/features/leads/active/lead-visibility-scoping_01-07-26/lead-visibility-scoping_PLAN_01-07-26.md",
+  "riskLevel": "high",
+  "riskClasses": [
+    "permission, secret, or trust-boundary logic",
+    "schema/data migration or destructive data mutation"
+  ],
+  "mustStopBeforeFinalize": true,
+  "humanApprovalRequired": true,
+  "why": "Changes who can read which lead records (trust boundary) and adds a NOT NULL column + junction table via migration. A missed read-surface wiring is a silent privacy leak; a bad migration could hide existing leads.",
+  "approver": "vc-execute-agent (per approved plan; Gate: CONDITIONAL accepted, E1-E6 on record)"
+}

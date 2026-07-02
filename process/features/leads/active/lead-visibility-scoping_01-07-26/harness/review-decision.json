@@ -1,0 +1,13 @@
+{
+  "task": "lead-visibility-scoping (GitHub #87)",
+  "reviewer": "vc-execute-agent (self-review vs approved plan + E1-E6)",
+  "decision": "approved-with-concerns",
+  "blockingFindings": [],
+  "nonBlockingFindings": [
+    "Hybrid DB gates (AC#1,3,4,5,8,9,10,11,13) not run in this environment (no DATABASE_URL/docker). New DB cases are written and self-skip; EVL must re-run them against a live DB before the trust-boundary change is treated as fully proven.",
+    "UI-render halves of AC#1/#3/#5/#8 are a named Known-Gap (e2e-auth-bootstrap). e2e/lead-visibility.e2e.ts written as test.fixme stubs.",
+    "getLead 404 timing/error-shape non-leakage beyond 'returns null' is a manual review item (Blast Radius failure-mode b)."
+  ],
+  "notes": "Implementation matches the approved plan and all E1-E6 instructions. All 7 read surfaces wired via one shared visibilityCondition; SPEC-exempt surfaces explicitly not wired + commented. Migration additive/backfilling, excludes Better Auth tables. Fully-Automated + type-check green. Manual-first high-risk pack: NOT finalize-ready until EVL re-runs DB gates.",
+  "timestamp": "2026-07-02T00:00:00+08:00"
+}

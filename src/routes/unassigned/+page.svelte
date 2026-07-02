@@ -1,31 +1,560 @@
 <script lang="ts">
-	import StubNote from '$lib/components/StubNote.svelte';
+	import { goto, afterNavigate, invalidateAll } from '$app/navigation';
+	import { page, navigating } from '$app/state';
+	import { makeSortTable } from '$lib/utils/tableSort';
+	import { Skeleton } from '$lib/components/ui/skeleton';
+	import { SvelteURLSearchParams } from 'svelte/reactivity';
+	import PageHeader from '$lib/components/shared/PageHeader.svelte';
+	import StageChip from '$lib/components/shared/StageChip.svelte';
+	import ReassignModal from '$lib/components/leads/ReassignModal.svelte';
+	import LeadEditModal from '$lib/components/leads/LeadEditModal.svelte';
+	import MultiSelectFilter from '$lib/components/leads/MultiSelectFilter.svelte';
+	import EventBadge from '$lib/components/shared/EventBadge.svelte';
 	import AppealScoreBadge from '$lib/components/AppealScoreBadge.svelte';
-	import SortToggle from '$lib/components/SortToggle.svelte';
+	import Icon from '$lib/components/shared/Icon.svelte';
+	import { toasts } from '$lib/stores/toasts.svelte';
+	import { removeFromList } from '$lib/utils/optimistic';
+	import { canReassign } from '$lib/utils/permissions';
+	import { sourceLabel } from '$lib/utils/sources';
+	import { Button } from '$lib/components/ui/button';
+	import * as Popover from '$lib/components/ui/popover';
+	import OrganizerHoverCard from '$lib/components/OrganizerHoverCard.svelte';
+	import type { Lead } from '$lib/types';
 
 	let { data } = $props();
+
+	// Loader-enriched lead: base Lead + derived `appealScore` attached in +page.server.ts.
+	type UnassignedLead = (typeof data.leads)[number];
+
+	// Optimistic shadow of the unassigned queue. E1: a writable `$derived` IS the reconcile
+	// mechanism — reassign for an optimistic remove; it auto-resyncs to server truth when
+	// `data.leads` changes after invalidateAll().
+	let shadowLeads = $derived(data.leads);
+
+	// Pending guards.
+	let claiming = $state<Record<string, boolean>>({});
+	let bulkPending = $state(false);
+	let assignPending = $state(false);
+
+	let paging = $state(false);
+	afterNavigate(() => {
+		paging = false;
+	});
+
+	let editTarget = $state<Lead | null>(null);
+	let assignTarget = $state<Lead | null>(null);
+	let editSaving = $state(false);
+
+	async function saveEdit(leadData: Record<string, unknown>) {
+		if (!editTarget || editSaving) return;
+		editSaving = true;
+		try {
+			const res = await fetch(`/api/leads/${editTarget.id}`, {
+				method: 'PATCH',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(leadData)
+			});
+			if (!res.ok) {
+				const msg = await res
+					.json()
+					.then((body) => body?.message ?? 'Server error')
+					.catch(() => 'Server error');
+				toasts.push(`Could not save: ${msg}`);
+				return; // keep modal open
+			}
+		} catch {
+			toasts.push('Could not save — please try again');
+			return;
+		} finally {
+			editSaving = false;
+		}
+		editTarget = null;
+		try {
+			await invalidateAll();
+			toasts.success('Lead updated');
+		} catch {
+			toasts.push('Saved, but the list could not refresh — reload to see the change');
+		}
+	}
+
+	const navLoading = $derived(paging || navigating.to?.url.pathname === '/unassigned');
+
+	function navigate(patch: Record<string, string | number | undefined>) {
+		const params = new SvelteURLSearchParams(page.url.searchParams);
+		for (const [k, v] of Object.entries(patch)) {
+			if (v === undefined) params.delete(k);
+			else params.set(k, String(v));
+		}
+		goto(`?${params}`, { keepFocus: true });
+	}
+
+	// Filters: comma-join the selection into the URL param (or drop it when empty), and always
+	// reset to page 1 so the filtered result starts at the beginning.
+	function setFilter(key: 'country' | 'category', values: string[]) {
+		navigate({ [key]: values.join(',') || undefined, page: undefined });
+	}
+	function clearAllFilters() {
+		navigate({ country: undefined, category: undefined, page: undefined });
+	}
+	const hasActiveFilters = $derived(
+		data.filters.country.length > 0 || data.filters.category.length > 0
+	);
+
+	const table = $derived(
+		makeSortTable({
+			data: shadowLeads,
+			columns: [
+				{ id: '_select', header: '', enableSorting: false },
+				{ id: 'name', header: 'Organizer / page' },
+				{ id: 'event', header: 'Event' },
+				{ id: 'stage', header: 'Stage' },
+				{ id: 'source', header: 'Source' },
+				{ id: 'country', header: 'Country', enableSorting: false },
+				{ id: 'category', header: 'Category', enableSorting: false },
+				{ id: '_lastOwner', header: 'Last owner', enableSorting: false },
+				{ id: 'appeal', header: 'Appeal', sortDescFirst: true },
+				{ id: '_actions', header: '', enableSorting: false }
+			],
+			sort: data.sort ?? '',
+			dir: data.dir,
+			onToggle(id, desc) {
+				navigate({ sort: id, dir: desc ? 'desc' : 'asc', page: undefined });
+			}
+		})
+	);
+
+	let selected = $state<Record<string, boolean>>({});
+	let assignOpen = $state(false);
+	const selectedIds = $derived(
+		shadowLeads.filter((lead) => selected[lead.id]).map((lead) => lead.id)
+	);
+
+	const formerOwner = (id: string | null | undefined) =>
+		id ? `was ${data.users.find((u) => u.id === id)?.name ?? 'former rep'}` : 'never assigned';
+
+	function toggle(id: string) {
+		selected = { ...selected, [id]: !selected[id] };
+	}
+
+	async function claim(lead: UnassignedLead) {
+		if (claiming[lead.id]) return; // duplicate-submit guard
+		claiming = { ...claiming, [lead.id]: true };
+		shadowLeads = removeFromList(shadowLeads, lead.id); // optimistic remove
+		try {
+			const res = await fetch(`/api/leads/${lead.id}/claim`, { method: 'POST' });
+			if (!res.ok) {
+				// Targeted rollback: restore only this lead so concurrent claims aren't undone.
+				if (!shadowLeads.some((l) => l.id === lead.id)) shadowLeads = [...shadowLeads, lead];
+				toasts.push(`Failed to claim ${lead.name}`);
+				return;
+			}
+		} catch {
+			if (!shadowLeads.some((l) => l.id === lead.id)) shadowLeads = [...shadowLeads, lead];
+			toasts.push(`Failed to claim ${lead.name} — server error`);
+			return;
+		} finally {
+			claiming = { ...claiming, [lead.id]: false };
+		}
+		await invalidateAll(); // $effect reconciles shadow with server truth
+		toasts.push(`Claimed ${lead.name}`, {
+			tone: 'success',
+			timeout: 6000,
+			action: {
+				label: 'Undo',
+				run: async () => {
+					try {
+						const res = await fetch(`/api/leads/${lead.id}/claim`, { method: 'DELETE' });
+						if (res.ok) {
+							shadowLeads = [...shadowLeads, lead];
+							await invalidateAll();
+							toasts.success(`Unclaimed ${lead.name}`);
+						} else {
+							toasts.push(`Could not undo — ${lead.name} may have changed`);
+						}
+					} catch {
+						toasts.push(`Could not undo — ${lead.name} may have changed`);
+					}
+				}
+			}
+		});
+	}
+
+	async function bulkClaim() {
+		if (bulkPending) return; // duplicate-submit guard
+		if (selectedIds.length > 200) {
+			toasts.push('Cannot bulk claim more than 200 leads at once');
+			return;
+		}
+		bulkPending = true;
+		const ids = selectedIds;
+		const snapshot = shadowLeads;
+		shadowLeads = shadowLeads.filter((l) => !selected[l.id]); // optimistic remove
+		try {
+			const res = await fetch('/api/leads/bulk-claim', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ ids })
+			});
+			if (!res.ok) {
+				shadowLeads = snapshot; // rollback
+				toasts.push('Bulk claim failed');
+				return;
+			}
+			const { claimed } = await res.json();
+			toasts.success(`Claimed ${claimed} lead${claimed === 1 ? '' : 's'}`);
+		} catch {
+			shadowLeads = snapshot; // rollback on network error
+			toasts.push('Bulk claim failed — server error');
+			return;
+		} finally {
+			bulkPending = false;
+		}
+		selected = {};
+		await invalidateAll(); // $effect reconciles shadow with server truth
+	}
+
+	async function assignTo(ownerId: string) {
+		if (assignPending) return; // duplicate-submit guard
+		assignPending = true;
+		// Capture BEFORE mutating shadowLeads/assignTarget — selectedIds is $derived and
+		// assignTarget resets on close, so both must be captured up front.
+		const target = assignTarget;
+		const ids = target ? [target.id] : selectedIds;
+		const count = ids.length;
+		const snapshot = shadowLeads;
+		shadowLeads = shadowLeads.filter((l) => !ids.includes(l.id)); // optimistic remove
+		let responses: Response[];
+		try {
+			responses = await Promise.all(
+				ids.map((id) =>
+					fetch(`/api/leads/${id}/owner`, {
+						method: 'PATCH',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({ ownerId })
+					})
+				)
+			);
+		} catch {
+			shadowLeads = snapshot; // rollback on network error (bulk op — all-or-nothing)
+			toasts.push('Some assignments failed — refresh and try again');
+			return;
+		} finally {
+			assignPending = false;
+		}
+		if (responses.some((r) => !r.ok)) {
+			shadowLeads = snapshot; // rollback (bulk op — all-or-nothing)
+			toasts.push('Some assignments failed — refresh and try again');
+			return;
+		}
+		assignOpen = false;
+		assignTarget = null;
+		const name = data.users.find((u) => u.id === ownerId)?.name ?? 'rep';
+		toasts.success(target ? `Assigned ${target.name} to ${name}` : `Assigned ${count} to ${name}`);
+		selected = {};
+		await invalidateAll(); // $effect reconciles shadow with server truth
+	}
+
+	const grid = 'grid grid-cols-[36px_2fr_1.6fr_1fr_90px_100px_110px_1fr_90px_150px] gap-3';
+
+	let openHoverId = $state<string | null>(null);
+	let hoverCloseTimer: ReturnType<typeof setTimeout> | undefined;
+
+	const openHover = (id: string) => {
+		clearTimeout(hoverCloseTimer);
+		openHoverId = id;
+	};
+	const scheduleCloseHover = () => {
+		clearTimeout(hoverCloseTimer);
+		hoverCloseTimer = setTimeout(() => {
+			openHoverId = null;
+		}, 200);
+	};
+	const closeHoverNow = () => {
+		clearTimeout(hoverCloseTimer);
+		openHoverId = null;
+	};
+	const handleEscape = (e: KeyboardEvent) => {
+		if (e.key === 'Escape') closeHoverNow();
+	};
+	const ownerNameFor = (ownerId: string | null) =>
+		ownerId ? (data.users.find((u) => u.id === ownerId)?.name ?? null) : null;
 </script>
 
 <svelte:head><title>Up for grabs · Veent CRM</title></svelte:head>
 
-<StubNote>Self-claim / bulk-claim (race-safe) + manager bulk-assign + source filter go here.</StubNote>
+<div class="px-7 pb-16 pt-6">
+	<PageHeader
+		title="Up for grabs"
+		subtitle={`${data.pagination.total} leads with no active owner — former-rep leads and never-assigned pages. Claim one to start working it.`}
+	>
+		{#snippet actions()}
+			{#if selectedIds.length}
+				<span class="font-mono text-[12px] text-primary">{selectedIds.length} selected</span>
+				<button
+					onclick={bulkClaim}
+					disabled={bulkPending}
+					class="h-[34px] rounded-control bg-primary px-3.5 text-[12.5px] font-semibold text-white disabled:opacity-50"
+				>
+					{bulkPending ? 'Claiming…' : `Claim ${selectedIds.length}`}
+				</button>
+				{#if canReassign(data.currentUser)}
+					<button
+						onclick={() => (assignOpen = true)}
+						class="h-[34px] rounded-control border border-hairline bg-panel px-3.5 text-[12.5px] font-medium text-ink-600"
+					>
+						Assign to rep ▾
+					</button>
+				{/if}
+			{/if}
+		{/snippet}
+	</PageHeader>
 
-<h1 class="mb-1 text-2xl font-semibold">Up for grabs</h1>
-<p class="mb-4 text-gray-600">Unassigned leads ({data.leads.length}) — claim transfers ownership + edit rights.</p>
-
-<div class="mb-3"><SortToggle sort={data.sort} /></div>
-
-<div class="space-y-2">
-	{#each data.leads as lead}
-		<div class="flex items-center gap-3 rounded-lg border border-gray-200 bg-white p-3">
-			<input type="checkbox" disabled />
-			<a href={`/leads/${lead.id}`} class="font-medium text-blue-600 hover:underline">{lead.name}</a>
-			<AppealScoreBadge score={lead.appealScore} />
-			<span class="text-xs text-gray-500">{lead.category} · {lead.platform}</span>
-			<span class="ml-1 rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-600">{lead.source}</span>
-			<button type="button" class="ml-auto rounded border border-gray-300 px-3 py-1 text-sm" disabled>
-				Claim
+	<div class="mb-3.5 flex flex-wrap items-center gap-2">
+		<MultiSelectFilter
+			label="Country"
+			options={data.countryOptions}
+			selected={data.filters.country}
+			onchange={(values) => setFilter('country', values)}
+		/>
+		<MultiSelectFilter
+			label="Category"
+			options={data.categoryOptions}
+			selected={data.filters.category}
+			onchange={(values) => setFilter('category', values)}
+		/>
+		{#if hasActiveFilters}
+			<button
+				onclick={clearAllFilters}
+				class="h-[34px] rounded-control px-2.5 text-[12.5px] font-medium text-ink-400 hover:text-primary hover:underline"
+			>
+				Clear all filters
 			</button>
+		{/if}
+	</div>
+
+	<div class="overflow-hidden rounded-control border border-hairline bg-panel">
+		<div
+			class="{grid} items-center border-b border-hairline bg-[#faf9fb] px-4 py-[9px] font-mono text-[10.5px] uppercase tracking-[0.4px] text-ink-300"
+		>
+			{#each table.getHeaderGroups()[0].headers as header (header.id)}
+				<div
+					role="columnheader"
+					aria-sort={header.column.getCanSort()
+						? header.column.getIsSorted() === 'asc'
+							? 'ascending'
+							: header.column.getIsSorted() === 'desc'
+								? 'descending'
+								: 'none'
+						: undefined}
+				>
+					{#if header.column.getCanSort()}
+						<button
+							onclick={header.column.getToggleSortingHandler()}
+							class={header.column.getIsSorted()
+								? 'text-left font-semibold text-ink-600 underline underline-offset-2 cursor-pointer'
+								: 'text-left text-ink-300 hover:text-ink-600 hover:underline hover:underline-offset-2 cursor-pointer'}
+						>
+							{header.column.columnDef.header}{header.column.getIsSorted() === 'asc'
+								? ' ↑'
+								: header.column.getIsSorted() === 'desc'
+									? ' ↓'
+									: ''}
+						</button>
+					{:else}
+						<span>{header.column.columnDef.header}</span>
+					{/if}
+				</div>
+			{/each}
 		</div>
-	{/each}
+		{#if navLoading}
+			{#each Array(8) as _, i (i)}
+				<div class="{grid} min-h-11 items-center border-b border-panel-sunken px-4 last:border-b-0">
+					{#each Array(10) as _, c (c)}
+						<Skeleton class="h-3.5 w-full" />
+					{/each}
+				</div>
+			{/each}
+		{:else}
+			{#each shadowLeads as l (l.id)}
+				<div
+					class="{grid} min-h-11 items-center border-b border-panel-sunken px-4 last:border-b-0 hover:bg-[#fcfbfd]"
+				>
+					<button
+						onclick={() => toggle(l.id)}
+						aria-label="Select {l.name}"
+						class="flex h-[18px] w-[18px] items-center justify-center rounded-[5px] border-[1.5px] {selected[
+							l.id
+						]
+							? 'border-primary bg-primary'
+							: 'border-hairline-strong bg-panel'}"
+					>
+						{#if selected[l.id]}<Icon name="check" size={12} stroke={3} />{/if}
+					</button>
+					<Popover.Root
+						open={openHoverId === l.id}
+						onOpenChange={(open) => {
+							if (!open) closeHoverNow();
+						}}
+					>
+						<Popover.Trigger>
+							{#snippet child({ props })}
+								<div
+									{...props}
+									class="min-w-0"
+									onmouseenter={() => openHover(l.id)}
+									onmouseleave={scheduleCloseHover}
+									onkeydown={handleEscape}
+								>
+									<a href="/leads/{l.id}" class="min-w-0 block">
+										<div class="flex items-center gap-1.5 text-[13px] font-semibold">
+											{l.name}
+											{#if l.siblings}<span
+													class="rounded-[4px] bg-[rgba(194,113,12,0.1)] px-[5px] py-px font-mono text-[9.5px] text-stale"
+													>{l.siblings} events</span
+												>{/if}
+										</div>
+										<div class="font-mono text-[11px] text-ink-400">{l.handle} · {l.category}</div>
+									</a>
+								</div>
+							{/snippet}
+						</Popover.Trigger>
+						<Popover.Portal>
+							<Popover.Content
+								side="right"
+								onmouseenter={() => openHover(l.id)}
+								onmouseleave={scheduleCloseHover}
+								onkeydown={handleEscape}
+							>
+								<OrganizerHoverCard lead={l} ownerName={ownerNameFor(l.ownerId)} />
+							</Popover.Content>
+						</Popover.Portal>
+					</Popover.Root>
+					<div class="min-w-0">
+						<div class="flex items-center gap-1.5">
+							<span class="truncate text-[12.5px] text-ink-600">{l.eventName ?? '—'}</span>
+							<EventBadge date={l.eventDate} />
+						</div>
+						{#if l.eventDate}
+							<div class="font-mono text-[11px] text-ink-400">
+								{new Date(l.eventDate + 'T00:00:00').toLocaleDateString('en-PH', {
+									month: 'short',
+									day: 'numeric',
+									year: 'numeric'
+								})}
+							</div>
+						{/if}
+					</div>
+					<div><StageChip stage={l.stage} /></div>
+					<div>
+						<span
+							class="rounded-[5px] px-[6px] py-[2px] font-mono text-[10.5px] font-medium {sourceLabel(
+								l.source
+							).class}">{sourceLabel(l.source).label}</span
+						>
+					</div>
+					<div class="truncate font-mono text-[12px] text-ink-400">{l.country}</div>
+					<div class="truncate font-mono text-[12px] text-ink-400">{l.category}</div>
+					<div class="font-mono text-[12px] text-ink-400">{formerOwner(l.formerOwnerId)}</div>
+					<div><AppealScoreBadge score={l.appealScore} /></div>
+					<div class="flex items-center gap-1.5">
+						<button
+							onclick={() => (editTarget = l)}
+							disabled={claiming[l.id] || editSaving}
+							aria-label="Edit {l.name}"
+							title="Edit lead"
+							class="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-[7px] border border-hairline text-ink-500 hover:border-primary hover:text-primary disabled:opacity-50"
+						>
+							<Icon name="edit" size={14} stroke={2} />
+						</button>
+						{#if canReassign(data.currentUser)}
+							<button
+								onclick={() => {
+									assignTarget = l;
+									assignOpen = true;
+								}}
+								disabled={claiming[l.id]}
+								aria-label="Assign {l.name}"
+								title="Assign to…"
+								class="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-[7px] border border-primary text-primary hover:bg-primary hover:text-white disabled:opacity-50"
+							>
+								<Icon name="team" size={14} stroke={2} />
+							</button>
+						{/if}
+						<button
+							onclick={() => claim(l)}
+							disabled={claiming[l.id]}
+							class="h-[30px] flex-1 rounded-[7px] bg-primary text-[12.5px] font-semibold text-white hover:bg-primary-strong disabled:opacity-50"
+						>
+							{claiming[l.id] ? 'Claiming…' : 'Claim'}
+						</button>
+					</div>
+				</div>
+			{:else}
+				<div class="p-12 text-center text-[13px] text-ink-200">
+					{#if hasActiveFilters}
+						No leads match your filters.
+					{:else}
+						No leads up for grabs — queue clear.
+					{/if}
+				</div>
+			{/each}
+		{/if}
+	</div>
+
+	{#if data.pagination.totalPages > 1}
+		{@const { page: pg, pageSize, total, totalPages } = data.pagination}
+		{@const start = (pg - 1) * pageSize + 1}
+		{@const end = Math.min(pg * pageSize, total)}
+		<div class="mt-5 flex items-center justify-between text-[13px] text-ink-300">
+			<span class="font-mono">{start}–{end} of {total}</span>
+			<div class="flex items-center gap-2">
+				<Button
+					variant="outline"
+					size="sm"
+					disabled={pg <= 1 || paging}
+					onclick={() => {
+						paging = true;
+						navigate({ page: pg - 1 });
+					}}>← Prev</Button
+				>
+				<span class="font-mono">Page {pg} of {totalPages}</span>
+				<Button
+					variant="outline"
+					size="sm"
+					disabled={pg >= totalPages || paging}
+					onclick={() => {
+						paging = true;
+						navigate({ page: pg + 1 });
+					}}>Next →</Button
+				>
+			</div>
+		</div>
+	{/if}
+
+	<div class="mt-3.5 flex items-center gap-2 text-[12px] text-ink-200">
+		<Icon name="info" size={14} stroke={2} />
+		Former reps stay on history for attribution — their workable leads land here.
+	</div>
 </div>
+
+{#if assignOpen}
+	<ReassignModal
+		open={true}
+		users={data.users}
+		onclose={() => {
+			assignOpen = false;
+			assignTarget = null;
+		}}
+		onconfirm={assignTo}
+	/>
+{/if}
+
+{#if editTarget}
+	<LeadEditModal
+		open={true}
+		lead={editTarget}
+		saving={editSaving}
+		onclose={() => (editTarget = null)}
+		onsave={saveEdit}
+	/>
+{/if}

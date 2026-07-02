@@ -214,6 +214,7 @@ Feature-scoped storage for large feature clusters. Each feature folder contains:
 - `backlog/` - Deferred/future plans
 
 Task-folder convention:
+
 - Reports, references, specs, and plans live inside the task folder under `active/` or `completed/`
 - Legacy sibling `reports/` and `references/` dirs may still appear during migration, but `vc-setup` and `vc-update` should migrate safe cases into task folders and remove emptied legacy dirs
 
@@ -233,14 +234,14 @@ the prompt and override paths:
 
 At plan creation time, use this decision logic:
 
-| Signal | Action |
-|--------|--------|
-| `process/features/{topic}/` already exists | Use it; pass `Feature: {topic}` to subagent |
-| Topic clearly belongs to an existing feature | Use that feature's folder |
-| New multi-phase project with 3+ planned phases | Create feature folder upfront |
-| User says "this is a big feature" or names a product area | Create feature folder upfront |
-| Single plan, no backlog, unclear scope | Use `process/general-plans/active/` |
-| Cross-cutting work touching multiple features | Use general folders |
+| Signal                                                    | Action                                      |
+| --------------------------------------------------------- | ------------------------------------------- |
+| `process/features/{topic}/` already exists                | Use it; pass `Feature: {topic}` to subagent |
+| Topic clearly belongs to an existing feature              | Use that feature's folder                   |
+| New multi-phase project with 3+ planned phases            | Create feature folder upfront               |
+| User says "this is a big feature" or names a product area | Create feature folder upfront               |
+| Single plan, no backlog, unclear scope                    | Use `process/general-plans/active/`         |
+| Cross-cutting work touching multiple features             | Use general folders                         |
 
 Promotion protocol from general to feature folder:
 
@@ -431,38 +432,38 @@ request to surface relevant skills. Attach candidate skill names to the subagent
 
 Skill Registry:
 
-| Skill | Purpose | Trigger Keywords |
-|---|---|---|
-| `vc-frontend-design` | Polished UI from designs/screenshots/videos | UI, design, layout, component, page, interface, visual, CSS, Tailwind, login page, dashboard |
-| `vc-debug` | Root cause-analysis helper used alongside `debugger` | debug, root cause, investigate, why is this |
-| `vc-scenario` | Edge case generation across 12 dimensions | edge cases, test scenarios, what could go wrong |
-| `vc-security` | STRIDE + OWASP security audit | security, vulnerability, auth, XSS, SQL injection |
-| `vc-autoresearch` | Autonomous metric optimization loop | improve coverage, reduce bundle, optimize metric |
-| `vc-predict` | 5-persona pre-implementation debate | risks, predict issues, architectural review |
-| `vc-scout` | Fast parallel codebase scouting | find files, where is, search codebase |
-| `vc-docs-seeker` | Library docs via context7 | how does X work, API docs, version, syntax |
-| `vc-generate-plan` | Durable implementation planning | plan, PRD, spec, implementation plan |
-| `vc-generate-context` | Refresh repository context router | refresh context, regenerate context, repo context |
-| `vc-audit-context` | Context routing and discoverability audit | context audit, reorganize context, stale context |
-| `vc-audit-plans` | Active-plan maintenance and cleanup | stale plans, cleanup plans, archive plans, plan audit |
-| `vc-web-testing` | Playwright/Vitest/k6 test automation | tests, e2e, integration test, performance test |
-| `vc-sequential-thinking` | Step-by-step reasoning | complex problem, think through, analyze step by step |
-| `vc-problem-solving` | Cognitive unblocking techniques | stuck, can't figure out, complex, spiral |
-| `vc-agent-browser` | AI browser automation CLI | long browser session, browserbase, visual testing |
-| `vc-agent-strategy-compare` | Execution strategy recommendation at phase boundaries | strategy, parallel agents, sequential, workflow |
-| `vc-intent-clarify` | Ambiguity scoring and clarification round | clarify intent, ambiguous request |
-| `vc-autopilot` | Autopilot Mode trigger and decision policy | autopilot, autonomous mode, full autonomy |
-| `vc-generate-spec` | Product-discovery requirements doc | spec, requirements, user stories |
-| `vc-feasibility-test` | Empirical feasibility probe before implementation | feasible, viable, probe, test approach |
-| `vc-generate-closeout` | Phase closeout packet and EVL handoff | closeout, archive, wrap up |
-| `vc-risk-evidence-pack` | Evidence pack for high-risk work | risk, auth risk, billing risk, schema risk |
-| `vc-test-coverage-plan` | Test coverage planning for validate-contract | test coverage, test strategy |
-| `vc-plan-discovery` | Active-plan discovery across features | find plan, resume plan |
-| `vc-review-situation` | Situation review and plan orientation | review situation, where am I |
-| `vc-setup` | Scaffold agent harness into new project | seed, harness, bootstrap, new project, scaffold, setup |
-| `vc-update` | Pull latest harness from remote kit repo | update harness, pull kit, sync harness, upgrade agents |
-| `vc-publish` | Push harness improvements to remote kit repo | publish kit, push harness, release kit, update remote |
-| `vc-audit-vc` | Agent harness health audit (agents, skills, README.md, protocol wiring) | harness, agent parity, skill audit, guide sync |
+| Skill                       | Purpose                                                                 | Trigger Keywords                                                                             |
+| --------------------------- | ----------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| `vc-frontend-design`        | Polished UI from designs/screenshots/videos                             | UI, design, layout, component, page, interface, visual, CSS, Tailwind, login page, dashboard |
+| `vc-debug`                  | Root cause-analysis helper used alongside `debugger`                    | debug, root cause, investigate, why is this                                                  |
+| `vc-scenario`               | Edge case generation across 12 dimensions                               | edge cases, test scenarios, what could go wrong                                              |
+| `vc-security`               | STRIDE + OWASP security audit                                           | security, vulnerability, auth, XSS, SQL injection                                            |
+| `vc-autoresearch`           | Autonomous metric optimization loop                                     | improve coverage, reduce bundle, optimize metric                                             |
+| `vc-predict`                | 5-persona pre-implementation debate                                     | risks, predict issues, architectural review                                                  |
+| `vc-scout`                  | Fast parallel codebase scouting                                         | find files, where is, search codebase                                                        |
+| `vc-docs-seeker`            | Library docs via context7                                               | how does X work, API docs, version, syntax                                                   |
+| `vc-generate-plan`          | Durable implementation planning                                         | plan, PRD, spec, implementation plan                                                         |
+| `vc-generate-context`       | Refresh repository context router                                       | refresh context, regenerate context, repo context                                            |
+| `vc-audit-context`          | Context routing and discoverability audit                               | context audit, reorganize context, stale context                                             |
+| `vc-audit-plans`            | Active-plan maintenance and cleanup                                     | stale plans, cleanup plans, archive plans, plan audit                                        |
+| `vc-web-testing`            | Playwright/Vitest/k6 test automation                                    | tests, e2e, integration test, performance test                                               |
+| `vc-sequential-thinking`    | Step-by-step reasoning                                                  | complex problem, think through, analyze step by step                                         |
+| `vc-problem-solving`        | Cognitive unblocking techniques                                         | stuck, can't figure out, complex, spiral                                                     |
+| `vc-agent-browser`          | AI browser automation CLI                                               | long browser session, browserbase, visual testing                                            |
+| `vc-agent-strategy-compare` | Execution strategy recommendation at phase boundaries                   | strategy, parallel agents, sequential, workflow                                              |
+| `vc-intent-clarify`         | Ambiguity scoring and clarification round                               | clarify intent, ambiguous request                                                            |
+| `vc-autopilot`              | Autopilot Mode trigger and decision policy                              | autopilot, autonomous mode, full autonomy                                                    |
+| `vc-generate-spec`          | Product-discovery requirements doc                                      | spec, requirements, user stories                                                             |
+| `vc-feasibility-test`       | Empirical feasibility probe before implementation                       | feasible, viable, probe, test approach                                                       |
+| `vc-generate-closeout`      | Phase closeout packet and EVL handoff                                   | closeout, archive, wrap up                                                                   |
+| `vc-risk-evidence-pack`     | Evidence pack for high-risk work                                        | risk, auth risk, billing risk, schema risk                                                   |
+| `vc-test-coverage-plan`     | Test coverage planning for validate-contract                            | test coverage, test strategy                                                                 |
+| `vc-plan-discovery`         | Active-plan discovery across features                                   | find plan, resume plan                                                                       |
+| `vc-review-situation`       | Situation review and plan orientation                                   | review situation, where am I                                                                 |
+| `vc-setup`                  | Scaffold agent harness into new project                                 | seed, harness, bootstrap, new project, scaffold, setup                                       |
+| `vc-update`                 | Pull latest harness from remote kit repo                                | update harness, pull kit, sync harness, upgrade agents                                       |
+| `vc-publish`                | Push harness improvements to remote kit repo                            | publish kit, push harness, release kit, update remote                                        |
+| `vc-audit-vc`               | Agent harness health audit (agents, skills, README.md, protocol wiring) | harness, agent parity, skill audit, guide sync                                               |
 
 Rule: When one or more skills match the request, mention them to the user or include them in
 the subagent prompt context. Never silently skip relevant skills.

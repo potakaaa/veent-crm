@@ -30,6 +30,7 @@
 
 	let { data } = $props();
 	const canManage = $derived(canManageUsers(data.currentUser));
+	const isSuperManager = $derived(data.currentUser?.role === 'super_manager');
 
 	const navLoading = $derived(navigating.to?.url.pathname === '/team');
 
@@ -101,16 +102,46 @@
 						null
 					);
 				}
-				await crm.updateUser(u.id, { active: false });
+				await fetch(`/api/users/${u.id}`, {
+					method: 'PATCH',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ active: false })
+				});
 				await invalidateAll();
 				toasts.push(`Deactivated ${u.name} — ${theirLeads.length} lead(s) moved to Up for grabs`);
 			} else {
-				await crm.updateUser(u.id, { active: true });
+				await fetch(`/api/users/${u.id}`, {
+					method: 'PATCH',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ active: true })
+				});
 				await invalidateAll();
 				toasts.push(`Reactivated ${u.name}`);
 			}
 		} catch (err) {
 			toasts.push(err instanceof Error ? err.message : `Unable to update ${u.name}`, {
+				tone: 'warn'
+			});
+		}
+	}
+
+	async function changeRole(u: User, newRole: 'rep' | 'manager') {
+		try {
+			const res = await fetch(`/api/users/${u.id}`, {
+				method: 'PATCH',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ role: newRole })
+			});
+			if (!res.ok) {
+				const body = await res.json().catch(() => ({}));
+				toasts.push(body.message ?? `Unable to change ${u.name}'s role`, { tone: 'warn' });
+				return;
+			}
+			await invalidateAll();
+			const label = newRole === 'manager' ? 'promoted to Manager' : 'demoted to Rep';
+			toasts.success(`${u.name} ${label}`);
+		} catch (err) {
+			toasts.push(err instanceof Error ? err.message : `Unable to change ${u.name}'s role`, {
 				tone: 'warn'
 			});
 		}
@@ -204,9 +235,11 @@
 								<Badge
 									variant="outline"
 									class="font-mono text-[11px]"
-									style={u.role === 'manager'
-										? 'color:#e11d2a;background:#fdeceb;border-color:transparent'
-										: 'color:#6b6470;background:#f1eff3;border-color:transparent'}
+									style={u.role === 'super_manager'
+										? 'color:#7c3aed;background:#f3effe;border-color:transparent'
+										: u.role === 'manager'
+											? 'color:#e11d2a;background:#fdeceb;border-color:transparent'
+											: 'color:#6b6470;background:#f1eff3;border-color:transparent'}
 								>
 									{roleLabel(u.role)}
 								</Badge>
@@ -224,11 +257,23 @@
 							</TableCell>
 							<TableCell class="text-right font-mono text-[13px]">{u.leadCount ?? '—'}</TableCell>
 							<TableCell class="text-right">
-								{#if canManage && u.role !== 'manager'}
-									<Button variant="outline" size="sm" onclick={() => toggleActive(u)}>
-										{u.active ? 'Deactivate' : 'Reactivate'}
-									</Button>
-								{/if}
+								<div class="flex items-center justify-end gap-2">
+									{#if isSuperManager && u.role === 'rep'}
+										<Button variant="outline" size="sm" onclick={() => changeRole(u, 'manager')}>
+											Promote
+										</Button>
+									{/if}
+									{#if isSuperManager && u.role === 'manager'}
+										<Button variant="outline" size="sm" onclick={() => changeRole(u, 'rep')}>
+											Demote
+										</Button>
+									{/if}
+									{#if canManage && u.role !== 'super_manager'}
+										<Button variant="outline" size="sm" onclick={() => toggleActive(u)}>
+											{u.active ? 'Deactivate' : 'Reactivate'}
+										</Button>
+									{/if}
+								</div>
 							</TableCell>
 						</TableRow>
 					{/each}

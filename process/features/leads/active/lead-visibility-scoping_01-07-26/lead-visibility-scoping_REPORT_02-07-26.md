@@ -60,9 +60,12 @@ until EVL re-runs the DB gates. HIGH-risk evidence pack written + validator-gree
 - Hybrid DB gates NOT executed (no DATABASE_URL/docker in this environment). New DB cases written and
   self-skip via `describe.skipIf(SKIP_DB)`.
 - AC#12 (ingest defaults everyone), AC#14 (reports unfiltered), AC#6-pipeline/today, AC#7 nav-count
-  DB assertions: not added as new cases — guaranteed by schema default (AC#12) / by not touching
-  reports (AC#14) / by owner-scoping being unchanged (AC#6/#7). Recommend adding if EVL wants explicit
-  regression rows. Deferred, low-risk.
+  DB assertions: not added as new test cases — these criteria remain **open/deferred**, not complete.
+  AC#12 has no assertion that an ingested row actually lands with `visibility='everyone'`; AC#14 has no
+  assertion that the reports query is unfiltered. AC#6/#7 for pipeline and nav-counts have no DB-level
+  regression rows. Structural reasoning (schema default / code-not-touched) is noted but does not
+  substitute for explicit test evidence. All four must be covered by EVL/CI DB cases before this
+  feature is considered fully verified.
 - UI-render halves (AC#1/#3/#5/#8) — Known-Gap (e2e-auth-bootstrap), fixme'd stub written.
 
 ## Test Gate Outcomes

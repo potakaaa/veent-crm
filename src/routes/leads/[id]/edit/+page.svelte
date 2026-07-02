@@ -12,7 +12,12 @@
 	import { Textarea } from '$lib/components/ui/textarea';
 	import { toasts } from '$lib/stores/toasts.svelte';
 	import { formatEventDate } from '$lib/utils/dates';
-	import { leadUpdateSchema, LEAD_CATEGORIES, LEAD_PLATFORMS } from '$lib/zod/schemas';
+	import {
+		leadUpdateSchema,
+		LEAD_CATEGORIES,
+		LEAD_PLATFORMS,
+		LEAD_VISIBILITIES
+	} from '$lib/zod/schemas';
 	import { parseDate, type DateValue } from '@internationalized/date';
 	import { untrack } from 'svelte';
 
@@ -31,7 +36,7 @@
 	let eventName = $state(lead.eventName ?? '');
 	let eventLink = $state(lead.eventLink ?? '');
 	let notes = $state(lead.notes ?? '');
-	let visibility = $state<'only_me' | 'everyone' | 'selected'>(lead.visibility ?? 'everyone');
+	let visibility = $state<(typeof LEAD_VISIBILITIES)[number]>(lead.visibility ?? 'everyone');
 	let selectedUserIds = $state<string[]>(lead.selectedUserIds ?? []);
 
 	const VISIBILITY_LABELS: Record<string, string> = {

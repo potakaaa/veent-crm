@@ -907,10 +907,10 @@ export async function updateLead(
 			);
 		}
 
-		// Grant reconciliation: `selected` → replace the grant set; any other scope → clear
-		// grants so no stale grantee rows linger under a setting that no longer references them.
+		// Grant reconciliation: always clear existing grants first, then re-insert when
+		// `selected` so no stale grantee rows linger under a setting that no longer references them.
+		await tx.delete(crmLeadVisibilityGrants).where(eq(crmLeadVisibilityGrants.leadId, id));
 		if (newVisibility === 'selected') {
-			await tx.delete(crmLeadVisibilityGrants).where(eq(crmLeadVisibilityGrants.leadId, id));
 			const grantIds = input.selectedUserIds ?? [];
 			if (grantIds.length > 0) {
 				await tx
@@ -918,8 +918,6 @@ export async function updateLead(
 					.values(grantIds.map((userId) => ({ leadId: id, userId })))
 					.onConflictDoNothing();
 			}
-		} else {
-			await tx.delete(crmLeadVisibilityGrants).where(eq(crmLeadVisibilityGrants.leadId, id));
 		}
 
 		return dbRowToLead(updated);

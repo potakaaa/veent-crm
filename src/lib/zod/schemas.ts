@@ -110,7 +110,7 @@ export const leadUpdateSchema = z
 			.optional()
 			.transform((v) => (v === '' ? null : v)),
 		notes: z.string().optional(),
-		visibility: z.enum(LEAD_VISIBILITIES).default('everyone'),
+		visibility: z.enum(LEAD_VISIBILITIES).optional(),
 		selectedUserIds: z.array(z.string().regex(LOOSE_UUID_RE)).optional(),
 		// Onboarding fields (surfaced only when stage = 'won'); all optional so a normal
 		// lead edit that omits them is unaffected.

@@ -100,7 +100,11 @@ e2e-auth-bootstrap). Criterion set summary:
 | `src/routes/api/leads/[id]/+server.ts` (7-63) | Pass the two fields into `updateLead()` (gate unchanged — `canEditLead`) | ~8 |
 | `src/routes/api/leads/[id]/owner/+server.ts` | Confirm it calls `reassignLead()` (reset lives in the DB fn, so likely no route change — verify) | ~0-4 |
 | `src/routes/leads/[id]/+page.server.ts` | Update `getLead()` call to pass `locals.user.id` + `locals.user.role` (signature change) | ~4 |
-| Any other `getLead()` caller | Grep-confirm and update every call site to the new 3-arg signature | ~8 |
+| `src/routes/api/leads/[id]/+server.ts` | Pass `locals.user.id` + `locals.user.role` to `getLead()` | ~1 |
+| `src/routes/api/leads/[id]/snooze/+server.ts` | Pass `locals.user.id` + `locals.user.role` to `getLead()` | ~1 |
+| `src/routes/api/leads/[id]/activities/+server.ts` | Pass `locals.user.id` + `locals.user.role` to `getLead()` | ~1 |
+| `src/routes/api/leads/[id]/touch/+server.ts` | Pass `locals.user.id` + `locals.user.role` to `getLead()` | ~1 |
+| `src/routes/leads/[id]/edit/+page.server.ts` | Pass `locals.user.id` + `locals.user.role` to `getLead()` | ~1 |
 | `src/routes/leads/new/+page.svelte` (+ possibly `+page.server.ts`) | Visibility selector + conditional teammate multi-select; wire into create submit | ~50 |
 | `src/routes/leads/[id]/+page.svelte` and/or `edit/+page.svelte` | Same selector + multi-select on detail edit | ~50 |
 | `drizzle/` (new migration) | Generated migration for enum + column + junction table (`bun run db:generate`) | new file |

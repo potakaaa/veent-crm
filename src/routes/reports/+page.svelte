@@ -183,7 +183,7 @@
 			<select
 				id="rpt-rep"
 				bind:value={filterRepId}
-				class="h-[34px] rounded-control border border-hairline bg-panel px-2.5 font-mono text-[12.5px] text-ink focus:outline-none focus:ring-1 focus:ring-primary"
+				class="min-w-[160px] rounded-control border border-hairline bg-panel py-[7px] pl-2.5 pr-7 font-mono text-[12.5px] leading-[18px] text-ink focus:outline-none focus:ring-1 focus:ring-primary"
 			>
 				<option value="">All reps</option>
 				{#each data.users as u (u.id)}

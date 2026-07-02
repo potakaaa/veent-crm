@@ -22,10 +22,32 @@
 	// View toggle: card grid (default) vs the existing category-grouped list.
 	let viewMode = $state<'card' | 'list'>('card');
 
-	// Group non-deleted templates by category (server already sorts category→title).
+	// Toolbar state.
+	let searchQuery = $state('');
+	let filterCategory = $state('');
+	let sortBy = $state<'title' | 'newest' | 'oldest'>('title');
+
+	// Filtered + sorted list (all client-side — dataset is small).
+	const filtered = $derived.by(() => {
+		const q = searchQuery.trim().toLowerCase();
+		let list = data.templates.filter((t) => {
+			if (filterCategory && t.category !== filterCategory) return false;
+			if (q && !t.title.toLowerCase().includes(q) && !t.body.toLowerCase().includes(q))
+				return false;
+			return true;
+		});
+		if (sortBy === 'newest')
+			list = [...list].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+		else if (sortBy === 'oldest')
+			list = [...list].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+		// 'title' keeps the server order (category → title asc).
+		return list;
+	});
+
+	// Group filtered templates by category.
 	const grouped = $derived.by(() => {
 		const map = new SvelteMap<string, MessageTemplate[]>();
-		for (const t of data.templates) {
+		for (const t of filtered) {
 			const list = map.get(t.category) ?? [];
 			list.push(t);
 			map.set(t.category, list);
@@ -161,64 +183,101 @@
 		</div>
 	{/if}
 
-	<div class="mb-4 inline-flex gap-1 rounded-control border border-border bg-panel-subtle p-1">
-		<button
-			type="button"
-			class="rounded-[6px] px-3 py-1 text-[12.5px] font-medium transition-colors {viewMode ===
-			'card'
-				? 'bg-white text-ink-600 shadow-sm'
-				: 'text-ink-400 hover:text-ink-600'}"
-			onclick={() => (viewMode = 'card')}
-		>
-			Cards
-		</button>
-		<button
-			type="button"
-			class="rounded-[6px] px-3 py-1 text-[12.5px] font-medium transition-colors {viewMode ===
-			'list'
-				? 'bg-white text-ink-600 shadow-sm'
-				: 'text-ink-400 hover:text-ink-600'}"
-			onclick={() => (viewMode = 'list')}
-		>
-			List
-		</button>
+	<!-- toolbar: view toggle + search + category filter + sort -->
+	<div class="mb-4 flex flex-wrap items-center gap-2.5">
+		<div class="inline-flex gap-1 rounded-control border border-border bg-panel-subtle p-1">
+			<button
+				type="button"
+				class="rounded-[6px] px-3 py-1 text-[12.5px] font-medium transition-colors {viewMode ===
+				'card'
+					? 'bg-white text-ink-600 shadow-sm'
+					: 'text-ink-400 hover:text-ink-600'}"
+				onclick={() => (viewMode = 'card')}
+			>
+				Cards
+			</button>
+			<button
+				type="button"
+				class="rounded-[6px] px-3 py-1 text-[12.5px] font-medium transition-colors {viewMode ===
+				'list'
+					? 'bg-white text-ink-600 shadow-sm'
+					: 'text-ink-400 hover:text-ink-600'}"
+				onclick={() => (viewMode = 'list')}
+			>
+				List
+			</button>
+		</div>
+
+		<Select type="single" bind:value={filterCategory}>
+			<SelectTrigger size="sm" class="w-36">{filterCategory || 'All categories'}</SelectTrigger>
+			<SelectContent>
+				<SelectItem value="" label="All categories">All categories</SelectItem>
+				{#each LEAD_CATEGORIES as c (c)}<SelectItem value={c} label={c}>{c}</SelectItem>{/each}
+			</SelectContent>
+		</Select>
+
+		<Select type="single" bind:value={sortBy}>
+			<SelectTrigger size="sm" class="w-32">
+				{sortBy === 'title' ? 'Title A–Z' : sortBy === 'newest' ? 'Newest' : 'Oldest'}
+			</SelectTrigger>
+			<SelectContent>
+				<SelectItem value="title" label="Title A–Z">Title A–Z</SelectItem>
+				<SelectItem value="newest" label="Newest">Newest</SelectItem>
+				<SelectItem value="oldest" label="Oldest">Oldest</SelectItem>
+			</SelectContent>
+		</Select>
+
+		<Input bind:value={searchQuery} placeholder="Search templates…" class="ml-auto h-8 w-52" />
 	</div>
 
-	{#if data.templates.length === 0}
+	{#if filtered.length === 0}
 		<Card class="rounded-control px-6 py-10 text-center text-[13px] text-ink-300">
-			No templates yet. {#if canManage}Add your first one above.{/if}
+			{data.templates.length === 0
+				? canManage
+					? 'No templates yet. Add your first one above.'
+					: 'No templates yet.'
+				: 'No templates match your filters.'}
 		</Card>
 	{:else if viewMode === 'card'}
-		<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-			{#each data.templates as t (t.id)}
-				{@const accent = categoryColor(t.category)}
-				<Card class="relative flex flex-col gap-3 rounded-control p-4">
-					<Button
-						variant="ghost"
-						size="icon"
-						class="absolute right-2 top-2 size-8 text-ink-400 hover:text-ink-600"
-						aria-label="Copy template"
-						title="Copy"
-						onclick={() => copy(t)}
-					>
-						<Icon name="copy" size={15} />
-					</Button>
-					<div class="flex w-fit items-center gap-1.5 font-mono text-[11px] text-ink-500">
-						<span
-							class="inline-block size-[7px] shrink-0 rounded-full"
-							style="background-color:{accent}"
-						></span>
-						{t.category}
-					</div>
-					<div class="text-[13px] font-semibold text-ink-600">{t.title}</div>
-					<p class="line-clamp-3 text-[12.5px] text-ink-500">{t.body}</p>
-					{#if canManage}
-						<div class="mt-auto flex gap-1.5 pt-1">
-							<Button variant="outline" size="sm" onclick={() => openEdit(t)}>Edit</Button>
-							<Button variant="outline" size="sm" onclick={() => remove(t)}>Delete</Button>
+		<div class="flex flex-col gap-6">
+			{#each grouped as [cat, items] (cat)}
+				{@const accent = categoryColor(cat)}
+				<section>
+					<div class="mb-2 flex items-center gap-2">
+						<div class="flex items-center gap-1.5 font-mono text-[11px] text-ink-500">
+							<span
+								class="inline-block size-[7px] shrink-0 rounded-full"
+								style="background-color:{accent}"
+							></span>
+							{cat}
 						</div>
-					{/if}
-				</Card>
+						<span class="text-[12px] text-ink-300">{items.length}</span>
+					</div>
+					<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+						{#each items as t (t.id)}
+							<Card class="relative flex flex-col gap-3 rounded-control p-4">
+								<Button
+									variant="ghost"
+									size="icon"
+									class="absolute right-2 top-2 size-8 text-ink-400 hover:text-ink-600"
+									aria-label="Copy template"
+									title="Copy"
+									onclick={() => copy(t)}
+								>
+									<Icon name="copy" size={15} />
+								</Button>
+								<div class="text-[13px] font-semibold text-ink-600">{t.title}</div>
+								<p class="line-clamp-3 text-[12.5px] text-ink-500">{t.body}</p>
+								{#if canManage}
+									<div class="mt-auto flex gap-1.5 pt-1">
+										<Button variant="outline" size="sm" onclick={() => openEdit(t)}>Edit</Button>
+										<Button variant="outline" size="sm" onclick={() => remove(t)}>Delete</Button>
+									</div>
+								{/if}
+							</Card>
+						{/each}
+					</div>
+				</section>
 			{/each}
 		</div>
 	{:else}

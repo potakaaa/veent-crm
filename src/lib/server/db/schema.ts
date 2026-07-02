@@ -161,6 +161,12 @@ export const crmLeads = pgTable(
 		currency: text('currency').default('PHP'), // required when value set (enforced in app)
 		signedAt: timestamp('signed_at', { withTimezone: true }),
 
+		// Onboarding capture (post-won; manual) — only surfaced when stage = 'won'
+		onboardingNotes: text('onboarding_notes'),
+		contractUrl: text('contract_url'),
+		onboardingStartDate: date('onboarding_start_date'), // wall-clock
+		goLiveDate: date('go_live_date'), // wall-clock
+
 		// scraper provenance — event ID from the scraper DB; unique per non-null value
 		sourceRef: text('source_ref'),
 		// stable link back to the Neon organizer row; drives event-date reconciliation

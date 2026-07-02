@@ -79,6 +79,12 @@ export interface Lead {
 	currency?: Currency;
 	signedDate?: string;
 
+	// Onboarding capture (post-won; manual)
+	onboardingNotes?: string;
+	contractUrl?: string;
+	onboardingStartDate?: string;
+	goLiveDate?: string;
+
 	// Lost capture
 	lostReason?: LostReason;
 

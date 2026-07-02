@@ -36,7 +36,58 @@
 
 	// Lead-detail tabs (first-ever tab UI on this page). Overview wraps the
 	// existing content unchanged; Meetings is the new surface.
-	let activeTab = $state<'overview' | 'meetings'>('overview');
+	let activeTab = $state<'overview' | 'meetings' | 'onboarding'>('overview');
+
+	// Onboarding tab is only available for won leads. If the lead moves away from
+	// 'won' while the onboarding tab is active, fall back to Overview.
+	$effect(() => {
+		if (lead.stage !== 'won' && activeTab === 'onboarding') activeTab = 'overview';
+	});
+
+	// Editable onboarding form fields — resynced whenever server truth changes.
+	let onboardingNotes = $state('');
+	let contractUrl = $state('');
+	let onboardingStartDate = $state('');
+	let goLiveDate = $state('');
+	let savingOnboarding = $state(false);
+
+	$effect(() => {
+		onboardingNotes = lead.onboardingNotes ?? '';
+		contractUrl = lead.contractUrl ?? '';
+		onboardingStartDate = lead.onboardingStartDate ?? '';
+		goLiveDate = lead.goLiveDate ?? '';
+	});
+
+	async function saveOnboarding() {
+		if (savingOnboarding) return;
+		savingOnboarding = true;
+		try {
+			const res = await fetch(`/api/leads/${lead.id}`, {
+				method: 'PATCH',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					name: lead.name,
+					category: lead.category,
+					onboardingNotes,
+					contractUrl,
+					onboardingStartDate,
+					goLiveDate
+				})
+			});
+			if (!res.ok) {
+				const msg = await res.text().catch(() => 'Server error');
+				toasts.push(`Onboarding save failed: ${msg}`);
+				return;
+			}
+		} catch {
+			toasts.push('Onboarding save failed — server error');
+			return;
+		} finally {
+			savingOnboarding = false;
+		}
+		await invalidateAll();
+		toasts.success('Onboarding saved');
+	}
 
 	let wonOpen = $state(false);
 	let lostOpen = $state(false);
@@ -181,7 +232,8 @@
 		}
 		wonOpen = false; // close modal only on success
 		await invalidateAll();
-		toasts.success('Deal won — captured 🎉');
+		activeTab = 'onboarding';
+		toasts.success('Deal won — fill in onboarding details below 🎉');
 	}
 
 	async function confirmLost(reason: LostReason, note?: string) {
@@ -361,10 +413,125 @@
 			>
 				Meetings
 			</button>
+			{#if lead.stage === 'won'}
+				<button
+					role="tab"
+					aria-selected={activeTab === 'onboarding'}
+					onclick={() => (activeTab = 'onboarding')}
+					class="border-b-2 px-3 py-2 text-[13px] font-medium {activeTab === 'onboarding'
+						? 'border-primary text-ink'
+						: 'border-transparent text-ink-400 hover:text-ink'}"
+				>
+					Onboarding
+				</button>
+			{/if}
 		</div>
 
 		{#if activeTab === 'meetings'}
 			<MeetingsPanel meetings={data.meetings} users={data.users} me={data.me} leadId={lead.id} />
+		{/if}
+
+		{#if activeTab === 'onboarding'}
+			<div class="space-y-[18px]">
+				<!-- Won context — read-only -->
+				<div class="rounded-control border border-hairline bg-panel p-4">
+					<div class="mb-3 font-mono text-[11px] uppercase tracking-[0.5px] text-ink-300">
+						Won details
+					</div>
+					<div class="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-4">
+						<div>
+							<div class="mb-0.5 text-[11px] text-ink-300">Signed org</div>
+							<div class="font-mono text-[13px] text-ink">{lead.signedOrg ?? '—'}</div>
+						</div>
+						<div>
+							<div class="mb-0.5 text-[11px] text-ink-300">Deal value</div>
+							<div class="font-mono text-[13px] text-ink">
+								{lead.dealValue != null
+									? `${lead.currency ?? ''} ${lead.dealValue.toLocaleString()}`
+									: '—'}
+							</div>
+						</div>
+						<div>
+							<div class="mb-0.5 text-[11px] text-ink-300">Signed date</div>
+							<div class="font-mono text-[13px] text-ink">
+								{lead.signedDate
+									? new Date(lead.signedDate).toLocaleDateString('en-US', {
+											month: 'short',
+											day: 'numeric',
+											year: 'numeric'
+										})
+									: '—'}
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<!-- Onboarding editable form -->
+				<div class="rounded-control border border-hairline bg-panel p-4">
+					<div class="mb-4 font-mono text-[11px] uppercase tracking-[0.5px] text-ink-300">
+						Onboarding info
+					</div>
+					<div class="space-y-4">
+						<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+							<div>
+								<label class="mb-1 block text-[11px] text-ink-300" for="ob-start"
+									>Onboarding start date</label
+								>
+								<input
+									id="ob-start"
+									type="date"
+									bind:value={onboardingStartDate}
+									class="h-[34px] w-full rounded-control border border-hairline bg-panel px-2.5 font-mono text-[12.5px] text-ink focus:outline-none focus:ring-1 focus:ring-primary"
+								/>
+							</div>
+							<div>
+								<label class="mb-1 block text-[11px] text-ink-300" for="ob-golive"
+									>Go-live date</label
+								>
+								<input
+									id="ob-golive"
+									type="date"
+									bind:value={goLiveDate}
+									class="h-[34px] w-full rounded-control border border-hairline bg-panel px-2.5 font-mono text-[12.5px] text-ink focus:outline-none focus:ring-1 focus:ring-primary"
+								/>
+							</div>
+						</div>
+						<div>
+							<label class="mb-1 block text-[11px] text-ink-300" for="ob-contract"
+								>Contract URL</label
+							>
+							<input
+								id="ob-contract"
+								type="url"
+								bind:value={contractUrl}
+								placeholder="https://…"
+								class="h-[34px] w-full rounded-control border border-hairline bg-panel px-2.5 font-mono text-[12.5px] text-ink placeholder:text-ink-200 focus:outline-none focus:ring-1 focus:ring-primary"
+							/>
+						</div>
+						<div>
+							<label class="mb-1 block text-[11px] text-ink-300" for="ob-notes"
+								>Onboarding notes</label
+							>
+							<textarea
+								id="ob-notes"
+								bind:value={onboardingNotes}
+								rows="5"
+								placeholder="Key contacts, access handover steps, blockers…"
+								class="w-full rounded-control border border-hairline bg-panel px-2.5 py-2 font-mono text-[12.5px] text-ink placeholder:text-ink-200 focus:outline-none focus:ring-1 focus:ring-primary"
+							></textarea>
+						</div>
+					</div>
+					<div class="mt-4 flex justify-end">
+						<button
+							onclick={saveOnboarding}
+							disabled={savingOnboarding}
+							class="h-[34px] rounded-control bg-primary px-4 font-mono text-[12.5px] font-semibold text-white transition-opacity hover:bg-primary-strong disabled:cursor-not-allowed disabled:opacity-50"
+						>
+							{savingOnboarding ? 'Saving…' : 'Save'}
+						</button>
+					</div>
+				</div>
+			</div>
 		{/if}
 
 		<div

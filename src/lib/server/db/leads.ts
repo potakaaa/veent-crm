@@ -97,6 +97,10 @@ export function dbRowToLead(row: DbLead, followUpAt?: string | Date | null): Lea
 		dealValue: row.dealValueCents != null ? row.dealValueCents / 100 : undefined,
 		currency: ((row.currency as Lead['currency']) ?? 'PHP') || 'PHP',
 		signedDate: row.signedAt?.toISOString(),
+		onboardingNotes: row.onboardingNotes ?? undefined,
+		contractUrl: row.contractUrl ?? undefined,
+		onboardingStartDate: row.onboardingStartDate ?? undefined,
+		goLiveDate: row.goLiveDate ?? undefined,
 		lostReason: (row.lostReason as Lead['lostReason']) ?? undefined,
 		createdAt,
 		lastActivityAt,
@@ -636,6 +640,10 @@ export async function updateLead(
 		firstAnnouncedDate?: string | null;
 		firstReachedOutDate?: string | null;
 		notes?: string;
+		onboardingNotes?: string | null;
+		contractUrl?: string | null;
+		onboardingStartDate?: string | null;
+		goLiveDate?: string | null;
 	},
 	actorId: string
 ): Promise<Lead | null> {
@@ -676,6 +684,16 @@ export async function updateLead(
 				firstAnnouncedDate: input.firstAnnouncedDate ?? null,
 				firstReachedOutDate: input.firstReachedOutDate ?? null,
 				notes: input.notes ?? null,
+				// Onboarding fields: only overwrite when the key is present in the payload,
+				// so a normal lead edit never wipes onboarding data (and vice versa).
+				...(input.onboardingNotes !== undefined
+					? { onboardingNotes: input.onboardingNotes || null }
+					: {}),
+				...(input.contractUrl !== undefined ? { contractUrl: input.contractUrl || null } : {}),
+				...(input.onboardingStartDate !== undefined
+					? { onboardingStartDate: input.onboardingStartDate || null }
+					: {}),
+				...(input.goLiveDate !== undefined ? { goLiveDate: input.goLiveDate || null } : {}),
 				updatedAt: now
 			})
 			.where(and(eq(crmLeads.id, id), isNull(crmLeads.deletedAt)))
@@ -707,7 +725,15 @@ export async function updateLead(
 				existing.firstReachedOutDate ?? null,
 				updated.firstReachedOutDate ?? null
 			],
-			['notes', existing.notes ?? null, updated.notes ?? null]
+			['notes', existing.notes ?? null, updated.notes ?? null],
+			['onboarding_notes', existing.onboardingNotes ?? null, updated.onboardingNotes ?? null],
+			['contract_url', existing.contractUrl ?? null, updated.contractUrl ?? null],
+			[
+				'onboarding_start_date',
+				existing.onboardingStartDate ?? null,
+				updated.onboardingStartDate ?? null
+			],
+			['go_live_date', existing.goLiveDate ?? null, updated.goLiveDate ?? null]
 		];
 
 		const changed = tracked.filter(([, oldVal, newVal]) => oldVal !== newVal);

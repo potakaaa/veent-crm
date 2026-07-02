@@ -53,7 +53,14 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 				data.firstAnnouncedDate === undefined ? undefined : (data.firstAnnouncedDate ?? null),
 			firstReachedOutDate:
 				data.firstReachedOutDate === undefined ? undefined : (data.firstReachedOutDate ?? null),
-			notes: data.notes || undefined
+			notes: data.notes || undefined,
+			// Onboarding fields — forward only when present so a normal edit never wipes them.
+			onboardingNotes:
+				data.onboardingNotes === undefined ? undefined : (data.onboardingNotes ?? null),
+			contractUrl: data.contractUrl === undefined ? undefined : data.contractUrl || null,
+			onboardingStartDate:
+				data.onboardingStartDate === undefined ? undefined : data.onboardingStartDate || null,
+			goLiveDate: data.goLiveDate === undefined ? undefined : data.goLiveDate || null
 		},
 		locals.user.id
 	);

@@ -11,7 +11,7 @@ metadata:
 
 # veent-crm - All Context
 
-Last updated: 2026-07-01
+Last updated: 2026-07-02
 
 This file is the root context entrypoint for the repo.
 
@@ -101,7 +101,7 @@ For most substantial tasks:
 | reminders | `process/features/reminders/_GUIDE.md` | in-progress (code-complete, EVL green; manual UI/DB gates pending) |
 | reports   | `process/features/reports/_GUIDE.md`   | not-started (mock data only)             |
 | calendar  | `process/features/calendar/completed/calendar_01-07-26/` | code-complete, EVL green; e2e written but self-skipping pending shared auth e2e harness (2 known-gaps, pre-accepted) |
-| ux-enhancement | `process/features/ux-enhancement/` | in-progress (5-phase program at `process/features/ux-enhancement/active/sitewide-ux-refresh_02-07-26/`; Phase 1 Nav & Shell Foundation ✅ VERIFIED 02-07-26 — mobile nav drawer + `--color-nav-*`/`--color-focus-ring`/`--shadow-nav-*` tokens now in `tokens.css`, see phase report for final token names; Phases 2-4 unblocked and parallel-safe, Phase 5 last) |
+| ux-enhancement | `process/features/ux-enhancement/completed/sitewide-ux-refresh_02-07-26/` | code-complete, EVL-confirmed across all 5 phases (program COMPLETE 02-07-26) — mobile nav drawer + design tokens (`--color-nav-*`/`--color-focus-ring`/`--shadow-nav-*`), consolidated Leads/UFG grid + date-picker + hover-popover, keyboard-accessible pipeline stage change, responsive Pipeline/Calendar/Reports, shared per-field form-error component, shared `Tabs.svelte` + chip token contract, Reminders/Today snooze parity, program-wide ARIA sweep. Known-gaps: shared Playwright auth-fixture (pre-existing, blocks most e2e proof), `@axe-core/playwright` devDependency decision (open), nested-worktree Playwright env blocker (open) — see `sitewide-ux-refresh-program_CLOSEOUT_02-07-26.md` for full SPEC AC1-AC13 scoring and consolidated known-gaps list |
 
 ---
 
@@ -207,7 +207,7 @@ veent-crm/
 - **Database:** PostgreSQL via Drizzle ORM 0.45.x + `postgres` 3.x (postgres-js)
 - **Schema migration:** drizzle-kit 0.31.x (`bun run db:push` / `db:generate` / `db:migrate`)
 - **Auth:** Better Auth 1.6.x — magic-link plugin + Resend email (currently stubbed)
-- **Forms:** Superforms 2.x + Zod 4.x (all forms use this pattern — no raw FormData)
+- **Forms:** Zod 4.x schemas (`src/lib/zod/schemas.ts`) + client `safeParse()` + `fetch()` — Superforms 2.x is installed but unusable (`typebox@1.3.0` conflict breaks `sveltekit-superforms/adapters`); see Key Patterns §Mandatory conventions
 - **UI:** Tailwind CSS 4.x + `@tailwindcss/forms` + `@tailwindcss/typography`
 - **Charts:** `layerchart` 2.0.0-next.48 (shadcn-svelte chart primitives — bar/line/pie/area; reports page). ECharts is NOT installed — do not assume it is present.
 - **Email:** Resend 6.x (magic-link delivery — stubbed)
@@ -226,7 +226,7 @@ veent-crm/
 
 **Server-side DB access only** — all Drizzle queries go inside `+page.server.ts` or API route handlers (`+server.ts`). Never import `db` from client-side code (`.svelte` files without `<script context="module">` or `lang="ts"` server-only pattern).
 
-**Superforms + Zod for all forms** — every form uses `superforms` with a Zod schema from `src/lib/zod/schemas.ts`. No raw `FormData` handling.
+**Client `safeParse()` + `fetch()` for forms (not Superforms)** — despite the package being installed, `sveltekit-superforms/adapters` is unusably broken in this repo (a `typebox@1.3.0` transitive-dependency conflict throws at import time — confirmed via direct test run during `sitewide-ux-refresh` Phase 4). Zero real `superForm()` usage exists anywhere in `src/`. The actual, consistent idiom across every form (`templates`, `team`, `leads/new`, `MeetingFormModal`) is: client-side `schema.safeParse()` from `src/lib/zod/schemas.ts`, then a raw `fetch()` POST, with per-field errors rendered via the shared `FieldError` component (`src/lib/components/ui/field-error/`) using `aria-invalid`/`aria-describedby`. No raw unvalidated `FormData` handling. (Doc corrected 02-07-26 — see `process/features/ux-enhancement/backlog/superforms-convention-doc-drift_NOTE_02-07-26.md` for the full investigation; that note's Status should be treated as Resolved once this edit lands.)
 
 **Soft-delete only** — records are never hard-deleted. Use `deletedAt: timestamp` on `crm_leads`. Always filter `WHERE deleted_at IS NULL` in queries.
 

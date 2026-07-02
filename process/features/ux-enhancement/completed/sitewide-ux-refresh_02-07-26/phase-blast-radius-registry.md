@@ -115,7 +115,9 @@ Claimed files:
 - `ui/button`, form inputs, calendar cells (focus-ring utility application — remaining sweep beyond
   Phase 1's nav-only application)
 
-Status: (no field — not yet started; MUST NOT begin EXECUTE until Phases 1-4 reach their exit gates)
+Status: DONE (EXECUTE + EVL complete 02-07-26; see phase-05-token-sweep_REPORT_02-07-26.md). Final
+phase of the program — Phase 1-4 artifacts independently re-confirmed still present at EVL, no
+cross-phase regression.
 
 ---
 

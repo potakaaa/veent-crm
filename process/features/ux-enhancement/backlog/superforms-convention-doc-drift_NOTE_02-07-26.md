@@ -59,5 +59,7 @@ instructions for this session (no direct edit made in this pass).
 
 ## Status
 
-Open — no edit made to `all-context.md` yet. Recorded here per Phase 4 (Forms) UPDATE PROCESS
-closeout, 02-07-26.
+Resolved 02-07-26 — `all-context.md` §Key Patterns and Conventions and §Technology Stack both
+updated (during the whole-program `sitewide-ux-refresh` UPDATE PROCESS closeout) to describe the
+actual client `safeParse()` + `fetch()` idiom and drop the "Superforms + Zod for all forms" claim.
+Option (A) from the Fix options above was applied verbatim.

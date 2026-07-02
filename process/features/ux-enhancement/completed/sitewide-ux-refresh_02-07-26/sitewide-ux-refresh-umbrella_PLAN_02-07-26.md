@@ -288,14 +288,19 @@ concurrently with the Phase 2/3/4 set.
 
 | Phase | Status |
 |---|---|
-| 0 — Pre-program (plan creation) | ⏳ PLANNED |
+| 0 — Pre-program (plan creation) | ✅ VERIFIED |
 | 01 — Nav & Shell Foundation | ✅ VERIFIED |
 | 02 — Leads/UFG Grid Consolidation & Responsiveness | ✅ VERIFIED (UPDATE PROCESS closeout 02-07-26) |
 | 03 — Pipeline/Calendar/Reports Responsiveness & Theme G | ✅ VERIFIED |
 | 04 — Forms | ✅ VERIFIED |
-| 05 — Token Sweep Completion, Theme F, Remaining A11y | ⏳ PLANNED |
+| 05 — Token Sweep Completion, Theme F, Remaining A11y | ✅ VERIFIED (UPDATE PROCESS closeout 02-07-26 — final phase) |
 
 Status values: ⏳ PLANNED | 🔨 CODE DONE | 🧪 TESTING | ✅ VERIFIED | 🚧 BLOCKED | ✅ COMPLETE
+
+**Program status: ✅ COMPLETE.** All 5 phases VERIFIED. See
+`sitewide-ux-refresh-program_CLOSEOUT_02-07-26.md` (same task folder) for the full whole-program
+closeout: what shipped per phase, SPEC AC1-AC13 achievement scoring, and the consolidated
+known-gaps/backlog list.
 
 ---
 
@@ -385,125 +390,66 @@ bun run check && bun run test:unit:ci
 
 ## Current Execution State
 
-Last updated: 02-07-26 (Phase 2 UPDATE PROCESS closeout; reconciled against concurrent Phase 3/Phase
-4 UPDATE PROCESS closeouts found already complete in the registry/plan at write time)
-Completed phases: Phase 0 (Planning), Phase 1 (Nav & Shell Foundation — ✅ VERIFIED, code-complete,
-EVL-confirmed; 2 known-gaps recorded — see phase-01-nav-shell_REPORT_02-07-26.md), Phase 2
-(Leads/UFG Grid Consolidation & Responsiveness — ✅ VERIFIED, code-complete, EVL-confirmed; 3
-known-gaps recorded, all backlogged — see phase-02-leads-grid_REPORT_02-07-26.md), Phase 3
-(Pipeline/Calendar/Reports Responsiveness & Theme G — ✅ VERIFIED, code-complete, EVL-confirmed;
-no known-gaps beyond program-wide pre-accepted shared-auth-fixture pattern — see
-phase-03-pipeline-calendar_REPORT_02-07-26.md), Phase 4 (Forms — ✅ VERIFIED, code-complete,
-EVL-confirmed by a concurrent session; AC7 literal wording pre-accepted Known-Gap — see
-phase-04-forms_REPORT_02-07-26.md)
+Last updated: 02-07-26 (Phase 5 + WHOLE-PROGRAM UPDATE PROCESS closeout — this is the terminal
+update to this section; the program is complete)
 
-Phase 1 status: ✅ VERIFIED. All checklist items (A1-A3, B1-B3, C1-C6) done. EVL confirmation
-(orchestrator-run, independent of execute-agent): `bun run check` PASS, `test:unit:ci` PASS
-(301/0 fail), AC8 hex grep PASS, `git diff --stat` matches blast radius exactly. SPEC Achievement:
-AC8 met; AC1 and AC4 scored Unmet/Known-Gap (AC1 — pre-existing shared-auth-fixture e2e self-skip;
-AC4 — `@axe-core/playwright` devDependency not installed, Agent-Probe fallback used). New backlog
-note: `process/features/ux-enhancement/backlog/axe-core-devdependency-decision_NOTE_02-07-26.md`
-(program-level decision, also blocks Phase 3/5 AC4 gates). Nav-surface + focus-ring tokens now
-exist in `tokens.css` and are stable public contract for Phases 2-5 (final names recorded in
-`phase-01-nav-shell_REPORT_02-07-26.md` "Final Chosen Token Names"). Execution changes NOT yet
-committed — commit recommended before further phase EXECUTE work (see Commit Checkpoint below).
+**PROGRAM STATUS: ✅ COMPLETE.** All 5 phases VERIFIED, EXECUTE + EVL complete. Full whole-program
+closeout (per-phase summary, SPEC AC1-AC13 achievement scoring, consolidated known-gaps list) is in
+`sitewide-ux-refresh-program_CLOSEOUT_02-07-26.md` (same task folder) — this section is now a
+condensed pointer, not the full record.
 
-Phase 2 status: ✅ VERIFIED (UPDATE PROCESS closeout 02-07-26). All checklist items (A1, B1-B2,
-C1-C3, D1-D2) done — C1/C2 `leads/new` wiring was BLOCKED at the first EXECUTE pass on Phase 4's
-concurrent field-error overlap, then resolved in a follow-up EXECUTE pass once Phase 4 landed
-(`DatePickerField` gained an additive optional `errors` prop; Phase 4's per-field
-`aria-invalid`/`aria-describedby` wiring on the event-date field survives unchanged). EVL
-confirmation (orchestrator-run, independent of execute-agent): `bun run check` PASS (0 errors),
-`bun run test:unit:ci` PASS (313/313), `/unassigned` preserved-functionality (inline-edit,
-bulk-claim/assign, filters, sort, pagination, dual empty-states) confirmed present via grep,
-dedup-hover reactivity confirmed unaffected, `leads-grid-responsive.e2e.ts` runs clean (self-skips
-on the known shared-auth-fixture gap). SPEC Achievement: C2-OVERLAP (Agent-Probe) met; AC10 scored
-Partially Met (Vitest + code-level import check Fully-Automated PASS; e2e regression leg
-env-blocked, not run — scored Unmet per the vacuous-green ban rather than rounded up); AC2
-(Leads/UFG portion) and the PERF-RISK gate scored Unmet/Known-Gap (both env-blocked this cycle).
-3 known-gaps recorded, all backlogged: (1) shared Playwright auth-fixture (program-wide,
-pre-existing — `process/features/auth/backlog/e2e-auth-bootstrap_NOTE_01-07-26.md`); (2)
-nested-worktree Playwright module duplication + intermittent ENOSPC — a DISTINCT env blocker from
-(1), newly backlogged this session (`process/features/ux-enhancement/backlog/nested-worktree-playwright-env-blocker_NOTE_02-07-26.md`)
-and affects Phase 1/3/4's e2e confirmations too, not just Phase 2; (3) `OrganizerHoverCard.svelte`
-keyboard/focus a11y audit — flagged twice during VALIDATE, written this session
-(`process/features/leads/backlog/organizerhovercard-a11y-audit_NOTE_02-07-26.md`). Execution changes
-NOT yet committed — commit recommended (see Commit Checkpoint below).
+Completed phases: Phase 0 (Planning), Phase 1 (Nav & Shell Foundation — ✅ VERIFIED; 2 known-gaps —
+see phase-01-nav-shell_REPORT_02-07-26.md), Phase 2 (Leads/UFG Grid Consolidation & Responsiveness —
+✅ VERIFIED; 3 known-gaps, all backlogged — see phase-02-leads-grid_REPORT_02-07-26.md), Phase 3
+(Pipeline/Calendar/Reports Responsiveness & Theme G — ✅ VERIFIED; no new known-gaps beyond the
+program-wide pre-accepted shared-auth-fixture pattern — see phase-03-pipeline-calendar_REPORT_02-07-26.md),
+Phase 4 (Forms — ✅ VERIFIED; AC7 literal-wording pre-accepted Known-Gap — see
+phase-04-forms_REPORT_02-07-26.md), Phase 5 (Token Sweep Completion, Theme F, Remaining A11y — ✅
+VERIFIED, FINAL phase; EVL independently re-confirmed all gates green/clean-self-skip AND confirmed
+no cross-phase regression to Phases 1-4's artifacts — see phase-05-token-sweep_REPORT_02-07-26.md
+"EVL Confirmation" section).
 
-Phase 3 status: ✅ VERIFIED. All checklist items (A1-A5, B1-B4, C1-C3) done, including the Cycle 2
-PVL re-validate additions (A3a card restructure + E2/E3/E4 execute-agent instructions). EVL
-confirmation (orchestrator-run, independent of execute-agent): `bun run check` PASS (0 errors),
-`bunx vitest --run` PASS (313/313), `git diff --stat` matches all 10 claimed files exactly, the
-pipeline card's drag-and-drop confirmed structurally intact (native-link-drag hijack suppressed,
-`StageSelect` a sibling not nested), the Reports heatmap overflow fix confirmed real (wrapper +
-explicit min-width, not just the wrapper alone), and both new e2e specs
-(`pipeline-keyboard-stage.e2e.ts`, `calendar-overflow.e2e.ts`) run clean — all 8 scenarios self-skip
-on the known shared-auth-fixture gap, no hard failures. SPEC Achievement: AC2/AC3/AC11/AC12 met;
-AC4 met with Agent-Probe fallback for the axe-specific sub-gate (same shared
-`@axe-core/playwright` devDependency decision as Phase 1 — no new backlog note needed). No new
-known-gaps beyond the program-wide pre-accepted shared-auth-fixture pattern. Execution changes NOT
-yet committed — commit recommended (see Commit Checkpoint below).
+Outer PVL (VALIDATE, Step 4) terminal gates, all 5 phases:
+- Phase 1 (Nav & Shell): CONDITIONAL, accepted — EXECUTE+EVL complete
+- Phase 2 (Leads Grid): CONDITIONAL (Cycle 1) superseded by Cycle 2 PASS — EXECUTE+EVL complete, UPDATE PROCESS closed out
+- Phase 3 (Pipeline & Calendar): PASS, clean — EXECUTE+EVL complete
+- Phase 4 (Forms): CONDITIONAL (Cycle 1, after Cycle 0 BLOCKED on Gap A0, resolved via plan-supplement) — EXECUTE+EVL complete
+- Phase 5 (Token Sweep): CONDITIONAL (Cycle 2, after Cycle 1 outer-pvl), accepted — EXECUTE+EVL complete, FINAL phase
 
-Phase 4 status: ✅ VERIFIED (closed out by a concurrent UPDATE PROCESS session — reconciled here,
-not re-derived). All checklist items (A0-A3, B1-B4 + B2a, E1, E4) done. EVL confirmation
-(orchestrator-run, independent of execute-agent, per that session): `bun run check` PASS (0
-errors), `test:unit:ci` PASS (313/313 full suite + 12/12 isolated new specs), grep confirmed zero
-`sveltekit-superforms`/`superForm(` usage anywhere in `src/`, and the Phase 2/Phase 4 concurrent
-edit to `leads/new/+page.svelte` independently confirmed as a genuine merge (FieldError +
-DatePickerField both present, error wiring correctly threaded) rather than one phase overwriting
-the other. e2e hit a dev-server port collision (environment artifact, not a regression) — recorded
-inconclusive, a clean isolated e2e run is still recommended. SPEC Achievement: AC6 met, AC7
-(revised fetch+per-field-error intent) met; AC7 (literal `superForm()`/`use:enhance` wording)
-scored Unmet — pre-accepted permanent Known-Gap (typebox@1.3.0 breaks the Superforms adapters
-barrel; zero real `superForm()` precedent exists in the repo). Backlog notes from that session:
-`sveltekit-superforms-typebox-conflict` and a doc-drift reconciliation item for `all-context.md`
-§Mandatory Conventions (still says "Superforms + Zod for all forms"; real idiom is client
-`safeParse` + `fetch`) — both outside this Phase-3-scoped session's remit to action, flagged here
-for whichever session next touches `all-context.md`. Execution changes NOT yet committed.
+Program Net Gate: **CONDITIONAL** (0 phases BLOCKED-unresolved; 5 phases VERIFIED — 2 PASS clean
+[Phase 2's Cycle 2, Phase 3], 3 CONDITIONAL-accepted [Phase 1, Phase 4, Phase 5]; 0 phases queued —
+program complete).
 
-Outer PVL (VALIDATE, Step 4) complete for ALL 5 phases — terminal gates:
-- Phase 1 (Nav & Shell): CONDITIONAL, accepted as-is (2 concerns resolved via Execute-Agent Instructions, no plan-text supplement) — **now EXECUTE+EVL complete, see above**
-- Phase 2 (Leads Grid): CONDITIONAL (Cycle 1), superseded by Cycle 2 PASS after both open items were
-  closed by RESEARCH — **now EXECUTE+EVL complete and UPDATE PROCESS closed out, see above**
-- Phase 3 (Pipeline & Calendar): PASS, clean — **now EXECUTE+EVL complete, see above**
-- Phase 4 (Forms): CONDITIONAL as of Cycle 1 re-validate (Cycle 0 BLOCKED on Gap A0 — sveltekit-superforms import broken, resolved via plan-supplement dropping Superforms conversion for a fetch+safeParse restructure; Cycle 1 confirmed independently, 3 residual concerns pre-accepted — see phase-04 Phase Loop Progress note) — **now EXECUTE+EVL complete, see above**
-- Phase 5 (Token Sweep): CONDITIONAL, accepted (1 concern: ARIA-sweep route enumeration missing 3 routes, resolved via Execute-Agent Instruction E1) — still MUST NOT start until Phases 2/3/4 also reach exit gates
-
-Current phase: Phases 1, 2, 3, and 4 all closed out (VERIFIED). Phase 5 MUST run after Phases 1-4
-are in final shape (unchanged dependency ordering) — now unblocked; all 4 dependency phases have
-reached their exit gates.
-Current loop step: RESEARCH (Step 1) — next for Phase 5 (Token Sweep Completion, Theme F, Remaining
-A11y). No other phase has open loop steps.
+Current phase: none — all 5 phases closed out. No further phase work remains in this program.
+Current loop step: n/a — program terminal. (Historical: last active loop step was Phase 5 Step 7
+UPDATE-PROCESS, now complete.)
 Validate-contract status: written for all 5 phases (outer-pvl) — see each phase's `## Validate
-Contract` section for full V1-V7 detail. Cycle counts: Phases 1/2/3/5 = 1 cycle (first-pass, Phase
-2 additionally re-validated at Cycle 2 after its Inner Loop Refresh Note); Phase 4 = 2 cycles
-(Cycle 0 BLOCKED, Cycle 1 CONDITIONAL). Phases 1, 2, 3, and 4 all completed their full 7-step inner
-loop (Steps 4-7 done; PVL artifact non-placeholder, EXECUTE/EVL/UPDATE-PROCESS complete for all
-four).
-Program Net Gate: CONDITIONAL (0 phases BLOCKED-unresolved; 4 phases VERIFIED — Phase 1, Phase 2,
-Phase 3, Phase 4; 1 phase queued — Phase 5, now unblocked and ready to start RESEARCH)
-Latest validator run: 02-07-26 — see Verification Evidence section above (run at kickoff time)
+Contract` section for full V1-V7 detail. Cycle counts: Phase 1/3 = 1 cycle; Phase 2/5 = 2 cycles
+(Cycle 2 re-validate after Inner Loop Refresh Note); Phase 4 = 2 cycles (Cycle 0 BLOCKED, Cycle 1
+CONDITIONAL). All 5 phases completed their full 7-step inner loop (Steps 1-7 done for all).
+Latest validator run: 02-07-26 — see Verification Evidence section above (run at kickoff time;
+per-phase EVL gate re-runs recorded in each phase report and in `results.tsv`).
 
-Commit checkpoint: Phase 1, Phase 2, Phase 3, AND Phase 4 execution changes are all uncommitted
-(tokens.css, AppShell/AppSidebar/AppTopbar, e2e/mobile-nav.e2e.ts from Phase 1; DataGridShell.svelte,
-DatePickerField.svelte, hover-popover.svelte.ts, owner.ts, LeadGrid.svelte, unassigned/+page.svelte,
-leads-grid-responsive.e2e.ts from Phase 2; PipelineBoard.svelte, StageSelect.svelte,
-CalendarGrid/CalendarEntry/CalendarHeatmap.svelte, pipeline/calendar/reports routes,
-e2e/pipeline-keyboard-stage.e2e.ts, e2e/calendar-overflow.e2e.ts from Phase 3; field-error/,
-leads/new/+page.svelte (shared Phase 2+Phase 4 merge, confirmed clean), team/+page.svelte,
-MeetingFormModal.svelte + 5 new test files from Phase 4). Recommend one execution commit covering
-all four verified phases via `vc-git-manager` before Phase 5's EXECUTE work begins, kept separate
-from process-artifact changes (phase reports, plan updates, backlog notes). Not created by this
-agent — requires explicit user instruction (this UPDATE PROCESS session was scoped to Phase 2 only
-and does not create commits).
+Commit checkpoint: ALL FIVE phases' execution changes remain uncommitted as of this UPDATE PROCESS
+session (this agent does not create commits — see Constraints). Recommend ONE execution commit
+covering all 5 phases' `src/` + `e2e/` changes (tokens.css, AppShell/AppSidebar/AppTopbar,
+DataGridShell/DatePickerField/hover-popover/owner.ts, LeadGrid/unassigned, PipelineBoard/StageSelect/
+CalendarGrid/CalendarEntry/CalendarHeatmap/MonthCalendar, field-error/, leads/new, team,
+MeetingFormModal, login/unauthorized/+error, reports/+page, leads/+page, leads/[id]/+page, Today
+(`+page.svelte`), reminders/+page, new `ui/tabs/`, all new e2e specs), via `vc-git-manager`, followed
+by a SEPARATE process-artifact commit (this UPDATE PROCESS session's report/plan/registry/context
+edits + the active/ → completed/ folder move). Not created by this agent — requires explicit user
+instruction.
 
 Loop step values: RESEARCH | INNOVATE | PLAN-SUPPLEMENT | PVL | EXECUTE | EVL | UPDATE-PROCESS
-Orchestrator rule: read "Current loop step" and "validate-contract status" before spawning any
-subagent. Never spawn execute-agent when loop step is RESEARCH, INNOVATE, PLAN-SUPPLEMENT, or PVL.
+Orchestrator rule (historical, retained for audit): read "Current loop step" and "validate-contract
+status" before spawning any subagent. Program is now terminal — no further subagent spawns expected
+against this umbrella plan.
 
-Note: The Stable Program Goal above is fixed. This section is the only part that changes —
-update-process-agent rewrites it after every phase closeout (overwrite, not append — git history
-is the audit log).
+Note: The Stable Program Goal above is fixed. This section was the only part that changed across
+the program's life — update-process-agent rewrote it after every phase closeout (overwrite, not
+append — git history is the audit log). This is its final rewrite; the plan folder is being moved
+to `completed/` by this same UPDATE PROCESS session.
 
 ---
 

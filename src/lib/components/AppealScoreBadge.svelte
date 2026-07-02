@@ -1,12 +1,12 @@
 <script lang="ts">
-	import { appealTier } from '$lib/appeal-score';
+	import { appealTier, type AppealTier } from '$lib/appeal-score';
 
 	let { score }: { score: number | null } = $props();
 
 	const tier = $derived(appealTier(score));
 
 	// Color bands by tier: green = chase now, amber = warm, red = low priority, gray = unscoreable.
-	const tierClass: Record<string, string> = {
+	const tierClass: Record<AppealTier, string> = {
 		high: 'bg-green-100 text-green-700',
 		mid: 'bg-amber-100 text-amber-800',
 		low: 'bg-red-100 text-red-700',

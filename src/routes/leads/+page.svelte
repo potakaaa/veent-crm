@@ -2,6 +2,7 @@
 	import StubNote from '$lib/components/StubNote.svelte';
 	import AppealScoreBadge from '$lib/components/AppealScoreBadge.svelte';
 	import SortToggle from '$lib/components/SortToggle.svelte';
+	import { resolve } from '$app/paths';
 
 	let { data } = $props();
 
@@ -23,7 +24,7 @@
 	<h1 class="text-2xl font-semibold">Leads</h1>
 	<div class="ml-auto flex items-center gap-3">
 		<SortToggle sort={data.sort} />
-		<a href="/leads/new" class="rounded bg-gray-900 px-3 py-1.5 text-sm text-white">+ Add lead</a>
+		<a href={resolve('/leads/new')} class="rounded bg-gray-900 px-3 py-1.5 text-sm text-white">+ Add lead</a>
 	</div>
 </div>
 

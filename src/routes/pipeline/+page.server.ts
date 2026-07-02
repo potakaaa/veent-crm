@@ -1,7 +1,7 @@
 import type { PageServerLoad } from './$types';
 import { MOCK_LEADS } from '$lib/server/mock';
 import { LEAD_STAGES } from '$lib/zod/schemas';
-import { computeAppealScore } from '$lib/appeal-score';
+import { computeAppealScore, sortByAppealScore } from '$lib/appeal-score';
 
 // STUB: kanban columns by stage. Real impl supports drag-to-move + quick-assign + Won prompt.
 export const load: PageServerLoad = async ({ url }) => {
@@ -14,13 +14,8 @@ export const load: PageServerLoad = async ({ url }) => {
 		}));
 
 		if (sort === 'appeal') {
-			// sort within each column: score desc, null scores forced to the bottom
-			leads = [...leads].sort((a, b) => {
-				if (a.appealScore == null && b.appealScore == null) return 0;
-				if (a.appealScore == null) return 1;
-				if (b.appealScore == null) return -1;
-				return b.appealScore - a.appealScore;
-			});
+			// sort within each column
+			leads = sortByAppealScore(leads);
 		}
 
 		return { stage, leads };

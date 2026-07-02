@@ -3,7 +3,7 @@ phase: lead-appeal-score
 date: 2026-07-01
 status: COMPLETE
 feature: leads
-plan: process/general-plans/active/lead-appeal-score_01-07-26/lead-appeal-score_PLAN_01-07-26.md
+plan: process/general-plans/completed/lead-appeal-score_01-07-26/lead-appeal-score_PLAN_01-07-26.md
 ---
 
 # Lead Appeal Score — EXECUTE Report
@@ -45,7 +45,7 @@ None. Operational note (not a code change): `bun run db:generate` needed a place
 
 ## Closeout Packet
 
-- **Selected plan:** `process/general-plans/active/lead-appeal-score_01-07-26/lead-appeal-score_PLAN_01-07-26.md`
+- **Selected plan:** `process/general-plans/completed/lead-appeal-score_01-07-26/lead-appeal-score_PLAN_01-07-26.md`
 - **Finished:** all 17 touchpoints; all Fully-Automated + Agent-Probe gates.
 - **Verified vs unverified:** Fully-Automated gates independently runnable; Agent-Probe verified at data layer. Not yet visually confirmed in a running browser by the user.
 - **Cleanup remaining:** user visual confirmation of badge/sort in-app; then UPDATE PROCESS archival.

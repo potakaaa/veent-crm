@@ -57,6 +57,16 @@ export function computeAppealScore(
 	return Math.round(earlyMoverScore + runwayScore);
 }
 
+/** Sort by appealScore descending; null (unscoreable) scores are always pushed to the bottom. */
+export function sortByAppealScore<T extends { appealScore: number | null }>(items: T[]): T[] {
+	return [...items].sort((a, b) => {
+		if (a.appealScore == null && b.appealScore == null) return 0;
+		if (a.appealScore == null) return 1;
+		if (b.appealScore == null) return -1;
+		return b.appealScore - a.appealScore;
+	});
+}
+
 export type AppealTier = 'high' | 'mid' | 'low' | 'none';
 
 /** Map a score to a display tier. `null` → 'none' (unscoreable). */

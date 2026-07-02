@@ -19,12 +19,14 @@
 	<span class="text-gray-500">Sort:</span>
 	<a
 		href={hrefFor(null)}
+		aria-current={isAppeal ? undefined : 'true'}
 		class="rounded px-2 py-0.5 {isAppeal ? 'text-gray-600 hover:bg-gray-100' : 'bg-gray-900 text-white'}"
 	>
 		Default
 	</a>
 	<a
 		href={hrefFor('appeal')}
+		aria-current={isAppeal ? 'true' : undefined}
 		class="rounded px-2 py-0.5 {isAppeal ? 'bg-gray-900 text-white' : 'text-gray-600 hover:bg-gray-100'}"
 	>
 		Appeal

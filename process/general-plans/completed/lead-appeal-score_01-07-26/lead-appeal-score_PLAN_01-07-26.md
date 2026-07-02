@@ -69,7 +69,7 @@ Exact files, create vs modify, with the change:
 ## Public Contracts
 
 - **`computeAppealScore(eventDate, announcedAt, firstReachedOutAt, now = today())` → `number | null`** — new pure public function in `$lib/appeal-score`. Primitive date args (string | Date | null) so it serves both `MockLead` and future `CrmLead` unchanged. Returns `null` when `eventDate` OR `announcedAt` is missing (UNSCORED — distinct from 0).
-  ```
+  ```text
   earlyMoverScore = clamp(50 - (daysToReachOut/30)*50, 0, 50)   // 0-day delay=50, →0 at 30d
   runwayScore     = daysToEvent <= 0 ? 0 : clamp((daysToEvent/60)*50, 0, 50)  // 60d+ =50, →0 at event
   return Math.round(earlyMoverScore + runwayScore)              // 0–100
@@ -110,7 +110,7 @@ Test context chain loaded (`process/context/tests/all-tests.md`); existing blast
 | Manual/agent-probe: append `?sort=appeal`, confirm descending order with null-score leads at bottom in all 3 views (pipeline sorts within each column); remove param → default order restored | Agent-Probe | Unassigned + pipeline sortable by appeal; additive non-breaking default (proven by: visual probe) |
 
 **Failing stubs (TDD red-first, for EXECUTE — not written to disk during PLAN/VALIDATE):**
-```
+```text
 test("both-max dates → 100", () => { throw new Error("NOT IMPLEMENTED — TDD stub for: both-max → 100") })
 test("missing eventDate or announcedAt → null", () => { throw new Error("NOT IMPLEMENTED — TDD stub for: missing-dates → null") })
 test("firstReachedOutAt null but other dates set → scores via delay-so-far", () => { throw new Error("NOT IMPLEMENTED — TDD stub for: no-reachout → decaying") })
@@ -189,7 +189,7 @@ gap-resolution legend: A — proven now/at EXECUTE; B — gate added by this pla
 C-4 reconciliation: `strategy` column carries only the 3 proving strategies (Fully-Automated / Agent-Probe used here; Hybrid n/a). Known-Gap is never a strategy — the absent e2e specs are carried as gap-resolution D (named residual), not as a strategy that proves a behavior.
 
 Failing stub (AC1 — Fully-Automated row):
-```
+```text
 test("both-max dates → 100", () => { throw new Error("NOT IMPLEMENTED — TDD stub for: both-max → 100") })
 test("missing eventDate or announcedAt → null", () => { throw new Error("NOT IMPLEMENTED — TDD stub for: missing-dates → null") })
 test("firstReachedOutAt null but other dates set → scores via delay-so-far", () => { throw new Error("NOT IMPLEMENTED — TDD stub for: no-reachout → decaying") })
@@ -231,16 +231,16 @@ Accepted by: session (autonomous validate pass) — accepted concerns: (1) "test
 
 ## Autonomous Goal Block
 
-```
+```text
 SESSION GOAL: Lead Appeal Score — derived (unpersisted) 0–100 score with shared badge across 5 lead views + `?sort=appeal` on 3 views
-Charter + umbrella plan: N/A — single plan (process/general-plans/active/lead-appeal-score_01-07-26/lead-appeal-score_PLAN_01-07-26.md)
+Charter + umbrella plan: N/A — single plan (process/general-plans/completed/lead-appeal-score_01-07-26/lead-appeal-score_PLAN_01-07-26.md)
 Autonomy: single-session SIMPLE plan; standard RIPER-5 EXECUTE gate applies (spawn vc-execute-agent; no inline execution)
 Hard stop conditions / safety constraints:
 - Do NOT hand-edit the generated Drizzle migration; do NOT touch Better Auth tables (user/account/session/verification)
 - Do NOT persist the score anywhere and do NOT write crm_lead_history rows for score changes
 - Do NOT modify src/lib/zod/schemas.ts (no form/Zod change in this plan)
 - Keep the migration additive-nullable only (no NOT NULL, no backfill)
-Next phase: EXECUTE (process/general-plans/active/lead-appeal-score_01-07-26/lead-appeal-score_PLAN_01-07-26.md)
+Next phase: EXECUTE (process/general-plans/completed/lead-appeal-score_01-07-26/lead-appeal-score_PLAN_01-07-26.md)
 Validate contract: inline in plan (## Validate Contract) — Gate: CONDITIONAL, generated-by: outer-pvl
 Execute start: fully-auto: `bun run test:unit -- --run src/tests/appeal-score.spec.ts` | `bun run check` | `bun run db:generate` (inspect 0001_*.sql) || agent-probe: badge on 5 views + `?sort=appeal` order on 3 views | high-risk pack: no
 ```
@@ -249,12 +249,12 @@ Execute start: fully-auto: `bun run test:unit -- --run src/tests/appeal-score.sp
 
 ## Resume and Execution Handoff
 
-1. **Selected plan file:** `process/general-plans/active/lead-appeal-score_01-07-26/lead-appeal-score_PLAN_01-07-26.md`
-2. **Last completed step:** VALIDATE complete — Gate CONDITIONAL written. No implementation started.
-3. **Validate-contract status:** WRITTEN — Gate: CONDITIONAL (2 concerns mitigated in-plan; e2e gap accepted as known-gap). Safe to route to EXECUTE.
-4. **Supporting context loaded:** `process/context/all-context.md`, `process/context/tests/all-tests.md`; source touchpoints re-verified against current file state (schema.ts crmLeads 114-170, mock.ts 26-49 no eventDate today, 5 views + 4 loads incl. detail card + review load all confirmed present).
-5. **Next step for a fresh agent:** `ENTER EXECUTE MODE` for this plan. EXECUTE step 1 (schema + migration) first, then follow the Implementation Checklist in order; run per-step gates (`bun run test:unit -- --run src/tests/appeal-score.spec.ts`, then `bun run check`).
+1. **Selected plan file (archived):** `process/general-plans/completed/lead-appeal-score_01-07-26/lead-appeal-score_PLAN_01-07-26.md`
+2. **Last completed step:** Feature fully implemented and closed out — all 17 touchpoints implemented; EXECUTE and EVL both completed against the validate-contract; merged into a PR.
+3. **Validate-contract status:** SATISFIED — Gate: CONDITIONAL (2 concerns mitigated in-plan; e2e gap accepted as a known-gap and carried to backlog). EXECUTE + EVL passed against it.
+4. **Supporting context:** `process/context/all-context.md`, `process/context/tests/all-tests.md`; full EXECUTE + closeout details are in `lead-appeal-score_REPORT_01-07-26.md` (same folder).
+5. **Next step:** none queued — this plan is archived and complete. The only remaining follow-up is the backlog e2e coverage note at `process/features/leads/backlog/appeal-score-e2e-specs_NOTE_01-07-26.md`.
 
-**Next step:** Say `ENTER EXECUTE MODE` to implement this plan.
+**Next step:** None — feature complete and archived. See `lead-appeal-score_REPORT_01-07-26.md` for the full report and the backlog note for the one remaining follow-up.
 </content>
 </invoke>

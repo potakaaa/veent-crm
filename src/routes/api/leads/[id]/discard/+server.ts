@@ -20,7 +20,7 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
 
 		if (!lead) return null;
 
-		if (user.role !== 'manager' && lead.ownerId !== user.id) return 'forbidden' as const;
+		if (user.role === 'rep' && lead.ownerId !== user.id) return 'forbidden' as const;
 
 		const [row] = await tx
 			.update(crmLeads)

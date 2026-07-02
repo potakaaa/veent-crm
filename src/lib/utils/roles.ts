@@ -7,7 +7,8 @@ import type { Role } from '$lib/types';
 
 const ROLE_LABEL: Record<Role, string> = {
 	rep: 'Rep',
-	manager: 'Manager'
+	manager: 'Manager',
+	super_manager: 'Super Manager'
 };
 
 export const roleLabel = (role: Role): string =>

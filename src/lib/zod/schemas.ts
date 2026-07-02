@@ -44,7 +44,7 @@ export const ACTIVITY_OUTCOMES = ['sent', 'replied', 'no_response', 'rejected', 
 
 export const LOST_REASONS = ['no_response', 'rejected', 'not_a_fit'] as const;
 
-export const USER_ROLES = ['rep', 'manager'] as const;
+export const USER_ROLES = ['rep', 'manager', 'super_manager'] as const;
 
 export const LEAD_SOURCES = ['sheet_import', 'manual', 'scraper', 'other'] as const;
 

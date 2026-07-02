@@ -1,5 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { leadFormSchema, leadUpdateSchema, ingestBatchSchema, LEAD_STAGES } from '$lib/zod/schemas';
+import {
+	leadFormSchema,
+	leadUpdateSchema,
+	ingestBatchSchema,
+	LEAD_STAGES,
+	USER_ROLES
+} from '$lib/zod/schemas';
+import { roleLabel } from '$lib/utils/roles';
 
 // Placeholder unit tests — prove the Zod validators (which double as import/ingest validators) load.
 describe('zod schemas (stub)', () => {
@@ -51,6 +58,29 @@ describe('leadUpdateSchema hasFutureEvents flag (#94)', () => {
 	it('rejects a non-boolean hasFutureEvents', () => {
 		const r = leadUpdateSchema.safeParse({ ...base, hasFutureEvents: 'yes' });
 		expect(r.success).toBe(false);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// super_manager role (GitHub #73)
+// ---------------------------------------------------------------------------
+describe('super_manager role (GitHub #73)', () => {
+	it('includes super_manager in USER_ROLES', () => {
+		expect(USER_ROLES).toContain('super_manager');
+	});
+
+	it('still includes rep and manager', () => {
+		expect(USER_ROLES).toContain('rep');
+		expect(USER_ROLES).toContain('manager');
+	});
+
+	it("roleLabel('super_manager') === 'Super Manager'", () => {
+		expect(roleLabel('super_manager')).toBe('Super Manager');
+	});
+
+	it('labels the base roles', () => {
+		expect(roleLabel('rep')).toBe('Rep');
+		expect(roleLabel('manager')).toBe('Manager');
 	});
 });
 

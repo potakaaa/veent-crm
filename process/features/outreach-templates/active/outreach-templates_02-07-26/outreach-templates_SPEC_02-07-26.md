@@ -23,7 +23,7 @@ Sales reps currently pick from 9 hardcoded text snippets when logging an outreac
 
 ## What The User Wants (Behavioral Outcomes)
 
-- A manager-only area of the app lists all outreach templates, grouped or filterable by event category, with clear create / edit / delete actions.
+- An area of the app lists all outreach templates, grouped or filterable by event category, with clear create / edit / delete actions. All authenticated users can browse the list; creation, editing, and deletion remain manager-only.
 - Creating or editing a template requires: a short title/label, an event category (chosen from the same category list used elsewhere in the CRM), and a message body that can contain placeholder tokens (e.g., organizer name, event name).
 - Deleting a template removes it from the list reps see immediately; it does not need to be recoverable (soft-delete under the hood is an implementation detail, not a user-facing requirement).
 - On a lead's detail page, the outreach composer (where reps currently type a note) offers a way to browse templates. Templates matching the lead's own event category are easy to find first; a rep is not blocked from seeing templates from other categories if they want to.
@@ -37,7 +37,7 @@ Sales reps currently pick from 9 hardcoded text snippets when logging an outreac
 **Manager: template management**
 
 ```
-/templates (manager only)
+/templates (read: any authenticated user; write: manager only)
    |
    v
 [ list of templates, grouped by event category ] <---------------+

@@ -1,14 +1,16 @@
 import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { templateFormSchema } from '$lib/zod/schemas';
-import { createTemplate, updateTemplate, softDeleteTemplate } from '$lib/server/db/templates';
+import {
+	createTemplate,
+	updateTemplate,
+	softDeleteTemplate,
+	TemplateTitleConflictError
+} from '$lib/server/db/templates';
+import { isManager } from '$lib/utils/permissions';
 
-// Manager-only outreach-template CRUD. Every mutating verb re-checks the manager
-// role INDIVIDUALLY at the top of its own handler — do NOT collapse this into a
-// single shared guard (per-verb copy-paste risk was explicitly flagged in the
-// plan; the guard idiom mirrors /api/users but the verb list does not).
 function requireManager(locals: App.Locals): void {
-	if (!locals.user || locals.user.role !== 'manager') {
+	if (!locals.user || !isManager(locals.user)) {
 		throw error(403, 'Manager only');
 	}
 }
@@ -22,8 +24,13 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		throw error(400, parsed.error.issues[0]?.message ?? 'Invalid payload');
 	}
 
-	const row = await createTemplate(parsed.data);
-	return json(row, { status: 201 });
+	try {
+		const row = await createTemplate(parsed.data);
+		return json(row, { status: 201 });
+	} catch (err) {
+		if (err instanceof TemplateTitleConflictError) throw error(409, err.message);
+		throw err;
+	}
 };
 
 // PATCH — edit a template. 200 + row / 400 invalid / 403 non-manager / 404 missing.
@@ -43,11 +50,16 @@ export const PATCH: RequestHandler = async ({ request, locals }) => {
 		throw error(400, parsed.error.issues[0]?.message ?? 'Invalid payload');
 	}
 
-	const row = await updateTemplate(id, parsed.data);
-	if (!row) {
-		throw error(404, 'Template not found');
+	try {
+		const row = await updateTemplate(id, parsed.data);
+		if (!row) {
+			throw error(404, 'Template not found');
+		}
+		return json(row, { status: 200 });
+	} catch (err) {
+		if (err instanceof TemplateTitleConflictError) throw error(409, err.message);
+		throw err;
 	}
-	return json(row, { status: 200 });
 };
 
 // DELETE — soft-delete a template. 204 / 403 non-manager / 404 missing.

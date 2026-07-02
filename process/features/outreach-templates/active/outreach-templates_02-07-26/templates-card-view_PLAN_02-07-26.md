@@ -15,11 +15,11 @@ feature: outreach-templates
 
 ## Overview / Context
 
-Increment on the outreach-templates feature (same task folder as `outreach-templates_PLAN_02-07-26.md`). The `/templates` manager page currently renders a category-grouped list only. This plan adds a default Card grid view plus a Card/List tab switcher — presentation-only. Relevant context loaded: `process/context/all-context.md`, `process/context/tests/all-tests.md`, the existing feature SPEC/PLAN, and `src/routes/templates/+page.svelte` + `+page.server.ts`.
+Increment on the outreach-templates feature (same task folder as `outreach-templates_PLAN_02-07-26.md`). The `/templates` page currently renders a category-grouped list only. This plan adds a default Card grid view plus a Card/List tab switcher — presentation-only. Relevant context loaded: `process/context/all-context.md`, `process/context/tests/all-tests.md`, the existing feature SPEC/PLAN, and `src/routes/templates/+page.svelte` + `+page.server.ts`.
 
 ## Goal
 
-The manager `/templates` page loads showing templates as a grid of cards (one per template). A two-option tab switcher lets the manager flip between **Card** view (flat grid, default) and **List** view (the existing category-grouped list). Both views render the same underlying template data and share the same create/edit modal and delete action.
+The `/templates` page loads showing templates as a grid of cards (one per template). A two-option tab switcher lets signed-in users flip between **Card** view (flat grid, default) and **List** view (the existing category-grouped list). Both views render the same underlying template data and share the same create/edit modal and delete action.
 
 ## Touchpoints
 

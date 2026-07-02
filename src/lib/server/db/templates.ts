@@ -12,6 +12,13 @@ import type { TemplateForm } from '$lib/zod/schemas';
 
 type DbTemplate = typeof crmMessageTemplates.$inferSelect;
 
+export class TemplateTitleConflictError extends Error {
+	constructor() {
+		super('A template with this title already exists');
+		this.name = 'TemplateTitleConflictError';
+	}
+}
+
 // ---------------------------------------------------------------------------
 // Pure mapper (exported for unit tests)
 // ---------------------------------------------------------------------------
@@ -60,15 +67,22 @@ export async function getTemplate(id: string): Promise<MessageTemplate | null> {
 // ---------------------------------------------------------------------------
 
 export async function createTemplate(input: TemplateForm): Promise<MessageTemplate> {
-	const [row] = await db
-		.insert(crmMessageTemplates)
-		.values({
-			category: input.category,
-			title: input.title,
-			body: input.body
-		})
-		.returning();
-	return dbRowToTemplate(row);
+	try {
+		const [row] = await db
+			.insert(crmMessageTemplates)
+			.values({
+				category: input.category,
+				title: input.title,
+				body: input.body
+			})
+			.returning();
+		return dbRowToTemplate(row);
+	} catch (err) {
+		if (err && typeof err === 'object' && 'code' in err && err.code === '23505') {
+			throw new TemplateTitleConflictError();
+		}
+		throw err;
+	}
 }
 
 export async function updateTemplate(
@@ -80,12 +94,19 @@ export async function updateTemplate(
 	if (patch.title !== undefined) set.title = patch.title;
 	if (patch.body !== undefined) set.body = patch.body;
 
-	const rows = await db
-		.update(crmMessageTemplates)
-		.set(set)
-		.where(and(eq(crmMessageTemplates.id, id), isNull(crmMessageTemplates.deletedAt)))
-		.returning();
-	return rows[0] ? dbRowToTemplate(rows[0]) : null;
+	try {
+		const rows = await db
+			.update(crmMessageTemplates)
+			.set(set)
+			.where(and(eq(crmMessageTemplates.id, id), isNull(crmMessageTemplates.deletedAt)))
+			.returning();
+		return rows[0] ? dbRowToTemplate(rows[0]) : null;
+	} catch (err) {
+		if (err && typeof err === 'object' && 'code' in err && err.code === '23505') {
+			throw new TemplateTitleConflictError();
+		}
+		throw err;
+	}
 }
 
 /** Sets `deletedAt = now()`. Filtered to non-deleted rows so double-delete is a no-op. */

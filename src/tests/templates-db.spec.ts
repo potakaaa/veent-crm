@@ -124,3 +124,41 @@ describe.skipIf(SKIP_DB)('softDeleteTemplate (DB)', () => {
 		expect(await softDeleteTemplate(t.id)).toBe(false);
 	});
 });
+
+describe.skipIf(SKIP_DB)('unique active-title constraint (DB)', () => {
+	it('rejects a second active template with the same title', async () => {
+		const t = await createTemplate({
+			title: `${TEST_PREFIX} UniqueTitle`,
+			category: 'Other',
+			body: 'first body'
+		});
+		createdIds.push(t.id);
+
+		await expect(
+			createTemplate({
+				title: `${TEST_PREFIX} UniqueTitle`,
+				category: 'Other',
+				body: 'second body'
+			})
+		).rejects.toThrow('already exists');
+	});
+
+	it('allows the same title after the original is soft-deleted', async () => {
+		const t = await createTemplate({
+			title: `${TEST_PREFIX} ReusableTitle`,
+			category: 'Other',
+			body: 'original'
+		});
+		createdIds.push(t.id);
+
+		await softDeleteTemplate(t.id);
+
+		const t2 = await createTemplate({
+			title: `${TEST_PREFIX} ReusableTitle`,
+			category: 'Other',
+			body: 'replacement'
+		});
+		createdIds.push(t2.id);
+		expect(t2.id).not.toBe(t.id);
+	});
+});

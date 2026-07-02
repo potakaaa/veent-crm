@@ -170,6 +170,10 @@ async function run(args: Args): Promise<SeedRow[]> {
 
 if (import.meta.main) {
 	const args = parseArgs(process.argv.slice(2));
+	if (args.dryRun && args.load) {
+		console.error('Error: --dry-run and --load are mutually exclusive. Use one or the other.');
+		process.exit(1);
+	}
 	run(args)
 		.then((rows) => {
 			console.log(`=== Mapped ${rows.length} legacy templates -> crm_message_templates rows ===`);

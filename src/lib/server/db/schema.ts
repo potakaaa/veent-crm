@@ -21,7 +21,7 @@ import { sql } from 'drizzle-orm';
 // ---------------------------------------------------------------------------
 // Enums
 // ---------------------------------------------------------------------------
-export const userRole = pgEnum('crm_user_role', ['rep', 'manager']);
+export const userRole = pgEnum('crm_user_role', ['rep', 'manager', 'super_manager']);
 
 export const leadCategory = pgEnum('crm_lead_category', [
 	'Sports',
@@ -110,7 +110,13 @@ export const crmUsers = pgTable(
 	},
 	(t) => [
 		uniqueIndex('crm_users_email_uq').on(t.email),
-		uniqueIndex('crm_users_auth_subject_uq').on(t.authSubject)
+		uniqueIndex('crm_users_auth_subject_uq').on(t.authSubject),
+		// At most one ACTIVE super_manager may exist at any time (GitHub #73).
+		// Partial unique index over role — the WHERE clause narrows it to active
+		// super_manager rows, so a second concurrent promote surfaces as 23505.
+		uniqueIndex('crm_users_single_super_manager_uq')
+			.on(t.role)
+			.where(sql`role = 'super_manager' AND active = true`)
 	]
 );
 

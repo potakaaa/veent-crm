@@ -1,6 +1,6 @@
 {
-  "id": "2123a194-c726-4cb9-aae1-d900e3339ca2_0016",
-  "prevId": "f1a2b3c4-d5e6-7890-abcd-ef1234567890",
+  "id": "e7b44582-29dc-4220-bf3d-85f13850a718",
+  "prevId": "5a28f73a-15ae-4c28-a5e8-d830fa5f4ed9",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -627,6 +627,94 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
+    "public.crm_lead_visibility_grants": {
+      "name": "crm_lead_visibility_grants",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "lead_id": {
+          "name": "lead_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "crm_lead_visibility_grants_lead_user_uq": {
+          "name": "crm_lead_visibility_grants_lead_user_uq",
+          "columns": [
+            {
+              "expression": "lead_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "crm_lead_visibility_grants_lead_id_crm_leads_id_fk": {
+          "name": "crm_lead_visibility_grants_lead_id_crm_leads_id_fk",
+          "tableFrom": "crm_lead_visibility_grants",
+          "tableTo": "crm_leads",
+          "columnsFrom": [
+            "lead_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "crm_lead_visibility_grants_user_id_crm_users_id_fk": {
+          "name": "crm_lead_visibility_grants_user_id_crm_users_id_fk",
+          "tableFrom": "crm_lead_visibility_grants",
+          "tableTo": "crm_users",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
     "public.crm_leads": {
       "name": "crm_leads",
       "schema": "",
@@ -775,6 +863,14 @@
           "type": "uuid",
           "primaryKey": false,
           "notNull": false
+        },
+        "visibility": {
+          "name": "visibility",
+          "type": "crm_lead_visibility",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'everyone'"
         },
         "source": {
           "name": "source",
@@ -1187,83 +1283,6 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.crm_message_templates": {
-      "name": "crm_message_templates",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "category": {
-          "name": "category",
-          "type": "crm_lead_category",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'Other'"
-        },
-        "title": {
-          "name": "title",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "body": {
-          "name": "body",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "deleted_at": {
-          "name": "deleted_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "crm_message_templates_title_active_uq": {
-          "name": "crm_message_templates_title_active_uq",
-          "columns": [
-            {
-              "expression": "title",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "where": "deleted_at is null",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
     "public.crm_users": {
       "name": "crm_users",
       "schema": "",
@@ -1350,6 +1369,22 @@
             }
           ],
           "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "crm_users_single_super_manager_uq": {
+          "name": "crm_users_single_super_manager_uq",
+          "columns": [
+            {
+              "expression": "role",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "role = 'super_manager' AND active = true",
           "concurrently": false,
           "method": "btree",
           "with": {}
@@ -1448,6 +1483,15 @@
         "lost"
       ]
     },
+    "public.crm_lead_visibility": {
+      "name": "crm_lead_visibility",
+      "schema": "public",
+      "values": [
+        "only_me",
+        "everyone",
+        "selected"
+      ]
+    },
     "public.crm_lost_reason": {
       "name": "crm_lost_reason",
       "schema": "public",
@@ -1462,7 +1506,8 @@
       "schema": "public",
       "values": [
         "rep",
-        "manager"
+        "manager",
+        "super_manager"
       ]
     }
   },

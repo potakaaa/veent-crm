@@ -6,7 +6,7 @@
  */
 import { db } from './index';
 import { crmMessageTemplates } from './schema';
-import { eq, and, isNull, asc } from 'drizzle-orm';
+import { eq, and, isNull, asc, desc, ilike, or, count, sql } from 'drizzle-orm';
 import type { MessageTemplate } from '$lib/types';
 import type { TemplateForm } from '$lib/zod/schemas';
 
@@ -50,6 +50,48 @@ export function listTemplatesQuery() {
 export async function listTemplates(): Promise<MessageTemplate[]> {
 	const rows = await listTemplatesQuery();
 	return rows.map(dbRowToTemplate);
+}
+
+export const TEMPLATES_PAGE_SIZE = 20;
+
+export async function listTemplatesPaginated(opts: {
+	page: number;
+	q?: string;
+	category?: string;
+	sort: 'title' | 'newest' | 'oldest';
+}): Promise<{ templates: MessageTemplate[]; total: number }> {
+	const { page, q, category, sort } = opts;
+
+	type CategoryValue = (typeof crmMessageTemplates)['category']['_']['data'];
+	const conditions = [isNull(crmMessageTemplates.deletedAt)];
+	if (category) conditions.push(eq(crmMessageTemplates.category, category as CategoryValue));
+	if (q) {
+		conditions.push(
+			or(ilike(crmMessageTemplates.title, `%${q}%`), ilike(crmMessageTemplates.body, `%${q}%`)) ??
+				sql`false`
+		);
+	}
+	const where = and(...conditions);
+
+	const orderBy =
+		sort === 'newest'
+			? [desc(crmMessageTemplates.createdAt)]
+			: sort === 'oldest'
+				? [asc(crmMessageTemplates.createdAt)]
+				: [asc(crmMessageTemplates.category), asc(crmMessageTemplates.title)];
+
+	const [rows, [{ total }]] = await Promise.all([
+		db
+			.select()
+			.from(crmMessageTemplates)
+			.where(where)
+			.orderBy(...orderBy)
+			.limit(TEMPLATES_PAGE_SIZE)
+			.offset((page - 1) * TEMPLATES_PAGE_SIZE),
+		db.select({ total: count() }).from(crmMessageTemplates).where(where)
+	]);
+
+	return { templates: rows.map(dbRowToTemplate), total };
 }
 
 /** Single non-deleted template by id, or null. */

@@ -17,7 +17,9 @@ import { POST, PATCH, DELETE } from '../routes/api/templates/+server';
 
 // Mock the DB layer so page load tests never need a real database.
 vi.mock('$lib/server/db/templates', () => ({
-	listTemplates: vi.fn().mockResolvedValue([])
+	listTemplates: vi.fn().mockResolvedValue([]),
+	listTemplatesPaginated: vi.fn().mockResolvedValue({ templates: [], total: 0 }),
+	TEMPLATES_PAGE_SIZE: 20
 }));
 
 import { load } from '../routes/templates/+page.server';
@@ -81,16 +83,22 @@ describe('/api/templates per-verb manager guard rejects a rep with 403 (AC-4)', 
 
 describe('/templates page load allows any authenticated user (AC-4 revised — Templates moved to Workspace section)', () => {
 	it('load → resolves for a rep (read-only view)', async () => {
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		const result = await load({ locals: { user: rep } } as any);
+		const result = await load(
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			{ locals: { user: rep }, url: new URL('http://localhost/templates') } as any
+		);
 		expect(result).toHaveProperty('templates');
 		expect(result).toHaveProperty('currentUser');
 		expect((result as { currentUser: { role: string } }).currentUser.role).toBe('rep');
 	});
 	it('load → 401 when unauthenticated', async () => {
 		await expect(
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			Promise.resolve().then(() => load({ locals: { user: null } } as any))
+			Promise.resolve().then(() =>
+				load(
+					// eslint-disable-next-line @typescript-eslint/no-explicit-any
+					{ locals: { user: null }, url: new URL('http://localhost/templates') } as any
+				)
+			)
 		).rejects.toMatchObject({ status: 401 });
 	});
 });

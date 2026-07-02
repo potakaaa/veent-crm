@@ -1,5 +1,7 @@
 <script lang="ts">
-	import { invalidateAll } from '$app/navigation';
+	import { goto, invalidateAll, afterNavigate } from '$app/navigation';
+	import { page } from '$app/state';
+	import { SvelteURLSearchParams } from 'svelte/reactivity';
 	import PageHeader from '$lib/components/shared/PageHeader.svelte';
 	import Modal from '$lib/components/shared/Modal.svelte';
 	import Icon from '$lib/components/shared/Icon.svelte';
@@ -19,35 +21,39 @@
 	let { data } = $props();
 	const canManage = $derived(isManager(data.currentUser));
 
-	// View toggle: card grid (default) vs the existing category-grouped list.
+	// View toggle persists client-side only.
 	let viewMode = $state<'card' | 'list'>('card');
 
-	// Toolbar state.
-	let searchQuery = $state('');
-	let filterCategory = $state('');
-	let sortBy = $state<'title' | 'newest' | 'oldest'>('title');
+	// Search input has a local mirror for instant typing feedback + debounce.
+	// $derived allows re-sync on back/forward navigation; assignment still works for live typing.
+	let searchInput = $derived(data.filters.q ?? '');
+	let searchTimer: ReturnType<typeof setTimeout> | null = null;
 
-	// Filtered + sorted list (all client-side — dataset is small).
-	const filtered = $derived.by(() => {
-		const q = searchQuery.trim().toLowerCase();
-		let list = data.templates.filter((t) => {
-			if (filterCategory && t.category !== filterCategory) return false;
-			if (q && !t.title.toLowerCase().includes(q) && !t.body.toLowerCase().includes(q))
-				return false;
-			return true;
-		});
-		if (sortBy === 'newest')
-			list = [...list].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-		else if (sortBy === 'oldest')
-			list = [...list].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
-		// 'title' keeps the server order (category → title asc).
-		return list;
+	let paging = $state(false);
+	afterNavigate(() => {
+		paging = false;
 	});
 
-	// Group filtered templates by category.
+	function navigate(patch: Record<string, string | undefined>) {
+		const params = new SvelteURLSearchParams(page.url.searchParams);
+		for (const [k, v] of Object.entries(patch)) {
+			if (v === undefined || v === '') params.delete(k);
+			else params.set(k, v);
+		}
+		goto(`?${params}`, { keepFocus: true });
+	}
+
+	function onSearchInput(e: Event & { currentTarget: HTMLInputElement }) {
+		const val = e.currentTarget.value;
+		searchInput = val;
+		if (searchTimer) clearTimeout(searchTimer);
+		searchTimer = setTimeout(() => navigate({ q: val || undefined, page: undefined }), 300);
+	}
+
+	// Group the current page of templates by category (server already sorted).
 	const grouped = $derived.by(() => {
 		const map = new SvelteMap<string, MessageTemplate[]>();
-		for (const t of filtered) {
+		for (const t of data.templates) {
 			const list = map.get(t.category) ?? [];
 			list.push(t);
 			map.set(t.category, list);
@@ -208,17 +214,31 @@
 			</button>
 		</div>
 
-		<Select type="single" bind:value={filterCategory}>
-			<SelectTrigger size="sm" class="w-36">{filterCategory || 'All categories'}</SelectTrigger>
+		<Select
+			type="single"
+			value={data.filters.category ?? ''}
+			onValueChange={(v) => navigate({ category: v || undefined, page: undefined })}
+		>
+			<SelectTrigger size="sm" class="w-36"
+				>{data.filters.category || 'All categories'}</SelectTrigger
+			>
 			<SelectContent>
 				<SelectItem value="" label="All categories">All categories</SelectItem>
 				{#each LEAD_CATEGORIES as c (c)}<SelectItem value={c} label={c}>{c}</SelectItem>{/each}
 			</SelectContent>
 		</Select>
 
-		<Select type="single" bind:value={sortBy}>
+		<Select
+			type="single"
+			value={data.filters.sort}
+			onValueChange={(v) => navigate({ sort: v === 'title' ? undefined : v, page: undefined })}
+		>
 			<SelectTrigger size="sm" class="w-32">
-				{sortBy === 'title' ? 'Title A–Z' : sortBy === 'newest' ? 'Newest' : 'Oldest'}
+				{data.filters.sort === 'newest'
+					? 'Newest'
+					: data.filters.sort === 'oldest'
+						? 'Oldest'
+						: 'Title A–Z'}
 			</SelectTrigger>
 			<SelectContent>
 				<SelectItem value="title" label="Title A–Z">Title A–Z</SelectItem>
@@ -227,16 +247,21 @@
 			</SelectContent>
 		</Select>
 
-		<Input bind:value={searchQuery} placeholder="Search templates…" class="ml-auto h-8 w-52" />
+		<Input
+			value={searchInput}
+			oninput={onSearchInput}
+			placeholder="Search templates…"
+			class="ml-auto h-8 w-52"
+		/>
 	</div>
 
-	{#if filtered.length === 0}
+	{#if data.pagination.total === 0}
 		<Card class="rounded-control px-6 py-10 text-center text-[13px] text-ink-300">
-			{data.templates.length === 0
-				? canManage
+			{data.filters.q || data.filters.category
+				? 'No templates match your filters.'
+				: canManage
 					? 'No templates yet. Add your first one above.'
-					: 'No templates yet.'
-				: 'No templates match your filters.'}
+					: 'No templates yet.'}
 		</Card>
 	{:else if viewMode === 'card'}
 		<div class="flex flex-col gap-6">
@@ -316,6 +341,37 @@
 					</Card>
 				</section>
 			{/each}
+		</div>
+	{/if}
+
+	<!-- pagination -->
+	{#if data.pagination.totalPages > 1}
+		{@const { page: pg, pageSize, total, totalPages } = data.pagination}
+		{@const start = (pg - 1) * pageSize + 1}
+		{@const end = Math.min(pg * pageSize, total)}
+		<div class="mt-5 flex items-center justify-between text-[13px] text-ink-300">
+			<span class="font-mono">{start}–{end} of {total}</span>
+			<div class="flex items-center gap-2">
+				<Button
+					variant="outline"
+					size="sm"
+					disabled={pg <= 1 || paging}
+					onclick={() => {
+						paging = true;
+						navigate({ page: String(pg - 1) });
+					}}>← Prev</Button
+				>
+				<span class="font-mono">Page {pg} of {totalPages}</span>
+				<Button
+					variant="outline"
+					size="sm"
+					disabled={pg >= totalPages || paging}
+					onclick={() => {
+						paging = true;
+						navigate({ page: String(pg + 1) });
+					}}>Next →</Button
+				>
+			</div>
 		</div>
 	{/if}
 </div>

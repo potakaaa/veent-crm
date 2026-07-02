@@ -120,25 +120,38 @@
 		}
 	}
 
-	async function changeRole(u: User, newRole: 'rep' | 'manager') {
+	// --- Promote/demote rep ↔ manager (with confirmation) --------------------
+	let confirmRoleChange = $state<{ user: User; newRole: 'rep' | 'manager' } | null>(null);
+	let roleChanging = $state(false);
+
+	async function applyRoleChange() {
+		const pending = confirmRoleChange;
+		if (!pending) return;
+		roleChanging = true;
 		try {
-			const res = await fetch(`/api/users/${u.id}`, {
+			const res = await fetch(`/api/users/${pending.user.id}`, {
 				method: 'PATCH',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ role: newRole })
+				body: JSON.stringify({ role: pending.newRole })
 			});
 			if (!res.ok) {
 				const body = await res.json().catch(() => ({}));
-				toasts.push(body.message ?? `Unable to change ${u.name}'s role`, { tone: 'warn' });
+				toasts.push(body.message ?? `Unable to change ${pending.user.name}'s role`, {
+					tone: 'warn'
+				});
 				return;
 			}
+			confirmRoleChange = null;
 			await invalidateAll();
-			const label = newRole === 'manager' ? 'promoted to Manager' : 'demoted to Rep';
-			toasts.success(`${u.name} ${label}`);
+			const label = pending.newRole === 'manager' ? 'promoted to Manager' : 'demoted to Rep';
+			toasts.success(`${pending.user.name} ${label}`);
 		} catch (err) {
-			toasts.push(err instanceof Error ? err.message : `Unable to change ${u.name}'s role`, {
-				tone: 'warn'
-			});
+			toasts.push(
+				err instanceof Error ? err.message : `Unable to change ${pending.user.name}'s role`,
+				{ tone: 'warn' }
+			);
+		} finally {
+			roleChanging = false;
 		}
 	}
 
@@ -287,18 +300,33 @@
 									{@const isSelf = u.id === data.currentUser.id}
 									<div class="flex items-center justify-end gap-2">
 										{#if isSuper && u.role === 'rep'}
-											<Button variant="outline" size="sm" onclick={() => changeRole(u, 'manager')}>
-												Promote
+											<Button
+												variant="outline"
+												size="icon"
+												title="Promote to Manager"
+												onclick={() => (confirmRoleChange = { user: u, newRole: 'manager' })}
+											>
+												<Icon name="arrowUp" size={14} stroke={2.2} />
 											</Button>
 										{/if}
 										{#if isSuper && u.role === 'manager'}
-											<Button variant="outline" size="sm" onclick={() => changeRole(u, 'rep')}>
-												Demote
+											<Button
+												variant="outline"
+												size="icon"
+												title="Demote to Rep"
+												onclick={() => (confirmRoleChange = { user: u, newRole: 'rep' })}
+											>
+												<Icon name="arrowDown" size={14} stroke={2.2} />
 											</Button>
 										{/if}
 										{#if canPromote && u.role === 'manager' && u.active}
-											<Button variant="outline" size="sm" onclick={() => (promoteTarget = u)}>
-												Promote to Super Manager
+											<Button
+												variant="outline"
+												size="icon"
+												title="Promote to Super Manager"
+												onclick={() => (promoteTarget = u)}
+											>
+												<Icon name="crown" size={14} stroke={2} />
 											</Button>
 										{/if}
 										<!-- Deactivate/reactivate: reps always (for a manager); managers &
@@ -358,6 +386,31 @@
 	{#snippet footer()}
 		<Button variant="outline" class="flex-1" onclick={() => (addOpen = false)}>Cancel</Button>
 		<Button class="flex-[2]" onclick={addRep}>Add rep</Button>
+	{/snippet}
+</Modal>
+
+<Modal
+	open={confirmRoleChange !== null}
+	title={confirmRoleChange?.newRole === 'manager' ? 'Promote to Manager' : 'Demote to Rep'}
+	width={400}
+	onclose={() => (confirmRoleChange = null)}
+>
+	<p class="text-[13px] leading-relaxed text-ink-600">
+		{#if confirmRoleChange?.newRole === 'manager'}
+			Promote <span class="font-semibold">{confirmRoleChange.user.name}</span> from Rep to Manager? They'll
+			gain access to manager features.
+		{:else}
+			Demote <span class="font-semibold">{confirmRoleChange?.user.name}</span> from Manager to Rep? They'll
+			lose access to manager features.
+		{/if}
+	</p>
+	{#snippet footer()}
+		<Button variant="outline" class="flex-1" onclick={() => (confirmRoleChange = null)}>
+			Cancel
+		</Button>
+		<Button class="flex-[2]" onclick={applyRoleChange} disabled={roleChanging}>
+			{roleChanging ? 'Saving…' : confirmRoleChange?.newRole === 'manager' ? 'Promote' : 'Demote'}
+		</Button>
 	{/snippet}
 </Modal>
 

@@ -1,0 +1,1 @@
+ALTER TABLE "crm_leads" DROP COLUMN "needs_review";

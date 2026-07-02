@@ -1,57 +1,51 @@
 <script lang="ts">
 	import './layout.css';
 	import favicon from '$lib/assets/favicon.svg';
-	import { page } from '$app/state';
+	import { page, navigating } from '$app/state';
+	import AppShell from '$lib/components/layout/AppShell.svelte';
+	import RouteShells from '$lib/components/shared/skeletons/RouteShells.svelte';
 
 	let { children, data } = $props();
 
-	const nav = [
-		{ href: '/', label: 'Today' },
-		{ href: '/leads', label: 'Leads' },
-		{ href: '/pipeline', label: 'Pipeline' },
-		{ href: '/unassigned', label: 'Up for grabs' },
-		{ href: '/reminders', label: 'Reminders' },
-		{ href: '/reports', label: 'Reports' },
-		{ href: '/review', label: 'Review queue' },
-		{ href: '/team', label: 'Team' }
-	];
+	// Chrome-less routes: login, unauthorized (exact or sub-path), and error pages.
+	// Use destination pathname during in-flight navigation so the shell doesn't flash
+	// on navigations TO bare routes (e.g. redirect to /login after session expiry).
+	const targetPath = $derived(navigating.to?.url.pathname ?? page.url.pathname);
+	const bare = $derived(
+		targetPath === '/login' ||
+			targetPath === '/unauthorized' ||
+			targetPath.startsWith('/unauthorized/') ||
+			!!page.error
+	);
 
-	const isActive = (href: string) =>
-		href === '/' ? page.url.pathname === '/' : page.url.pathname.startsWith(href);
+	// Cross-route navigation only. A same-route filter/pagination change keeps the
+	// pathname equal, so those are excluded (per-page navLoading handles them).
+	const isRouteChange = $derived(
+		navigating.to !== null && navigating.to.url.pathname !== page.url.pathname
+	);
 </script>
 
 <svelte:head><link rel="icon" href={favicon} /></svelte:head>
 
-<div class="min-h-screen bg-gray-50 text-gray-900">
-	<header class="border-b border-gray-200 bg-white">
-		<div class="mx-auto flex max-w-7xl items-center gap-4 px-4 py-3">
-			<a href="/" class="font-semibold tracking-tight">Veent CRM</a>
-			<span class="rounded bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
-				v0 · stub
-			</span>
-			<nav class="ml-4 flex flex-wrap gap-1 text-sm">
-				{#each nav as item}
-					<a
-						href={item.href}
-						class="rounded px-3 py-1.5 hover:bg-gray-100 {isActive(item.href)
-							? 'bg-gray-900 text-white hover:bg-gray-900'
-							: 'text-gray-600'}"
-					>
-						{item.label}
-					</a>
-				{/each}
-			</nav>
-			<div class="ml-auto text-sm text-gray-500">
-				{#if data?.user}
-					{data.user.name} · {data.user.role}
-				{:else}
-					<a href="/login" class="text-blue-600 hover:underline">Log in</a>
-				{/if}
-			</div>
-		</div>
-	</header>
+<!-- Global navigation progress bar: shows only during a cross-route navigation.
+     Same-route filter/pagination changes use per-page navLoading instead. -->
+{#if isRouteChange}
+	<div
+		class="bg-primary animate-pulse fixed left-0 right-0 top-0 z-50 h-0.5"
+		role="progressbar"
+		aria-label="Loading page"
+		data-testid="nav-progress"
+	></div>
+{/if}
 
-	<main class="mx-auto max-w-7xl px-4 py-6">
-		{@render children()}
-	</main>
-</div>
+{#if bare}
+	{@render children()}
+{:else}
+	<AppShell user={data.currentUser} counts={data.counts}>
+		{#if isRouteChange && navigating.to}
+			<RouteShells pathname={navigating.to.url.pathname} />
+		{:else}
+			{@render children()}
+		{/if}
+	</AppShell>
+{/if}

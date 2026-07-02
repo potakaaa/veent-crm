@@ -1,8 +1,69 @@
 import type { PageServerLoad } from './$types';
-import { MOCK_REPS } from '$lib/server/mock';
+import { error } from '@sveltejs/kit';
+import { db } from '$lib/server/db/index';
+import { crmUsers } from '$lib/server/db/schema';
+import { asc, count, desc } from 'drizzle-orm';
+import { dbUserToUser, listPipelineLeads } from '$lib/server/db/leads';
+import { isManagerRole } from '$lib/utils/permissions';
+import { sessionToUser } from '$lib/server/db/users';
 
-// STUB (manager-only): add/deactivate reps, set role, bulk reassign. This list IS the
-// magic-link allowlist (active + email). Real impl gates on locals.user.role === 'manager'.
-export const load: PageServerLoad = async () => {
-	return { reps: MOCK_REPS };
+const PAGE_SIZE = 8;
+
+const SORT_COLS = ['name', 'email', 'role', 'active'] as const;
+type SortCol = (typeof SORT_COLS)[number];
+
+const COL_MAP = {
+	name: crmUsers.name,
+	email: crmUsers.email,
+	role: crmUsers.role,
+	active: crmUsers.active
+} satisfies Record<SortCol, unknown>;
+
+// Manager-only: this roster doubles as the magic-link allowlist (active reps with email).
+export const load: PageServerLoad = async ({ locals, url }) => {
+	if (!locals.user || !isManagerRole(locals.user.role)) {
+		error(403, 'Manager only');
+	}
+
+	const rawSort = url.searchParams.get('sort') ?? 'name';
+	const sort: SortCol = (SORT_COLS as readonly string[]).includes(rawSort)
+		? (rawSort as SortCol)
+		: 'name';
+	const dir = url.searchParams.get('dir') === 'desc' ? ('desc' as const) : ('asc' as const);
+	const fn = dir === 'asc' ? asc : desc;
+	const page = Math.max(1, parseInt(url.searchParams.get('page') ?? '1', 10) || 1);
+
+	const [rows, [{ total }], { leads }] = await Promise.all([
+		db
+			.select()
+			.from(crmUsers)
+			.orderBy(
+				// Always show active users before inactive ones unless the user is
+				// explicitly sorting by the active column.
+				...(sort === 'active' ? [] : [desc(crmUsers.active)]),
+				fn(COL_MAP[sort]),
+				asc(crmUsers.id)
+			)
+			.limit(PAGE_SIZE)
+			.offset((page - 1) * PAGE_SIZE),
+		db.select({ total: count() }).from(crmUsers),
+		listPipelineLeads()
+	]);
+
+	const users = rows.map(dbUserToUser).map((u) => ({
+		...u,
+		leadCount: leads.filter((l) => l.ownerId === u.id).length
+	}));
+
+	const currentUser = sessionToUser(locals.user!);
+	const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
+	return {
+		users,
+		leads,
+		sort,
+		dir,
+		currentUser,
+		pagination: { page, pageSize: PAGE_SIZE, total, totalPages }
+	};
 };

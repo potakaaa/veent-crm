@@ -6,14 +6,19 @@
 
 Authentication and session management for the CRM. Covers Better Auth integration (magic-link
 email via Resend), allowlisted user onboarding, session gate in `hooks.server.ts`, and future
-Authentik OIDC migration. The DEV_BYPASS stub (fake manager injection) is temporary and must be
-removed when Better Auth is wired.
+Authentik OIDC migration. Better Auth is live-wired — there is no DEV_BYPASS stub in this codebase.
 
 ## Key Source Files
 
-- `src/hooks.server.ts` — session gate (currently stubs a fake manager via DEV_BYPASS)
-- `src/lib/server/auth.ts` — Better Auth configuration (stub for v0)
-- `src/lib/server/email.ts` — Resend email integration (stub for v0)
+- `src/hooks.server.ts` — session gate; resolves a real Better Auth session, enforces the
+  `crm_users` allowlist, and splits unauthenticated redirects into `/login` (no session) vs
+  `/unauthorized` (session but not allowlisted)
+- `src/lib/server/auth.ts` — live Better Auth configuration (`betterAuth()` + `drizzleAdapter` +
+  `magicLink` plugin)
+- `src/lib/server/email.ts` — Resend email integration (live; sends magic-link/welcome emails when
+  `RESEND_API_KEY`/`RESEND_FROM` are set)
+- `src/lib/server/sanitize-redirect.ts` — shared `sanitizeFrom` open-redirect guard used by both
+  `/login` and `/unauthorized`
 - `src/routes/login/+page.svelte` — login page UI
 
 ## Related Context
@@ -23,7 +28,9 @@ removed when Better Auth is wired.
 
 ## Current Status
 
-Status: not-started (v0 stub — DEV_BYPASS active)
+Status: in-progress (Better Auth live-wired; `/login` vs `/unauthorized` redirect split and
+`?from=` preservation code-complete and EVL-green — full magic-link email-click round trip remains
+a known-gap pending live Postgres/Resend test infra)
 
 ## Folder Contents
 

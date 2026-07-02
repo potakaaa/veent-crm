@@ -1,0 +1,35 @@
+{
+  "task": "lead-visibility-scoping (GitHub #87)",
+  "snippets": [
+    {
+      "file": "src/lib/server/db/leads.ts",
+      "lines": "visibilityCondition helper",
+      "description": "Single shared trust-boundary predicate. Manager -> sql`true` no-op; rep -> OR(own, everyone, unowned, EXISTS grant). The ONLY place the rule is expressed.",
+      "content": "export function visibilityCondition(userId, role): SQL { if (role === 'manager') return sql`true`; return or(eq(ownerId,userId), eq(visibility,'everyone'), isNull(ownerId), exists(select 1 from crm_lead_visibility_grants where leadId=crmLeads.id and userId=:userId)); }"
+    },
+    {
+      "file": "src/lib/server/db/leads.ts",
+      "lines": "listLeads/listLeadsFiltered/listPipelineStage/getLead/getTodayQueue/getNavCounts/getRemindersQueue",
+      "description": "All 7 rep-facing read surfaces wired with visibilityCondition. getTodayQueue/getNavCounts/getRemindersQueue are owner-scoped (no-op wiring, defensive). getNavCounts unassigned sub-count is SPEC-exempt (not scoped).",
+      "content": "conditions.push(visibilityCondition(userId, role)) at each read fn; getLead folds it into WHERE -> null (404) for barred reads."
+    },
+    {
+      "file": "src/lib/server/db/leads.ts",
+      "lines": "createLead / updateLead / claimLead / unclaimLead / reassignLead",
+      "description": "Write-through: create/update persist visibility + grants transactionally (update writes crm_lead_history 'visibility' row + replaces/clears grants). All 3 owner-change paths reset visibility='everyone' + delete grants in-transaction.",
+      "content": ".set({ ownerId, visibility: 'everyone' }) + tx.delete(crmLeadVisibilityGrants).where(leadId=id) on claim/unclaim/reassign."
+    },
+    {
+      "file": "src/lib/server/db/leads.ts",
+      "lines": "listUnassignedLeads / getUnassignedLeadCountries / listPipelineLeads",
+      "description": "SPEC-exempt surfaces explicitly NOT wired, with code comments: Up-for-Grabs (unowned always visible) and listPipelineLeads (manager-only /team caller).",
+      "content": "// DO NOT wire visibilityCondition (manager-only surface / unowned always visible)."
+    },
+    {
+      "file": "drizzle/0013_nasty_master_mold.sql",
+      "lines": "full migration",
+      "description": "Additive enum + junction table (cascade lead FK, set-null user FK, unique index) + crm_leads.visibility NOT NULL DEFAULT 'everyone' backfill. NO Better Auth tables in diff.",
+      "content": "CREATE TYPE crm_lead_visibility; CREATE TABLE crm_lead_visibility_grants(...); ALTER TABLE crm_leads ADD COLUMN visibility ... DEFAULT 'everyone' NOT NULL;"
+    }
+  ]
+}

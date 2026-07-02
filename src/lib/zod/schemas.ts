@@ -50,51 +50,73 @@ export const LEAD_SOURCES = ['sheet_import', 'manual', 'scraper', 'other'] as co
 
 export const CURRENCIES = ['PHP', 'SGD'] as const;
 
+export const LEAD_VISIBILITIES = ['only_me', 'everyone', 'selected'] as const;
+
+// Shape-only UUID matcher (see ownerUpdateSchema note): seeded fixed-format UUIDs
+// (e.g. 00000000-…-0001) intentionally violate RFC 4122 variant bits, which
+// z.string().uuid() would reject. Grant target ids come from listUsers(), so they
+// must accept those seeded rows too.
+const LOOSE_UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 // --- Add / edit a lead (Superforms) ---------------------------------------
-export const leadFormSchema = z.object({
-	name: z.string().trim().min(1, 'Page / organizer name is required'),
-	category: z.enum(LEAD_CATEGORIES).default('Other'),
-	platform: z.enum(LEAD_PLATFORMS).optional(),
-	location: z.string().optional(),
-	pageUrl: z.string().url().optional().or(z.literal('')),
-	contactEmail: z.string().email().optional().or(z.literal('')),
-	eventName: z.string().optional(),
-	eventLink: z.string().url().optional().or(z.literal('')),
-	eventDateRaw: z.string().optional(),
-	firstAnnouncedDate: z.iso.date().or(z.literal('')).optional(),
-	firstReachedOutDate: z.iso.date().or(z.literal('')).optional(),
-	notes: z.string().optional()
-});
+export const leadFormSchema = z
+	.object({
+		name: z.string().trim().min(1, 'Page / organizer name is required'),
+		category: z.enum(LEAD_CATEGORIES).default('Other'),
+		platform: z.enum(LEAD_PLATFORMS).optional(),
+		location: z.string().optional(),
+		pageUrl: z.string().url().optional().or(z.literal('')),
+		contactEmail: z.string().email().optional().or(z.literal('')),
+		eventName: z.string().optional(),
+		eventLink: z.string().url().optional().or(z.literal('')),
+		eventDateRaw: z.string().optional(),
+		firstAnnouncedDate: z.iso.date().or(z.literal('')).optional(),
+		firstReachedOutDate: z.iso.date().or(z.literal('')).optional(),
+		notes: z.string().optional(),
+		visibility: z.enum(LEAD_VISIBILITIES).default('everyone'),
+		selectedUserIds: z.array(z.string().regex(LOOSE_UUID_RE)).optional()
+	})
+	.refine((d) => d.visibility !== 'selected' || (d.selectedUserIds?.length ?? 0) > 0, {
+		message: 'Pick at least one teammate when visibility is "Selected people".',
+		path: ['selectedUserIds']
+	});
 export type LeadForm = z.infer<typeof leadFormSchema>;
 
 // --- Update an existing lead (PATCH) ---------------------------------------
-export const leadUpdateSchema = z.object({
-	name: z.string().trim().min(1, 'Page / organizer name is required'),
-	category: z.enum(LEAD_CATEGORIES),
-	platform: z.enum(LEAD_PLATFORMS).optional(),
-	location: z.string().optional(),
-	pageUrl: z.string().url().optional().or(z.literal('')),
-	contactEmail: z.string().email().optional().or(z.literal('')),
-	phone: z.string().optional(),
-	socialFacebook: z.string().url().optional().or(z.literal('')),
-	socialInstagram: z.string().url().optional().or(z.literal('')),
-	eventName: z.string().optional(),
-	eventDate: z
-		.string()
-		.regex(/^\d{4}-\d{2}-\d{2}$/, 'eventDate must be YYYY-MM-DD')
-		.optional(),
-	eventDateRaw: z.string().optional(),
-	eventLink: z.string().url().optional().or(z.literal('')),
-	firstAnnouncedDate: z
-		.union([z.iso.date(), z.literal(''), z.null()])
-		.optional()
-		.transform((v) => (v === '' ? null : v)),
-	firstReachedOutDate: z
-		.union([z.iso.date(), z.literal(''), z.null()])
-		.optional()
-		.transform((v) => (v === '' ? null : v)),
-	notes: z.string().optional()
-});
+export const leadUpdateSchema = z
+	.object({
+		name: z.string().trim().min(1, 'Page / organizer name is required'),
+		category: z.enum(LEAD_CATEGORIES),
+		platform: z.enum(LEAD_PLATFORMS).optional(),
+		location: z.string().optional(),
+		pageUrl: z.string().url().optional().or(z.literal('')),
+		contactEmail: z.string().email().optional().or(z.literal('')),
+		phone: z.string().optional(),
+		socialFacebook: z.string().url().optional().or(z.literal('')),
+		socialInstagram: z.string().url().optional().or(z.literal('')),
+		eventName: z.string().optional(),
+		eventDate: z
+			.string()
+			.regex(/^\d{4}-\d{2}-\d{2}$/, 'eventDate must be YYYY-MM-DD')
+			.optional(),
+		eventDateRaw: z.string().optional(),
+		eventLink: z.string().url().optional().or(z.literal('')),
+		firstAnnouncedDate: z
+			.union([z.iso.date(), z.literal(''), z.null()])
+			.optional()
+			.transform((v) => (v === '' ? null : v)),
+		firstReachedOutDate: z
+			.union([z.iso.date(), z.literal(''), z.null()])
+			.optional()
+			.transform((v) => (v === '' ? null : v)),
+		notes: z.string().optional(),
+		visibility: z.enum(LEAD_VISIBILITIES).default('everyone'),
+		selectedUserIds: z.array(z.string().regex(LOOSE_UUID_RE)).optional()
+	})
+	.refine((d) => d.visibility !== 'selected' || (d.selectedUserIds?.length ?? 0) > 0, {
+		message: 'Pick at least one teammate when visibility is "Selected people".',
+		path: ['selectedUserIds']
+	});
 export type LeadUpdate = z.infer<typeof leadUpdateSchema>;
 
 // --- Log a touch (activity) -----------------------------------------------

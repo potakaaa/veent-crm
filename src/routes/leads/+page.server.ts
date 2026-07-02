@@ -42,6 +42,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	const [result, users, countries] = await Promise.all([
 		listLeadsFiltered({
 			userId: locals.user.id,
+			role: locals.user.role,
 			segment,
 			stage: stage || undefined,
 			platform: platform || undefined,

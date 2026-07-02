@@ -3,7 +3,13 @@
  * All public functions run queries; pure mapper helpers are exported for testing.
  */
 import { db } from './index';
-import { crmLeads, crmUsers, crmActivities, crmLeadHistory } from './schema';
+import {
+	crmLeads,
+	crmUsers,
+	crmActivities,
+	crmLeadHistory,
+	crmLeadVisibilityGrants
+} from './schema';
 import {
 	eq,
 	isNull,
@@ -16,6 +22,7 @@ import {
 	inArray,
 	ilike,
 	count,
+	exists,
 	sql,
 	type SQL
 } from 'drizzle-orm';
@@ -28,7 +35,9 @@ import type {
 	LostReason,
 	MoveStagePayload,
 	ActivityChannel,
-	ActivityOutcome
+	ActivityOutcome,
+	Role,
+	Visibility
 } from '$lib/types';
 import { computeAge } from '$lib/utils/dates';
 
@@ -81,6 +90,7 @@ export function dbRowToLead(row: DbLead, followUpAt?: string | Date | null): Lea
 		platform: (row.platform ?? 'Other') as Lead['platform'],
 		stage: row.stage as Stage,
 		ownerId: row.ownerId,
+		visibility: row.visibility as Visibility,
 		eventName: row.eventName ?? undefined,
 		eventDate: row.eventDate ?? undefined,
 		eventLink: row.eventLink ?? undefined,
@@ -164,14 +174,51 @@ export function resolveFollowUpAt(
 }
 
 // ---------------------------------------------------------------------------
+// Visibility scoping (GitHub #87)
+// ---------------------------------------------------------------------------
+
+/**
+ * Single shared row-visibility predicate, pushed into every rep-facing read.
+ *
+ * Manager → a no-op TRUE (`sql`true``), so callers can push it unconditionally and the
+ * manager override lives in exactly one place. A rep sees a lead only when ANY of:
+ *   - they own it,
+ *   - its visibility is `everyone`,
+ *   - it is unowned ("up for grabs" — always visible per SPEC), or
+ *   - they hold an explicit grant row (visibility = `selected`).
+ *
+ * A missed wiring on any read surface is a silent privacy leak, so this is the ONLY
+ * place the rule is expressed — never duplicate it inline at a call site.
+ */
+export function visibilityCondition(userId: string, role: Role): SQL {
+	if (role === 'manager') return sql`true`;
+	return or(
+		eq(crmLeads.ownerId, userId),
+		eq(crmLeads.visibility, 'everyone'),
+		isNull(crmLeads.ownerId),
+		exists(
+			db
+				.select({ one: sql`1` })
+				.from(crmLeadVisibilityGrants)
+				.where(
+					and(
+						eq(crmLeadVisibilityGrants.leadId, crmLeads.id),
+						eq(crmLeadVisibilityGrants.userId, userId)
+					)
+				)
+		)
+	) as SQL;
+}
+
+// ---------------------------------------------------------------------------
 // Queries
 // ---------------------------------------------------------------------------
 
-export async function listLeads(): Promise<Lead[]> {
+export async function listLeads(userId: string, role: Role): Promise<Lead[]> {
 	const rows = await db
 		.select()
 		.from(crmLeads)
-		.where(isNull(crmLeads.deletedAt))
+		.where(and(isNull(crmLeads.deletedAt), visibilityCondition(userId, role)))
 		.orderBy(
 			// Leads with upcoming events float to the top, soonest first.
 			// Leads with no future event fall back to last-activity order.
@@ -184,6 +231,9 @@ export async function listLeads(): Promise<Lead[]> {
 
 const PIPELINE_STAGES = ['new', 'contacted', 'replied', 'in_discussion', 'won'] as const;
 
+// DO NOT wire visibilityCondition here (manager-only surface — E2, GitHub #87).
+// Its sole caller is /team (+page.server.ts), which is manager-gated (error 403 for
+// non-managers). No rep-facing route calls this, so scoping it would be dead code.
 export async function listPipelineLeads(): Promise<{ leads: Lead[]; lostCount: number }> {
 	const eventOrder = [
 		sql`CASE WHEN ${crmLeads.eventDate} >= CURRENT_DATE THEN 0 ELSE 1 END`,
@@ -224,6 +274,7 @@ type LeadsSortCol = (typeof LEADS_SORT_COLS)[number];
 
 export interface ListLeadsParams {
 	userId: string;
+	role: Role;
 	segment?: 'mine' | 'all' | 'unassigned' | 'lost';
 	stage?: string;
 	platform?: string;
@@ -248,6 +299,7 @@ export async function listLeadsFiltered(
 ): Promise<{ leads: Lead[]; total: number }> {
 	const {
 		userId,
+		role,
 		segment = 'mine',
 		stage,
 		platform,
@@ -264,7 +316,7 @@ export async function listLeadsFiltered(
 
 	const offset = (Math.max(1, page) - 1) * pageSize;
 
-	const conditions: SQL[] = [isNull(crmLeads.deletedAt) as SQL];
+	const conditions: SQL[] = [isNull(crmLeads.deletedAt) as SQL, visibilityCondition(userId, role)];
 
 	// Segment
 	if (segment === 'mine') conditions.push(eq(crmLeads.ownerId, userId));
@@ -360,11 +412,15 @@ export async function listLeadsFiltered(
 	};
 }
 
-export async function getLead(id: string): Promise<Lead | null> {
+/**
+ * Single-record read, visibility-scoped (GitHub #87). A lead the caller may not see
+ * returns `null` — the caller renders a 404, never a redacted view or a 403 (AC#8).
+ */
+export async function getLead(id: string, userId: string, role: Role): Promise<Lead | null> {
 	const [row] = await db
 		.select()
 		.from(crmLeads)
-		.where(and(eq(crmLeads.id, id), isNull(crmLeads.deletedAt)))
+		.where(and(eq(crmLeads.id, id), isNull(crmLeads.deletedAt), visibilityCondition(userId, role)))
 		.limit(1);
 	return row ? dbRowToLead(row) : null;
 }
@@ -383,6 +439,9 @@ const UNASSIGNED_COL_MAP = {
  * and not in a terminal (won/lost) stage. Shared so the country-options helper and the
  * list query stay in scope-parity — if this predicate changes, both callers change together.
  */
+// NOTE (GitHub #87): the Up-for-Grabs surface is visibility-EXEMPT. Unowned leads are
+// always visible to every rep (SPEC), so visibilityCondition is intentionally NOT applied
+// to unassignedBaseConditions, listUnassignedLeads, or getUnassignedLeadCountries.
 const unassignedBaseConditions = (): SQL[] => [
 	isNull(crmLeads.ownerId) as SQL,
 	isNull(crmLeads.deletedAt) as SQL,
@@ -468,7 +527,8 @@ export async function claimLead(id: string, userId: string): Promise<Lead | null
 	return db.transaction(async (tx) => {
 		const [row] = await tx
 			.update(crmLeads)
-			.set({ ownerId: userId, updatedAt: now })
+			// Owner change resets visibility to `everyone` (SPEC AC#13).
+			.set({ ownerId: userId, visibility: 'everyone', updatedAt: now })
 			.where(
 				and(
 					eq(crmLeads.id, id),
@@ -480,6 +540,7 @@ export async function claimLead(id: string, userId: string): Promise<Lead | null
 			)
 			.returning();
 		if (!row) return null;
+		await tx.delete(crmLeadVisibilityGrants).where(eq(crmLeadVisibilityGrants.leadId, id));
 		await tx.insert(crmLeadHistory).values({
 			leadId: id,
 			actorUserId: userId,
@@ -496,7 +557,8 @@ export async function unclaimLead(id: string, userId: string): Promise<Lead | nu
 	return db.transaction(async (tx) => {
 		const [row] = await tx
 			.update(crmLeads)
-			.set({ ownerId: null, updatedAt: now })
+			// Owner change (→ unowned) resets visibility to `everyone` (SPEC AC#13).
+			.set({ ownerId: null, visibility: 'everyone', updatedAt: now })
 			.where(
 				and(
 					eq(crmLeads.id, id),
@@ -508,6 +570,7 @@ export async function unclaimLead(id: string, userId: string): Promise<Lead | nu
 			)
 			.returning();
 		if (!row) return null;
+		await tx.delete(crmLeadVisibilityGrants).where(eq(crmLeadVisibilityGrants.leadId, id));
 		await tx.insert(crmLeadHistory).values({
 			leadId: id,
 			actorUserId: userId,
@@ -517,6 +580,20 @@ export async function unclaimLead(id: string, userId: string): Promise<Lead | nu
 		});
 		return dbRowToLead(row);
 	});
+}
+
+/**
+ * User ids explicitly granted access to a `selected`-visibility lead. Non-null grantee
+ * rows only (a user-delete nulls the fk). Used to pre-fill the detail-edit multi-select.
+ */
+export async function getLeadVisibilityGrants(leadId: string): Promise<string[]> {
+	const rows = await db
+		.select({ userId: crmLeadVisibilityGrants.userId })
+		.from(crmLeadVisibilityGrants)
+		.where(
+			and(eq(crmLeadVisibilityGrants.leadId, leadId), isNotNull(crmLeadVisibilityGrants.userId))
+		);
+	return rows.map((r) => r.userId as string);
 }
 
 export async function listUsers(): Promise<User[]> {
@@ -541,9 +618,15 @@ export async function listActivities(leadId: string): Promise<Activity[]> {
 export async function listPipelineStage(
 	stage: Stage,
 	page: number = 1,
-	limit: number = 10
+	limit: number = 10,
+	userId: string,
+	role: Role
 ): Promise<{ leads: Lead[]; total: number }> {
-	const where = and(isNull(crmLeads.deletedAt), sql`${crmLeads.stage} = ${stage}`);
+	const where = and(
+		isNull(crmLeads.deletedAt),
+		sql`${crmLeads.stage} = ${stage}`,
+		visibilityCondition(userId, role)
+	);
 	const eventOrder = [
 		sql`CASE WHEN ${crmLeads.eventDate} >= CURRENT_DATE THEN 0 ELSE 1 END`,
 		sql`CASE WHEN ${crmLeads.eventDate} >= CURRENT_DATE THEN ${crmLeads.eventDate} END ASC NULLS LAST`,
@@ -582,6 +665,8 @@ export async function createLead(
 		firstAnnouncedDate?: string;
 		firstReachedOutDate?: string;
 		notes?: string;
+		visibility?: Visibility;
+		selectedUserIds?: string[];
 	},
 	ownerId: string
 ): Promise<Lead> {
@@ -592,29 +677,43 @@ export async function createLead(
 			.replace(/\s+/g, '')
 			.replace(/[^a-z0-9@]/g, '');
 
-	const [row] = await db
-		.insert(crmLeads)
-		.values({
-			name: input.name,
-			category: input.category,
-			platform: input.platform ?? null,
-			location: input.location ?? null,
-			pageUrl: input.pageUrl ?? null,
-			contactEmail: input.contactEmail ?? null,
-			eventName: input.eventName ?? null,
-			eventLink: input.eventLink ?? null,
-			eventDateRaw: input.eventDateRaw ?? null,
-			firstAnnouncedDate: input.firstAnnouncedDate ?? null,
-			firstReachedOutDate: input.firstReachedOutDate ?? null,
-			notes: input.notes ?? null,
-			normalizedHandle,
-			ownerId,
-			source: 'manual',
-			stage: 'new'
-		})
-		.returning();
+	const visibility: Visibility = input.visibility ?? 'everyone';
+	// Only persist grants for the `selected` scope; ignore any strays for other scopes.
+	const grantIds = visibility === 'selected' ? (input.selectedUserIds ?? []) : [];
 
-	return dbRowToLead(row);
+	return db.transaction(async (tx) => {
+		const [row] = await tx
+			.insert(crmLeads)
+			.values({
+				name: input.name,
+				category: input.category,
+				platform: input.platform ?? null,
+				location: input.location ?? null,
+				pageUrl: input.pageUrl ?? null,
+				contactEmail: input.contactEmail ?? null,
+				eventName: input.eventName ?? null,
+				eventLink: input.eventLink ?? null,
+				eventDateRaw: input.eventDateRaw ?? null,
+				firstAnnouncedDate: input.firstAnnouncedDate ?? null,
+				firstReachedOutDate: input.firstReachedOutDate ?? null,
+				notes: input.notes ?? null,
+				normalizedHandle,
+				ownerId,
+				visibility,
+				source: 'manual',
+				stage: 'new'
+			})
+			.returning();
+
+		if (grantIds.length > 0) {
+			await tx
+				.insert(crmLeadVisibilityGrants)
+				.values(grantIds.map((userId) => ({ leadId: row.id, userId })))
+				.onConflictDoNothing();
+		}
+
+		return dbRowToLead(row);
+	});
 }
 
 export async function updateLead(
@@ -636,6 +735,8 @@ export async function updateLead(
 		firstAnnouncedDate?: string | null;
 		firstReachedOutDate?: string | null;
 		notes?: string;
+		visibility?: Visibility;
+		selectedUserIds?: string[];
 	},
 	actorId: string
 ): Promise<Lead | null> {
@@ -656,6 +757,7 @@ export async function updateLead(
 				.replace(/[^a-z0-9@]/g, '');
 
 		const now = new Date();
+		const newVisibility: Visibility = input.visibility ?? (existing.visibility as Visibility);
 		const [updated] = await tx
 			.update(crmLeads)
 			.set({
@@ -676,6 +778,7 @@ export async function updateLead(
 				firstAnnouncedDate: input.firstAnnouncedDate ?? null,
 				firstReachedOutDate: input.firstReachedOutDate ?? null,
 				notes: input.notes ?? null,
+				visibility: newVisibility,
 				updatedAt: now
 			})
 			.where(and(eq(crmLeads.id, id), isNull(crmLeads.deletedAt)))
@@ -707,7 +810,8 @@ export async function updateLead(
 				existing.firstReachedOutDate ?? null,
 				updated.firstReachedOutDate ?? null
 			],
-			['notes', existing.notes ?? null, updated.notes ?? null]
+			['notes', existing.notes ?? null, updated.notes ?? null],
+			['visibility', existing.visibility, updated.visibility]
 		];
 
 		const changed = tracked.filter(([, oldVal, newVal]) => oldVal !== newVal);
@@ -721,6 +825,21 @@ export async function updateLead(
 					newValue
 				}))
 			);
+		}
+
+		// Grant reconciliation: `selected` → replace the grant set; any other scope → clear
+		// grants so no stale grantee rows linger under a setting that no longer references them.
+		if (newVisibility === 'selected') {
+			await tx.delete(crmLeadVisibilityGrants).where(eq(crmLeadVisibilityGrants.leadId, id));
+			const grantIds = input.selectedUserIds ?? [];
+			if (grantIds.length > 0) {
+				await tx
+					.insert(crmLeadVisibilityGrants)
+					.values(grantIds.map((userId) => ({ leadId: id, userId })))
+					.onConflictDoNothing();
+			}
+		} else {
+			await tx.delete(crmLeadVisibilityGrants).where(eq(crmLeadVisibilityGrants.leadId, id));
 		}
 
 		return dbRowToLead(updated);
@@ -931,11 +1050,14 @@ export async function reassignLead(
 	const updated = await db.transaction(async (tx) => {
 		const rows = await tx
 			.update(crmLeads)
-			.set({ ownerId, updatedAt: now })
+			// Owner change resets visibility to `everyone` (SPEC AC#13).
+			.set({ ownerId, visibility: 'everyone', updatedAt: now })
 			.where(and(eq(crmLeads.id, id), isNull(crmLeads.deletedAt)))
 			.returning();
 
 		if (rows.length === 0) return null;
+
+		await tx.delete(crmLeadVisibilityGrants).where(eq(crmLeadVisibilityGrants.leadId, id));
 
 		await tx.insert(crmLeadHistory).values({
 			leadId: id,
@@ -961,7 +1083,10 @@ export async function reassignLead(
  * latest follow-up date from activities so urgency is computed correctly.
  * The caller (Today page) filters by urgency bucket.
  */
-export async function getTodayQueue(userId: string): Promise<Lead[]> {
+export async function getTodayQueue(userId: string, role: Role = 'rep'): Promise<Lead[]> {
+	// Already owner-scoped (ownerId = userId), so visibilityCondition is defensive/no-op
+	// here — every returned row is owned by the caller and thus always visible. Wired
+	// anyway to keep all rep-facing read surfaces uniformly guarded (GitHub #87, E3).
 	const rows = await db
 		.select()
 		.from(crmLeads)
@@ -970,7 +1095,8 @@ export async function getTodayQueue(userId: string): Promise<Lead[]> {
 				isNull(crmLeads.deletedAt),
 				eq(crmLeads.ownerId, userId),
 				ne(crmLeads.stage, 'won'),
-				ne(crmLeads.stage, 'lost')
+				ne(crmLeads.stage, 'lost'),
+				visibilityCondition(userId, role)
 			)
 		)
 		.orderBy(desc(sql`coalesce(${crmLeads.lastActivityAt}, ${crmLeads.createdAt})`));
@@ -1073,10 +1199,14 @@ export async function logLeadTouch(
 // ---------------------------------------------------------------------------
 
 export async function getNavCounts(
-	userId: string
+	userId: string,
+	role: Role = 'rep'
 ): Promise<{ overdue: number; unassigned: number }> {
+	// Overdue count flows through getTodayQueue (owner-scoped + visibility-guarded). The
+	// unassigned sub-count is visibility-EXEMPT (unowned leads always visible — SPEC), so
+	// visibilityCondition is intentionally NOT applied to it (E3).
 	const [todayLeads, [unassignedRow]] = await Promise.all([
-		getTodayQueue(userId),
+		getTodayQueue(userId, role),
 		db
 			.select({ count: sql<number>`COUNT(*)` })
 			.from(crmLeads)
@@ -1110,9 +1240,10 @@ export async function getNavCounts(
  * Cold threshold mirrors computeAge: idle > 30 days without a booked follow-up.
  */
 export async function getRemindersQueue(
-	userId: string
+	userId: string,
+	role: Role = 'rep'
 ): Promise<{ overdue: Lead[]; cold: Lead[] }> {
-	const queue = await getTodayQueue(userId);
+	const queue = await getTodayQueue(userId, role);
 
 	const overdue = queue
 		.filter((l) => l.urgency === 'overdue')

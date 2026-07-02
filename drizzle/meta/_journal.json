@@ -92,6 +92,13 @@
       "when": 1782887482061,
       "tag": "0012_lethal_caretaker",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1782952269385,
+      "tag": "0013_nasty_master_mold",
+      "breakpoints": true
     }
   ]
 }

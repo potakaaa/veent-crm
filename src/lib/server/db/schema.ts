@@ -66,6 +66,10 @@ export const lostReason = pgEnum('crm_lost_reason', ['no_response', 'rejected', 
 
 export const leadSource = pgEnum('crm_lead_source', ['sheet_import', 'manual', 'scraper', 'other']);
 
+// Per-lead visibility scope (GitHub #87). `everyone` is the default and the migration
+// backfills all existing rows to it, so the change never reduces visibility for anyone.
+export const leadVisibility = pgEnum('crm_lead_visibility', ['only_me', 'everyone', 'selected']);
+
 export const activityChannel = pgEnum('crm_activity_channel', [
 	'fb_dm',
 	'fb_comment',
@@ -147,6 +151,10 @@ export const crmLeads = pgTable(
 
 		// null = unassigned "up for grabs"; claim = atomic conditional update
 		ownerId: uuid('owner_id').references(() => crmUsers.id, { onDelete: 'set null' }),
+
+		// Per-lead visibility scope (GitHub #87). Enforced on every rep-facing read via
+		// visibilityCondition(); managers always bypass it. Reset to 'everyone' on owner change.
+		visibility: leadVisibility('visibility').notNull().default('everyone'),
 
 		source: leadSource('source').notNull().default('manual'),
 
@@ -294,6 +302,24 @@ export const crmMeetingAttendees = pgTable(
 );
 
 // ---------------------------------------------------------------------------
+// crm_lead_visibility_grants — join of crm_users to a `selected`-visibility lead.
+// Mirrors crm_meeting_attendees exactly: one row per (lead, granted user), no dups.
+// A grant lets the named rep see a lead they wouldn't otherwise (GitHub #87).
+// ---------------------------------------------------------------------------
+export const crmLeadVisibilityGrants = pgTable(
+	'crm_lead_visibility_grants',
+	{
+		id: uuid('id').primaryKey().defaultRandom(),
+		leadId: uuid('lead_id')
+			.notNull()
+			.references(() => crmLeads.id, { onDelete: 'cascade' }),
+		userId: uuid('user_id').references(() => crmUsers.id, { onDelete: 'set null' }),
+		createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow()
+	},
+	(t) => [uniqueIndex('crm_lead_visibility_grants_lead_user_uq').on(t.leadId, t.userId)]
+);
+
+// ---------------------------------------------------------------------------
 // Better Auth tables (managed by drizzle-kit)
 // ---------------------------------------------------------------------------
 export const baUser = pgTable('user', {
@@ -357,3 +383,4 @@ export type CrmActivity = typeof crmActivities.$inferSelect;
 export type CrmLeadHistory = typeof crmLeadHistory.$inferSelect;
 export type CrmMeeting = typeof crmMeetings.$inferSelect;
 export type CrmMeetingAttendee = typeof crmMeetingAttendees.$inferSelect;
+export type CrmLeadVisibilityGrant = typeof crmLeadVisibilityGrants.$inferSelect;

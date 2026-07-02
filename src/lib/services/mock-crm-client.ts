@@ -128,6 +128,7 @@ class MockCrmClient implements CrmClient {
 			platform: input.platform ?? 'Other',
 			stage: 'new',
 			ownerId: currentUserId,
+			visibility: input.visibility ?? 'everyone',
 			eventName: input.eventName,
 			eventDate: input.eventDate,
 			email: input.email,

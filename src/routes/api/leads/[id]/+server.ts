@@ -20,7 +20,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 		throw error(400, msg);
 	}
 
-	const existing = await getLead(params.id);
+	const existing = await getLead(params.id, locals.user.id, locals.user.role);
 	if (!existing) throw error(404, 'Lead not found');
 
 	const me = {
@@ -53,7 +53,9 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 				data.firstAnnouncedDate === undefined ? undefined : (data.firstAnnouncedDate ?? null),
 			firstReachedOutDate:
 				data.firstReachedOutDate === undefined ? undefined : (data.firstReachedOutDate ?? null),
-			notes: data.notes || undefined
+			notes: data.notes || undefined,
+			visibility: data.visibility,
+			selectedUserIds: data.selectedUserIds
 		},
 		locals.user.id
 	);

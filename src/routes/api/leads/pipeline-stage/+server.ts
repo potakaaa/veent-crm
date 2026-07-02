@@ -17,6 +17,12 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		50,
 		Math.max(1, parseInt(url.searchParams.get('limit') ?? '10', 10) || 10)
 	);
-	const result = await listPipelineStage(stage as BoardStage as Stage, page, limit);
+	const result = await listPipelineStage(
+		stage as BoardStage as Stage,
+		page,
+		limit,
+		locals.user.id,
+		locals.user.role
+	);
 	return json(result);
 };

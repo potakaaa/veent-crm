@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { page } from '$app/state';
+	import { page, navigating } from '$app/state';
 	import { goto } from '$app/navigation';
 	import Icon, { type IconName } from '$lib/components/shared/Icon.svelte';
 	import { authClient } from '$lib/auth-client';
@@ -55,7 +55,7 @@
 	]);
 
 	const isActive = (href: string) => {
-		const p = page.url.pathname;
+		const p = navigating.to?.url.pathname ?? page.url.pathname;
 		if (href === '/') return p === '/';
 		if (href === '/leads') return p === '/leads' || p.startsWith('/leads/');
 		return p.startsWith(href);

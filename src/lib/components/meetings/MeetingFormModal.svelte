@@ -5,6 +5,7 @@
 	import { Button } from '$lib/components/ui/button';
 	import { Textarea } from '$lib/components/ui/textarea';
 	import { Select, SelectTrigger, SelectContent, SelectItem } from '$lib/components/ui/select';
+	import { FieldError, fieldErrorAttrs } from '$lib/components/ui/field-error';
 	import type { Meeting, User } from '$lib/types';
 
 	export interface MeetingFormPayload {
@@ -56,12 +57,16 @@
 	let notes = $state('');
 	let outcome = $state('');
 	let attendeeIds = $state<string[]>([]);
-	let errorMsg = $state('');
+	// This modal has NO Zod schema (hand-rolled checks). Field keys are assigned
+	// manually per check — `leadId` and `startAt` map to the two validated controls.
+	// The Attendees chip-group (E4) has no natural id/for single-field pairing and
+	// currently has no validation rule, so it takes no field-error key.
+	let fieldErrors = $state<Record<string, string | undefined>>({});
 
 	// Re-seed the form whenever it opens (create → blank; edit → prefilled).
 	$effect(() => {
 		if (!open) return;
-		errorMsg = '';
+		fieldErrors = {};
 		selectedLeadId = meeting?.leadId ?? leadId ?? '';
 		startLocal = toLocalInput(meeting?.startAt);
 		organizerId = meeting?.organizerId ?? '';
@@ -81,19 +86,19 @@
 	}
 
 	function submit() {
-		errorMsg = '';
+		fieldErrors = {};
 		const effectiveLeadId = leadId ?? selectedLeadId;
 		if (!effectiveLeadId) {
-			errorMsg = 'Pick a lead for this meeting.';
+			fieldErrors = { leadId: 'Pick a lead for this meeting.' };
 			return;
 		}
 		if (!startLocal) {
-			errorMsg = 'Set a date and time.';
+			fieldErrors = { startAt: 'Set a date and time.' };
 			return;
 		}
 		const startAt = new Date(startLocal);
 		if (isNaN(startAt.getTime())) {
-			errorMsg = 'Invalid date/time.';
+			fieldErrors = { startAt: 'Invalid date/time.' };
 			return;
 		}
 		onsubmit({
@@ -121,7 +126,11 @@
 		<div class="mb-3.5 grid gap-1.5">
 			<Label for="mtg-lead">Lead</Label>
 			<Select type="single" bind:value={selectedLeadId}>
-				<SelectTrigger id="mtg-lead" class="w-full">
+				<SelectTrigger
+					id="mtg-lead"
+					class="w-full"
+					{...fieldErrorAttrs('mtg-lead', fieldErrors.leadId)}
+				>
 					{leads.find((l) => l.id === selectedLeadId)?.name ?? 'Select a lead'}
 				</SelectTrigger>
 				<SelectContent>
@@ -130,12 +139,20 @@
 					{/each}
 				</SelectContent>
 			</Select>
+			<FieldError id="mtg-lead" errors={fieldErrors.leadId} />
 		</div>
 	{/if}
 
 	<div class="mb-3.5 grid gap-1.5">
 		<Label for="mtg-start">Date &amp; time</Label>
-		<Input id="mtg-start" type="datetime-local" bind:value={startLocal} class="font-mono" />
+		<Input
+			id="mtg-start"
+			type="datetime-local"
+			bind:value={startLocal}
+			class="font-mono"
+			{...fieldErrorAttrs('mtg-start', fieldErrors.startAt)}
+		/>
+		<FieldError id="mtg-start" errors={fieldErrors.startAt} />
 	</div>
 
 	<div class="mb-3.5 grid gap-1.5">
@@ -188,10 +205,6 @@
 		<Label for="mtg-notes">Notes</Label>
 		<Textarea id="mtg-notes" bind:value={notes} class="min-h-16 resize-y" />
 	</div>
-
-	{#if errorMsg}
-		<div class="mt-3 text-[12px] text-red-500">{errorMsg}</div>
-	{/if}
 
 	{#snippet footer()}
 		<Button variant="outline" class="flex-1" onclick={onclose} disabled={saving}>Cancel</Button>

@@ -8,7 +8,6 @@
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
 	import { Textarea } from '$lib/components/ui/textarea';
-	import { Badge } from '$lib/components/ui/badge';
 	import { Select, SelectTrigger, SelectContent, SelectItem } from '$lib/components/ui/select';
 	import { toasts } from '$lib/stores/toasts.svelte';
 	import { isManager } from '$lib/utils/permissions';
@@ -178,17 +177,14 @@
 		<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
 			{#each data.templates as t (t.id)}
 				{@const accent = categoryColor(t.category)}
-				<Card
-					class="flex flex-col gap-3 rounded-control p-4"
-					style="box-shadow: inset 3px 0 0 {accent}, 0 1px 2px rgba(26, 23, 28, 0.05)"
-				>
-					<Badge
-						variant="outline"
-						class="w-fit font-mono text-[11px]"
-						style="color:{accent};background:color-mix(in srgb, {accent} 12%, white);border-color:transparent"
-					>
+				<Card class="flex flex-col gap-3 rounded-control p-4">
+					<div class="flex w-fit items-center gap-1.5 font-mono text-[11px] text-ink-500">
+						<span
+							class="inline-block size-[7px] shrink-0 rounded-full"
+							style="background-color:{accent}"
+						></span>
 						{t.category}
-					</Badge>
+					</div>
 					<div class="text-[13px] font-semibold text-ink-600">{t.title}</div>
 					<p class="line-clamp-3 text-[12.5px] text-ink-500">{t.body}</p>
 					{#if canManage}
@@ -207,19 +203,16 @@
 				{@const accent = categoryColor(cat)}
 				<section>
 					<div class="mb-2 flex items-center gap-2">
-						<Badge
-							variant="outline"
-							class="font-mono text-[11px]"
-							style="color:{accent};background:color-mix(in srgb, {accent} 12%, white);border-color:transparent"
-						>
+						<div class="flex items-center gap-1.5 font-mono text-[11px] text-ink-500">
+							<span
+								class="inline-block size-[7px] shrink-0 rounded-full"
+								style="background-color:{accent}"
+							></span>
 							{cat}
-						</Badge>
+						</div>
 						<span class="text-[12px] text-ink-300">{items.length}</span>
 					</div>
-					<Card
-						class="gap-0 overflow-hidden rounded-control py-0"
-						style="box-shadow: inset 3px 0 0 {accent}, 0 1px 2px rgba(26, 23, 28, 0.05)"
-					>
+					<Card class="gap-0 overflow-hidden rounded-control py-0">
 						{#each items as t (t.id)}
 							<div
 								class="flex items-start justify-between gap-4 border-b border-border px-4 py-3 last:border-b-0"

@@ -45,12 +45,12 @@
 		},
 		{ href: '/reminders', label: 'Reminders', icon: 'reminders' },
 		{ href: '/calendar', label: 'Calendar', icon: 'calendarDays' },
-		{ href: '/meetings', label: 'Meetings', icon: 'calendar' }
+		{ href: '/meetings', label: 'Meetings', icon: 'calendar' },
+		{ href: '/templates', label: 'Templates', icon: 'reply' }
 	]);
 	const manager: NavItem[] = $derived([
 		{ href: '/reports', label: 'Reports', icon: 'reports' },
-		{ href: '/team', label: 'Team', icon: 'team' },
-		{ href: '/templates', label: 'Templates', icon: 'reply' }
+		{ href: '/team', label: 'Team', icon: 'team' }
 	]);
 
 	const isActive = (href: string) => {

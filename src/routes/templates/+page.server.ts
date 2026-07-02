@@ -3,7 +3,8 @@ import { error } from '@sveltejs/kit';
 import { listTemplates } from '$lib/server/db/templates';
 import { sessionToUser } from '$lib/server/db/users';
 
-// Manager-only: outreach message template management. Mirrors /team's guard.
+// All authenticated users can view templates (reps read-only; managers can add/edit/delete).
+// Write actions are gated in /api/templates.
 //
 // NOTE: the create/edit form uses the same client-side `templateFormSchema.safeParse`
 // + `fetch('/api/templates')` idiom as /team's Add-a-rep form (the mature repo pattern
@@ -13,8 +14,8 @@ import { sessionToUser } from '$lib/server/db/users';
 // broken typebox transitive dep. Validation still happens twice — client safeParse and
 // server-side `templateFormSchema` in /api/templates.
 export const load: PageServerLoad = async ({ locals }) => {
-	if (locals.user?.role !== 'manager') {
-		error(403, 'Manager only');
+	if (!locals.user) {
+		error(401, 'Unauthorized');
 	}
 
 	const templates = await listTemplates();

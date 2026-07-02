@@ -36,11 +36,14 @@
 </script>
 
 <Dialog {open} {onOpenChange}>
-	<DialogContent class="gap-0 overflow-hidden p-0" style="max-width:{width}px">
+	<DialogContent
+		class="flex max-h-[90vh] flex-col gap-0 overflow-hidden p-0"
+		style="max-width:{width}px"
+	>
 		<div
 			class={tone === 'success'
-				? 'bg-fresh px-[22px] py-[18px] text-white'
-				: 'border-b border-border px-[22px] py-[18px]'}
+				? 'shrink-0 bg-fresh px-[22px] py-[18px] text-white'
+				: 'shrink-0 border-b border-border px-[22px] py-[18px]'}
 		>
 			<DialogTitle class={tone === 'success' ? 'text-white' : 'text-ink'}>{title}</DialogTitle>
 			{#if subtitle}
@@ -50,12 +53,12 @@
 			{/if}
 		</div>
 
-		<div class="px-[22px] py-5">
+		<div class="flex-1 overflow-y-auto px-[22px] py-5">
 			{@render children()}
 		</div>
 
 		{#if footer}
-			<DialogFooter class="flex-row gap-2.5 px-[22px] pb-[22px]">
+			<DialogFooter class="shrink-0 flex-row gap-2.5 px-[22px] pb-[22px]">
 				{@render footer()}
 			</DialogFooter>
 		{/if}

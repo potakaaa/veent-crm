@@ -153,19 +153,21 @@
 
 	<div class="mb-3.5 grid gap-1.5">
 		<Label>Attendees</Label>
-		<div class="flex flex-wrap gap-1.5">
-			{#each activeUsers as u (u.id)}
-				{@const active = attendeeIds.includes(u.id)}
-				<button
-					type="button"
-					onclick={() => toggleAttendee(u.id)}
-					class="h-7 rounded-[7px] border px-2.5 text-[12px] {active
-						? 'border-primary bg-[rgba(192,54,44,0.08)] font-semibold text-primary'
-						: 'border-hairline bg-panel font-medium text-ink-600'}"
-				>
-					{u.name}
-				</button>
-			{/each}
+		<div class="max-h-32 overflow-y-auto rounded-[8px] border border-hairline bg-panel-subtle p-2">
+			<div class="flex flex-wrap gap-1.5">
+				{#each activeUsers as u (u.id)}
+					{@const active = attendeeIds.includes(u.id)}
+					<button
+						type="button"
+						onclick={() => toggleAttendee(u.id)}
+						class="h-7 rounded-[7px] border px-2.5 text-[12px] {active
+							? 'border-primary bg-[rgba(192,54,44,0.08)] font-semibold text-primary'
+							: 'border-hairline bg-panel font-medium text-ink-600'}"
+					>
+						{u.name}
+					</button>
+				{/each}
+			</div>
 		</div>
 	</div>
 

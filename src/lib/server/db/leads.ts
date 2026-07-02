@@ -280,8 +280,31 @@ export async function getLeadCountries(): Promise<string[]> {
 	return rows.map((r) => r.country as string);
 }
 
-const LEADS_SORT_COLS = ['name', 'event', 'stage', 'platform', 'lastActivity'] as const;
+const LEADS_SORT_COLS = ['name', 'event', 'stage', 'platform', 'lastActivity', 'appeal'] as const;
 type LeadsSortCol = (typeof LEADS_SORT_COLS)[number];
+
+/**
+ * SQL-authoritative Lead Appeal Score expression — mirrors computeAppealScore()
+ * (src/lib/appeal-score.ts) exactly, computed inline in the ORDER BY. NEVER persisted,
+ * no stored column. Both source columns are `date`, so Postgres integer date-subtraction
+ * matches the TS whole-day diff; CURRENT_DATE stands in for the `now` fallback when
+ * first_reached_out_date is null. NULL score (missing event/announce date) sorts last.
+ *
+ * early-mover  = clamp(50 - ((COALESCE(reachedOut, CURRENT_DATE) - announced) / 30) * 50, 0, 50)
+ * runway       = (event - CURRENT_DATE) <= 0 ? 0 : clamp(((event - CURRENT_DATE) / 60) * 50, 0, 50)
+ * score        = round(early-mover + runway), or NULL when event OR announced is missing
+ */
+const appealScoreExpr = sql`
+	CASE
+		WHEN ${crmLeads.eventDate} IS NULL OR ${crmLeads.firstAnnouncedDate} IS NULL THEN NULL
+		ELSE ROUND(
+			GREATEST(0, LEAST(50,
+				50 - ((COALESCE(${crmLeads.firstReachedOutDate}, CURRENT_DATE) - ${crmLeads.firstAnnouncedDate})::numeric / 30) * 50))
+			+
+			CASE WHEN (${crmLeads.eventDate} - CURRENT_DATE) <= 0 THEN 0
+				ELSE GREATEST(0, LEAST(50, ((${crmLeads.eventDate} - CURRENT_DATE)::numeric / 60) * 50)) END
+		)
+	END`;
 
 export interface ListLeadsParams {
 	userId: string;
@@ -383,7 +406,7 @@ export async function listLeadsFiltered(
 		name: crmLeads.name,
 		stage: crmLeads.stage,
 		platform: crmLeads.platform
-	} satisfies Record<Exclude<LeadsSortCol, 'event' | 'lastActivity'>, unknown>;
+	} satisfies Record<Exclude<LeadsSortCol, 'event' | 'lastActivity' | 'appeal'>, unknown>;
 
 	const validSort: LeadsSortCol =
 		sort && (LEADS_SORT_COLS as readonly string[]).includes(sort)
@@ -402,6 +425,11 @@ export async function listLeadsFiltered(
 			sortFn(sql`COALESCE(${crmLeads.lastActivityAt}, ${crmLeads.createdAt})`),
 			asc(crmLeads.id)
 		];
+	} else if (validSort === 'appeal') {
+		leadsOrder =
+			dir === 'asc'
+				? [sql`${appealScoreExpr} ASC NULLS LAST`, asc(crmLeads.id)]
+				: [sql`${appealScoreExpr} DESC NULLS LAST`, asc(crmLeads.id)];
 	} else {
 		leadsOrder = [sortFn(LEADS_COL_MAP[validSort]), asc(crmLeads.id)];
 	}
@@ -436,14 +464,14 @@ export async function getLead(id: string, userId: string, role: Role): Promise<L
 	return row ? dbRowToLead(row) : null;
 }
 
-const UNASSIGNED_SORT_COLS = ['name', 'event', 'stage', 'source'] as const;
+const UNASSIGNED_SORT_COLS = ['name', 'event', 'stage', 'source', 'appeal'] as const;
 type UnassignedSortCol = (typeof UNASSIGNED_SORT_COLS)[number];
 
 const UNASSIGNED_COL_MAP = {
 	name: crmLeads.name,
 	stage: crmLeads.stage,
 	source: crmLeads.source
-} satisfies Record<Exclude<UnassignedSortCol, 'event'>, unknown>;
+} satisfies Record<Exclude<UnassignedSortCol, 'event' | 'appeal'>, unknown>;
 
 /**
  * Base predicate for the Up for Grabs (unassigned) queue: unowned, not soft-deleted,
@@ -515,6 +543,11 @@ export async function listUnassignedLeads(
 			dir === 'asc'
 				? [sql`${crmLeads.eventDate} ASC NULLS LAST`, asc(crmLeads.id)]
 				: [sql`${crmLeads.eventDate} DESC NULLS LAST`, asc(crmLeads.id)];
+	} else if (validSort === 'appeal') {
+		order =
+			dir === 'asc'
+				? [sql`${appealScoreExpr} ASC NULLS LAST`, asc(crmLeads.id)]
+				: [sql`${appealScoreExpr} DESC NULLS LAST`, asc(crmLeads.id)];
 	} else {
 		order = [sortFn(UNASSIGNED_COL_MAP[validSort]), asc(crmLeads.id)];
 	}

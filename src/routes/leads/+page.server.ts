@@ -1,6 +1,7 @@
 import type { PageServerLoad } from './$types';
 import { error } from '@sveltejs/kit';
 import { listLeadsFiltered, listUsers, getLeadCountries } from '$lib/server/db/leads';
+import { computeAppealScore, today } from '$lib/appeal-score';
 import { LEAD_STAGES, LEAD_PLATFORMS } from '$lib/zod/schemas';
 import type { LeadSegment, User } from '$lib/types';
 
@@ -34,7 +35,14 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		rawDateField === 'created_at' ? 'created_at' : 'event_date';
 	const page = Math.max(1, parseInt(url.searchParams.get('page') ?? '1', 10) || 1);
 
-	const LEADS_SORT_COLS_SET = new Set(['name', 'event', 'stage', 'platform', 'lastActivity']);
+	const LEADS_SORT_COLS_SET = new Set([
+		'name',
+		'event',
+		'stage',
+		'platform',
+		'lastActivity',
+		'appeal'
+	]);
 	const rawSort = url.searchParams.get('sort') ?? '';
 	const sort = LEADS_SORT_COLS_SET.has(rawSort) ? rawSort : undefined;
 	const dir = url.searchParams.get('dir') === 'asc' ? ('asc' as const) : ('desc' as const);
@@ -68,8 +76,16 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		active: true
 	};
 
+	// Attach derived Lead Appeal Score per row (never persisted). `now` is floored to the
+	// UTC date boundary so the displayed badge matches the SQL `?sort=appeal` ORDER BY (E3).
+	const now = today();
+	const leads = result.leads.map((l) => ({
+		...l,
+		appealScore: computeAppealScore(l.eventDate, l.firstAnnouncedDate, l.firstReachedOutDate, now)
+	}));
+
 	return {
-		leads: result.leads,
+		leads,
 		total: result.total,
 		countries,
 		users,

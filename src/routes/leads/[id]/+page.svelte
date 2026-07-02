@@ -9,6 +9,8 @@
 	import StageChip from '$lib/components/shared/StageChip.svelte';
 	import AgeBadge from '$lib/components/shared/AgeBadge.svelte';
 	import FutureEventsBadge from '$lib/components/shared/FutureEventsBadge.svelte';
+	import AppealScoreBadge from '$lib/components/AppealScoreBadge.svelte';
+	import { computeAppealScore, today } from '$lib/appeal-score';
 	import DedupBanner from '$lib/components/leads/DedupBanner.svelte';
 	import ActivityTimeline from '$lib/components/leads/ActivityTimeline.svelte';
 	import LogTouchForm from '$lib/components/leads/LogTouchForm.svelte';
@@ -371,6 +373,14 @@
 						{#if lead.hasFutureEvents}
 							<FutureEventsBadge />
 						{/if}
+						<AppealScoreBadge
+							score={computeAppealScore(
+								lead.eventDate,
+								lead.firstAnnouncedDate,
+								lead.firstReachedOutDate,
+								today()
+							)}
+						/>
 					</div>
 					<div class="mt-[5px] font-mono text-[12px] text-ink-300">
 						{lead.handle} · {lead.category} · {lead.location}

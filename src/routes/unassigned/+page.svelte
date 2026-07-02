@@ -10,6 +10,7 @@
 	import LeadEditModal from '$lib/components/leads/LeadEditModal.svelte';
 	import MultiSelectFilter from '$lib/components/leads/MultiSelectFilter.svelte';
 	import EventBadge from '$lib/components/shared/EventBadge.svelte';
+	import AppealScoreBadge from '$lib/components/AppealScoreBadge.svelte';
 	import Icon from '$lib/components/shared/Icon.svelte';
 	import { toasts } from '$lib/stores/toasts.svelte';
 	import { removeFromList } from '$lib/utils/optimistic';
@@ -21,6 +22,9 @@
 	import type { Lead } from '$lib/types';
 
 	let { data } = $props();
+
+	// Loader-enriched lead: base Lead + derived `appealScore` attached in +page.server.ts.
+	type UnassignedLead = (typeof data.leads)[number];
 
 	// Optimistic shadow of the unassigned queue. E1: a writable `$derived` IS the reconcile
 	// mechanism — reassign for an optimistic remove; it auto-resyncs to server truth when
@@ -108,6 +112,7 @@
 				{ id: 'country', header: 'Country', enableSorting: false },
 				{ id: 'category', header: 'Category', enableSorting: false },
 				{ id: '_lastOwner', header: 'Last owner', enableSorting: false },
+				{ id: 'appeal', header: 'Appeal', sortDescFirst: true },
 				{ id: '_actions', header: '', enableSorting: false }
 			],
 			sort: data.sort ?? '',
@@ -131,7 +136,7 @@
 		selected = { ...selected, [id]: !selected[id] };
 	}
 
-	async function claim(lead: Lead) {
+	async function claim(lead: UnassignedLead) {
 		if (claiming[lead.id]) return; // duplicate-submit guard
 		claiming = { ...claiming, [lead.id]: true };
 		shadowLeads = removeFromList(shadowLeads, lead.id); // optimistic remove
@@ -249,7 +254,7 @@
 		await invalidateAll(); // $effect reconciles shadow with server truth
 	}
 
-	const grid = 'grid grid-cols-[36px_2fr_1.6fr_1fr_90px_100px_110px_1fr_150px] gap-3';
+	const grid = 'grid grid-cols-[36px_2fr_1.6fr_1fr_90px_100px_110px_1fr_90px_150px] gap-3';
 
 	let openHoverId = $state<string | null>(null);
 	let hoverCloseTimer: ReturnType<typeof setTimeout> | undefined;
@@ -364,7 +369,7 @@
 		{#if navLoading}
 			{#each Array(8) as _, i (i)}
 				<div class="{grid} min-h-11 items-center border-b border-panel-sunken px-4 last:border-b-0">
-					{#each Array(9) as _, c (c)}
+					{#each Array(10) as _, c (c)}
 						<Skeleton class="h-3.5 w-full" />
 					{/each}
 				</div>
@@ -450,6 +455,7 @@
 					<div class="truncate font-mono text-[12px] text-ink-400">{l.country}</div>
 					<div class="truncate font-mono text-[12px] text-ink-400">{l.category}</div>
 					<div class="font-mono text-[12px] text-ink-400">{formerOwner(l.formerOwnerId)}</div>
+					<div><AppealScoreBadge score={l.appealScore} /></div>
 					<div class="flex items-center gap-1.5">
 						<button
 							onclick={() => (editTarget = l)}

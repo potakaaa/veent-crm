@@ -1,6 +1,7 @@
 import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { listPipelineStage } from '$lib/server/db/leads';
+import { computeAppealScore, today } from '$lib/appeal-score';
 import type { Stage } from '$lib/types';
 
 const BOARD_STAGES = ['new', 'contacted', 'replied', 'in_discussion', 'won'] as const;
@@ -24,5 +25,12 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		locals.user.id,
 		locals.user.role
 	);
-	return json(result);
+	// Badge-only: attach derived Lead Appeal Score per card (never persisted), matching the
+	// pipeline loader so lazy-loaded cards score identically to the initial server load.
+	const now = today();
+	const leads = result.leads.map((l) => ({
+		...l,
+		appealScore: computeAppealScore(l.eventDate, l.firstAnnouncedDate, l.firstReachedOutDate, now)
+	}));
+	return json({ ...result, leads });
 };

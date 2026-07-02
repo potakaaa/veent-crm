@@ -2,9 +2,14 @@
 	import Avatar from '$lib/components/shared/Avatar.svelte';
 	import PlatformBadge from '$lib/components/shared/PlatformBadge.svelte';
 	import EventBadge from '$lib/components/shared/EventBadge.svelte';
+	import AppealScoreBadge from '$lib/components/AppealScoreBadge.svelte';
 	import { BOARD_STAGES, stageColor, stageLabel } from '$lib/utils/stages';
 	import { riskMeta } from '$lib/utils/risk';
 	import type { Lead, Stage, User } from '$lib/types';
+
+	// Loader attaches derived `appealScore` to each lead at runtime (spread + extra field);
+	// widen the prop type to reflect it.
+	type LeadWithAppeal = Lead & { appealScore: number | null };
 
 	let {
 		leads,
@@ -14,7 +19,7 @@
 		onMove,
 		onLoadMore
 	}: {
-		leads: Lead[];
+		leads: LeadWithAppeal[];
 		totalsPerStage?: Partial<Record<Stage, number>>;
 		loadingPerStage?: Partial<Record<Stage, boolean>>;
 		users: User[];
@@ -113,6 +118,7 @@
 						<div class="flex items-center gap-[7px]">
 							<PlatformBadge platform={c.platform} />
 							<span class="flex-1 truncate text-[13px] font-semibold">{c.name}</span>
+							<AppealScoreBadge score={c.appealScore} />
 							{#if risk.atRisk}
 								<span
 									class="shrink-0 font-mono text-[10px] font-semibold"

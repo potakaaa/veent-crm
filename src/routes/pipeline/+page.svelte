@@ -11,12 +11,15 @@
 	import { patchInList } from '$lib/utils/optimistic';
 	import type { Lead, LostReason, MoveStagePayload, Stage } from '$lib/types';
 
+	// Loader + lazy-load endpoint both attach derived `appealScore` to each card.
+	type LeadWithAppeal = Lead & { appealScore: number | null };
+
 	let { data } = $props();
 
 	// Base leads from server (10 per stage). Reconciled after invalidateAll().
 	let shadowLeads = $derived(data.leads);
 	// Extra leads loaded lazily beyond the initial 10. Cleared on server reload.
-	let extraLeads = $state<Lead[]>([]);
+	let extraLeads = $state<LeadWithAppeal[]>([]);
 	// Current page per stage (1 = initial server load already covers this).
 	let pagesPerStage = $state<Partial<Record<Stage, number>>>({});
 	// Loading flag per stage.
@@ -57,7 +60,7 @@
 			const res = await fetch(`/api/leads/pipeline-stage?stage=${stage}&page=${nextPage}&limit=10`);
 			if (!res.ok) return;
 			const { leads: newLeads, total: newTotal } = (await res.json()) as {
-				leads: Lead[];
+				leads: LeadWithAppeal[];
 				total: number;
 			};
 			// Deduplicate: don't add leads already in allLeads.

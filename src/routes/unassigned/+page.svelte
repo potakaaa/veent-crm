@@ -258,7 +258,7 @@
 
 	// Desktop column template (10 cells). Below `lg` the DataGridShell collapses this
 	// into a stacked single-column card.
-	const cols = 'lg:grid-cols-[36px_2fr_1.6fr_1fr_90px_100px_110px_1fr_90px_150px]';
+	const cols = 'lg:grid-cols-[36px_2fr_1.6fr_1fr_90px_90px_90px_1fr_130px_150px]';
 
 	// Shared hover/focus popover timer hook (200ms grace period) — consolidates the
 	// former local openHoverId/hoverCloseTimer state + handlers.
@@ -390,7 +390,6 @@
 													>{l.siblings} events</span
 												>{/if}
 										</div>
-										<div class="font-mono text-[11px] text-ink-400">{l.handle} · {l.category}</div>
 									</a>
 								</div>
 							{/snippet}

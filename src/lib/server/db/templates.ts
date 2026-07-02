@@ -5,7 +5,7 @@
  * `deleted_at IS NULL` (soft-delete only) — a double-delete is a no-op.
  */
 import { db } from './index';
-import { crmMessageTemplates } from './schema';
+import { crmMessageTemplates, leadCategory } from './schema';
 import { eq, and, isNull, asc, desc, ilike, or, count, sql } from 'drizzle-orm';
 import type { MessageTemplate } from '$lib/types';
 import type { TemplateForm } from '$lib/zod/schemas';
@@ -62,9 +62,11 @@ export async function listTemplatesPaginated(opts: {
 }): Promise<{ templates: MessageTemplate[]; total: number }> {
 	const { page, q, category, sort } = opts;
 
-	type CategoryValue = (typeof crmMessageTemplates)['category']['_']['data'];
+	type CategoryValue = (typeof leadCategory.enumValues)[number];
 	const conditions = [isNull(crmMessageTemplates.deletedAt)];
-	if (category) conditions.push(eq(crmMessageTemplates.category, category as CategoryValue));
+	if (category && (leadCategory.enumValues as readonly string[]).includes(category)) {
+		conditions.push(eq(crmMessageTemplates.category, category as CategoryValue));
+	}
 	if (q) {
 		conditions.push(
 			or(ilike(crmMessageTemplates.title, `%${q}%`), ilike(crmMessageTemplates.body, `%${q}%`)) ??

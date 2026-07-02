@@ -102,3 +102,28 @@ describe('/templates page load allows any authenticated user (AC-4 revised — T
 		).rejects.toMatchObject({ status: 401 });
 	});
 });
+
+function loadWith(qs: string) {
+	const url = new URL(`http://localhost/templates${qs}`);
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	return load({ locals: { user: rep }, url } as any);
+}
+
+describe('/templates load — invalid query param normalization', () => {
+	it('page=abc → pagination.page defaults to 1', async () => {
+		const r = await loadWith('?page=abc');
+		expect((r as { pagination: { page: number } }).pagination.page).toBe(1);
+	});
+	it('page=0 → pagination.page coerced to 1', async () => {
+		const r = await loadWith('?page=0');
+		expect((r as { pagination: { page: number } }).pagination.page).toBe(1);
+	});
+	it('category=invalid → filters.category is undefined', async () => {
+		const r = await loadWith('?category=NotACategory');
+		expect((r as { filters: { category: unknown } }).filters.category).toBeUndefined();
+	});
+	it('sort=invalid → filters.sort defaults to "title"', async () => {
+		const r = await loadWith('?sort=random');
+		expect((r as { filters: { sort: string } }).filters.sort).toBe('title');
+	});
+});

@@ -61,6 +61,13 @@
 		return [...map.entries()];
 	});
 
+	// When sorted chronologically, render a flat list across all categories so
+	// the global time order is visible. Category grouping only makes sense for
+	// the default title (alphabetical) sort.
+	const isChronologicalSort = $derived(
+		data.filters.sort === 'newest' || data.filters.sort === 'oldest'
+	);
+
 	// --- Create / edit modal state ---
 	let formOpen = $state(false);
 	let editingId = $state<string | null>(null);
@@ -278,38 +285,85 @@
 					: 'No templates yet.'}
 		</Card>
 	{:else if viewMode === 'card'}
-		<div class="flex flex-col gap-6">
-			{#each grouped as [cat, items] (cat)}
-				{@const accent = categoryColor(cat)}
-				<section>
-					{@render categoryHeader(cat, accent, items.length)}
-					<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-						{#each items as t (t.id)}
-							<Card class="relative flex flex-col gap-3 rounded-control p-4">
-								<Button
-									variant="ghost"
-									size="icon"
-									class="absolute right-2 top-2 size-8 text-ink-400 hover:text-ink-600"
-									aria-label="Copy template"
-									title="Copy"
-									onclick={() => copy(t)}
-								>
-									<Icon name="copy" size={15} />
-								</Button>
-								<div class="text-[13px] font-semibold text-ink-600">{t.title}</div>
-								<p class="line-clamp-3 text-[12.5px] text-ink-500">{t.body}</p>
-								{#if canManage}
-									<div class="mt-auto flex gap-1.5 pt-1">
-										<Button variant="outline" size="sm" onclick={() => openEdit(t)}>Edit</Button>
-										<Button variant="outline" size="sm" onclick={() => remove(t)}>Delete</Button>
-									</div>
-								{/if}
-							</Card>
-						{/each}
+		{#if isChronologicalSort}
+			<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+				{#each data.templates as t (t.id)}
+					<Card class="relative flex flex-col gap-3 rounded-control p-4">
+						<Button
+							variant="ghost"
+							size="icon"
+							class="absolute right-2 top-2 size-8 text-ink-400 hover:text-ink-600"
+							aria-label="Copy template"
+							title="Copy"
+							onclick={() => copy(t)}
+						>
+							<Icon name="copy" size={15} />
+						</Button>
+						<div class="text-[13px] font-semibold text-ink-600">{t.title}</div>
+						<p class="line-clamp-3 text-[12.5px] text-ink-500">{t.body}</p>
+						{#if canManage}
+							<div class="mt-auto flex gap-1.5 pt-1">
+								<Button variant="outline" size="sm" onclick={() => openEdit(t)}>Edit</Button>
+								<Button variant="outline" size="sm" onclick={() => remove(t)}>Delete</Button>
+							</div>
+						{/if}
+					</Card>
+				{/each}
+			</div>
+		{:else}
+			<div class="flex flex-col gap-6">
+				{#each grouped as [cat, items] (cat)}
+					{@const accent = categoryColor(cat)}
+					<section>
+						{@render categoryHeader(cat, accent, items.length)}
+						<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+							{#each items as t (t.id)}
+								<Card class="relative flex flex-col gap-3 rounded-control p-4">
+									<Button
+										variant="ghost"
+										size="icon"
+										class="absolute right-2 top-2 size-8 text-ink-400 hover:text-ink-600"
+										aria-label="Copy template"
+										title="Copy"
+										onclick={() => copy(t)}
+									>
+										<Icon name="copy" size={15} />
+									</Button>
+									<div class="text-[13px] font-semibold text-ink-600">{t.title}</div>
+									<p class="line-clamp-3 text-[12.5px] text-ink-500">{t.body}</p>
+									{#if canManage}
+										<div class="mt-auto flex gap-1.5 pt-1">
+											<Button variant="outline" size="sm" onclick={() => openEdit(t)}>Edit</Button>
+											<Button variant="outline" size="sm" onclick={() => remove(t)}>Delete</Button>
+										</div>
+									{/if}
+								</Card>
+							{/each}
+						</div>
+					</section>
+				{/each}
+			</div>
+		{/if}
+	{:else if isChronologicalSort}
+		<Card class="gap-0 overflow-hidden rounded-control py-0">
+			{#each data.templates as t (t.id)}
+				<div
+					class="flex items-start justify-between gap-4 border-b border-border px-4 py-3 last:border-b-0"
+				>
+					<div class="min-w-0">
+						<div class="text-[13px] font-semibold text-ink-600">{t.title}</div>
+						<p class="mt-1 whitespace-pre-wrap text-[12.5px] text-ink-500">{t.body}</p>
 					</div>
-				</section>
+					{#if canManage}
+						<div class="flex shrink-0 gap-1.5">
+							<Button variant="outline" size="sm" onclick={() => openEdit(t)}>Edit</Button>
+							<Button variant="outline" size="sm" onclick={() => copy(t)}>Copy</Button>
+							<Button variant="outline" size="sm" onclick={() => remove(t)}>Delete</Button>
+						</div>
+					{/if}
+				</div>
 			{/each}
-		</div>
+		</Card>
 	{:else}
 		<div class="flex flex-col gap-6">
 			{#each grouped as [cat, items] (cat)}

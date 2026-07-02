@@ -132,7 +132,9 @@ export const leadUpdateSchema = z
 		convenienceFeePesos: z.number().min(0).optional(),
 		serviceFeePct: z.number().min(0).max(100).optional(),
 		serviceFeePerTicketPesos: z.number().min(0).optional(),
-		bankChargesAbsorbed: z.boolean().optional()
+		bankChargesAbsorbed: z.boolean().optional(),
+		// Recurring-organizer / future-events prospect flag (GitHub #94).
+		hasFutureEvents: z.boolean().optional()
 	})
 	.refine((d) => d.visibility !== 'selected' || (d.selectedUserIds?.length ?? 0) > 0, {
 		message: 'Pick at least one teammate when visibility is "Selected people".',
@@ -160,7 +162,8 @@ export const onboardingUpdateSchema = z.object({
 	convenienceFeePesos: z.number().min(0).optional(),
 	serviceFeePct: z.number().min(0).max(100).optional(),
 	serviceFeePerTicketPesos: z.number().min(0).optional(),
-	bankChargesAbsorbed: z.boolean().optional()
+	bankChargesAbsorbed: z.boolean().optional(),
+	hasFutureEvents: z.boolean().optional()
 });
 export type OnboardingUpdate = z.infer<typeof onboardingUpdateSchema>;
 

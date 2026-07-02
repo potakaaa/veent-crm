@@ -76,6 +76,7 @@
 		if (data.filters.platform) p.set('platform', data.filters.platform);
 		if (data.filters.country) p.set('country', data.filters.country);
 		if (data.filters.staleOnly) p.set('staleOnly', '1');
+		if (data.filters.hasFutureEvents) p.set('hasFutureEvents', '1');
 		if (data.filters.search) p.set('q', data.filters.search);
 		const qs = p.toString();
 		return `/api/leads/export${qs ? '?' + qs : ''}`;
@@ -157,6 +158,15 @@
 			class={data.filters.staleOnly ? 'border-stale bg-[rgba(194,113,12,0.08)] text-[#92560b]' : ''}
 		>
 			<span class="h-[7px] w-[7px] rounded-full bg-stale"></span> Stale only (&gt;30d)
+		</Button>
+
+		<Button
+			variant="outline"
+			size="sm"
+			onclick={() => setFilter('hasFutureEvents', data.filters.hasFutureEvents ? undefined : '1')}
+			class={data.filters.hasFutureEvents ? 'border-violet-400 bg-violet-100 text-violet-700' : ''}
+		>
+			<span class="h-[7px] w-[7px] rounded-full bg-violet-500"></span> Future events
 		</Button>
 
 		<Input

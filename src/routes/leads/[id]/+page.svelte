@@ -8,6 +8,7 @@
 	import PlatformBadge from '$lib/components/shared/PlatformBadge.svelte';
 	import StageChip from '$lib/components/shared/StageChip.svelte';
 	import AgeBadge from '$lib/components/shared/AgeBadge.svelte';
+	import FutureEventsBadge from '$lib/components/shared/FutureEventsBadge.svelte';
 	import AppealScoreBadge from '$lib/components/AppealScoreBadge.svelte';
 	import { computeAppealScore, today } from '$lib/appeal-score';
 	import DedupBanner from '$lib/components/leads/DedupBanner.svelte';
@@ -62,6 +63,7 @@
 	let serviceFeePct = $state(3);
 	let serviceFeePerTicketPesos = $state(20);
 	let bankChargesAbsorbed = $state<boolean | null>(null);
+	let hasFutureEvents = $state(false);
 
 	$effect(() => {
 		onboardingNotes = lead.onboardingNotes ?? '';
@@ -74,6 +76,7 @@
 		serviceFeePct = lead.serviceFeePct ?? 3;
 		serviceFeePerTicketPesos = lead.serviceFeePerTicketPesos ?? 20;
 		bankChargesAbsorbed = lead.bankChargesAbsorbed ?? null;
+		hasFutureEvents = lead.hasFutureEvents ?? false;
 	});
 
 	async function saveOnboarding() {
@@ -95,7 +98,8 @@
 					convenienceFeePesos,
 					serviceFeePct,
 					serviceFeePerTicketPesos,
-					bankChargesAbsorbed: bankChargesAbsorbed ?? undefined
+					bankChargesAbsorbed: bankChargesAbsorbed ?? undefined,
+					hasFutureEvents
 				})
 			});
 			if (!res.ok) {
@@ -366,6 +370,9 @@
 						</h1>
 						<StageChip stage={lead.stage} />
 						<AgeBadge label={lead.age.label} type={lead.age.type} />
+						{#if lead.hasFutureEvents}
+							<FutureEventsBadge />
+						{/if}
 						<AppealScoreBadge
 							score={computeAppealScore(
 								lead.eventDate,
@@ -708,6 +715,18 @@
 									<div class="mb-0.5 text-[13px] font-semibold text-ink">Absorb</div>
 									<div class="text-[11px] text-ink-400">Veent covers the bank charges</div>
 								</button>
+							</div>
+						</div>
+
+						<!-- Future events (recurring-organizer flag, GitHub #94) -->
+						<div>
+							<label class="flex items-center gap-2 text-[13px] font-medium text-ink">
+								<input type="checkbox" bind:checked={hasFutureEvents} class="size-4" />
+								Has future events (recurring organizer)
+							</label>
+							<div class="mt-1 text-[11px] text-ink-400">
+								Flag this organizer as a future-events prospect so they aren't lost when the current
+								deal isn't a fit.
 							</div>
 						</div>
 					</div>

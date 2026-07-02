@@ -98,6 +98,9 @@ export interface Lead {
 	serviceFeePerTicketPesos?: number;
 	bankChargesAbsorbed?: boolean;
 
+	/** Recurring-organizer / future-events prospect flag (GitHub #94). NOT NULL DEFAULT false. */
+	hasFutureEvents: boolean;
+
 	// Lost capture
 	lostReason?: LostReason;
 
@@ -191,6 +194,7 @@ export interface LeadFilters {
 	platform?: Platform;
 	category?: Category;
 	staleOnly?: boolean;
+	hasFutureEvents?: boolean;
 	search?: string;
 	/** Hide lost leads unless explicitly requested (product rule). */
 	includeLost?: boolean;

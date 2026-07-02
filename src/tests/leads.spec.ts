@@ -70,6 +70,7 @@ function makeRow(overrides: Partial<Parameters<typeof dbRowToLead>[0]> = {}) {
 		serviceFeePct: 3,
 		serviceFeePerTicketPesos: 20,
 		bankChargesAbsorbed: null,
+		hasFutureEvents: false,
 		notes: null,
 		createdAt: now,
 		updatedAt: now,
@@ -269,6 +270,23 @@ describe('dbRowToLead mapper', () => {
 		expect(lead.age).toBeDefined();
 		expect(lead.age.label).toBeTruthy();
 		expect(lead.urgency).toBeDefined();
+	});
+
+	// #94 — recurring-organizer future-events flag
+	it('maps has_future_events true to hasFutureEvents true', () => {
+		const lead = dbRowToLead(makeRow({ hasFutureEvents: true }));
+		expect(lead.hasFutureEvents).toBe(true);
+	});
+
+	it('maps has_future_events false to hasFutureEvents false', () => {
+		const lead = dbRowToLead(makeRow({ hasFutureEvents: false }));
+		expect(lead.hasFutureEvents).toBe(false);
+	});
+
+	it('defaults hasFutureEvents to false when the column is null/absent', () => {
+		// Simulate a legacy row where the value is null despite the NOT NULL default.
+		const lead = dbRowToLead(makeRow({ hasFutureEvents: null as unknown as boolean }));
+		expect(lead.hasFutureEvents).toBe(false);
 	});
 });
 

@@ -6,6 +6,7 @@
 	import MeetingFormModal, {
 		type MeetingFormPayload
 	} from '$lib/components/meetings/MeetingFormModal.svelte';
+	import { isManagerRole } from '$lib/utils/permissions';
 	import type { Meeting, User } from '$lib/types';
 
 	let {
@@ -31,7 +32,7 @@
 	let mutating = $state(false);
 
 	function canManage(m: Meeting): boolean {
-		return me.role !== 'rep' || (m.organizerId != null && m.organizerId === me.id);
+		return isManagerRole(me.role) || (m.organizerId != null && m.organizerId === me.id);
 	}
 
 	function openCreate() {

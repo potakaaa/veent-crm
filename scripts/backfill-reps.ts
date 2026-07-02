@@ -39,7 +39,9 @@ export const REPS: RepRow[] = [
 	{ name: 'Elay', email: 'elay@test.com', role: 'rep' },
 	{ name: 'Angel', email: 'angel@test.com', role: 'rep' },
 	{ name: 'Dhen', email: 'dhen@test.com', role: 'rep' },
-	{ name: 'Fatima', email: 'fatima@test.com', role: 'rep' }
+	{ name: 'Fatima', email: 'fatima@test.com', role: 'rep' },
+	{ name: 'Meybelle', email: 'meybelle@test.com', role: 'rep' },
+	{ name: 'Shane', email: 'shane@test.com', role: 'rep' }
 ];
 
 // ---------------------------------------------------------------------------

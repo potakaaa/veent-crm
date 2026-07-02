@@ -16,8 +16,13 @@
 	let { data } = $props();
 
 	let paging = $state(false);
+	// Optimistic segment: set on click for instant highlight; cleared when navigation
+	// settles so the active state falls back to what the server confirmed.
+	let pendingSegment = $state<LeadSegment | null>(null);
+	const activeSegment = $derived<LeadSegment>(pendingSegment ?? data.filters.segment ?? 'mine');
 	afterNavigate(() => {
 		paging = false;
+		pendingSegment = null;
 	});
 
 	// Skeleton while navigating to this route (filter/segment/page changes included).
@@ -44,15 +49,21 @@
 				params.set(k, String(v));
 			}
 		}
-		goto(`?${params}`, { keepFocus: true });
+		return goto(`?${params}`, { keepFocus: true });
 	}
 
 	function setFilter(key: string, value: string | boolean | number | undefined) {
 		navigate({ [key]: value, page: undefined }); // reset page (delete param = default 1)
 	}
 
-	function setSegment(seg: string) {
-		navigate({ segment: seg === 'mine' ? undefined : seg, page: undefined });
+	async function setSegment(seg: LeadSegment) {
+		pendingSegment = seg;
+		try {
+			await navigate({ segment: seg === 'mine' ? undefined : seg, page: undefined });
+		} catch {
+			// Navigation failed or was rejected — clear pending state if not superseded.
+			if (pendingSegment === seg) pendingSegment = null;
+		}
 	}
 
 	function onSearchInput(e: Event & { currentTarget: HTMLInputElement }) {
@@ -100,8 +111,8 @@
 			variant="segment"
 			ariaLabel="Filter leads by segment"
 			tabs={segDefs.map((s) => ({ value: s.key, label: s.label }))}
-			value={data.filters.segment ?? 'mine'}
-			onValueChange={setSegment}
+			value={activeSegment}
+			onValueChange={(v) => setSegment(v as LeadSegment)}
 		/>
 		<Separator orientation="vertical" class="h-[22px]" />
 	</div>

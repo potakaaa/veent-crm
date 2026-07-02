@@ -78,6 +78,12 @@ This gap has now blocked e2e verification for **two more features** since it was
   detection, the same pattern as `loading-ux.e2e.ts`. Source-verified as genuinely self-skipping
   (not silently passing) but genuinely unexercised — none of AC1/AC4/AC5/AC6/AC9/404 have live
   automated coverage yet.
+- **recurring-organizer-tag** (GitHub #94, `process/features/leads/completed/recurring-organizer-tag_02-07-26/`)
+  — `e2e/recurring-organizer-tag.e2e.ts` written as `test.fixme` stubs only (list badge, detail
+  badge, edit-checkbox round-trip, filter-toggle). Pre-accepted Known-Gap at VALIDATE (Gate:
+  CONDITIONAL); AC3/AC4 scored **unmet** at UPDATE PROCESS closeout since they have no
+  Fully-Automated/Hybrid coverage — AC1/AC2/AC5's server-side layers remain proven via Hybrid
+  DB tests so those ACs stayed **met**. Promote the stubs to real e2e specs when this fixture lands.
 
 This is now the single highest-leverage test-infra gap in the repo — resolving it unblocks
 verification for every protected-route e2e spec written so far, not just future ones. Recommend

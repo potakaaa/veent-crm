@@ -22,6 +22,7 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 	const platform = VALID_PLATFORMS.has(rawPlatform) ? rawPlatform : '';
 	const country = url.searchParams.get('country') ?? '';
 	const staleOnly = url.searchParams.get('staleOnly') === '1';
+	const hasFutureEvents = url.searchParams.get('hasFutureEvents') === '1';
 	const search = url.searchParams.get('q') ?? '';
 
 	const filterArgs = {
@@ -32,6 +33,7 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 		platform: platform || undefined,
 		country: country || undefined,
 		staleOnly,
+		hasFutureEvents,
 		search: search || undefined
 	};
 

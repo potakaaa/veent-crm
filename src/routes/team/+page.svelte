@@ -21,16 +21,16 @@
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
 	import { Select, SelectTrigger, SelectContent, SelectItem } from '$lib/components/ui/select';
-	import { crm } from '$lib/services';
 	import { toasts } from '$lib/stores/toasts.svelte';
-	import { canManageUsers } from '$lib/utils/permissions';
+	import { canManageUsers, isSuperManager, canPromoteToSuperManager } from '$lib/utils/permissions';
 	import { roleLabel, statusLabel } from '$lib/utils/roles';
 	import { userFormSchema, USER_ROLES } from '$lib/zod/schemas';
 	import type { Role, User } from '$lib/types';
 
 	let { data } = $props();
 	const canManage = $derived(canManageUsers(data.currentUser));
-	const isSuperManager = $derived(data.currentUser?.role === 'super_manager');
+	const isSuper = $derived(isSuperManager(data.currentUser));
+	const canPromote = $derived(canPromoteToSuperManager(data.currentUser));
 
 	const navLoading = $derived(navigating.to?.url.pathname === '/team');
 
@@ -89,35 +89,30 @@
 		}
 	}
 
+	// Deactivate/reactivate via the real endpoint. Lead reassignment on deactivate
+	// now happens server-side inside deactivateUser — no client-side lead move.
 	async function toggleActive(u: User) {
 		try {
-			if (u.active) {
-				// Deactivating: move their workable leads to Up for grabs first
-				const theirLeads = data.leads.filter(
-					(l) => l.ownerId === u.id && l.stage !== 'won' && l.stage !== 'lost'
+			const res = await fetch(`/api/users/${u.id}`, {
+				method: 'PATCH',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ active: !u.active })
+			});
+			if (!res.ok) {
+				toasts.push(
+					res.status === 403
+						? 'You do not have permission to do that.'
+						: `Unable to update ${u.name} — try again.`,
+					{ tone: 'warn' }
 				);
-				if (theirLeads.length) {
-					await crm.reassignLeads(
-						theirLeads.map((l) => l.id),
-						null
-					);
-				}
-				await fetch(`/api/users/${u.id}`, {
-					method: 'PATCH',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({ active: false })
-				});
-				await invalidateAll();
-				toasts.push(`Deactivated ${u.name} — ${theirLeads.length} lead(s) moved to Up for grabs`);
-			} else {
-				await fetch(`/api/users/${u.id}`, {
-					method: 'PATCH',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({ active: true })
-				});
-				await invalidateAll();
-				toasts.push(`Reactivated ${u.name}`);
+				return;
 			}
+			await invalidateAll();
+			toasts.push(
+				u.active
+					? `Deactivated ${u.name} — their workable leads moved to Up for grabs`
+					: `Reactivated ${u.name}`
+			);
 		} catch (err) {
 			toasts.push(err instanceof Error ? err.message : `Unable to update ${u.name}`, {
 				tone: 'warn'
@@ -144,6 +139,37 @@
 			toasts.push(err instanceof Error ? err.message : `Unable to change ${u.name}'s role`, {
 				tone: 'warn'
 			});
+		}
+	}
+
+	// --- Promote to Super Manager (singleton transfer) ------------------------
+	let promoteTarget = $state<User | null>(null);
+	let promoting = $state(false);
+
+	async function confirmPromote() {
+		const target = promoteTarget;
+		if (!target) return;
+		promoting = true;
+		try {
+			const res = await fetch(`/api/users/${target.id}/promote-super`, { method: 'PATCH' });
+			if (!res.ok) {
+				toasts.push(
+					res.status === 409
+						? 'Another transfer just happened — refresh and try again.'
+						: 'Unable to transfer the Super Manager role.',
+					{ tone: 'warn' }
+				);
+				return;
+			}
+			promoteTarget = null;
+			await invalidateAll();
+			toasts.success(`${target.name} is now the Super Manager`);
+		} catch (err) {
+			toasts.push(err instanceof Error ? err.message : 'Unable to transfer the role.', {
+				tone: 'warn'
+			});
+		} finally {
+			promoting = false;
 		}
 	}
 </script>
@@ -257,23 +283,33 @@
 							</TableCell>
 							<TableCell class="text-right font-mono text-[13px]">{u.leadCount ?? '—'}</TableCell>
 							<TableCell class="text-right">
-								<div class="flex items-center justify-end gap-2">
-									{#if isSuperManager && u.role === 'rep'}
-										<Button variant="outline" size="sm" onclick={() => changeRole(u, 'manager')}>
-											Promote
-										</Button>
-									{/if}
-									{#if isSuperManager && u.role === 'manager'}
-										<Button variant="outline" size="sm" onclick={() => changeRole(u, 'rep')}>
-											Demote
-										</Button>
-									{/if}
-									{#if canManage && u.role !== 'super_manager'}
-										<Button variant="outline" size="sm" onclick={() => toggleActive(u)}>
-											{u.active ? 'Deactivate' : 'Reactivate'}
-										</Button>
-									{/if}
-								</div>
+								{#if canManage}
+									{@const isSelf = u.id === data.currentUser.id}
+									<div class="flex items-center justify-end gap-2">
+										{#if isSuper && u.role === 'rep'}
+											<Button variant="outline" size="sm" onclick={() => changeRole(u, 'manager')}>
+												Promote
+											</Button>
+										{/if}
+										{#if isSuper && u.role === 'manager'}
+											<Button variant="outline" size="sm" onclick={() => changeRole(u, 'rep')}>
+												Demote
+											</Button>
+										{/if}
+										{#if canPromote && u.role === 'manager' && u.active}
+											<Button variant="outline" size="sm" onclick={() => (promoteTarget = u)}>
+												Promote to Super Manager
+											</Button>
+										{/if}
+										<!-- Deactivate/reactivate: reps always (for a manager); managers &
+										     super_managers only by a super_manager, never on themselves. -->
+										{#if u.role === 'rep' || (isSuper && !isSelf)}
+											<Button variant="outline" size="sm" onclick={() => toggleActive(u)}>
+												{u.active ? 'Deactivate' : 'Reactivate'}
+											</Button>
+										{/if}
+									</div>
+								{/if}
 							</TableCell>
 						</TableRow>
 					{/each}
@@ -310,8 +346,9 @@
 			<Select type="single" bind:value={role}>
 				<SelectTrigger id="rep-role" class="w-full">{roleLabel(role as Role)}</SelectTrigger>
 				<SelectContent>
-					{#each USER_ROLES as r (r)}<SelectItem value={r} label={roleLabel(r)}
-							>{roleLabel(r)}</SelectItem
+					{#each USER_ROLES.filter((r) => r !== 'super_manager') as r (r)}<SelectItem
+							value={r}
+							label={roleLabel(r)}>{roleLabel(r)}</SelectItem
 						>{/each}
 				</SelectContent>
 			</Select>
@@ -321,5 +358,23 @@
 	{#snippet footer()}
 		<Button variant="outline" class="flex-1" onclick={() => (addOpen = false)}>Cancel</Button>
 		<Button class="flex-[2]" onclick={addRep}>Add rep</Button>
+	{/snippet}
+</Modal>
+
+<Modal
+	open={promoteTarget !== null}
+	title="Transfer Super Manager role"
+	width={420}
+	onclose={() => (promoteTarget = null)}
+>
+	<p class="text-[13px] leading-relaxed text-ink-600">
+		This will make <span class="font-semibold">{promoteTarget?.name}</span> the Super Manager. You will
+		become a regular Manager. Only one Super Manager can be active at a time.
+	</p>
+	{#snippet footer()}
+		<Button variant="outline" class="flex-1" onclick={() => (promoteTarget = null)}>Cancel</Button>
+		<Button class="flex-[2]" onclick={confirmPromote} disabled={promoting}>
+			{promoting ? 'Transferring…' : 'Transfer role'}
+		</Button>
 	{/snippet}
 </Modal>

@@ -6,13 +6,14 @@ import {
 	parseFilterCsv
 } from '$lib/server/db/leads';
 import { leadCategory } from '$lib/server/db/schema';
+import { computeAppealScore, today } from '$lib/appeal-score';
 
 const PAGE_SIZE = 25;
 
 export const load: PageServerLoad = async ({ url }) => {
 	const page = Math.max(1, parseInt(url.searchParams.get('page') ?? '1', 10) || 1);
 
-	const UNASSIGNED_SORT_COLS_SET = new Set(['name', 'event', 'stage', 'source']);
+	const UNASSIGNED_SORT_COLS_SET = new Set(['name', 'event', 'stage', 'source', 'appeal']);
 	const rawSort = url.searchParams.get('sort') ?? '';
 	const sort = UNASSIGNED_SORT_COLS_SET.has(rawSort) ? rawSort : undefined;
 	const dir = url.searchParams.get('dir') === 'asc' ? ('asc' as const) : ('desc' as const);
@@ -28,8 +29,15 @@ export const load: PageServerLoad = async ({ url }) => {
 		getUnassignedLeadCountries()
 	]);
 
+	// Attach derived Lead Appeal Score per row (never persisted); `now` floored to date (E3).
+	const now = today();
+	const leads = result.leads.map((l) => ({
+		...l,
+		appealScore: computeAppealScore(l.eventDate, l.firstAnnouncedDate, l.firstReachedOutDate, now)
+	}));
+
 	return {
-		leads: result.leads,
+		leads,
 		users,
 		sort: sort ?? '',
 		dir,

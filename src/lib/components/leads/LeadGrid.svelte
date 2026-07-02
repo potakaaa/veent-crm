@@ -7,8 +7,13 @@
 	import AgeBadge from '$lib/components/shared/AgeBadge.svelte';
 	import EventBadge from '$lib/components/shared/EventBadge.svelte';
 	import EmptyState from '$lib/components/shared/EmptyState.svelte';
+	import AppealScoreBadge from '$lib/components/AppealScoreBadge.svelte';
 	import { riskMeta } from '$lib/utils/risk';
 	import type { Lead, User } from '$lib/types';
+
+	// Loader attaches derived `appealScore` to each lead at runtime (spread + extra field);
+	// widen the prop type to reflect it.
+	type LeadWithAppeal = Lead & { appealScore: number | null };
 
 	let {
 		leads,
@@ -18,7 +23,7 @@
 		loading = false,
 		onSortChange
 	}: {
-		leads: Lead[];
+		leads: LeadWithAppeal[];
 		users: User[];
 		sort?: string;
 		dir?: 'asc' | 'desc';
@@ -27,7 +32,7 @@
 	} = $props();
 	const ownerName = (id: string | null) => users.find((u) => u.id === id)?.name ?? null;
 
-	const cols = 'grid grid-cols-[28px_2.4fr_1.7fr_1fr_0.9fr_1fr_0.7fr] gap-3';
+	const cols = 'grid grid-cols-[28px_2.4fr_1.7fr_1fr_0.9fr_1fr_0.7fr_0.7fr] gap-3';
 
 	const table = $derived(
 		makeSortTable({
@@ -38,7 +43,8 @@
 				{ id: 'stage', header: 'Stage' },
 				{ id: '_owner', header: 'Owner', enableSorting: false },
 				{ id: 'lastActivity', header: 'Last activity', sortDescFirst: true },
-				{ id: 'platform', header: 'Platform' }
+				{ id: 'platform', header: 'Platform' },
+				{ id: 'appeal', header: 'Appeal', sortDescFirst: true }
 			],
 			sort: sort ?? '',
 			dir,
@@ -85,6 +91,7 @@
 				<Skeleton class="h-3.5 w-1/2" />
 				<Skeleton class="h-3.5 w-2/3" />
 				<Skeleton class="h-3.5 w-1/3" />
+				<Skeleton class="h-3.5 w-1/3" />
 			</div>
 		{/each}
 	{:else}
@@ -129,6 +136,7 @@
 				<div><Avatar name={ownerName(l.ownerId)} /></div>
 				<div><AgeBadge label={l.age.label} type={l.age.type} /></div>
 				<div><PlatformBadge platform={l.platform} /></div>
+				<div><AppealScoreBadge score={l.appealScore} /></div>
 			</a>
 		{:else}
 			<EmptyState

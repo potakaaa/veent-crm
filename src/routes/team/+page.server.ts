@@ -4,8 +4,8 @@ import { db } from '$lib/server/db/index';
 import { crmUsers } from '$lib/server/db/schema';
 import { asc, desc } from 'drizzle-orm';
 import { dbUserToUser, listPipelineLeads } from '$lib/server/db/leads';
-import type { User } from '$lib/types';
 import { isManagerRole } from '$lib/utils/permissions';
+import { sessionToUser } from '$lib/server/db/users';
 
 const SORT_COLS = ['name', 'email', 'role', 'active'] as const;
 type SortCol = (typeof SORT_COLS)[number];
@@ -40,13 +40,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		leadCount: leads.filter((l) => l.ownerId === u.id).length
 	}));
 
-	const currentUser: User = {
-		id: locals.user.id,
-		email: locals.user.email,
-		name: locals.user.name,
-		role: locals.user.role,
-		active: true
-	};
+	const currentUser = sessionToUser(locals.user!);
 
 	return { users, leads, sort, dir, currentUser };
 };

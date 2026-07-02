@@ -10,13 +10,38 @@
  *  - Managers and super_managers can edit and reassign anything; they access team management.
  *    Use isManagerRole() for raw role-string checks (e.g. in API routes / DB layer).
  */
-import type { Lead, User } from '$lib/types';
+import type { Lead, Role, User } from '$lib/types';
+
+/**
+ * Role-only helpers accept any object carrying a `role` (the app `User` OR the
+ * lighter `SessionUser` from auth) so server endpoints can pass `locals.user`
+ * directly without constructing a full `User`.
+ */
+type RoleBearer = { role: Role };
 
 /** True for both 'manager' and 'super_manager'. Prefer this over raw role string comparisons. */
 export const isManagerRole = (role: string | null | undefined): boolean =>
 	role === 'manager' || role === 'super_manager';
 
-export const isManager = (user: User | null | undefined): boolean => isManagerRole(user?.role);
+export const isSuperManager = (user: RoleBearer | null | undefined): boolean =>
+	user?.role === 'super_manager';
+
+/**
+ * `isManager` intentionally includes super_manager: a super_manager holds every
+ * power a manager holds (GitHub #73 AC — "all existing manager permissions also
+ * apply to super_manager"), plus the singleton-only powers below. All manager
+ * gates (canReassign / canAccessTeam / canManageUsers) cascade from here.
+ */
+export const isManager = (user: RoleBearer | null | undefined): boolean =>
+	isManagerRole(user?.role);
+
+/** Only a super_manager may deactivate a manager (or another super_manager). */
+export const canDeactivateManager = (actor: RoleBearer | null | undefined): boolean =>
+	isSuperManager(actor);
+
+/** Only the current super_manager may transfer the super_manager role. */
+export const canPromoteToSuperManager = (actor: RoleBearer | null | undefined): boolean =>
+	isSuperManager(actor);
 
 export const canEditLead = (user: User | null | undefined, lead: Lead): boolean => {
 	if (!user) return false;
@@ -29,11 +54,11 @@ export const canEditLead = (user: User | null | undefined, lead: Lead): boolean 
 export const canClaimLead = (user: User | null | undefined, lead: Lead): boolean =>
 	!!user && lead.ownerId === null;
 
-export const canReassign = (user: User | null | undefined): boolean => isManager(user);
+export const canReassign = (user: RoleBearer | null | undefined): boolean => isManager(user);
 
-export const canAccessTeam = (user: User | null | undefined): boolean => isManager(user);
+export const canAccessTeam = (user: RoleBearer | null | undefined): boolean => isManager(user);
 
-export const canManageUsers = (user: User | null | undefined): boolean => isManager(user);
+export const canManageUsers = (user: RoleBearer | null | undefined): boolean => isManager(user);
 
 /** Bulk claim is available to any signed-in user (over unassigned leads). */
 export const canBulkClaim = (user: User | null | undefined): boolean => !!user;

@@ -98,6 +98,9 @@ export interface Lead {
 	serviceFeePerTicketPesos?: number;
 	bankChargesAbsorbed?: boolean;
 
+	/** Recurring-organizer / future-events prospect flag (GitHub #94). NOT NULL DEFAULT false. */
+	hasFutureEvents: boolean;
+
 	// Lost capture
 	lostReason?: LostReason;
 
@@ -157,6 +160,19 @@ export interface CalendarEntry {
 	subtitle?: string;
 }
 
+/**
+ * A manager-managed outreach message template. `deletedAt` is intentionally
+ * absent from the surface type — soft-delete is an internal filter concern.
+ */
+export interface MessageTemplate {
+	id: string;
+	category: Category;
+	title: string;
+	body: string;
+	createdAt: string;
+	updatedAt: string;
+}
+
 /** A row from the sheet import that needs a human before it joins the pool. */
 export interface ReviewItem {
 	id: string;
@@ -178,6 +194,7 @@ export interface LeadFilters {
 	platform?: Platform;
 	category?: Category;
 	staleOnly?: boolean;
+	hasFutureEvents?: boolean;
 	search?: string;
 	/** Hide lost leads unless explicitly requested (product rule). */
 	includeLost?: boolean;

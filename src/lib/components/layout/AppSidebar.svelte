@@ -45,7 +45,8 @@
 		},
 		{ href: '/reminders', label: 'Reminders', icon: 'reminders' },
 		{ href: '/calendar', label: 'Calendar', icon: 'calendarDays' },
-		{ href: '/meetings', label: 'Meetings', icon: 'calendar' }
+		{ href: '/meetings', label: 'Meetings', icon: 'calendar' },
+		{ href: '/templates', label: 'Templates', icon: 'reply' }
 	]);
 	const manager: NavItem[] = $derived([
 		{ href: '/reports', label: 'Reports', icon: 'reports' },
@@ -113,7 +114,7 @@
 		</div>
 		{#each work as item (item.href)}{@render navButton(item)}{/each}
 
-		{#if user?.role === 'manager'}
+		{#if user?.role === 'manager' || user?.role === 'super_manager'}
 			<div
 				class="px-2.5 pb-[7px] pt-[18px] font-mono text-[9.5px] uppercase tracking-[1.4px] text-[#6f6873]"
 			>

@@ -151,6 +151,8 @@
 			</Select>
 		{/if}
 
+		<Separator orientation="vertical" class="h-[22px]" />
+
 		<Button
 			variant="outline"
 			size="sm"

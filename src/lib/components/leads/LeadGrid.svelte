@@ -32,7 +32,7 @@
 	} = $props();
 	const ownerName = (id: string | null) => users.find((u) => u.id === id)?.name ?? null;
 
-	const cols = 'grid grid-cols-[28px_2.4fr_1.7fr_1fr_0.9fr_1fr_0.7fr_0.7fr] gap-3';
+	const cols = 'grid grid-cols-[28px_2fr_1.6fr_1fr_0.85fr_1fr_0.65fr_1fr] gap-3';
 
 	const table = $derived(
 		makeSortTable({
@@ -84,7 +84,7 @@
 			<div
 				class="{cols} min-h-[42px] items-center border-b border-panel-sunken px-4 last:border-b-0"
 			>
-				<Skeleton class="h-2 w-2 rounded-full" />
+				<div class="flex items-center"><Skeleton class="h-2 w-2 rounded-full" /></div>
 				<Skeleton class="h-3.5 w-3/4" />
 				<Skeleton class="h-3.5 w-2/3" />
 				<Skeleton class="h-3.5 w-1/2" />
@@ -100,11 +100,13 @@
 				href="/leads/{l.id}"
 				class="{cols} min-h-[42px] items-center border-b border-panel-sunken px-4 last:border-b-0 hover:bg-[#fcfbfd]"
 			>
-				<span
-					class="h-2 w-2 rounded-full"
-					style="background:{riskMeta(l.urgency).color}"
-					title={riskMeta(l.urgency).label}
-				></span>
+				<div class="flex items-center">
+					<span
+						class="h-2 w-2 rounded-full"
+						style="background:{riskMeta(l.urgency).color}"
+						title={riskMeta(l.urgency).label}
+					></span>
+				</div>
 				<div class="min-w-0">
 					<div class="flex items-center gap-1.5 text-[13px] font-semibold">
 						<span class="truncate">{l.name}</span>
@@ -132,11 +134,11 @@
 						</div>
 					{/if}
 				</div>
-				<div><StageChip stage={l.stage} /></div>
-				<div><Avatar name={ownerName(l.ownerId)} /></div>
-				<div><AgeBadge label={l.age.label} type={l.age.type} /></div>
-				<div><PlatformBadge platform={l.platform} /></div>
-				<div><AppealScoreBadge score={l.appealScore} /></div>
+				<div class="flex items-center"><StageChip stage={l.stage} /></div>
+				<div class="flex items-center"><Avatar name={ownerName(l.ownerId)} /></div>
+				<div class="flex items-center"><AgeBadge label={l.age.label} type={l.age.type} /></div>
+				<div class="flex items-center"><PlatformBadge platform={l.platform} /></div>
+				<div class="flex min-w-0 items-center"><AppealScoreBadge score={l.appealScore} /></div>
 			</a>
 		{:else}
 			<EmptyState

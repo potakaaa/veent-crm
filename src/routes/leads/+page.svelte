@@ -15,8 +15,13 @@
 	let { data } = $props();
 
 	let paging = $state(false);
+	// Optimistic segment: set on click for instant highlight; cleared when navigation
+	// settles so the active state falls back to what the server confirmed.
+	let pendingSegment = $state<LeadSegment | null>(null);
+	const activeSegment = $derived<LeadSegment>(pendingSegment ?? data.filters.segment ?? 'mine');
 	afterNavigate(() => {
 		paging = false;
+		pendingSegment = null;
 	});
 
 	// Skeleton while navigating to this route (filter/segment/page changes included).
@@ -50,7 +55,8 @@
 		navigate({ [key]: value, page: undefined }); // reset page (delete param = default 1)
 	}
 
-	function setSegment(seg: string) {
+	function setSegment(seg: LeadSegment) {
+		pendingSegment = seg;
 		navigate({ segment: seg === 'mine' ? undefined : seg, page: undefined });
 	}
 
@@ -99,7 +105,7 @@
 			{#each segDefs as s (s.key)}
 				<button
 					onclick={() => setSegment(s.key)}
-					class="h-[26px] rounded-[6px] px-3 text-[12.5px] {data.filters.segment === s.key
+					class="h-[26px] rounded-[6px] px-3 text-[12.5px] {activeSegment === s.key
 						? 'bg-panel font-semibold text-ink shadow-frame'
 						: 'font-medium text-[#7d6a68]'}"
 				>

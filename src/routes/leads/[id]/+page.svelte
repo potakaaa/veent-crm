@@ -366,7 +366,7 @@
 						<AgeBadge label={lead.age.label} type={lead.age.type} />
 					</div>
 					<div class="mt-[5px] font-mono text-[12px] text-ink-300">
-						{lead.handle} · {lead.category} · {lead.location}
+						{lead.category} · {lead.location}
 					</div>
 				</div>
 				<div class="text-right">

@@ -109,7 +109,6 @@
 							</span>
 						{/if}
 					</div>
-					<div class="mt-px truncate font-mono text-[11px] text-ink-400">{l.handle}</div>
 				</div>
 				<div class="min-w-0">
 					<div class="flex items-center gap-1.5">

@@ -334,21 +334,22 @@ export type MeetingRow = {
 // ---------------------------------------------------------------------------
 export function parseEvents(content: string): { leads: LeadRow[]; skipped: number } {
 	const all = parseCsv(content);
-	// Row 0 = headers, Row 1 = instruction text, Row 2 = first section date row
-	// Data rows: col[0] is a numeric string
+	// Row 0 = headers — skip with slice(1).
+	// Structural noise (date rows, instruction rows, section labels) have empty Page Name AND Event.
+	// Valid rows without a numeric IDX are included as long as one of those fields has content.
 	const leads: LeadRow[] = [];
 	let skipped = 0;
 
-	for (const row of all) {
+	for (const row of all.slice(1)) {
 		const idx = row[0]?.trim() ?? '';
-		if (!idx || !/^\d+$/.test(idx)) {
+		const pageNameRaw = (row[E.PAGE_NAME] ?? '').trim();
+		const eventNameRaw = (row[E.EVENT] ?? '').trim();
+
+		if (!pageNameRaw && !eventNameRaw) {
 			skipped++;
 			continue;
 		}
-
-		const pageNameRaw = (row[E.PAGE_NAME] ?? '').trim();
 		const linkRaw = (row[E.LINK] ?? '').trim();
-		const eventNameRaw = (row[E.EVENT] ?? '').trim();
 
 		// Determine name, socialFacebook, socialInstagram, pageUrl from Page Name + Link
 		let name = pageNameRaw;

@@ -53,3 +53,30 @@ Before running `bun run db:generate`, verify `drizzle/meta/_journal.json`'s last
 the highest-numbered `.sql` file in `drizzle/` by filename. A mismatch means an earlier commit
 introduced a migration file without registering it — flag and reconcile before generating a new
 one, rather than layering a second migration on top of untracked drift.
+
+## Update 02-07-26 — merge conflict + second drift instance found on `development`
+
+While merging `development` into `feat/recurring-org-tag`, both branches had independently
+claimed journal `idx: 15` (`0015_amusing_eternity` here vs `development`'s
+`0015_milky_human_fly` + `0016_message_template_title_uq`, from PR #128 outreach-templates).
+Resolved by keeping this branch's `idx: 15` as-is and renumbering `development`'s two entries to
+`idx: 16` (`0016_milky_human_fly`) and `idx: 17` (`0017_message_template_title_uq`), with matching
+file renames.
+
+While reconciling, found `development`'s own committed `drizzle/meta/0015_snapshot.json` is
+**missing** `crm_lead_visibility_grants`, the `crm_leads.visibility` column, and the
+`crm_lead_visibility` enum — even though `development`'s `schema.ts` has all three (PR #127,
+merged before the outreach-templates branch). This is a second, independent instance of the same
+drift pattern described above, native to `development`, not introduced by this merge. This
+branch's own `0015_snapshot.json` (`0015_amusing_eternity`) is correct/complete and was used as
+the base for the new `idx: 16` snapshot instead of `development`'s broken one.
+
+Also: no `drizzle/meta/0017_snapshot.json` was created for `0017_message_template_title_uq`
+(the partial unique index migration) — mirroring `development`'s own precedent of never
+snapshotting that migration (`development` shipped `idx: 16` with no `0016_snapshot.json` either).
+This is intentional parity with existing practice, not an oversight, but it means the same
+"next `db:generate` diffs against a stale snapshot" risk applies here too.
+
+**Follow-up still needed:** a proper reconciliation pass (per the original Suggested Resolution
+above) that confirms live DB state and regenerates a fully consistent snapshot chain, covering
+both this drift instance and the original `0014_agreements_fields.sql` one.

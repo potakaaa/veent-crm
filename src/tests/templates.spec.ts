@@ -1,40 +1,35 @@
 import { describe, it, expect } from 'vitest';
-import { fillTemplate, TEMPLATES } from '$lib/data/templates';
+import { fillTemplate } from '$lib/data/templates';
 
-describe('fillTemplate', () => {
-	it('substitutes both {{page}} and {{event}} placeholders when present', () => {
-		const out = fillTemplate('Hi {{page}}, about {{event}}.', {
-			page: 'USWAG Davao',
-			event: 'Kadayawan Fair'
-		});
-		expect(out).toBe('Hi USWAG Davao, about Kadayawan Fair.');
+describe('fillTemplate (3-key signature)', () => {
+	it('substitutes {{organizerName}}, {{eventName}}, and {{repName}} when all present (AC-7)', () => {
+		const out = fillTemplate(
+			'Hi from {{repName}}! Following up with {{organizerName}} about {{eventName}}.',
+			{ organizerName: 'USWAG Davao', eventName: 'Kadayawan Fair', repName: 'Jess' }
+		);
+		expect(out).toBe('Hi from Jess! Following up with USWAG Davao about Kadayawan Fair.');
 	});
 
-	it('renders {{event}} as empty string when the event value is empty (missing/undefined eventName)', () => {
-		const out = fillTemplate('Following up on {{event}} for {{page}}.', {
-			page: 'USWAG Davao',
-			event: ''
+	it('degrades a missing value to an empty string, never leaving a literal token (AC-8)', () => {
+		const out = fillTemplate('Following up on {{eventName}} for {{organizerName}} — {{repName}}', {
+			organizerName: 'USWAG Davao',
+			eventName: '',
+			repName: 'Jess'
 		});
-		expect(out).toBe('Following up on  for USWAG Davao.');
+		expect(out).toBe('Following up on  for USWAG Davao — Jess');
+		expect(out).not.toContain('{{');
 	});
 
 	it('returns the body unchanged when it contains no placeholders', () => {
 		const body = 'Just a plain note with no tokens.';
-		expect(fillTemplate(body, { page: 'X', event: 'Y' })).toBe(body);
+		expect(fillTemplate(body, { organizerName: 'X', eventName: 'Y', repName: 'Z' })).toBe(body);
 	});
 
 	it('replaces every occurrence when a placeholder repeats in one body', () => {
-		const out = fillTemplate('{{page}} and again {{page}} — {{event}}/{{event}}', {
-			page: 'Acme',
-			event: 'Expo'
-		});
-		expect(out).toBe('Acme and again Acme — Expo/Expo');
-	});
-
-	it('every TEMPLATE body is fully resolved (no {{ tokens left) after filling', () => {
-		for (const t of TEMPLATES) {
-			const out = fillTemplate(t.body, { page: 'P', event: 'E' });
-			expect(out).not.toContain('{{');
-		}
+		const out = fillTemplate(
+			'{{organizerName}} and again {{organizerName}} — {{eventName}}/{{eventName}} by {{repName}}',
+			{ organizerName: 'Acme', eventName: 'Expo', repName: 'Sam' }
+		);
+		expect(out).toBe('Acme and again Acme — Expo/Expo by Sam');
 	});
 });

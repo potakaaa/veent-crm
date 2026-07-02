@@ -29,3 +29,13 @@ export async function createUser(input: {
 
 	return dbUserToUser(row);
 }
+
+/** Map session locals.user to the User shape expected by page loads. */
+export function sessionToUser(u: {
+	id: string;
+	email: string;
+	name: string;
+	role: import('$lib/types').Role;
+}): User {
+	return { id: u.id, email: u.email, name: u.name, role: u.role, active: true };
+}

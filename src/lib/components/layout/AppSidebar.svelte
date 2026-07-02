@@ -1,6 +1,7 @@
 <script lang="ts">
-	import { page } from '$app/state';
+	import { page, navigating } from '$app/state';
 	import { goto } from '$app/navigation';
+	import { Dialog } from 'bits-ui';
 	import Icon, { type IconName } from '$lib/components/shared/Icon.svelte';
 	import { authClient } from '$lib/auth-client';
 	import { roleLabel } from '$lib/utils/roles';
@@ -14,10 +15,14 @@
 
 	let {
 		user,
-		counts
+		counts,
+		// Controlled-open state for the mobile nav drawer, owned by AppShell (repo convention:
+		// local state bound to `open`, no Dialog.Trigger). The desktop <aside> is unaffected.
+		mobileOpen = $bindable(false)
 	}: {
 		user: User | null;
 		counts: { overdue: number; unassigned: number };
+		mobileOpen?: boolean;
 	} = $props();
 
 	type NavItem = {
@@ -34,7 +39,7 @@
 			label: 'Today',
 			icon: 'today',
 			badge: counts.overdue || undefined,
-			badgeColor: '#e11d2a'
+			badgeColor: 'var(--color-nav-badge)'
 		},
 		{ href: '/leads', label: 'My Leads', icon: 'leads' },
 		{ href: '/pipeline', label: 'Pipeline', icon: 'pipeline' },
@@ -55,20 +60,22 @@
 	]);
 
 	const isActive = (href: string) => {
-		const p = page.url.pathname;
+		const p = navigating.to?.url.pathname ?? page.url.pathname;
 		if (href === '/') return p === '/';
 		if (href === '/leads') return p === '/leads' || p.startsWith('/leads/');
 		return p.startsWith(href);
 	};
 </script>
 
-{#snippet navButton(item: NavItem)}
+{#snippet navButton(item: NavItem, onNavigate?: () => void)}
 	{@const active = isActive(item.href)}
 	<a
 		href={item.href}
-		class="mb-0.5 flex h-[38px] items-center gap-[11px] rounded-control px-[11px] text-[13px] transition-colors {active
-			? 'bg-[rgba(225,29,42,0.14)] font-semibold text-[#fca5a0] shadow-[inset_3px_0_0_#e11d2a]'
-			: 'font-medium text-[#a8a1ab] hover:bg-white/5'}"
+		onclick={onNavigate}
+		aria-current={active ? 'page' : undefined}
+		class="focus-ring mb-0.5 flex h-[38px] items-center gap-[11px] rounded-control px-[11px] text-[13px] transition-colors {active
+			? 'bg-nav-active-bg font-semibold text-nav-active-fg shadow-nav-active'
+			: 'font-medium text-nav-muted hover:bg-white/5'}"
 	>
 		<Icon name={item.icon} />
 		<span class="flex-1 text-left">{item.label}</span>
@@ -76,8 +83,8 @@
 			<span
 				class="inline-flex h-[17px] min-w-[18px] items-center justify-center rounded-[9px] px-[5px] font-mono text-[10px] font-semibold"
 				style={item.badgeColor
-					? `background:${item.badgeColor};color:#fff`
-					: 'background:rgba(255,255,255,0.1);color:#a8a1ab'}
+					? `background:${item.badgeColor};color:var(--color-primary-foreground)`
+					: 'background:var(--color-nav-badge-fallback);color:var(--color-nav-muted)'}
 			>
 				{item.badge}
 			</span>
@@ -85,48 +92,50 @@
 	</a>
 {/snippet}
 
-<aside
-	data-rail
-	class="flex w-[236px] shrink-0 flex-col bg-[#1a171c] text-[#f5f3f4] max-[880px]:hidden"
->
+<!--
+	Shared rail body — rendered once in the desktop <aside> and again inside the mobile drawer.
+	`onNavigate` (when provided by the drawer) closes the drawer on destination select + sign-out;
+	it is undefined for the always-visible desktop rail. Reuses the same work[]/manager[] arrays —
+	no new nav destinations.
+-->
+{#snippet railBody(onNavigate?: () => void)}
 	<!-- brand -->
 	<div class="flex items-center gap-[11px] px-4 pb-[14px] pt-4">
 		<div
-			class="flex h-[34px] w-[34px] items-center justify-center rounded-[9px] bg-primary text-[17px] font-extrabold shadow-[0_4px_12px_rgba(225,29,42,0.4)]"
+			class="flex h-[34px] w-[34px] items-center justify-center rounded-[9px] bg-primary text-[17px] font-extrabold shadow-nav-brand"
 		>
 			V
 		</div>
 		<div class="min-w-0 flex-1">
 			<div class="text-[14px] font-extrabold tracking-[-0.3px]">Veent CRM</div>
-			<div class="font-mono text-[8px] uppercase tracking-[1.6px] text-[#8a828f]">
+			<div class="font-mono text-[8px] uppercase tracking-[1.6px] text-nav-faint">
 				Outreach Console
 			</div>
 		</div>
-		<span class="h-[7px] w-[7px] rounded-full bg-[#22c55e] shadow-[0_0_0_3px_rgba(34,197,94,0.18)]"
-		></span>
+		<span class="h-[7px] w-[7px] rounded-full bg-nav-presence shadow-nav-presence"></span>
 	</div>
 
 	<!-- nav -->
 	<nav class="flex-1 overflow-y-auto px-3 py-1">
 		<div
-			class="px-2.5 pb-[7px] pt-2 font-mono text-[9.5px] uppercase tracking-[1.4px] text-[#6f6873]"
+			class="px-2.5 pb-[7px] pt-2 font-mono text-[9.5px] uppercase tracking-[1.4px] text-nav-section"
 		>
 			Workspace
 		</div>
-		{#each work as item (item.href)}{@render navButton(item)}{/each}
+		{#each work as item (item.href)}{@render navButton(item, onNavigate)}{/each}
 
 		{#if isManagerRole(user?.role)}
 			<div
-				class="px-2.5 pb-[7px] pt-[18px] font-mono text-[9.5px] uppercase tracking-[1.4px] text-[#6f6873]"
+				class="px-2.5 pb-[7px] pt-[18px] font-mono text-[9.5px] uppercase tracking-[1.4px] text-nav-section"
 			>
 				Manager
 			</div>
-			{#each manager as item (item.href)}{@render navButton(item)}{/each}
+			{#each manager as item (item.href)}{@render navButton(item, onNavigate)}{/each}
 		{/if}
 	</nav>
 
 	<!-- user footer -->
-	<div class="flex items-center gap-2.5 border-t border-[#26222b] px-[14px] py-[11px]">
+	<div class="flex items-center gap-2.5 border-t border-nav-border px-[14px] py-[11px]">
 		<div class="relative shrink-0">
 			<div
 				class="flex h-[30px] w-[30px] items-center justify-center rounded-full bg-primary text-[12px] font-semibold"
@@ -134,17 +143,76 @@
 				{user?.name?.[0] ?? '?'}
 			</div>
 			<span
-				class="absolute -bottom-px -right-px h-[9px] w-[9px] rounded-full border-2 border-[#1a171c] bg-[#22c55e]"
+				class="absolute -bottom-px -right-px h-[9px] w-[9px] rounded-full border-2 border-nav-bg bg-nav-presence"
 			></span>
 		</div>
 		<div class="min-w-0 flex-1">
 			<div class="text-[12.5px] font-semibold">{user?.name ?? 'Signed out'}</div>
-			<div class="font-mono text-[9.5px] text-[#8a828f]">
+			<div class="font-mono text-[9.5px] text-nav-faint">
 				{user?.role ? roleLabel(user.role) : '—'}{user?.location ? ` · ${user.location}` : ''}
 			</div>
 		</div>
-		<button onclick={signOut} title="Sign out" class="p-1 text-[#8a828f] hover:text-white">
+		<button
+			onclick={() => {
+				onNavigate?.();
+				signOut();
+			}}
+			title="Sign out"
+			aria-label="Sign out"
+			class="focus-ring rounded-control p-1 text-nav-faint hover:text-white"
+		>
 			<Icon name="logout" size={16} />
 		</button>
 	</div>
+{/snippet}
+
+<!--
+	Desktop rail. Retains `max-[880px]:hidden`: below 880px it is intentionally replaced by the
+	mobile drawer below (no longer a dead-end — a reachable nav surface now exists at every width).
+	Desktop (>=880px) rendering is unchanged by this phase.
+-->
+<aside data-rail class="flex w-[236px] shrink-0 flex-col bg-nav-bg text-nav-fg max-[880px]:hidden">
+	{@render railBody()}
 </aside>
+
+<!--
+	Mobile nav drawer — off-canvas left sheet via the bits-ui Dialog primitive (repo's 100%
+	controlled-open convention: `bind:open`, no Dialog.Trigger). Dialog gives focus-trap,
+	Escape-to-close, outside-click-to-close, and focus-return-to-trigger for free (C4). The drawer
+	auto-closes on destination select / sign-out via the onNavigate callback passed to railBody (C5).
+-->
+<Dialog.Root bind:open={mobileOpen}>
+	<Dialog.Portal>
+		<Dialog.Overlay
+			class="fixed inset-0 z-40 bg-black/60 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0"
+		/>
+		<Dialog.Content
+			class="fixed inset-y-0 left-0 z-50 flex w-[260px] max-w-[85vw] flex-col bg-nav-bg text-nav-fg shadow-pop outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:slide-in-from-left data-[state=closed]:slide-out-to-left"
+		>
+			<Dialog.Title class="sr-only">Navigation menu</Dialog.Title>
+			<Dialog.Description class="sr-only">
+				Primary navigation and account actions
+			</Dialog.Description>
+			<Dialog.Close
+				aria-label="Close navigation menu"
+				class="focus-ring absolute right-3 top-3 rounded-control p-1 text-nav-faint hover:text-white"
+			>
+				<svg
+					xmlns="http://www.w3.org/2000/svg"
+					width="18"
+					height="18"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="2"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+					aria-hidden="true"
+				>
+					<path d="M18 6 6 18M6 6l12 12" />
+				</svg>
+			</Dialog.Close>
+			{@render railBody(() => (mobileOpen = false))}
+		</Dialog.Content>
+	</Dialog.Portal>
+</Dialog.Root>

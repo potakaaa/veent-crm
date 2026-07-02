@@ -48,16 +48,21 @@
 				params.set(k, String(v));
 			}
 		}
-		goto(`?${params}`, { keepFocus: true });
+		return goto(`?${params}`, { keepFocus: true });
 	}
 
 	function setFilter(key: string, value: string | boolean | number | undefined) {
 		navigate({ [key]: value, page: undefined }); // reset page (delete param = default 1)
 	}
 
-	function setSegment(seg: LeadSegment) {
+	async function setSegment(seg: LeadSegment) {
 		pendingSegment = seg;
-		navigate({ segment: seg === 'mine' ? undefined : seg, page: undefined });
+		try {
+			await navigate({ segment: seg === 'mine' ? undefined : seg, page: undefined });
+		} catch {
+			// Navigation failed or was rejected — clear pending state if not superseded.
+			if (pendingSegment === seg) pendingSegment = null;
+		}
 	}
 
 	function onSearchInput(e: Event & { currentTarget: HTMLInputElement }) {

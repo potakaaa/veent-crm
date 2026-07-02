@@ -4,6 +4,7 @@ import { db } from '$lib/server/db/index';
 import { crmUsers } from '$lib/server/db/schema';
 import { asc, desc } from 'drizzle-orm';
 import { dbUserToUser, listPipelineLeads } from '$lib/server/db/leads';
+import { canAccessTeam } from '$lib/utils/permissions';
 import type { User } from '$lib/types';
 
 const SORT_COLS = ['name', 'email', 'role', 'active'] as const;
@@ -18,7 +19,7 @@ const COL_MAP = {
 
 // Manager-only: this roster doubles as the magic-link allowlist (active reps with email).
 export const load: PageServerLoad = async ({ locals, url }) => {
-	if (locals.user?.role !== 'manager') {
+	if (!locals.user || !canAccessTeam(locals.user)) {
 		error(403, 'Manager only');
 	}
 

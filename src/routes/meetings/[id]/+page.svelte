@@ -25,8 +25,7 @@
 
 	// Edit is gated the same way as the /meetings list: managers, or the organizer.
 	const canManage = $derived(
-		data.me.role === 'manager' ||
-			(meeting.organizerId != null && meeting.organizerId === data.me.id)
+		data.me.role !== 'rep' || (meeting.organizerId != null && meeting.organizerId === data.me.id)
 	);
 
 	let modalOpen = $state(false);

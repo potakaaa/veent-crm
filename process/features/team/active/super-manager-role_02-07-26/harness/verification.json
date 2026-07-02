@@ -1,0 +1,27 @@
+{
+  "feature": "super-manager-role",
+  "github_issue": 73,
+  "evl_run": "2026-07-02",
+  "branch": "development",
+  "plan": "process/features/team/active/super-manager-role_02-07-26/super-manager-role_PLAN_02-07-26.md",
+  "gates": [
+    {
+      "id": 1,
+      "command": "bun run check",
+      "result": "PASS",
+      "exit": 0,
+      "notes": "2320 files, 0 errors, 1 pre-existing warning (leads/[id]/+page.svelte state_referenced_locally, unrelated to this change)"
+    },
+    {
+      "id": 2,
+      "command": "bun run test:unit -- --run",
+      "result": "PASS",
+      "notes": "18 files passed / 5 skipped; 276 tests passed / 82 skipped. schemas.spec 'super_manager role (GitHub #73)' asserts USER_ROLES contains super_manager and roleLabel('super_manager')==='Super Manager' — both pass."
+    }
+  ],
+  "known_gaps": [
+    "Hybrid live-DB manual gates (promote transfer, 403 on manager deactivate, self-deactivate rejection, 23505 singleton) — no live-DB CI, pre-accepted",
+    "e2e team-page gating — no shared auth Playwright fixture, repo-wide pre-accepted known-gap"
+  ],
+  "verdict": "DONE"
+}

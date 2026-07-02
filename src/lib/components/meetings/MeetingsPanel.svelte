@@ -31,7 +31,7 @@
 	let mutating = $state(false);
 
 	function canManage(m: Meeting): boolean {
-		return me.role === 'manager' || (m.organizerId != null && m.organizerId === me.id);
+		return me.role !== 'rep' || (m.organizerId != null && m.organizerId === me.id);
 	}
 
 	function openCreate() {

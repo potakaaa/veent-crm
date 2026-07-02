@@ -23,7 +23,7 @@ export type SessionUser = {
 	id: string;
 	email: string;
 	name: string;
-	role: 'rep' | 'manager';
+	role: 'rep' | 'manager' | 'super_manager';
 };
 
 function createAuth() {

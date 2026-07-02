@@ -254,7 +254,7 @@
 		await invalidateAll(); // $effect reconciles shadow with server truth
 	}
 
-	const grid = 'grid grid-cols-[36px_2fr_1.6fr_1fr_90px_100px_110px_1fr_90px_150px] gap-3';
+	const grid = 'grid grid-cols-[36px_2fr_1.6fr_1fr_90px_90px_90px_1fr_130px_150px] gap-3';
 
 	let openHoverId = $state<string | null>(null);
 	let hoverCloseTimer: ReturnType<typeof setTimeout> | undefined;
@@ -413,7 +413,6 @@
 													>{l.siblings} events</span
 												>{/if}
 										</div>
-										<div class="font-mono text-[11px] text-ink-400">{l.handle} · {l.category}</div>
 									</a>
 								</div>
 							{/snippet}

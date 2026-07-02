@@ -219,7 +219,7 @@
 			value={data.filters.category ?? ''}
 			onValueChange={(v) => navigate({ category: v || undefined, page: undefined })}
 		>
-			<SelectTrigger size="sm" class="w-36"
+			<SelectTrigger size="sm" class="w-36" aria-label="Filter by category"
 				>{data.filters.category || 'All categories'}</SelectTrigger
 			>
 			<SelectContent>
@@ -233,7 +233,7 @@
 			value={data.filters.sort}
 			onValueChange={(v) => navigate({ sort: v === 'title' ? undefined : v, page: undefined })}
 		>
-			<SelectTrigger size="sm" class="w-32">
+			<SelectTrigger size="sm" class="w-32" aria-label="Sort templates">
 				{data.filters.sort === 'newest'
 					? 'Newest'
 					: data.filters.sort === 'oldest'
@@ -251,9 +251,23 @@
 			value={searchInput}
 			oninput={onSearchInput}
 			placeholder="Search templates…"
+			aria-label="Search templates"
 			class="ml-auto h-8 w-52"
 		/>
 	</div>
+
+	{#snippet categoryHeader(cat: string, accent: string, count: number)}
+		<div class="mb-2 flex items-center gap-2">
+			<div class="flex items-center gap-1.5 font-mono text-[11px] text-ink-500">
+				<span
+					class="inline-block size-[7px] shrink-0 rounded-full"
+					style="background-color:{accent}"
+				></span>
+				{cat}
+			</div>
+			<span class="text-[12px] text-ink-300">{count}</span>
+		</div>
+	{/snippet}
 
 	{#if data.pagination.total === 0}
 		<Card class="rounded-control px-6 py-10 text-center text-[13px] text-ink-300">
@@ -268,16 +282,7 @@
 			{#each grouped as [cat, items] (cat)}
 				{@const accent = categoryColor(cat)}
 				<section>
-					<div class="mb-2 flex items-center gap-2">
-						<div class="flex items-center gap-1.5 font-mono text-[11px] text-ink-500">
-							<span
-								class="inline-block size-[7px] shrink-0 rounded-full"
-								style="background-color:{accent}"
-							></span>
-							{cat}
-						</div>
-						<span class="text-[12px] text-ink-300">{items.length}</span>
-					</div>
+					{@render categoryHeader(cat, accent, items.length)}
 					<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
 						{#each items as t (t.id)}
 							<Card class="relative flex flex-col gap-3 rounded-control p-4">
@@ -310,16 +315,7 @@
 			{#each grouped as [cat, items] (cat)}
 				{@const accent = categoryColor(cat)}
 				<section>
-					<div class="mb-2 flex items-center gap-2">
-						<div class="flex items-center gap-1.5 font-mono text-[11px] text-ink-500">
-							<span
-								class="inline-block size-[7px] shrink-0 rounded-full"
-								style="background-color:{accent}"
-							></span>
-							{cat}
-						</div>
-						<span class="text-[12px] text-ink-300">{items.length}</span>
-					</div>
+					{@render categoryHeader(cat, accent, items.length)}
 					<Card class="gap-0 overflow-hidden rounded-control py-0">
 						{#each items as t (t.id)}
 							<div

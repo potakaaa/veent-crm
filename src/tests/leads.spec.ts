@@ -8,9 +8,16 @@
  */
 import { describe, it, expect } from 'vitest';
 import { leadFormSchema } from '$lib/zod/schemas';
-import { dbRowToLead, dbActivityToActivity, parseFilterCsv } from '$lib/server/db/leads';
+import {
+	dbRowToLead,
+	dbActivityToActivity,
+	parseFilterCsv,
+	visibilityCondition
+} from '$lib/server/db/leads';
 import { leadCategory } from '$lib/server/db/schema';
 import { canEditLead } from '$lib/utils/permissions';
+import { PgDialect } from 'drizzle-orm/pg-core';
+import type { SQL } from 'drizzle-orm';
 import type { Lead, User } from '$lib/types';
 
 // ---------------------------------------------------------------------------
@@ -45,6 +52,7 @@ function makeRow(overrides: Partial<Parameters<typeof dbRowToLead>[0]> = {}) {
 		stage: 'new' as const,
 		lostReason: null,
 		ownerId: 'owner-uuid',
+		visibility: 'everyone' as const,
 		source: 'manual' as const,
 		lastActivityAt: now,
 		deletedAt: null,
@@ -429,3 +437,39 @@ describe('category filter options (AC#12 — enum-derived)', () => {
 });
 
 // 404 path covered by leads-db.spec.ts: "getLead returns null for a nonexistent UUID"
+
+// ---------------------------------------------------------------------------
+// visibilityCondition — pure SQL-shape assertion (GitHub #87)
+// Serializes the Drizzle SQL to text via PgDialect (no DB connection needed),
+// proving: manager → TRUE no-op; rep → OR-of-4 incl. the grants EXISTS subquery.
+// Proves the logic core of AC#5, AC#6, AC#7, AC#8, AC#9.
+// ---------------------------------------------------------------------------
+describe('visibilityCondition SQL shape (GitHub #87)', () => {
+	const dialect = new PgDialect();
+	const toSql = (s: SQL) => dialect.sqlToQuery(s).sql;
+	const REP = '11111111-1111-1111-1111-111111111111';
+
+	it('returns a TRUE no-op for a manager (override centralized in the helper)', () => {
+		const sql = toSql(visibilityCondition(REP, 'manager'));
+		expect(sql.trim().toLowerCase()).toBe('true');
+	});
+
+	it('returns the OR-of-4 shape for a rep (own / everyone / unowned / granted)', () => {
+		const sql = toSql(visibilityCondition(REP, 'rep')).toLowerCase();
+		// owner match + everyone + unowned + explicit grant subquery
+		expect(sql).toContain('"owner_id"');
+		expect(sql).toContain('"visibility"');
+		expect(sql).toContain('is null');
+		expect(sql).toContain('exists');
+		expect(sql).toContain('crm_lead_visibility_grants');
+		// It is an OR, not a bare TRUE.
+		expect(sql).toContain(' or ');
+		expect(sql.trim()).not.toBe('true');
+	});
+
+	it('manager and rep produce different predicates', () => {
+		expect(toSql(visibilityCondition(REP, 'manager'))).not.toBe(
+			toSql(visibilityCondition(REP, 'rep'))
+		);
+	});
+});

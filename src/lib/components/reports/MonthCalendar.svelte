@@ -48,9 +48,7 @@
 
 	// Build the 6-row × 7-col grid for the displayed month
 	const calendarWeeks = $derived.by(() => {
-		// eslint-disable-next-line svelte/prefer-svelte-reactivity
 		const first = new Date(year, month, 1);
-		// eslint-disable-next-line svelte/prefer-svelte-reactivity
 		const last = new Date(year, month + 1, 0);
 
 		// Monday-aligned: offset of the first day

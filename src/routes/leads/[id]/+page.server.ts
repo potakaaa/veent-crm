@@ -7,7 +7,10 @@ import type { User } from '$lib/types';
 export const load: PageServerLoad = async ({ params, locals }) => {
 	if (!locals.user) throw error(401, 'Unauthorized');
 
-	const [lead, users] = await Promise.all([getLead(params.id), listUsers()]);
+	const [lead, users] = await Promise.all([
+		getLead(params.id, locals.user.id, locals.user.role),
+		listUsers()
+	]);
 
 	if (!lead) throw error(404, 'Lead not found');
 

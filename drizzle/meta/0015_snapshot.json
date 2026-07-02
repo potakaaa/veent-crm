@@ -1,6 +1,6 @@
 {
-  "id": "5a28f73a-15ae-4c28-a5e8-d830fa5f4ed9",
-  "prevId": "f559c412-4a22-4f53-a1f9-3196db7b2745",
+  "id": "2516bae7-3e03-47a6-97ca-30af76dcd89e",
+  "prevId": "5a28f73a-15ae-4c28-a5e8-d830fa5f4ed9",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -916,6 +916,77 @@
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": false
+        },
+        "onboarding_notes": {
+          "name": "onboarding_notes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "contract_url": {
+          "name": "contract_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "onboarding_start_date": {
+          "name": "onboarding_start_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "go_live_date": {
+          "name": "go_live_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "fee_structure": {
+          "name": "fee_structure",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "transaction_fee_pct": {
+          "name": "transaction_fee_pct",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": false,
+          "default": 7
+        },
+        "convenience_fee_pesos": {
+          "name": "convenience_fee_pesos",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": false,
+          "default": 20
+        },
+        "service_fee_pct": {
+          "name": "service_fee_pct",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": false,
+          "default": 3
+        },
+        "service_fee_per_ticket_pesos": {
+          "name": "service_fee_per_ticket_pesos",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": false,
+          "default": 20
+        },
+        "bank_charges_absorbed": {
+          "name": "bank_charges_absorbed",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "has_future_events": {
+          "name": "has_future_events",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
         },
         "source_ref": {
           "name": "source_ref",

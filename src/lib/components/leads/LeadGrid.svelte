@@ -54,7 +54,7 @@
 		class="{cols} border-b border-hairline bg-panel-subtle px-4 py-[9px] font-mono text-[10.5px] uppercase tracking-[0.4px] text-ink-300"
 	>
 		<span></span>
-		{#each table.getHeaderGroups()[0].headers as header}
+		{#each table.getHeaderGroups()[0].headers as header (header.id)}
 			{#if header.column.getCanSort()}
 				<button
 					onclick={header.column.getToggleSortingHandler()}

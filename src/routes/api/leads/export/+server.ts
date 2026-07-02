@@ -26,6 +26,7 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 
 	const filterArgs = {
 		userId: locals.user.id,
+		role: locals.user.role,
 		segment,
 		stage: stage || undefined,
 		platform: platform || undefined,

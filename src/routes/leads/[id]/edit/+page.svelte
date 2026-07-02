@@ -12,11 +12,17 @@
 	import { Textarea } from '$lib/components/ui/textarea';
 	import { toasts } from '$lib/stores/toasts.svelte';
 	import { formatEventDate } from '$lib/utils/dates';
-	import { leadUpdateSchema, LEAD_CATEGORIES, LEAD_PLATFORMS } from '$lib/zod/schemas';
+	import {
+		leadUpdateSchema,
+		LEAD_CATEGORIES,
+		LEAD_PLATFORMS,
+		LEAD_VISIBILITIES
+	} from '$lib/zod/schemas';
 	import { parseDate, type DateValue } from '@internationalized/date';
+	import { untrack } from 'svelte';
 
 	let { data } = $props();
-	const { lead } = data;
+	const lead = untrack(() => data.lead);
 
 	let name = $state(lead.name);
 	let category = $state<string>(lead.category);
@@ -31,6 +37,20 @@
 	let eventLink = $state(lead.eventLink ?? '');
 	let notes = $state(lead.notes ?? '');
 	let hasFutureEvents = $state(lead.hasFutureEvents ?? false);
+	let visibility = $state<(typeof LEAD_VISIBILITIES)[number]>(lead.visibility ?? 'everyone');
+	let selectedUserIds = $state<string[]>(lead.selectedUserIds ?? []);
+
+	const VISIBILITY_LABELS: Record<string, string> = {
+		only_me: 'Only me',
+		everyone: 'Everyone',
+		selected: 'Selected people'
+	};
+	const grantableUsers = $derived(data.users.filter((u) => u.active));
+	function toggleGrant(id: string) {
+		selectedUserIds = selectedUserIds.includes(id)
+			? selectedUserIds.filter((x) => x !== id)
+			: [...selectedUserIds, id];
+	}
 
 	let selectedDate = $state<DateValue | undefined>(
 		lead.eventDate ? parseDate(lead.eventDate) : undefined
@@ -82,7 +102,9 @@
 			firstAnnouncedDate: announcedDate ? announcedDate.toString() : null,
 			firstReachedOutDate: reachedOutDate ? reachedOutDate.toString() : null,
 			notes: notes || undefined,
-			hasFutureEvents
+			hasFutureEvents,
+			visibility,
+			selectedUserIds: visibility === 'selected' ? selectedUserIds : undefined
 		});
 		if (!parsed.success) {
 			formError = parsed.error.issues[0]?.message ?? 'Please check the form.';
@@ -340,6 +362,42 @@
 					{/if}
 				</div>
 			</div>
+			<div class="grid gap-1.5 sm:col-span-2">
+				<Label for="visibility">Visibility</Label>
+				<Select type="single" bind:value={visibility}>
+					<SelectTrigger id="visibility" class="w-full">
+						{VISIBILITY_LABELS[visibility]}
+					</SelectTrigger>
+					<SelectContent>
+						<SelectItem value="only_me" label="Only me">Only me</SelectItem>
+						<SelectItem value="everyone" label="Everyone">Everyone</SelectItem>
+						<SelectItem value="selected" label="Selected people">Selected people</SelectItem>
+					</SelectContent>
+				</Select>
+				{#if visibility === 'selected'}
+					<div class="mt-1 rounded-control border border-hairline bg-panel-sunken p-3">
+						<p class="mb-2 text-[12px] text-ink-400">
+							Pick who else can see this lead. Managers always see everything.
+						</p>
+						<div class="grid max-h-48 grid-cols-1 gap-1 overflow-y-auto sm:grid-cols-2">
+							{#each grantableUsers as u (u.id)}
+								<label class="flex items-center gap-2 rounded-[7px] px-2 py-1.5 hover:bg-panel">
+									<input
+										type="checkbox"
+										checked={selectedUserIds.includes(u.id)}
+										onchange={() => toggleGrant(u.id)}
+									/>
+									<span class="text-[13px]">{u.name}</span>
+								</label>
+							{/each}
+						</div>
+						{#if grantableUsers.length === 0}
+							<p class="text-[12px] text-ink-400">No teammates available to grant.</p>
+						{/if}
+					</div>
+				{/if}
+			</div>
+
 			<div class="grid gap-1.5 sm:col-span-2">
 				<Label for="notes">Notes <span class="text-ink-400">(optional)</span></Label>
 				<Textarea id="notes" bind:value={notes} placeholder="Anything worth noting…" rows={3} />

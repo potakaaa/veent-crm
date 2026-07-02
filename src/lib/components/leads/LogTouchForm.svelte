@@ -7,37 +7,83 @@
 	import { today, type DateValue } from '@internationalized/date';
 	import { ACTIVITY_CHANNELS } from '$lib/zod/schemas';
 	import { OUTCOME_TOKENS } from '$lib/design/tokens';
-	import type { ActivityChannel, ActivityOutcome, AddActivityInput, Lead } from '$lib/types';
-	import {
-		TEMPLATES,
-		TEMPLATE_CATEGORY_LABELS,
-		fillTemplate,
-		type Template,
-		type TemplateCategory
-	} from '$lib/data/templates';
+	import type {
+		ActivityChannel,
+		ActivityOutcome,
+		AddActivityInput,
+		Category,
+		Lead,
+		MessageTemplate
+	} from '$lib/types';
+	import { fillTemplate } from '$lib/data/templates';
+	import { SvelteMap } from 'svelte/reactivity';
 
 	let {
 		lead,
+		templates,
+		repName,
 		onSubmit,
 		disabled = false
 	}: {
-		lead: Pick<Lead, 'name' | 'eventName'>;
+		lead: Pick<Lead, 'name' | 'eventName' | 'category'>;
+		templates: MessageTemplate[];
+		repName: string;
 		onSubmit: (input: AddActivityInput) => void | Promise<void>;
 		disabled?: boolean;
 	} = $props();
 
-	const templateGroups = (['intro', 'follow-up', 'pricing'] as const).map((category) => ({
-		category,
-		label: TEMPLATE_CATEGORY_LABELS[category],
-		items: TEMPLATES.filter((t) => t.category === category)
-	})) satisfies { category: TemplateCategory; label: string; items: Template[] }[];
+	// Group DB-backed templates by their lead-category enum value, surfacing the
+	// current lead's own category first (AC-6). Empty categories are simply absent —
+	// never a blocking empty state (the popover still lists every other group).
+	const templateGroups = $derived.by(() => {
+		const byCategory = new SvelteMap<Category, MessageTemplate[]>();
+		for (const t of templates) {
+			const items = byCategory.get(t.category) ?? [];
+			items.push(t);
+			byCategory.set(t.category, items);
+		}
+		return [...byCategory.keys()]
+			.sort((a, b) => {
+				if (a === lead.category) return -1;
+				if (b === lead.category) return 1;
+				return a.localeCompare(b);
+			})
+			.map((category) => ({ category, items: byCategory.get(category)! }));
+	});
 
 	let templatesOpen = $state(false);
+	let confirmOpen = $state(false);
+	let pendingTemplate = $state<MessageTemplate | null>(null);
 
-	function applyTemplate(t: Template) {
-		const filled = fillTemplate(t.body, { page: lead.name, event: lead.eventName ?? '' });
-		note = note.trim() ? `${note.trimEnd()}\n\n${filled}` : filled;
+	function fill(t: MessageTemplate): string {
+		return fillTemplate(t.body, {
+			organizerName: lead.name,
+			eventName: lead.eventName ?? '',
+			repName
+		});
+	}
+
+	// REPLACE semantics (AC-9/AC-10): selecting a template overwrites the note.
+	// Confirm only when the field already holds unsaved content; empty replaces silently.
+	function selectTemplate(t: MessageTemplate) {
 		templatesOpen = false;
+		if (note.trim()) {
+			pendingTemplate = t;
+			confirmOpen = true;
+		} else {
+			note = fill(t);
+		}
+	}
+
+	function confirmReplace() {
+		if (pendingTemplate) note = fill(pendingTemplate);
+		pendingTemplate = null;
+		confirmOpen = false;
+	}
+
+	function cancelReplace() {
+		pendingTemplate = null;
+		confirmOpen = false;
 	}
 
 	const channelLabels: Record<ActivityChannel, string> = {
@@ -213,24 +259,32 @@
 					</button>
 				{/snippet}
 			</Popover.Trigger>
-			<Popover.Content align="end" sideOffset={6} class="w-80">
-				{#each templateGroups as group (group.category)}
-					<div>
-						<div class="mb-1 font-mono text-[10px] uppercase tracking-[0.5px] text-ink-300">
-							{group.label}
-						</div>
-						<div class="flex flex-col gap-1">
-							{#each group.items as t (t.id)}
-								<button
-									class="rounded-[7px] border border-hairline bg-panel px-2.5 py-1.5 text-left text-[12px] text-ink-600 hover:border-primary hover:text-primary"
-									onclick={() => applyTemplate(t)}
-								>
-									{t.label}
-								</button>
-							{/each}
-						</div>
+			<Popover.Content align="end" sideOffset={6} class="max-h-96 w-80 overflow-y-auto">
+				{#if templateGroups.length === 0}
+					<div class="px-1 py-2 text-[12px] text-ink-300">No templates available yet.</div>
+				{:else}
+					<div class="flex flex-col gap-3">
+						{#each templateGroups as group (group.category)}
+							<div>
+								<div class="mb-1 font-mono text-[10px] uppercase tracking-[0.5px] text-ink-300">
+									{group.category}{#if group.category === lead.category}
+										<span class="text-primary"> · this lead</span>
+									{/if}
+								</div>
+								<div class="flex flex-col gap-1">
+									{#each group.items as t (t.id)}
+										<button
+											class="rounded-[7px] border border-hairline bg-panel px-2.5 py-1.5 text-left text-[12px] text-ink-600 hover:border-primary hover:text-primary"
+											onclick={() => selectTemplate(t)}
+										>
+											{t.title}
+										</button>
+									{/each}
+								</div>
+							</div>
+						{/each}
 					</div>
-				{/each}
+				{/if}
 			</Popover.Content>
 		</Popover.Root>
 	</div>
@@ -248,3 +302,28 @@
 		>
 	</div>
 </div>
+
+<Dialog.Root bind:open={confirmOpen}>
+	<Dialog.Content class="w-[min(92vw,380px)] gap-0 p-5" showCloseButton={false}>
+		<Dialog.Header class="mb-2 p-0">
+			<Dialog.Title>Replace current note?</Dialog.Title>
+		</Dialog.Header>
+		<p class="text-[13px] leading-relaxed text-ink-600">
+			Your note already has unsaved content. Applying this template will replace it entirely.
+		</p>
+		<div class="mt-4 flex justify-end gap-2">
+			<button
+				onclick={cancelReplace}
+				class="rounded-control border border-hairline bg-panel px-3 py-1.5 text-[13px] font-medium text-ink hover:bg-panel-sunken"
+			>
+				Cancel
+			</button>
+			<button
+				onclick={confirmReplace}
+				class="rounded-control bg-primary px-3 py-1.5 text-[13px] font-semibold text-white hover:bg-primary-strong"
+			>
+				Replace
+			</button>
+		</div>
+	</Dialog.Content>
+</Dialog.Root>

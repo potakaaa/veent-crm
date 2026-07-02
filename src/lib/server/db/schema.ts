@@ -294,6 +294,21 @@ export const crmMeetingAttendees = pgTable(
 );
 
 // ---------------------------------------------------------------------------
+// crm_message_templates — manager-managed outreach snippets, keyed on event category
+// ---------------------------------------------------------------------------
+export const crmMessageTemplates = pgTable('crm_message_templates', {
+	id: uuid('id').primaryKey().defaultRandom(),
+	// reuse the existing 20-value event-category enum — no parallel taxonomy
+	category: leadCategory('category').notNull().default('Other'),
+	title: text('title').notNull(),
+	body: text('body').notNull(),
+	// soft delete; no hard deletes
+	deletedAt: timestamp('deleted_at', { withTimezone: true }),
+	createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+	updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
+});
+
+// ---------------------------------------------------------------------------
 // Better Auth tables (managed by drizzle-kit)
 // ---------------------------------------------------------------------------
 export const baUser = pgTable('user', {
@@ -357,3 +372,4 @@ export type CrmActivity = typeof crmActivities.$inferSelect;
 export type CrmLeadHistory = typeof crmLeadHistory.$inferSelect;
 export type CrmMeeting = typeof crmMeetings.$inferSelect;
 export type CrmMeetingAttendee = typeof crmMeetingAttendees.$inferSelect;
+export type CrmMessageTemplate = typeof crmMessageTemplates.$inferSelect;

@@ -235,6 +235,14 @@ export const userFormSchema = z.object({
 });
 export type UserForm = z.infer<typeof userFormSchema>;
 
+// --- Add / edit an outreach message template (Superforms) ------------------
+export const templateFormSchema = z.object({
+	title: z.string().min(1, 'Title is required'),
+	category: z.enum(LEAD_CATEGORIES),
+	body: z.string().min(1, 'Message body is required')
+});
+export type TemplateForm = z.infer<typeof templateFormSchema>;
+
 // --- Move lead stage (pipeline + detail page) ---------------------------------
 const PIPELINE_STAGES = ['new', 'contacted', 'replied', 'in_discussion'] as const;
 

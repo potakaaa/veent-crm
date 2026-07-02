@@ -49,7 +49,8 @@
 	]);
 	const manager: NavItem[] = $derived([
 		{ href: '/reports', label: 'Reports', icon: 'reports' },
-		{ href: '/team', label: 'Team', icon: 'team' }
+		{ href: '/team', label: 'Team', icon: 'team' },
+		{ href: '/templates', label: 'Templates', icon: 'reply' }
 	]);
 
 	const isActive = (href: string) => {

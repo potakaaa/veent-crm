@@ -2,14 +2,16 @@ import type { PageServerLoad } from './$types';
 import { error } from '@sveltejs/kit';
 import { getLead, listUsers, listActivities, getLeadHistory } from '$lib/server/db/leads';
 import { listMeetingsForLead } from '$lib/server/db/meetings';
+import { listTemplates } from '$lib/server/db/templates';
 import type { User } from '$lib/types';
 
 export const load: PageServerLoad = async ({ params, locals }) => {
 	if (!locals.user) throw error(401, 'Unauthorized');
 
-	const [lead, users] = await Promise.all([
+	const [lead, users, templates] = await Promise.all([
 		getLead(params.id, locals.user.id, locals.user.role),
-		listUsers()
+		listUsers(),
+		listTemplates()
 	]);
 
 	if (!lead) throw error(404, 'Lead not found');
@@ -28,5 +30,5 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		active: true
 	};
 
-	return { lead, activities, meetings, leadHistory, me, users };
+	return { lead, activities, meetings, leadHistory, me, users, templates };
 };

@@ -22,6 +22,7 @@
 		"db:migrate": "drizzle-kit migrate",
 		"db:studio": "drizzle-kit studio",
 		"import": "bun run scripts/import.ts",
+		"seed-templates": "bun run scripts/seed-templates.ts",
 		"seed": "bun scripts/seed.ts",
 		"db:seed": "bun scripts/seed.ts",
 		"db:verify": "bun scripts/verify-routes.ts"

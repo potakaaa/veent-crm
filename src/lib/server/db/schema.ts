@@ -322,7 +322,6 @@ export const crmMeetingAttendees = pgTable(
 	(t) => [uniqueIndex('crm_meeting_attendees_meeting_user_uq').on(t.meetingId, t.userId)]
 );
 
-// ---------------------------------------------------------------------------
 // crm_lead_visibility_grants — join of crm_users to a `selected`-visibility lead.
 // Mirrors crm_meeting_attendees exactly: one row per (lead, granted user), no dups.
 // A grant lets the named rep see a lead they wouldn't otherwise (GitHub #87).
@@ -338,6 +337,29 @@ export const crmLeadVisibilityGrants = pgTable(
 		createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow()
 	},
 	(t) => [uniqueIndex('crm_lead_visibility_grants_lead_user_uq').on(t.leadId, t.userId)]
+);
+
+// ---------------------------------------------------------------------------
+// crm_message_templates — manager-managed outreach snippets, keyed on event category
+// ---------------------------------------------------------------------------
+export const crmMessageTemplates = pgTable(
+	'crm_message_templates',
+	{
+		id: uuid('id').primaryKey().defaultRandom(),
+		// reuse the existing 20-value event-category enum — no parallel taxonomy
+		category: leadCategory('category').notNull().default('Other'),
+		title: text('title').notNull(),
+		body: text('body').notNull(),
+		// soft delete; no hard deletes
+		deletedAt: timestamp('deleted_at', { withTimezone: true }),
+		createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+		updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
+	},
+	(t) => [
+		uniqueIndex('crm_message_templates_title_active_uq')
+			.on(t.title)
+			.where(sql`deleted_at is null`)
+	]
 );
 
 // ---------------------------------------------------------------------------
@@ -405,3 +427,4 @@ export type CrmLeadHistory = typeof crmLeadHistory.$inferSelect;
 export type CrmMeeting = typeof crmMeetings.$inferSelect;
 export type CrmMeetingAttendee = typeof crmMeetingAttendees.$inferSelect;
 export type CrmLeadVisibilityGrant = typeof crmLeadVisibilityGrants.$inferSelect;
+export type CrmMessageTemplate = typeof crmMessageTemplates.$inferSelect;

@@ -63,6 +63,38 @@ export const OUTCOME_TOKENS: Record<string, { label: string; hex: string }> = {
 	other: { label: 'Other', hex: '#9ca3af' }
 };
 
+/**
+ * Message-template / lead category accents — one curated hue per `LEAD_CATEGORIES`
+ * entry (see `src/lib/zod/schemas.ts`). Desaturated "-600" tones spread across the
+ * hue wheel, matching the weight of `STAGE_TOKENS` above. Pure red is intentionally
+ * excluded (reserved for `--color-primary` / `--color-overdue`) so a category chip
+ * is never mistaken for a signal/brand color.
+ */
+export const CATEGORY_TOKENS: Record<string, string> = {
+	Sports: '#2563eb', // blue-600
+	Workshop: '#d97706', // amber-600
+	Church: '#7c3aed', // violet-600
+	Theater: '#c026d3', // fuchsia-600
+	'Bar/DJ': '#9333ea', // purple-600
+	Conference: '#0284c7', // sky-600
+	'Music Fest': '#ea580c', // orange-600
+	'Fan Fair': '#ca8a04', // yellow-600
+	School: '#4f46e5', // indigo-600
+	Concert: '#db2777', // pink-600
+	'Live Band': '#0d9488', // teal-600
+	Expo: '#0891b2', // cyan-600
+	Screening: '#475569', // slate-600
+	Camp: '#16a34a', // green-600
+	Competition: '#65a30d', // lime-600
+	Convention: '#57534e', // stone-600
+	Film: '#52525b', // zinc-600
+	Modelling: '#059669', // emerald-600
+	Resort: '#525252', // neutral-600
+	Other: '#4b5563' // gray-600
+};
+
+export const categoryColor = (category: string): string => CATEGORY_TOKENS[category] ?? '#4b5563';
+
 /** Deterministic avatar color for a rep, by name. */
 const AVATAR_PALETTE = ['#e11d2a', '#059669', '#d97706', '#2563eb', '#7c3aed', '#9ca3af'];
 export const avatarColor = (name: string | null | undefined): string => {

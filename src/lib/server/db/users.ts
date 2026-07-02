@@ -70,6 +70,7 @@ async function loadUser(id: string): Promise<User | null> {
 export async function deactivateUser(actorId: string, targetId: string): Promise<User> {
 	const [actor, target] = await Promise.all([loadUser(actorId), loadUser(targetId)]);
 	if (!actor) throw new PermissionError('Unknown actor');
+	if (!actor.active) throw new PermissionError('Actor account is inactive');
 	if (!target) throw new PermissionError('Unknown target');
 
 	if (!isManager(actor)) throw new PermissionError('Only managers can deactivate users');
@@ -98,25 +99,38 @@ export async function deactivateUser(actorId: string, targetId: string): Promise
 		const leadIds = workable.map((l) => l.id);
 
 		if (leadIds.length) {
-			// Owner change resets visibility to `everyone` (mirrors reassignLead).
-			await tx
+			// Re-assert ownership and workable predicates in the UPDATE WHERE so a lead
+			// reassigned between the SELECT and UPDATE is not incorrectly nulled out.
+			const updated = await tx
 				.update(crmLeads)
 				.set({ ownerId: null, visibility: 'everyone', updatedAt: now })
-				.where(inArray(crmLeads.id, leadIds));
+				.where(
+					and(
+						inArray(crmLeads.id, leadIds),
+						eq(crmLeads.ownerId, targetId),
+						isNull(crmLeads.deletedAt),
+						notInArray(crmLeads.stage, ['won', 'lost'])
+					)
+				)
+				.returning({ id: crmLeads.id });
 
-			await tx
-				.delete(crmLeadVisibilityGrants)
-				.where(inArray(crmLeadVisibilityGrants.leadId, leadIds));
+			const updatedIds = updated.map((l) => l.id);
 
-			await tx.insert(crmLeadHistory).values(
-				leadIds.map((leadId) => ({
-					leadId,
-					actorUserId: actorId,
-					field: 'owner_id',
-					oldValue: targetId,
-					newValue: null
-				}))
-			);
+			if (updatedIds.length) {
+				await tx
+					.delete(crmLeadVisibilityGrants)
+					.where(inArray(crmLeadVisibilityGrants.leadId, updatedIds));
+
+				await tx.insert(crmLeadHistory).values(
+					updatedIds.map((leadId) => ({
+						leadId,
+						actorUserId: actorId,
+						field: 'owner_id',
+						oldValue: targetId,
+						newValue: null
+					}))
+				);
+			}
 		}
 
 		const [row] = await tx
@@ -137,6 +151,7 @@ export async function deactivateUser(actorId: string, targetId: string): Promise
 export async function reactivateUser(actorId: string, targetId: string): Promise<User> {
 	const [actor, target] = await Promise.all([loadUser(actorId), loadUser(targetId)]);
 	if (!actor) throw new PermissionError('Unknown actor');
+	if (!actor.active) throw new PermissionError('Actor account is inactive');
 	if (!target) throw new PermissionError('Unknown target');
 
 	if (!isManager(actor)) throw new PermissionError('Only managers can reactivate users');
@@ -170,6 +185,7 @@ export async function updateUserRole(
 
 	const [actor, target] = await Promise.all([loadUser(actorId), loadUser(targetId)]);
 	if (!actor) throw new PermissionError('Unknown actor');
+	if (!actor.active) throw new PermissionError('Actor account is inactive');
 	if (!target) throw new PermissionError('Unknown target');
 
 	if (!isSuperManager(actor)) throw new PermissionError('Only a super manager can change roles');
@@ -192,7 +208,12 @@ export async function updateUserRole(
  * unique index `crm_users_single_super_manager_uq` is the ultimate guard — a
  * concurrent transfer surfaces as postgres `23505`, which the caller maps to 409.
  */
-export async function promoteSuperManager(newId: string): Promise<User> {
+export async function promoteSuperManager(actorId: string, newId: string): Promise<User> {
+	const actor = await loadUser(actorId);
+	if (!actor) throw new PermissionError('Unknown actor');
+	if (!actor.active) throw new PermissionError('Actor account is inactive');
+	if (!isSuperManager(actor)) throw new PermissionError('Only a super manager can promote');
+
 	const now = new Date();
 
 	return db.transaction(async (tx) => {

@@ -14,7 +14,7 @@ export const PATCH: RequestHandler = async ({ params, locals }) => {
 	if (!canPromoteToSuperManager(locals.user)) throw error(403, 'Super manager only');
 
 	try {
-		const user = await promoteSuperManager(params.id);
+		const user = await promoteSuperManager(locals.user.id, params.id);
 		return json(user);
 	} catch (err) {
 		if (err instanceof PermissionError) throw error(403, err.message);

@@ -23,7 +23,9 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 
 	let body: { active?: unknown; role?: unknown };
 	try {
-		body = (await request.json()) as typeof body;
+		const parsed = await request.json();
+		if (typeof parsed !== 'object' || parsed === null) throw new Error();
+		body = parsed as typeof body;
 	} catch {
 		throw error(400, 'Invalid JSON');
 	}

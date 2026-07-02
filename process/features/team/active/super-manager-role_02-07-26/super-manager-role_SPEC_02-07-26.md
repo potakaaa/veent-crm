@@ -15,6 +15,7 @@ TL;DR: Add a `super_manager` role above `manager`. Exactly one active super_mana
 - Role transfer is atomic and cannot leave the org with zero or two super_managers.
 
 ## Permission matrix (locked)
+
 | Action | manager | super_manager | rep |
 |---|---|---|---|
 | Deactivate a rep | ✅ | ✅ | ❌ |

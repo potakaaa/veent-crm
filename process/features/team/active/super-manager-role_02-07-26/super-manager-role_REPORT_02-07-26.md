@@ -51,6 +51,7 @@ pre-accepted known-gaps. Plan stays ACTIVE (code-complete, manual gates pending)
 - e2e team-page gating — pre-accepted known-gap (no shared auth Playwright fixture).
 
 ## Test Gate Outcomes
+
 | Gate | Tier | Result |
 |---|---|---|
 | `bun run check` | Fully-Automated | PASS (0 errors; 1 pre-existing unrelated warning in leads/[id]/+page.svelte) |

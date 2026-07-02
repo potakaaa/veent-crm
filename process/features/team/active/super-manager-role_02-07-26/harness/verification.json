@@ -23,5 +23,5 @@
     "Hybrid live-DB manual gates (promote transfer, 403 on manager deactivate, self-deactivate rejection, 23505 singleton) — no live-DB CI, pre-accepted",
     "e2e team-page gating — no shared auth Playwright fixture, repo-wide pre-accepted known-gap"
   ],
-  "verdict": "DONE"
+  "verdict": "DONE_WITH_GAPS"
 }

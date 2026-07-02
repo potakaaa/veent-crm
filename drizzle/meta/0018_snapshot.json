@@ -1372,6 +1372,22 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
+        },
+        "crm_users_single_super_manager_uq": {
+          "name": "crm_users_single_super_manager_uq",
+          "columns": [
+            {
+              "expression": "role",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "role = 'super_manager' AND active = true",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
       "foreignKeys": {},

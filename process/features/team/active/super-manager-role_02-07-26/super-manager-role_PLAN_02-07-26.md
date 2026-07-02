@@ -107,6 +107,7 @@ Single-phase plan. Phase is CODE DONE when all checklist items are implemented a
 16. Add/extend `src/tests/schemas.spec.ts`: `USER_ROLES` includes `super_manager`; `roleLabel('super_manager') === 'Super Manager'`. (Read existing file first for style.)
 
 ## Verification Evidence
+
 | Gate / Scenario | Strategy | Proves SPEC criterion |
 |---|---|---|
 | `bun run check` exits 0 | Fully-Automated | Type cascade of Role through USER_ROLES; no tsc regressions |

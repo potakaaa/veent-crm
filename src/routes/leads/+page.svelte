@@ -94,7 +94,7 @@
 	</PageHeader>
 
 	<!-- toolbar -->
-	<div class="mb-3.5 flex flex-wrap items-center gap-2.5">
+	<div class="mb-1.5 flex items-center gap-2.5">
 		<div class="flex rounded-control bg-panel-sunken p-[3px]">
 			{#each segDefs as s (s.key)}
 				<button
@@ -107,8 +107,9 @@
 				</button>
 			{/each}
 		</div>
-		<Separator orientation="vertical" class="h-[22px]" />
+	</div>
 
+	<div class="mb-3.5 flex flex-wrap items-center gap-2.5">
 		<Select
 			type="single"
 			value={data.filters.stage}
@@ -151,6 +152,8 @@
 			</Select>
 		{/if}
 
+		<Separator orientation="vertical" class="h-[22px]" />
+
 		<Button
 			variant="outline"
 			size="sm"
@@ -172,7 +175,7 @@
 		<Input
 			value={searchInput}
 			oninput={onSearchInput}
-			placeholder="Filter…"
+			placeholder="Search…"
 			class="ml-auto h-8 w-44"
 		/>
 	</div>

@@ -176,6 +176,9 @@ export const crmLeads = pgTable(
 		serviceFeePerTicketPesos: doublePrecision('service_fee_per_ticket_pesos').default(20),
 		bankChargesAbsorbed: boolean('bank_charges_absorbed'),
 
+		// Recurring-organizer / future-events prospect flag (GitHub #94) — internal visibility marker
+		hasFutureEvents: boolean('has_future_events').notNull().default(false),
+
 		// scraper provenance — event ID from the scraper DB; unique per non-null value
 		sourceRef: text('source_ref'),
 		// stable link back to the Neon organizer row; drives event-date reconciliation

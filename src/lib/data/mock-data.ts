@@ -59,7 +59,7 @@ export const mockUsers: User[] = [
 /** The signed-in user for this prototype session (a rep). */
 export const CURRENT_USER_ID = 'jonna';
 
-export const mockLeads: Lead[] = [
+const mockLeadsRaw: Omit<Lead, 'hasFutureEvents'>[] = [
 	{
 		id: 'christian',
 		name: 'Christian Concerts PH',
@@ -381,6 +381,9 @@ export const mockLeads: Lead[] = [
 		urgency: 'cold'
 	}
 ];
+
+/** Recurring-organizer flag (#94) is stub-defaulted to false in the mock dataset. */
+export const mockLeads: Lead[] = mockLeadsRaw.map((l) => ({ ...l, hasFutureEvents: false }));
 
 /** Activity timelines keyed by lead id. Leads without an entry get a seeded first touch. */
 export const mockActivities: Record<string, Activity[]> = {

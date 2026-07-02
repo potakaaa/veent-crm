@@ -9,10 +9,10 @@
  * Auth is bypassed — these tests call DB functions directly, not via HTTP.
  */
 import { describe, it, expect, afterAll } from 'vitest';
-import { createLead, getLead, listLeads } from '$lib/server/db/leads';
+import { createLead, getLead, listLeads, updateLead } from '$lib/server/db/leads';
 import { db } from '$lib/server/db/index';
-import { crmLeads } from '$lib/server/db/schema';
-import { eq } from 'drizzle-orm';
+import { crmLeads, crmLeadHistory } from '$lib/server/db/schema';
+import { eq, and } from 'drizzle-orm';
 
 // Skip when DATABASE_URL is not set (no postgres service available).
 // Locally (docker compose up -d db + DATABASE_URL in .env), all tests run normally.
@@ -157,5 +157,96 @@ describe.skipIf(SKIP_DB)('createLead field mapping (DB roundtrip)', () => {
 		// normalizedHandle is computed from name in createLead
 		expect(lead.handle).toMatch(/^@/);
 		expect(lead.handle.toLowerCase()).toContain('handletest');
+	});
+});
+
+// ---------------------------------------------------------------------------
+// updateLead — hasFutureEvents flag (GitHub #94; AC1/AC2 persist, AC6, AC7, AC8)
+// ---------------------------------------------------------------------------
+describe.skipIf(SKIP_DB)('updateLead — hasFutureEvents flag (DB) — #94', () => {
+	async function mk(name: string) {
+		const lead = await createLead(
+			{ name: `${TEST_PREFIX} ${name}`, category: 'Concert' },
+			MANAGER_UUID
+		);
+		createdIds.push(lead.id);
+		return lead;
+	}
+
+	it('AC1: persists hasFutureEvents=true; reopen returns it', async () => {
+		const lead = await mk('FEPersist');
+		await updateLead(
+			lead.id,
+			{ name: lead.name, category: 'Concert', hasFutureEvents: true },
+			MANAGER_UUID
+		);
+		const fetched = await getLead(lead.id);
+		expect(fetched!.hasFutureEvents).toBe(true);
+	});
+
+	it('AC2: toggle-off clears the flag; reload reflects false', async () => {
+		const lead = await mk('FEToggleOff');
+		await updateLead(
+			lead.id,
+			{ name: lead.name, category: 'Concert', hasFutureEvents: true },
+			MANAGER_UUID
+		);
+		await updateLead(
+			lead.id,
+			{ name: lead.name, category: 'Concert', hasFutureEvents: false },
+			MANAGER_UUID
+		);
+		const fetched = await getLead(lead.id);
+		expect(fetched!.hasFutureEvents).toBe(false);
+	});
+
+	it('AC7: writes a crm_lead_history row with field has_future_events and correct old/new', async () => {
+		const lead = await mk('FEAudit');
+		await updateLead(
+			lead.id,
+			{ name: lead.name, category: 'Concert', hasFutureEvents: true },
+			MANAGER_UUID
+		);
+		const rows = await db
+			.select()
+			.from(crmLeadHistory)
+			.where(
+				and(eq(crmLeadHistory.leadId, lead.id), eq(crmLeadHistory.field, 'has_future_events'))
+			);
+		expect(rows.length).toBeGreaterThanOrEqual(1);
+		const latest = rows[rows.length - 1];
+		expect(latest.newValue).toBe('true');
+		// New lead defaults to false → old value recorded as 'false'.
+		expect(latest.oldValue).toBe('false');
+	});
+
+	it('AC6: flipping the flag leaves stage and owner unchanged', async () => {
+		const lead = await mk('FEIsolation');
+		const before = await getLead(lead.id);
+		await updateLead(
+			lead.id,
+			{ name: lead.name, category: 'Concert', hasFutureEvents: true },
+			MANAGER_UUID
+		);
+		const after = await getLead(lead.id);
+		expect(after!.stage).toBe(before!.stage);
+		expect(after!.ownerId).toBe(before!.ownerId);
+		expect(after!.hasFutureEvents).toBe(true);
+	});
+
+	it('AC8: flag settable on a lost-stage lead', async () => {
+		const lead = await mk('FELost');
+		await db
+			.update(crmLeads)
+			.set({ stage: 'lost', lostReason: 'no_response' })
+			.where(eq(crmLeads.id, lead.id));
+		await updateLead(
+			lead.id,
+			{ name: lead.name, category: 'Concert', hasFutureEvents: true },
+			MANAGER_UUID
+		);
+		const fetched = await getLead(lead.id);
+		expect(fetched!.stage).toBe('lost');
+		expect(fetched!.hasFutureEvents).toBe(true);
 	});
 });

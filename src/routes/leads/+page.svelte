@@ -159,6 +159,15 @@
 			<span class="h-[7px] w-[7px] rounded-full bg-stale"></span> Stale only (&gt;30d)
 		</Button>
 
+		<Button
+			variant="outline"
+			size="sm"
+			onclick={() => setFilter('hasFutureEvents', data.filters.hasFutureEvents ? undefined : '1')}
+			class={data.filters.hasFutureEvents ? 'border-violet-400 bg-violet-100 text-violet-700' : ''}
+		>
+			<span class="h-[7px] w-[7px] rounded-full bg-violet-500"></span> Future events
+		</Button>
+
 		<Input
 			value={searchInput}
 			oninput={onSearchInput}

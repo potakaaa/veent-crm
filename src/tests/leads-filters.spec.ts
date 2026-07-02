@@ -340,3 +340,33 @@ describe.skipIf(SKIP_DB)('listLeadsFiltered — staleOnly (DB)', () => {
 		expect(leads.find((l) => l.id === lead.id)).toBeUndefined();
 	});
 });
+
+// ---------------------------------------------------------------------------
+// listLeadsFiltered — hasFutureEvents flag filter (GitHub #94, AC5)
+// ---------------------------------------------------------------------------
+describe.skipIf(SKIP_DB)('listLeadsFiltered — hasFutureEvents (DB) — #94', () => {
+	it('hasFutureEvents:true returns only flagged leads', async () => {
+		const flagged = await mkLead('FutureFlagged');
+		const unflagged = await mkLead('FutureUnflagged');
+		await db.update(crmLeads).set({ hasFutureEvents: true }).where(eq(crmLeads.id, flagged.id));
+
+		const { leads } = await listLeadsFiltered({
+			userId: MANAGER_UUID,
+			segment: 'mine',
+			hasFutureEvents: true
+		});
+		expect(leads.find((l) => l.id === flagged.id)).toBeDefined();
+		expect(leads.find((l) => l.id === unflagged.id)).toBeUndefined();
+		expect(leads.every((l) => l.hasFutureEvents === true)).toBe(true);
+	});
+
+	it('hasFutureEvents:false/absent returns both flagged and unflagged', async () => {
+		const flagged = await mkLead('FutureFlagged2');
+		const unflagged = await mkLead('FutureUnflagged2');
+		await db.update(crmLeads).set({ hasFutureEvents: true }).where(eq(crmLeads.id, flagged.id));
+
+		const { leads } = await listLeadsFiltered({ userId: MANAGER_UUID, segment: 'mine' });
+		expect(leads.find((l) => l.id === flagged.id)).toBeDefined();
+		expect(leads.find((l) => l.id === unflagged.id)).toBeDefined();
+	});
+});

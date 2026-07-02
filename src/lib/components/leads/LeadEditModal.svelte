@@ -40,6 +40,7 @@
 	let eventName = $state('');
 	let eventLink = $state('');
 	let notes = $state('');
+	let hasFutureEvents = $state(false);
 	let selectedDate = $state<DateValue | undefined>(undefined);
 	let dateOpen = $state(false);
 	let tempDate = $state<DateValue | undefined>(undefined);
@@ -60,6 +61,7 @@
 			eventName = lead.eventName ?? '';
 			eventLink = lead.eventLink ?? '';
 			notes = lead.notes ?? '';
+			hasFutureEvents = lead.hasFutureEvents ?? false;
 			selectedDate = lead.eventDate ? parseDate(lead.eventDate) : undefined;
 			formError = '';
 		}
@@ -86,7 +88,8 @@
 			eventDate: selectedDate ? selectedDate.toString() : undefined,
 			eventDateRaw: eventDateDisplay || undefined,
 			eventLink: eventLink || '',
-			notes: notes || undefined
+			notes: notes || undefined,
+			hasFutureEvents
 		});
 	}
 
@@ -214,6 +217,12 @@
 			<div class="grid gap-1.5 sm:col-span-2">
 				<Label for="el-notes">Notes</Label>
 				<Textarea id="el-notes" bind:value={notes} placeholder="Anything worth noting…" rows={3} />
+			</div>
+			<div class="sm:col-span-2">
+				<label class="flex items-center gap-2 text-[13px] font-medium text-ink">
+					<input type="checkbox" bind:checked={hasFutureEvents} class="size-4" />
+					Has future events (recurring organizer)
+				</label>
 			</div>
 			{#if formError}
 				<p class="text-[12.5px] text-overdue sm:col-span-2">{formError}</p>

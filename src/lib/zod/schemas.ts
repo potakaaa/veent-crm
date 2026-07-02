@@ -114,7 +114,8 @@ export const leadUpdateSchema = z.object({
 	convenienceFeePesos: z.number().min(0).optional(),
 	serviceFeePct: z.number().min(0).max(100).optional(),
 	serviceFeePerTicketPesos: z.number().min(0).optional(),
-	bankChargesAbsorbed: z.boolean().optional()
+	bankChargesAbsorbed: z.boolean().optional(),
+	hasFutureEvents: z.boolean().optional()
 });
 export type LeadUpdate = z.infer<typeof leadUpdateSchema>;
 
@@ -138,7 +139,8 @@ export const onboardingUpdateSchema = z.object({
 	convenienceFeePesos: z.number().min(0).optional(),
 	serviceFeePct: z.number().min(0).max(100).optional(),
 	serviceFeePerTicketPesos: z.number().min(0).optional(),
-	bankChargesAbsorbed: z.boolean().optional()
+	bankChargesAbsorbed: z.boolean().optional(),
+	hasFutureEvents: z.boolean().optional()
 });
 export type OnboardingUpdate = z.infer<typeof onboardingUpdateSchema>;
 

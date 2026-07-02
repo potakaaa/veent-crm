@@ -11,7 +11,7 @@ metadata:
 
 # veent-crm - All Context
 
-Last updated: 2026-07-01
+Last updated: 2026-07-02
 
 This file is the root context entrypoint for the repo.
 
@@ -95,7 +95,7 @@ For most substantial tasks:
 | Feature   | Guide                                  | Status                                   |
 | --------- | -------------------------------------- | ---------------------------------------- |
 | auth      | `process/features/auth/_GUIDE.md`      | not-started (v0 stub, DEV_BYPASS active) |
-| leads     | `process/features/leads/_GUIDE.md`     | in-progress (leads list, lead detail, lead creation, and Up for Grabs query the real DB via `src/lib/server/db/leads.ts`; Review Queue removed 01-07-26) |
+| leads     | `process/features/leads/_GUIDE.md`     | in-progress (leads list, lead detail, lead creation, and Up for Grabs query the real DB via `src/lib/server/db/leads.ts`; Review Queue removed 01-07-26; recurring-organizer "Has future events" flag — `has_future_events` column, badge on list/detail, edit checkbox, /leads filter toggle — live 02-07-26, badge/checkbox rendering pending shared e2e auth fixture) |
 | pipeline  | `process/features/pipeline/_GUIDE.md`  | in-progress (`/pipeline` also queries the real DB via `src/lib/server/db/leads.ts`) |
 | import    | `process/features/import/_GUIDE.md`    | not-started (stub pipeline)              |
 | reminders | `process/features/reminders/_GUIDE.md` | in-progress (code-complete, EVL green; manual UI/DB gates pending) |
@@ -237,6 +237,7 @@ veent-crm/
 - All PKs: `uuid().primaryKey().defaultRandom()`
 - All tables: `createdAt` + `updatedAt` timestamps with timezone
 - **Never write Drizzle migrations for Better Auth tables** (`user`, `account`, `session`, `verification`) — those are managed by Better Auth's own migration system
+- **Before running `bun run db:generate`**, confirm `drizzle/meta/_journal.json`'s last `idx` matches the highest-numbered `.sql` file in `drizzle/` by filename. A mismatch means an earlier commit added a migration file without registering it in the journal (known instance: `drizzle/0014_agreements_fields.sql` — see `process/general-plans/backlog/drizzle-migration-journal-drift_02-07-26.md`) — flag and reconcile before layering a new migration on top of untracked drift
 
 ### SvelteKit conventions
 

@@ -30,6 +30,7 @@
 	let eventName = $state(lead.eventName ?? '');
 	let eventLink = $state(lead.eventLink ?? '');
 	let notes = $state(lead.notes ?? '');
+	let hasFutureEvents = $state(lead.hasFutureEvents ?? false);
 
 	let selectedDate = $state<DateValue | undefined>(
 		lead.eventDate ? parseDate(lead.eventDate) : undefined
@@ -80,7 +81,8 @@
 			eventLink: eventLink || '',
 			firstAnnouncedDate: announcedDate ? announcedDate.toString() : null,
 			firstReachedOutDate: reachedOutDate ? reachedOutDate.toString() : null,
-			notes: notes || undefined
+			notes: notes || undefined,
+			hasFutureEvents
 		});
 		if (!parsed.success) {
 			formError = parsed.error.issues[0]?.message ?? 'Please check the form.';
@@ -341,6 +343,16 @@
 			<div class="grid gap-1.5 sm:col-span-2">
 				<Label for="notes">Notes <span class="text-ink-400">(optional)</span></Label>
 				<Textarea id="notes" bind:value={notes} placeholder="Anything worth noting…" rows={3} />
+			</div>
+
+			<div class="sm:col-span-2">
+				<label class="flex items-center gap-2 text-[13px] font-medium text-ink">
+					<input type="checkbox" bind:checked={hasFutureEvents} class="size-4" />
+					Has future events (recurring organizer)
+				</label>
+				<p class="mt-1 text-[11.5px] text-ink-400">
+					Flag this organizer as a future-events prospect regardless of the current deal's stage.
+				</p>
 			</div>
 
 			{#if formError}<p class="text-[12.5px] text-overdue sm:col-span-2">{formError}</p>{/if}

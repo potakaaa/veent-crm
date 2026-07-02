@@ -107,6 +107,7 @@ export function dbRowToLead(row: DbLead, followUpAt?: string | Date | null): Lea
 		serviceFeePct: row.serviceFeePct ?? undefined,
 		serviceFeePerTicketPesos: row.serviceFeePerTicketPesos ?? undefined,
 		bankChargesAbsorbed: row.bankChargesAbsorbed ?? undefined,
+		hasFutureEvents: row.hasFutureEvents ?? false,
 		lostReason: (row.lostReason as Lead['lostReason']) ?? undefined,
 		createdAt,
 		lastActivityAt,
@@ -239,6 +240,7 @@ export interface ListLeadsParams {
 	platform?: string;
 	country?: string;
 	staleOnly?: boolean;
+	hasFutureEvents?: boolean;
 	search?: string;
 	date?: string;
 	dateField?: 'event_date' | 'created_at';
@@ -263,6 +265,7 @@ export async function listLeadsFiltered(
 		platform,
 		country,
 		staleOnly = false,
+		hasFutureEvents = false,
 		search,
 		date,
 		dateField,
@@ -298,6 +301,11 @@ export async function listLeadsFiltered(
 		conditions.push(
 			sql`COALESCE(${crmLeads.lastActivityAt}, ${crmLeads.createdAt}) < NOW() - INTERVAL '30 days'`
 		);
+	}
+
+	// Future-events flag filter (GitHub #94)
+	if (hasFutureEvents) {
+		conditions.push(eq(crmLeads.hasFutureEvents, true));
 	}
 
 	// Search: case-insensitive against name and normalizedHandle.
@@ -656,6 +664,7 @@ export async function updateLead(
 		serviceFeePct?: number;
 		serviceFeePerTicketPesos?: number;
 		bankChargesAbsorbed?: boolean;
+		hasFutureEvents?: boolean;
 	},
 	actorId: string
 ): Promise<Lead | null> {
@@ -720,6 +729,7 @@ export async function updateLead(
 				...(input.bankChargesAbsorbed !== undefined
 					? { bankChargesAbsorbed: input.bankChargesAbsorbed }
 					: {}),
+				...(input.hasFutureEvents !== undefined ? { hasFutureEvents: input.hasFutureEvents } : {}),
 				updatedAt: now
 			})
 			.where(and(eq(crmLeads.id, id), isNull(crmLeads.deletedAt)))
@@ -787,6 +797,11 @@ export async function updateLead(
 				'bank_charges_absorbed',
 				existing.bankChargesAbsorbed != null ? String(existing.bankChargesAbsorbed) : null,
 				updated.bankChargesAbsorbed != null ? String(updated.bankChargesAbsorbed) : null
+			],
+			[
+				'has_future_events',
+				existing.hasFutureEvents != null ? String(existing.hasFutureEvents) : null,
+				updated.hasFutureEvents != null ? String(updated.hasFutureEvents) : null
 			]
 		];
 

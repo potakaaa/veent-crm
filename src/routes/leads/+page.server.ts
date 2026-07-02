@@ -22,6 +22,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	const platform = VALID_PLATFORMS.has(rawPlatform) ? rawPlatform : '';
 	const country = url.searchParams.get('country') ?? '';
 	const staleOnly = url.searchParams.get('staleOnly') === '1';
+	const hasFutureEvents = url.searchParams.get('hasFutureEvents') === '1';
 	const search = url.searchParams.get('q') ?? '';
 	const rawDate = url.searchParams.get('date') ?? '';
 	const date = (() => {
@@ -47,6 +48,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 			platform: platform || undefined,
 			country: country || undefined,
 			staleOnly,
+			hasFutureEvents,
 			search: search || undefined,
 			date: date || undefined,
 			dateField: date ? dateField : undefined,
@@ -73,7 +75,17 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		countries,
 		users,
 		me,
-		filters: { segment, stage, platform, country, staleOnly, search, date, dateField },
+		filters: {
+			segment,
+			stage,
+			platform,
+			country,
+			staleOnly,
+			hasFutureEvents,
+			search,
+			date,
+			dateField
+		},
 		sort: sort ?? 'lastActivity',
 		dir,
 		pagination: {

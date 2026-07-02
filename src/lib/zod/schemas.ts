@@ -93,9 +93,54 @@ export const leadUpdateSchema = z.object({
 		.union([z.iso.date(), z.literal(''), z.null()])
 		.optional()
 		.transform((v) => (v === '' ? null : v)),
-	notes: z.string().optional()
+	notes: z.string().optional(),
+	// Onboarding fields (surfaced only when stage = 'won'); all optional so a normal
+	// lead edit that omits them is unaffected.
+	onboardingNotes: z.string().optional(),
+	contractUrl: z.string().url().optional().or(z.literal('')),
+	onboardingStartDate: z
+		.string()
+		.regex(/^\d{4}-\d{2}-\d{2}$/)
+		.optional()
+		.or(z.literal('')),
+	goLiveDate: z
+		.string()
+		.regex(/^\d{4}-\d{2}-\d{2}$/)
+		.optional()
+		.or(z.literal('')),
+	// Agreements fields (surfaced only when stage = 'won'); all optional.
+	feeStructure: z.enum(['legacy', 'new']).optional(),
+	transactionFeePct: z.number().min(0).max(100).optional(),
+	convenienceFeePesos: z.number().min(0).optional(),
+	serviceFeePct: z.number().min(0).max(100).optional(),
+	serviceFeePerTicketPesos: z.number().min(0).optional(),
+	bankChargesAbsorbed: z.boolean().optional()
 });
 export type LeadUpdate = z.infer<typeof leadUpdateSchema>;
+
+// --- Onboarding capture (post-won; PATCH subset) ---------------------------
+export const onboardingUpdateSchema = z.object({
+	onboardingNotes: z.string().optional(),
+	contractUrl: z.string().url().optional().or(z.literal('')),
+	onboardingStartDate: z
+		.string()
+		.regex(/^\d{4}-\d{2}-\d{2}$/)
+		.optional()
+		.or(z.literal('')),
+	goLiveDate: z
+		.string()
+		.regex(/^\d{4}-\d{2}-\d{2}$/)
+		.optional()
+		.or(z.literal('')),
+	// Agreements fields
+	feeStructure: z.enum(['legacy', 'new']).optional(),
+	transactionFeePct: z.number().min(0).max(100).optional(),
+	convenienceFeePesos: z.number().min(0).optional(),
+	serviceFeePct: z.number().min(0).max(100).optional(),
+	serviceFeePerTicketPesos: z.number().min(0).optional(),
+	bankChargesAbsorbed: z.boolean().optional()
+});
+export type OnboardingUpdate = z.infer<typeof onboardingUpdateSchema>;
 
 // --- Log a touch (activity) -----------------------------------------------
 export const activityFormSchema = z.object({

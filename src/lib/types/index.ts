@@ -79,6 +79,20 @@ export interface Lead {
 	currency?: Currency;
 	signedDate?: string;
 
+	// Onboarding capture (post-won; manual)
+	onboardingNotes?: string;
+	contractUrl?: string;
+	onboardingStartDate?: string;
+	goLiveDate?: string;
+
+	// Agreements capture (post-won; manual)
+	feeStructure?: 'legacy' | 'new';
+	transactionFeePct?: number;
+	convenienceFeePesos?: number;
+	serviceFeePct?: number;
+	serviceFeePerTicketPesos?: number;
+	bankChargesAbsorbed?: boolean;
+
 	// Lost capture
 	lostReason?: LostReason;
 

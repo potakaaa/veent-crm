@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { goto, invalidateAll } from '$app/navigation';
-	import { navigating } from '$app/state';
+	import { navigating, page } from '$app/state';
+	import { SvelteURLSearchParams } from 'svelte/reactivity';
 	import { makeSortTable } from '$lib/utils/tableSort';
 	import { Skeleton } from '$lib/components/ui/skeleton';
 	import PageHeader from '$lib/components/shared/PageHeader.svelte';
@@ -21,6 +22,7 @@
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
 	import { Select, SelectTrigger, SelectContent, SelectItem } from '$lib/components/ui/select';
+	import { FieldError, fieldErrorAttrs } from '$lib/components/ui/field-error';
 	import { toasts } from '$lib/stores/toasts.svelte';
 	import { canManageUsers, isSuperManager, canPromoteToSuperManager } from '$lib/utils/permissions';
 	import { roleLabel, statusLabel } from '$lib/utils/roles';
@@ -33,6 +35,22 @@
 	const canPromote = $derived(canPromoteToSuperManager(data.currentUser));
 
 	const navLoading = $derived(navigating.to?.url.pathname === '/team');
+	let paging = $state(false);
+	$effect(() => {
+		if (!navigating.to) paging = false;
+	});
+
+	function navigate(patch: Record<string, string | number | boolean | undefined>) {
+		const params = new SvelteURLSearchParams(page.url.searchParams);
+		for (const [k, v] of Object.entries(patch)) {
+			if (v === undefined || v === '' || v === false || v === 0) {
+				params.delete(k);
+			} else {
+				params.set(k, String(v));
+			}
+		}
+		goto(`?${params}`, { keepFocus: true });
+	}
 
 	const table = $derived(
 		makeSortTable({
@@ -47,8 +65,8 @@
 			],
 			sort: data.sort ?? '',
 			dir: data.dir,
-			onToggle(id, desc) {
-				goto(`?sort=${id}&dir=${desc ? 'desc' : 'asc'}`, { keepFocus: true });
+			onToggle(id, descDir) {
+				navigate({ sort: id, dir: descDir ? 'desc' : 'asc', page: undefined });
 			}
 		})
 	);
@@ -58,13 +76,18 @@
 	let email = $state('');
 	let role = $state<string>('rep');
 	let formError = $state('');
+	// Per-field validation errors for the add-a-rep form, keyed by userFormSchema
+	// field name (Phase 4 — shared field-error component).
+	let fieldErrors = $state<Record<string, string[] | undefined>>({});
 
 	async function addRep() {
 		const parsed = userFormSchema.safeParse({ name, email, role, active: true });
 		if (!parsed.success) {
-			formError = parsed.error.issues[0]?.message ?? 'Check the form.';
+			fieldErrors = parsed.error.flatten().fieldErrors as Record<string, string[] | undefined>;
+			formError = '';
 			return;
 		}
+		fieldErrors = {};
 		try {
 			const res = await fetch('/api/users', {
 				method: 'POST',
@@ -81,6 +104,7 @@
 			}
 			addOpen = false;
 			name = email = formError = '';
+			fieldErrors = {};
 			role = 'rep';
 			await invalidateAll();
 			toasts.success("Invite sent — they'll receive a sign-in link by email");
@@ -117,6 +141,41 @@
 			toasts.push(err instanceof Error ? err.message : `Unable to update ${u.name}`, {
 				tone: 'warn'
 			});
+		}
+	}
+
+	// --- Promote/demote rep ↔ manager (with confirmation) --------------------
+	let confirmRoleChange = $state<{ user: User; newRole: 'rep' | 'manager' } | null>(null);
+	let roleChanging = $state(false);
+
+	async function applyRoleChange() {
+		const pending = confirmRoleChange;
+		if (!pending) return;
+		roleChanging = true;
+		try {
+			const res = await fetch(`/api/users/${pending.user.id}`, {
+				method: 'PATCH',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ role: pending.newRole })
+			});
+			if (!res.ok) {
+				const body = await res.json().catch(() => ({}));
+				toasts.push(body.message ?? `Unable to change ${pending.user.name}'s role`, {
+					tone: 'warn'
+				});
+				return;
+			}
+			confirmRoleChange = null;
+			await invalidateAll();
+			const label = pending.newRole === 'manager' ? 'promoted to Manager' : 'demoted to Rep';
+			toasts.success(`${pending.user.name} ${label}`);
+		} catch (err) {
+			toasts.push(
+				err instanceof Error ? err.message : `Unable to change ${pending.user.name}'s role`,
+				{ tone: 'warn' }
+			);
+		} finally {
+			roleChanging = false;
 		}
 	}
 
@@ -240,7 +299,7 @@
 									variant="outline"
 									class="font-mono text-[11px]"
 									style={u.role === 'super_manager'
-										? 'color:#a16207;background:#fef9c3;border-color:transparent'
+										? 'color:#7c3aed;background:#f3effe;border-color:transparent'
 										: u.role === 'manager'
 											? 'color:#e11d2a;background:#fdeceb;border-color:transparent'
 											: 'color:#6b6470;background:#f1eff3;border-color:transparent'}
@@ -263,10 +322,35 @@
 							<TableCell class="text-right">
 								{#if canManage}
 									{@const isSelf = u.id === data.currentUser.id}
-									<div class="flex justify-end gap-1.5">
+									<div class="flex items-center justify-end gap-2">
+										{#if isSuper && u.role === 'rep'}
+											<Button
+												variant="outline"
+												size="icon"
+												title="Promote to Manager"
+												onclick={() => (confirmRoleChange = { user: u, newRole: 'manager' })}
+											>
+												<Icon name="arrowUp" size={14} stroke={2.2} />
+											</Button>
+										{/if}
+										{#if isSuper && u.role === 'manager'}
+											<Button
+												variant="outline"
+												size="icon"
+												title="Demote to Rep"
+												onclick={() => (confirmRoleChange = { user: u, newRole: 'rep' })}
+											>
+												<Icon name="arrowDown" size={14} stroke={2.2} />
+											</Button>
+										{/if}
 										{#if canPromote && u.role === 'manager' && u.active}
-											<Button variant="outline" size="sm" onclick={() => (promoteTarget = u)}>
-												Promote to Super Manager
+											<Button
+												variant="outline"
+												size="icon"
+												title="Promote to Super Manager"
+												onclick={() => (promoteTarget = u)}
+											>
+												<Icon name="crown" size={14} stroke={2} />
 											</Button>
 										{/if}
 										<!-- Deactivate/reactivate: reps always (for a manager); managers &
@@ -286,6 +370,36 @@
 		</Table>
 	</Card>
 
+	{#if data.pagination.totalPages > 1}
+		{@const { page: pg, pageSize, total, totalPages } = data.pagination}
+		{@const start = (pg - 1) * pageSize + 1}
+		{@const end = Math.min(pg * pageSize, total)}
+		<div class="mt-5 flex items-center justify-between text-[13px] text-ink-300">
+			<span class="font-mono">{start}–{end} of {total}</span>
+			<div class="flex items-center gap-2">
+				<Button
+					variant="outline"
+					size="sm"
+					disabled={pg <= 1 || paging}
+					onclick={() => {
+						paging = true;
+						navigate({ page: pg - 1 });
+					}}>← Prev</Button
+				>
+				<span class="font-mono">Page {pg} of {totalPages}</span>
+				<Button
+					variant="outline"
+					size="sm"
+					disabled={pg >= totalPages || paging}
+					onclick={() => {
+						paging = true;
+						navigate({ page: pg + 1 });
+					}}>Next →</Button
+				>
+			</div>
+		</div>
+	{/if}
+
 	<div class="mt-3.5 flex items-center gap-2 text-[12.5px] text-ink-200">
 		<Icon name="info" size={14} stroke={2} />
 		Deactivating a rep keeps their history but moves their workable leads to
@@ -303,11 +417,24 @@
 	<div class="flex flex-col gap-3">
 		<div class="grid gap-1.5">
 			<Label for="rep-name">Name</Label>
-			<Input id="rep-name" bind:value={name} placeholder="Marites" />
+			<Input
+				id="rep-name"
+				bind:value={name}
+				placeholder="Marites"
+				{...fieldErrorAttrs('rep-name', fieldErrors.name)}
+			/>
+			<FieldError id="rep-name" errors={fieldErrors.name} />
 		</div>
 		<div class="grid gap-1.5">
 			<Label for="rep-email">Work email</Label>
-			<Input id="rep-email" bind:value={email} placeholder="marites@test.com" class="font-mono" />
+			<Input
+				id="rep-email"
+				bind:value={email}
+				placeholder="marites@test.com"
+				class="font-mono"
+				{...fieldErrorAttrs('rep-email', fieldErrors.email)}
+			/>
+			<FieldError id="rep-email" errors={fieldErrors.email} />
 		</div>
 		<div class="grid gap-1.5">
 			<Label for="rep-role">Role</Label>
@@ -326,6 +453,31 @@
 	{#snippet footer()}
 		<Button variant="outline" class="flex-1" onclick={() => (addOpen = false)}>Cancel</Button>
 		<Button class="flex-[2]" onclick={addRep}>Add rep</Button>
+	{/snippet}
+</Modal>
+
+<Modal
+	open={confirmRoleChange !== null}
+	title={confirmRoleChange?.newRole === 'manager' ? 'Promote to Manager' : 'Demote to Rep'}
+	width={400}
+	onclose={() => (confirmRoleChange = null)}
+>
+	<p class="text-[13px] leading-relaxed text-ink-600">
+		{#if confirmRoleChange?.newRole === 'manager'}
+			Promote <span class="font-semibold">{confirmRoleChange.user.name}</span> from Rep to Manager? They'll
+			gain access to manager features.
+		{:else}
+			Demote <span class="font-semibold">{confirmRoleChange?.user.name}</span> from Manager to Rep? They'll
+			lose access to manager features.
+		{/if}
+	</p>
+	{#snippet footer()}
+		<Button variant="outline" class="flex-1" onclick={() => (confirmRoleChange = null)}>
+			Cancel
+		</Button>
+		<Button class="flex-[2]" onclick={applyRoleChange} disabled={roleChanging}>
+			{roleChanging ? 'Saving…' : confirmRoleChange?.newRole === 'manager' ? 'Promote' : 'Demote'}
+		</Button>
 	{/snippet}
 </Modal>
 

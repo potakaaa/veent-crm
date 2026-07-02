@@ -3,6 +3,7 @@ import type { RequestHandler } from './$types';
 import { db } from '$lib/server/db';
 import { crmLeads, crmLeadHistory } from '$lib/server/db/schema';
 import { and, eq, isNull } from 'drizzle-orm';
+import { isManagerRole } from '$lib/utils/permissions';
 
 export const DELETE: RequestHandler = async ({ params, locals }) => {
 	if (!locals.user) throw error(401, 'Unauthorized');
@@ -20,7 +21,7 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
 
 		if (!lead) return null;
 
-		if (user.role === 'rep' && lead.ownerId !== user.id) return 'forbidden' as const;
+		if (!isManagerRole(user.role) && lead.ownerId !== user.id) return 'forbidden' as const;
 
 		const [row] = await tx
 			.update(crmLeads)

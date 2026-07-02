@@ -121,6 +121,13 @@
 		tooltip = { day, x: e.clientX, y: e.clientY };
 	}
 
+	// B4: keyboard-reachable tooltip — on focus, anchor the tooltip to the cell's own
+	// bounding box (there's no pointer position for a focus event).
+	function showTooltipFocus(e: FocusEvent, day: HeatmapDay) {
+		const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+		tooltip = { day, x: rect.left + rect.width / 2, y: rect.top };
+	}
+
 	function hideTooltip() {
 		tooltip = null;
 	}
@@ -154,7 +161,7 @@
 	{#if loading}
 		<Skeleton class="h-[120px] w-full rounded-control" />
 	{:else}
-		<div class="flex min-w-0 gap-1.5">
+		<div class="flex gap-1.5">
 			<!-- Day labels (left) -->
 			<div class="flex shrink-0 flex-col gap-px pt-5">
 				{#each DAY_LABELS as label, i (i)}
@@ -164,48 +171,55 @@
 				{/each}
 			</div>
 
-			<!-- Weeks grid -->
-			<div class="min-w-0 flex-1">
-				<!-- Month labels row -->
-				<div class="relative mb-1 h-5">
-					{#each grid.monthLabels as ml (ml.col)}
-						<span
-							class="absolute font-mono text-[10px] text-ink-400"
-							style="left: {((ml.col / grid.weeks.length) * 100).toFixed(2)}%"
-						>
-							{ml.label}
-						</span>
-					{/each}
-				</div>
-
-				<!-- Cell grid -->
-				<div
-					class="grid gap-px"
-					style="grid-template-columns: repeat({grid.weeks
-						.length}, 1fr); grid-template-rows: repeat(7, 12px);"
-				>
-					{#each grid.weeks as week, wi (wi)}
-						{#each week as cell, di (di)}
-							{#if cell.day}
-								<a
-									href="/leads?date={cell.date}&dateField={metric}&segment=all"
-									class="rounded-[2px] {densityClass(
-										cell.day.total
-									)} transition-opacity hover:opacity-70"
-									style="grid-column: {wi + 1}; grid-row: {di + 1};"
-									onmouseenter={(e) => showTooltip(e, cell.day!)}
-									onmouseleave={hideTooltip}
-									aria-label="{cell.date}: {cell.day.total} leads"
-								></a>
-							{:else}
-								<div
-									class="rounded-[2px] {densityClass(0)}"
-									style="grid-column: {wi + 1}; grid-row: {di + 1};"
-									aria-label={cell.date}
-								></div>
-							{/if}
+			<!-- B2: scroll region so the 53-week grid can overflow horizontally on narrow screens. -->
+			<div class="min-w-0 flex-1 overflow-x-auto">
+				<!-- B2a: an explicit min-width is required — the cell grid uses `repeat(N, 1fr)`,
+				     which would otherwise compress columns to fit instead of overflowing, so the
+				     B2 wrapper alone would never scroll. 15px per week keeps cells legible. -->
+				<div style="min-width: {grid.weeks.length * 15}px;">
+					<!-- Month labels row -->
+					<div class="relative mb-1 h-5">
+						{#each grid.monthLabels as ml (ml.col)}
+							<span
+								class="absolute font-mono text-[10px] text-ink-400"
+								style="left: {((ml.col / grid.weeks.length) * 100).toFixed(2)}%"
+							>
+								{ml.label}
+							</span>
 						{/each}
-					{/each}
+					</div>
+
+					<!-- Cell grid -->
+					<div
+						class="grid gap-px"
+						style="grid-template-columns: repeat({grid.weeks
+							.length}, 1fr); grid-template-rows: repeat(7, 12px);"
+					>
+						{#each grid.weeks as week, wi (wi)}
+							{#each week as cell, di (di)}
+								{#if cell.day}
+									<a
+										href="/leads?date={cell.date}&dateField={metric}&segment=all"
+										class="focus-ring rounded-[2px] {densityClass(
+											cell.day.total
+										)} transition-opacity hover:opacity-70"
+										style="grid-column: {wi + 1}; grid-row: {di + 1};"
+										onmouseenter={(e) => showTooltip(e, cell.day!)}
+										onmouseleave={hideTooltip}
+										onfocus={(e) => showTooltipFocus(e, cell.day!)}
+										onblur={hideTooltip}
+										aria-label="{cell.date}: {cell.day.total} leads"
+									></a>
+								{:else}
+									<div
+										class="rounded-[2px] {densityClass(0)}"
+										style="grid-column: {wi + 1}; grid-row: {di + 1};"
+										aria-label={cell.date}
+									></div>
+								{/if}
+							{/each}
+						{/each}
+					</div>
 				</div>
 			</div>
 		</div>

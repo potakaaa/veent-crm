@@ -43,7 +43,7 @@
 				</div>
 				<div>
 					<div class="text-[15px] font-bold tracking-[-0.2px]">Veent CRM</div>
-					<div class="font-mono text-[10px] uppercase tracking-[1px] text-[#8a828f]">
+					<div class="font-mono text-[10px] uppercase tracking-[1px] text-nav-faint">
 						Outreach Console
 					</div>
 				</div>
@@ -58,17 +58,19 @@
 					</div>
 					<button
 						onclick={() => (sent = false)}
-						class="mt-4 text-[13px] font-medium text-[#e08a82]"
+						class="focus-ring mt-4 rounded-[4px] text-[13px] font-medium text-[#e08a82]"
 					>
 						Use a different email
 					</button>
-					<a href="/" class="mt-4 block text-[12px] text-[#8a828f] hover:text-white"
+					<a
+						href="/"
+						class="focus-ring mt-4 block rounded-[4px] text-[12px] text-nav-faint hover:text-white"
 						>→ Continue to the console (demo)</a
 					>
 				</div>
 			{:else}
 				<div class="mb-1.5 text-[22px] font-bold tracking-[-0.4px]">Sign in</div>
-				<div class="mb-6 text-[13.5px] leading-relaxed text-[#a8a1ab]">
+				<div class="mb-6 text-[13.5px] leading-relaxed text-nav-muted">
 					Magic-link sign-in for the Veent sales team. Allowlisted reps only.
 				</div>
 				{#if data.from}
@@ -83,19 +85,21 @@
 					id="email"
 					bind:value={email}
 					placeholder="jonna@test.com"
-					class="h-11 w-full rounded-[9px] border border-[#312c37] bg-[#221e27] px-3.5 font-mono text-[14px] text-white outline-none"
+					aria-invalid={error ? 'true' : undefined}
+					aria-describedby={error ? 'email-error' : undefined}
+					class="focus-ring h-11 w-full rounded-[9px] border border-[#312c37] bg-[#221e27] px-3.5 font-mono text-[14px] text-white outline-none"
 				/>
 				<button
 					onclick={sendMagic}
 					disabled={submitting}
-					class="mt-3.5 h-11 w-full rounded-[9px] bg-primary text-[14px] font-semibold text-white hover:bg-primary-strong disabled:opacity-60"
+					class="focus-ring mt-3.5 h-11 w-full rounded-[9px] bg-primary text-[14px] font-semibold text-white hover:bg-primary-strong disabled:opacity-60"
 				>
 					{submitting ? 'Sending…' : 'Send magic link'}
 				</button>
 				{#if error}
-					<div class="mt-3 text-[12px] text-[#e08a82]">{error}</div>
+					<div id="email-error" role="alert" class="mt-3 text-[12px] text-[#e08a82]">{error}</div>
 				{/if}
-				<div class="mt-[18px] text-[11.5px] leading-relaxed text-[#8a828f]">
+				<div class="mt-[18px] text-[11.5px] leading-relaxed text-nav-faint">
 					Not on the team yet? Ask a manager to add you in Team management — that list is the
 					allowlist.
 				</div>
@@ -105,8 +109,8 @@
 
 	<!-- right: the cardinal rule -->
 	<div
-		class="flex flex-1 items-center justify-center border-l border-[#26222b] p-10 max-[880px]:hidden"
-		style="background:radial-gradient(circle at 78% 18%, rgba(225,29,42,0.28), transparent 42%), #1a171c"
+		class="flex flex-1 items-center justify-center border-l border-nav-border p-10 max-[880px]:hidden"
+		style="background:radial-gradient(circle at 78% 18%, rgba(225,29,42,0.28), transparent 42%), var(--color-nav-bg)"
 	>
 		<div class="max-w-[380px]">
 			<div class="mb-3.5 font-mono text-[11px] uppercase tracking-[1.5px] text-primary">
@@ -122,7 +126,7 @@
 			<div class="mt-7 flex flex-wrap gap-2">
 				{#each ['dedup on', 'Asia/Manila', 'keyboard-first'] as tag (tag)}
 					<div
-						class="rounded-[6px] border border-[#312c37] bg-white/5 px-[9px] py-[5px] font-mono text-[11px] text-[#a8a1ab]"
+						class="rounded-[6px] border border-[#312c37] bg-white/5 px-[9px] py-[5px] font-mono text-[11px] text-nav-muted"
 					>
 						{tag}
 					</div>

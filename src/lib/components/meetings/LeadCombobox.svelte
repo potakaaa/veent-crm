@@ -17,7 +17,9 @@
 		value = $bindable(undefined),
 		selectedLabel = undefined,
 		disabled = false,
-		onselect = undefined
+		onselect = undefined,
+		id = undefined,
+		...restProps
 	}: {
 		mode: 'filter' | 'assign';
 		// filter mode: one-way from the `lead` URL param. assign mode: two-way via bind:value.
@@ -27,6 +29,10 @@
 		disabled?: boolean;
 		// filter mode wires this to setFilter; assign mode relies on bind:value instead.
 		onselect?: (lead: Lead | undefined) => void;
+		// Lets a caller (e.g. a Label's `for`, or fieldErrorAttrs' aria-invalid/aria-describedby)
+		// wire this trigger the same way a native form control would be wired.
+		id?: string;
+		[key: string]: unknown;
 	} = $props();
 
 	let open = $state(false);
@@ -133,6 +139,8 @@
 <Popover bind:open>
 	<PopoverTrigger
 		{disabled}
+		{id}
+		{...restProps}
 		class="flex h-8 items-center gap-1 rounded-control border border-hairline bg-panel px-2.5 text-[12.5px] text-ink hover:bg-panel-sunken disabled:cursor-wait disabled:opacity-60"
 	>
 		{triggerLabel}

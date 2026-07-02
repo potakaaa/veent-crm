@@ -7,6 +7,7 @@
 	import MeetingFormModal, {
 		type MeetingFormPayload
 	} from '$lib/components/meetings/MeetingFormModal.svelte';
+	import { isManagerRole } from '$lib/utils/permissions';
 
 	let { data } = $props();
 
@@ -25,7 +26,8 @@
 
 	// Edit is gated the same way as the /meetings list: managers, or the organizer.
 	const canManage = $derived(
-		data.me.role !== 'rep' || (meeting.organizerId != null && meeting.organizerId === data.me.id)
+		isManagerRole(data.me.role) ||
+			(meeting.organizerId != null && meeting.organizerId === data.me.id)
 	);
 
 	let modalOpen = $state(false);

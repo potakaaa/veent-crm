@@ -1055,7 +1055,7 @@ export async function moveLeadStage(
 		if (!existing) return null;
 
 		// reps may only move their own leads; managers/super_managers move any.
-		if (actorRole === 'rep' && existing.ownerId !== actorId) {
+		if (actorRole !== 'manager' && actorRole !== 'super_manager' && existing.ownerId !== actorId) {
 			return 'forbidden' as const;
 		}
 

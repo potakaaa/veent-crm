@@ -32,11 +32,10 @@ export type RepRow = {
 export const REPS: RepRow[] = [
 	// Full names confirmed from Meeting.csv
 	// "Jonna" in the events sheet = Jonnavien Grace Asuelo
-	{ name: 'Jonnavien Grace Asuelo', email: 'jonna@test.com', role: 'rep' },
-	{ name: 'Divine Anne Narvasa', email: 'divine@test.com', role: 'rep' },
-	{ name: 'Jela Lephtel Quiamco', email: 'jela@test.com', role: 'rep' },
-	{ name: 'Ethyl Princes Joy Aguid', email: 'ethyl@test.com', role: 'rep' },
-	// Short names only — update full names when known
+	{ name: 'Jonnavien', email: 'jonna@test.com', role: 'rep' },
+	{ name: 'Divine', email: 'divine@test.com', role: 'rep' },
+	{ name: 'Jela', email: 'jela@test.com', role: 'rep' },
+	{ name: 'Ethyl', email: 'ethyl@test.com', role: 'rep' },
 	{ name: 'Elay', email: 'elay@test.com', role: 'rep' },
 	{ name: 'Angel', email: 'angel@test.com', role: 'rep' },
 	{ name: 'Dhen', email: 'dhen@test.com', role: 'rep' },

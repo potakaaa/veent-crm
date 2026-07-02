@@ -616,10 +616,12 @@ async function loadToDb(leads: LeadRow[], meetings: MeetingRow[]): Promise<void>
 
 	try {
 		// --- 1. Load active users from DB ---
+		process.stdout.write('Connecting to database... ');
 		const users = await db
 			.select({ id: crmUsers.id, name: crmUsers.name })
 			.from(crmUsers)
 			.where(eq(crmUsers.active, true));
+		console.log(`done (${users.length} active users found)`);
 
 		// --- 2. Collect distinct rep names from the CSV data ---
 		const distinctSheetNames = [
@@ -638,21 +640,25 @@ async function loadToDb(leads: LeadRow[], meetings: MeetingRow[]): Promise<void>
 			return repMapping.get(nameRaw) ?? null;
 		}
 
-		// --- 2. Fetch existing sheet-import leads for idempotency ---
+		// --- 4. Fetch existing sheet-import leads for idempotency ---
+		process.stdout.write('Checking for existing sheet-import leads... ');
 		const existingLeads = await db
 			.select({ id: crmLeads.id, name: crmLeads.name, normalizedHandle: crmLeads.normalizedHandle })
 			.from(crmLeads)
 			.where(and(eq(crmLeads.source, 'sheet_import'), isNull(crmLeads.deletedAt)));
 
-		const existingByHandle = new Map<string, string>(); // handle → id
+		const existingByHandle = new Map<string, string>();
 		for (const l of existingLeads) {
 			if (l.normalizedHandle) existingByHandle.set(l.normalizedHandle, l.id);
 		}
+		console.log(`${existingLeads.length} already in DB`);
 
-		// --- 3. Insert leads ---
+		// --- 5. Insert leads ---
+		console.log(`\nInserting leads (${leads.length} total)...`);
 		let leadsInserted = 0;
 		let leadsSkipped = 0;
-		const importedLeadIds = new Map<string, string>(); // normalizedHandle → id (all, incl pre-existing)
+		const importedLeadIds = new Map<string, string>();
+		const PRINT_EVERY = 50;
 
 		for (const l of leads) {
 			if (existingByHandle.has(l.normalizedHandle)) {
@@ -687,9 +693,15 @@ async function loadToDb(leads: LeadRow[], meetings: MeetingRow[]): Promise<void>
 
 			importedLeadIds.set(l.normalizedHandle, inserted.id);
 			leadsInserted++;
+
+			if (leadsInserted % PRINT_EVERY === 0) {
+				console.log(`  ${leadsInserted}/${leads.length - leadsSkipped} inserted...`);
+			}
 		}
 
-		console.log(`\nLeads: ${leadsInserted} inserted, ${leadsSkipped} skipped (already exist)`);
+		console.log(
+			`✓ Leads done: ${leadsInserted} inserted, ${leadsSkipped} skipped (already existed)`
+		);
 
 		// --- 4. Build name → lead id map for meeting cross-reference ---
 		// Query all sheet_import leads (including pre-existing) for name matching
@@ -704,6 +716,7 @@ async function loadToDb(leads: LeadRow[], meetings: MeetingRow[]): Promise<void>
 		}
 
 		// --- 5. Insert meetings ---
+		console.log(`\nInserting meetings (${meetings.length} total)...`);
 		let meetingsInserted = 0;
 		let meetingsSkipped = 0;
 		let meetingsUnmatched = 0;
@@ -766,10 +779,13 @@ async function loadToDb(leads: LeadRow[], meetings: MeetingRow[]): Promise<void>
 			}
 
 			meetingsInserted++;
+			console.log(
+				`  [${meetingsInserted + meetingsSkipped}/${meetings.length}] ${m.clientNameRaw}`
+			);
 		}
 
 		console.log(
-			`Meetings: ${meetingsInserted} inserted, ${meetingsSkipped} skipped, ${meetingsUnmatched} unmatched`
+			`✓ Meetings done: ${meetingsInserted} inserted, ${meetingsSkipped} skipped, ${meetingsUnmatched} unmatched`
 		);
 		console.log('\nImport complete.');
 	} finally {

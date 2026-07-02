@@ -2,6 +2,7 @@
 	import { goto } from '$app/navigation';
 	import PageHeader from '$lib/components/shared/PageHeader.svelte';
 	import Avatar from '$lib/components/shared/Avatar.svelte';
+	import EmptyState from '$lib/components/shared/EmptyState.svelte';
 	import { Skeleton } from '$lib/components/shared/skeletons';
 	import CalendarHeatmap from '$lib/components/reports/CalendarHeatmap.svelte';
 	import MonthCalendar from '$lib/components/reports/MonthCalendar.svelte';
@@ -340,6 +341,15 @@
 
 			<div class="flex flex-col rounded-control border border-hairline bg-panel p-5">
 				<div class="mb-4 text-[14px] font-bold">Rep leaderboard</div>
+				{#if reportData.leaderboard.length === 0}
+					<!-- C2: empty-state messaging for a leaderboard with no reps/activity yet. -->
+					<div data-testid="leaderboard-empty-state">
+						<EmptyState
+							title="No rep activity yet"
+							hint="Once your team logs touches and closes deals, the leaderboard will populate here."
+						/>
+					</div>
+				{/if}
 				{#if reportData.leaderboard.length > 0}
 					<div class="mb-5 space-y-[7px]">
 						{#each reportData.leaderboard as r (r.repId)}
@@ -385,13 +395,15 @@
 						</div>
 					</div>
 				{/if}
-				<div
-					class="grid grid-cols-[1.6fr_0.9fr_0.9fr_0.7fr] gap-2 border-b border-hairline pb-2 font-mono text-[10px] uppercase tracking-[0.4px] text-ink-300"
-				>
-					<span>Rep</span><span class="text-right">Touches</span><span class="text-right"
-						>Replies</span
-					><span class="text-right">Wins</span>
-				</div>
+				{#if reportData.leaderboard.length > 0}
+					<div
+						class="grid grid-cols-[1.6fr_0.9fr_0.9fr_0.7fr] gap-2 border-b border-hairline pb-2 font-mono text-[10px] uppercase tracking-[0.4px] text-ink-300"
+					>
+						<span>Rep</span><span class="text-right">Touches</span><span class="text-right"
+							>Replies</span
+						><span class="text-right">Wins</span>
+					</div>
+				{/if}
 				{#each reportData.leaderboard as r (r.repId)}
 					<div
 						class="grid grid-cols-[1.6fr_0.9fr_0.9fr_0.7fr] items-center gap-2 border-b border-panel-sunken py-2 last:border-b-0"

@@ -2,7 +2,9 @@
  * Permission helpers — pure functions over the current user + a lead.
  *
  * Product rules:
- *  - Reps can SEE all leads.
+ *  - Reps see only leads that are theirs, `everyone`-visible, unowned, or explicitly
+ *    granted to them (per-lead visibility scoping — GitHub #87; enforced at the query
+ *    layer via visibilityCondition(), not here).
  *  - Reps can only EDIT leads they own.
  *  - Reps can CLAIM unassigned leads.
  *  - Managers can edit and reassign anything; managers access team management.

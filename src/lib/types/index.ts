@@ -25,6 +25,7 @@ export type ActivityChannel = (typeof ACTIVITY_CHANNELS)[number];
 export type ActivityOutcome = (typeof ACTIVITY_OUTCOMES)[number];
 export type LostReason = (typeof LOST_REASONS)[number];
 export type Role = (typeof USER_ROLES)[number];
+export type Visibility = 'only_me' | 'everyone' | 'selected';
 export type LeadSource = (typeof LEAD_SOURCES)[number];
 export type Currency = (typeof CURRENCIES)[number];
 
@@ -56,6 +57,10 @@ export interface Lead {
 	stage: Stage;
 	/** Owner user id, or null when the lead is unassigned ("up for grabs"). */
 	ownerId: string | null;
+	/** Per-lead visibility scope (GitHub #87). Defaults to `everyone`. */
+	visibility: Visibility;
+	/** User ids explicitly granted access when `visibility === 'selected'`. */
+	selectedUserIds?: string[];
 	/** Last owner kept for attribution after a rep leaves or unclaims. */
 	formerOwnerId?: string | null;
 	eventName?: string;
@@ -78,6 +83,20 @@ export interface Lead {
 	dealValue?: number;
 	currency?: Currency;
 	signedDate?: string;
+
+	// Onboarding capture (post-won; manual)
+	onboardingNotes?: string;
+	contractUrl?: string;
+	onboardingStartDate?: string;
+	goLiveDate?: string;
+
+	// Agreements capture (post-won; manual)
+	feeStructure?: 'legacy' | 'new';
+	transactionFeePct?: number;
+	convenienceFeePesos?: number;
+	serviceFeePct?: number;
+	serviceFeePerTicketPesos?: number;
+	bankChargesAbsorbed?: boolean;
 
 	// Lost capture
 	lostReason?: LostReason;
@@ -243,6 +262,8 @@ export interface CreateLeadInput {
 	eventDate?: string;
 	notes?: string;
 	source?: LeadSource;
+	visibility?: Visibility;
+	selectedUserIds?: string[];
 }
 
 export type UpdateLeadInput = Partial<

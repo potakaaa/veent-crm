@@ -31,6 +31,21 @@
 	let eventName = $state('');
 	let eventLink = $state('');
 	let notes = $state('');
+	let visibility = $state<'only_me' | 'everyone' | 'selected'>('everyone');
+	let selectedUserIds = $state<string[]>([]);
+
+	const VISIBILITY_LABELS: Record<string, string> = {
+		only_me: 'Only me',
+		everyone: 'Everyone',
+		selected: 'Selected people'
+	};
+	// Teammates who can be granted access — active users.
+	const grantableUsers = $derived(data.users.filter((u) => u.active));
+	function toggleGrant(id: string) {
+		selectedUserIds = selectedUserIds.includes(id)
+			? selectedUserIds.filter((x) => x !== id)
+			: [...selectedUserIds, id];
+	}
 	let selectedDate = $state<DateValue | undefined>(undefined);
 	let dateOpen = $state(false);
 	let tempDate = $state<DateValue | undefined>(undefined);
@@ -102,7 +117,9 @@
 			eventDateRaw: eventDateDisplay || undefined,
 			firstAnnouncedDate: announcedDate ? announcedDate.toString() : undefined,
 			firstReachedOutDate: reachedOutDate ? reachedOutDate.toString() : undefined,
-			notes: notes.trim() || undefined
+			notes: notes.trim() || undefined,
+			visibility,
+			selectedUserIds: visibility === 'selected' ? selectedUserIds : undefined
 		});
 		if (!parsed.success) {
 			error = parsed.error.issues[0]?.message ?? 'Please check the form.';
@@ -369,6 +386,42 @@
 						</div>
 					</Dialog.Content>
 				</Dialog.Root>
+			</div>
+
+			<div class="grid gap-1.5 sm:col-span-2">
+				<Label for="visibility">Visibility</Label>
+				<Select type="single" bind:value={visibility}>
+					<SelectTrigger id="visibility" class="w-full">
+						{VISIBILITY_LABELS[visibility]}
+					</SelectTrigger>
+					<SelectContent>
+						<SelectItem value="only_me" label="Only me">Only me</SelectItem>
+						<SelectItem value="everyone" label="Everyone">Everyone</SelectItem>
+						<SelectItem value="selected" label="Selected people">Selected people</SelectItem>
+					</SelectContent>
+				</Select>
+				{#if visibility === 'selected'}
+					<div class="mt-1 rounded-control border border-hairline bg-panel-sunken p-3">
+						<p class="mb-2 text-[12px] text-ink-400">
+							Pick who else can see this lead. Managers always see everything.
+						</p>
+						<div class="grid max-h-48 grid-cols-1 gap-1 overflow-y-auto sm:grid-cols-2">
+							{#each grantableUsers as u (u.id)}
+								<label class="flex items-center gap-2 rounded-[7px] px-2 py-1.5 hover:bg-panel">
+									<input
+										type="checkbox"
+										checked={selectedUserIds.includes(u.id)}
+										onchange={() => toggleGrant(u.id)}
+									/>
+									<span class="text-[13px]">{u.name}</span>
+								</label>
+							{/each}
+						</div>
+						{#if grantableUsers.length === 0}
+							<p class="text-[12px] text-ink-400">No teammates available to grant.</p>
+						{/if}
+					</div>
+				{/if}
 			</div>
 
 			<div class="grid gap-1.5 sm:col-span-2">

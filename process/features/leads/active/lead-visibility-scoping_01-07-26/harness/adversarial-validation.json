@@ -1,0 +1,35 @@
+{
+  "task": "lead-visibility-scoping (GitHub #87)",
+  "scenarios": [
+    {
+      "scenario": "Rep reads a restricted lead directly via /leads/[id] URL (existence leak)",
+      "ruled_out": true,
+      "rationale": "getLead folds visibilityCondition into its WHERE and returns null for a barred read; callers throw error(404). No redacted view, no 403 — identical to a nonexistent id. (Query-layer proof in leads-db.spec AC#8; browser-render half is the e2e-auth-bootstrap Known-Gap.)"
+    },
+    {
+      "scenario": "Missed wiring on one read surface silently leaks restricted leads",
+      "ruled_out": true,
+      "rationale": "All 7 read fns explicitly wired and enumerated; SPEC-exempt surfaces (unassigned x2, reports, nav unassigned sub-count, listPipelineLeads) carry code comments. listPipelineLeads' only caller /team is manager-gated (error 403)."
+    },
+    {
+      "scenario": "Manager override fails to bypass restriction on some surface",
+      "ruled_out": true,
+      "rationale": "Override centralized in visibilityCondition -> sql`true` for role manager; every wired surface pushes the same helper. Pure-fn test asserts manager => literal 'true'. (Row-level manager-sees-all proven by Hybrid gates AC#9/#10 when DB present.)"
+    },
+    {
+      "scenario": "Stale grant rows keep a rep's access after visibility changes away from selected, or after owner change",
+      "ruled_out": true,
+      "rationale": "updateLead deletes-then-reinserts grants for selected and deletes all grants for non-selected, in-transaction. Every owner-change path (claim/unclaim/reassign) deletes all grants + resets visibility='everyone' in-transaction. Grant EXISTS subquery cannot match a deleted row."
+    },
+    {
+      "scenario": "Migration reduces visibility for existing rows (hides leads that were visible)",
+      "ruled_out": true,
+      "rationale": "Column added NOT NULL DEFAULT 'everyone' — Postgres backfills all existing rows to everyone atomically, the most-permissive scope. No existing lead becomes hidden."
+    },
+    {
+      "scenario": "Grant target id from a seeded non-RFC UUID is rejected, breaking selected-visibility",
+      "ruled_out": true,
+      "rationale": "selectedUserIds uses shape-only LOOSE_UUID_RE (not z.string().uuid()), matching ownerUpdateSchema, so seeded fixed-format user ids (00000000-...-000N) are accepted."
+    }
+  ]
+}

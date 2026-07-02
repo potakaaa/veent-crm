@@ -48,7 +48,7 @@ describe.skipIf(SKIP_DB)('moveLeadStage — regular transitions', () => {
 		expect(updated).not.toBeNull();
 		expect((updated as Lead).stage).toBe('contacted');
 
-		const fetched = await getLead(lead.id);
+		const fetched = await getLead(lead.id, MANAGER_UUID, 'manager');
 		expect(fetched!.stage).toBe('contacted');
 	});
 
@@ -228,7 +228,7 @@ describe.skipIf(SKIP_DB)('reassignLead', () => {
 		expect(updated).not.toBeNull();
 		expect(updated!.ownerId).toBe(REP_UUID);
 
-		const fetched = await getLead(lead.id);
+		const fetched = await getLead(lead.id, MANAGER_UUID, 'manager');
 		expect(fetched!.ownerId).toBe(REP_UUID);
 	});
 
@@ -286,7 +286,7 @@ describe.skipIf(SKIP_DB)('Phase 4 regression — reads unaffected', () => {
 		);
 		createdIds.push(lead.id);
 
-		const fetched = await getLead(lead.id);
+		const fetched = await getLead(lead.id, MANAGER_UUID, 'manager');
 		expect(fetched).not.toBeNull();
 		expect(fetched!.name).toBe(`${TEST_PREFIX} Regression P4`);
 		expect(fetched!.stage).toBe('new');

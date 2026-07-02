@@ -145,9 +145,9 @@
 	<Card class="gap-0 overflow-hidden rounded-control py-0">
 		<Table>
 			<TableHeader>
-				{#each table.getHeaderGroups() as headerGroup}
+				{#each table.getHeaderGroups() as headerGroup, i (i)}
 					<TableRow class="bg-[#faf9fb] hover:bg-[#faf9fb]">
-						{#each headerGroup.headers as header}
+						{#each headerGroup.headers as header (header.id)}
 							{#if header.id === '_leads'}
 								<TableHead class="text-right">{header.column.columnDef.header}</TableHead>
 							{:else if header.id === '_actions'}

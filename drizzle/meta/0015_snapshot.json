@@ -1,5 +1,5 @@
 {
-  "id": "f559c412-4a22-4f53-a1f9-3196db7b2745",
+  "id": "2123a194-c726-4cb9-aae1-d900e3339ca2",
   "prevId": "f1a2b3c4-d5e6-7890-abcd-ef1234567890",
   "version": "7",
   "dialect": "postgresql",
@@ -821,30 +821,6 @@
           "primaryKey": false,
           "notNull": false
         },
-        "onboarding_notes": {
-          "name": "onboarding_notes",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "contract_url": {
-          "name": "contract_url",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "onboarding_start_date": {
-          "name": "onboarding_start_date",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "go_live_date": {
-          "name": "go_live_date",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": false
-        },
         "source_ref": {
           "name": "source_ref",
           "type": "text",
@@ -1205,6 +1181,66 @@
           "onUpdate": "no action"
         }
       },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.crm_message_templates": {
+      "name": "crm_message_templates",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "category": {
+          "name": "category",
+          "type": "crm_lead_category",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'Other'"
+        },
+        "title": {
+          "name": "title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "body": {
+          "name": "body",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "deleted_at": {
+          "name": "deleted_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},

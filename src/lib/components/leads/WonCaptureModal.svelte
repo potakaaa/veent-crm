@@ -52,7 +52,7 @@
 
 <Modal {open} {onclose} tone="success" title="Mark won — capture the deal" subtitle={leadName}>
 	<div class="mb-3.5 grid gap-1.5">
-		<Label for="won-org">Signed organization name</Label>
+		<Label for="won-org">Signed organization name <span class="text-red-500">*</span></Label>
 		<Input
 			id="won-org"
 			bind:value={signedOrg}
@@ -62,7 +62,9 @@
 	</div>
 	<div class="mb-3.5 flex gap-3">
 		<div class="grid flex-1 gap-1.5">
-			<Label for="won-value">Deal value</Label>
+			<Label for="won-value"
+				>Deal value <span class="font-normal text-ink-400">(optional)</span></Label
+			>
 			<Input id="won-value" bind:value={dealValue} placeholder="85,000" class="font-mono" />
 		</div>
 		<div class="grid w-[120px] gap-1.5">
@@ -76,7 +78,9 @@
 		</div>
 	</div>
 	<div class="grid gap-1.5">
-		<Label for="won-date">Signed date</Label>
+		<Label for="won-date"
+			>Signed date <span class="font-normal text-ink-400">(optional)</span></Label
+		>
 		<Input id="won-date" type="date" bind:value={signedDate} class="font-mono" />
 	</div>
 

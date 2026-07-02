@@ -1,5 +1,5 @@
 {
-  "id": "f559c412-4a22-4f53-a1f9-3196db7b2745",
+  "id": "5a28f73a-15ae-4c28-a5e8-d830fa5f4ed9",
   "prevId": "f1a2b3c4-d5e6-7890-abcd-ef1234567890",
   "version": "7",
   "dialect": "postgresql",
@@ -627,6 +627,94 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
+    "public.crm_lead_visibility_grants": {
+      "name": "crm_lead_visibility_grants",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "lead_id": {
+          "name": "lead_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "crm_lead_visibility_grants_lead_user_uq": {
+          "name": "crm_lead_visibility_grants_lead_user_uq",
+          "columns": [
+            {
+              "expression": "lead_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "crm_lead_visibility_grants_lead_id_crm_leads_id_fk": {
+          "name": "crm_lead_visibility_grants_lead_id_crm_leads_id_fk",
+          "tableFrom": "crm_lead_visibility_grants",
+          "tableTo": "crm_leads",
+          "columnsFrom": [
+            "lead_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "crm_lead_visibility_grants_user_id_crm_users_id_fk": {
+          "name": "crm_lead_visibility_grants_user_id_crm_users_id_fk",
+          "tableFrom": "crm_lead_visibility_grants",
+          "tableTo": "crm_users",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
     "public.crm_leads": {
       "name": "crm_leads",
       "schema": "",
@@ -776,6 +864,14 @@
           "primaryKey": false,
           "notNull": false
         },
+        "visibility": {
+          "name": "visibility",
+          "type": "crm_lead_visibility",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'everyone'"
+        },
         "source": {
           "name": "source",
           "type": "crm_lead_source",
@@ -818,30 +914,6 @@
         "signed_at": {
           "name": "signed_at",
           "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "onboarding_notes": {
-          "name": "onboarding_notes",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "contract_url": {
-          "name": "contract_url",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "onboarding_start_date": {
-          "name": "onboarding_start_date",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "go_live_date": {
-          "name": "go_live_date",
-          "type": "date",
           "primaryKey": false,
           "notNull": false
         },
@@ -1393,6 +1465,15 @@
         "in_discussion",
         "won",
         "lost"
+      ]
+    },
+    "public.crm_lead_visibility": {
+      "name": "crm_lead_visibility",
+      "schema": "public",
+      "values": [
+        "only_me",
+        "everyone",
+        "selected"
       ]
     },
     "public.crm_lost_reason": {

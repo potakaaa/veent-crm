@@ -9,7 +9,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 	if (!locals.user) throw error(401, 'Unauthorized');
 
 	const [lead, users, templates] = await Promise.all([
-		getLead(params.id),
+		getLead(params.id, locals.user.id, locals.user.role),
 		listUsers(),
 		listTemplates()
 	]);

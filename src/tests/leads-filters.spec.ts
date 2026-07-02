@@ -16,6 +16,9 @@ import { eq, inArray } from 'drizzle-orm';
 
 const SKIP_DB = !process.env.DATABASE_URL;
 const MANAGER_UUID = '00000000-0000-0000-0000-000000000001';
+const REP_UUID = '00000000-0000-0000-0000-000000000002';
+// A rep with no ownership/grant — used to assert exclusion of restricted leads.
+const OUTSIDER_UUID = '00000000-0000-0000-0000-0000000000ff';
 const PREFIX = '__flttest__';
 const created: string[] = [];
 
@@ -80,6 +83,7 @@ describe.skipIf(SKIP_DB)('listLeadsFiltered — country filter (DB)', () => {
 
 		const { leads } = await listLeadsFiltered({
 			userId: MANAGER_UUID,
+			role: 'manager',
 			segment: 'all',
 			country: '__TEST_MANILA__'
 		});
@@ -90,9 +94,14 @@ describe.skipIf(SKIP_DB)('listLeadsFiltered — country filter (DB)', () => {
 	});
 
 	it('country filter "All countries" returns all non-deleted', async () => {
-		const { leads: all } = await listLeadsFiltered({ userId: MANAGER_UUID, segment: 'all' });
+		const { leads: all } = await listLeadsFiltered({
+			userId: MANAGER_UUID,
+			role: 'manager',
+			segment: 'all'
+		});
 		const { leads: filtered } = await listLeadsFiltered({
 			userId: MANAGER_UUID,
+			role: 'manager',
 			segment: 'all',
 			country: ''
 		});
@@ -104,6 +113,7 @@ describe.skipIf(SKIP_DB)('listLeadsFiltered — pagination (DB)', () => {
 	it('total count equals all matching rows (not just page)', async () => {
 		const { total } = await listLeadsFiltered({
 			userId: MANAGER_UUID,
+			role: 'manager',
 			segment: 'all',
 			pageSize: 1,
 			page: 1
@@ -117,6 +127,7 @@ describe.skipIf(SKIP_DB)('listLeadsFiltered — pagination (DB)', () => {
 
 		const { leads: p1, total } = await listLeadsFiltered({
 			userId: MANAGER_UUID,
+			role: 'manager',
 			segment: 'mine',
 			pageSize: 1,
 			page: 1
@@ -125,6 +136,7 @@ describe.skipIf(SKIP_DB)('listLeadsFiltered — pagination (DB)', () => {
 
 		const { leads: p2 } = await listLeadsFiltered({
 			userId: MANAGER_UUID,
+			role: 'manager',
 			segment: 'mine',
 			pageSize: 1,
 			page: 2
@@ -136,6 +148,7 @@ describe.skipIf(SKIP_DB)('listLeadsFiltered — pagination (DB)', () => {
 	it('page beyond total returns empty array', async () => {
 		const { leads } = await listLeadsFiltered({
 			userId: MANAGER_UUID,
+			role: 'manager',
 			segment: 'mine',
 			page: 99999
 		});
@@ -145,12 +158,14 @@ describe.skipIf(SKIP_DB)('listLeadsFiltered — pagination (DB)', () => {
 	it('total count is consistent between page 1 and page 2 requests', async () => {
 		const { total: t1 } = await listLeadsFiltered({
 			userId: MANAGER_UUID,
+			role: 'manager',
 			segment: 'mine',
 			pageSize: 1,
 			page: 1
 		});
 		const { total: t2 } = await listLeadsFiltered({
 			userId: MANAGER_UUID,
+			role: 'manager',
 			segment: 'mine',
 			pageSize: 1,
 			page: 2
@@ -164,7 +179,11 @@ describe.skipIf(SKIP_DB)('listLeadsFiltered — exclusions (DB)', () => {
 		const lead = await mkLead('SoftDelete');
 		await db.update(crmLeads).set({ deletedAt: new Date() }).where(eq(crmLeads.id, lead.id));
 
-		const { leads } = await listLeadsFiltered({ userId: MANAGER_UUID, segment: 'all' });
+		const { leads } = await listLeadsFiltered({
+			userId: MANAGER_UUID,
+			role: 'manager',
+			segment: 'all'
+		});
 		expect(leads.find((l) => l.id === lead.id)).toBeUndefined();
 	});
 
@@ -175,7 +194,11 @@ describe.skipIf(SKIP_DB)('listLeadsFiltered — exclusions (DB)', () => {
 			.set({ stage: 'lost', lostReason: 'no_response' })
 			.where(eq(crmLeads.id, lead.id));
 
-		const { leads } = await listLeadsFiltered({ userId: MANAGER_UUID, segment: 'all' });
+		const { leads } = await listLeadsFiltered({
+			userId: MANAGER_UUID,
+			role: 'manager',
+			segment: 'all'
+		});
 		expect(leads.find((l) => l.id === lead.id)).toBeUndefined();
 	});
 
@@ -186,7 +209,11 @@ describe.skipIf(SKIP_DB)('listLeadsFiltered — exclusions (DB)', () => {
 			.set({ stage: 'lost', lostReason: 'no_response' })
 			.where(eq(crmLeads.id, lead.id));
 
-		const { leads } = await listLeadsFiltered({ userId: MANAGER_UUID, segment: 'lost' });
+		const { leads } = await listLeadsFiltered({
+			userId: MANAGER_UUID,
+			role: 'manager',
+			segment: 'lost'
+		});
 		expect(leads.find((l) => l.id === lead.id)).toBeDefined();
 		expect(leads.every((l) => l.stage === 'lost')).toBe(true);
 	});
@@ -322,6 +349,7 @@ describe.skipIf(SKIP_DB)('listLeadsFiltered — staleOnly (DB)', () => {
 
 		const { leads } = await listLeadsFiltered({
 			userId: MANAGER_UUID,
+			role: 'manager',
 			segment: 'mine',
 			staleOnly: true
 		});
@@ -334,9 +362,78 @@ describe.skipIf(SKIP_DB)('listLeadsFiltered — staleOnly (DB)', () => {
 
 		const { leads } = await listLeadsFiltered({
 			userId: MANAGER_UUID,
+			role: 'manager',
 			segment: 'mine',
 			staleOnly: true
 		});
 		expect(leads.find((l) => l.id === lead.id)).toBeUndefined();
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Lead visibility scoping (GitHub #87) — list enforcement.
+// Proves AC#5 (rep excluded), AC#9 (manager sees all), AC#11 (unassigned visible).
+// ---------------------------------------------------------------------------
+describe.skipIf(SKIP_DB)('listLeadsFiltered — visibility scoping (DB) — #87', () => {
+	it('AC#5: a non-permitted rep does NOT see an only_me lead owned by someone else', async () => {
+		const lead = await createLead(
+			{ name: `${PREFIX} VisOnlyMe`, category: 'Sports', visibility: 'only_me' },
+			MANAGER_UUID
+		);
+		created.push(lead.id);
+
+		const { leads } = await listLeadsFiltered({
+			userId: OUTSIDER_UUID,
+			role: 'rep',
+			segment: 'all'
+		});
+		expect(leads.find((l) => l.id === lead.id)).toBeUndefined();
+	});
+
+	it('AC#9: a manager sees an only_me lead regardless of visibility', async () => {
+		const lead = await createLead(
+			{ name: `${PREFIX} VisMgrSeesAll`, category: 'Sports', visibility: 'only_me' },
+			MANAGER_UUID
+		);
+		created.push(lead.id);
+
+		const { leads } = await listLeadsFiltered({
+			userId: OUTSIDER_UUID,
+			role: 'manager',
+			segment: 'all'
+		});
+		expect(leads.find((l) => l.id === lead.id)).toBeDefined();
+	});
+
+	it('AC#11: an unassigned lead stays visible to any rep even if it was once only_me', async () => {
+		const lead = await createLead(
+			{ name: `${PREFIX} VisUnassigned`, category: 'Sports', visibility: 'only_me' },
+			MANAGER_UUID
+		);
+		created.push(lead.id);
+		// Unown it (up-for-grabs) — unowned leads are visibility-exempt.
+		await db.update(crmLeads).set({ ownerId: null, stage: 'new' }).where(eq(crmLeads.id, lead.id));
+
+		const { leads } = await listLeadsFiltered({
+			userId: OUTSIDER_UUID,
+			role: 'rep',
+			segment: 'all'
+		});
+		expect(leads.find((l) => l.id === lead.id)).toBeDefined();
+	});
+
+	it('a rep DOES see an everyone-visibility lead owned by someone else', async () => {
+		const lead = await createLead(
+			{ name: `${PREFIX} VisEveryone`, category: 'Sports', visibility: 'everyone' },
+			REP_UUID
+		);
+		created.push(lead.id);
+
+		const { leads } = await listLeadsFiltered({
+			userId: OUTSIDER_UUID,
+			role: 'rep',
+			segment: 'all'
+		});
+		expect(leads.find((l) => l.id === lead.id)).toBeDefined();
 	});
 });

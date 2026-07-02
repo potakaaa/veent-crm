@@ -89,6 +89,17 @@
 		}
 	}
 
+	async function copy(t: MessageTemplate) {
+		try {
+			await navigator.clipboard.writeText(t.body);
+			toasts.push('Copied to clipboard');
+		} catch (err) {
+			toasts.push(err instanceof Error ? err.message : 'Unable to copy to clipboard.', {
+				tone: 'warn'
+			});
+		}
+	}
+
 	async function remove(t: MessageTemplate) {
 		if (!confirm(`Delete the template “${t.title}”? Reps will no longer see it.`)) return;
 		try {
@@ -178,6 +189,7 @@
 					{#if canManage}
 						<div class="mt-auto flex gap-1.5 pt-1">
 							<Button variant="outline" size="sm" onclick={() => openEdit(t)}>Edit</Button>
+							<Button variant="outline" size="sm" onclick={() => copy(t)}>Copy</Button>
 							<Button variant="outline" size="sm" onclick={() => remove(t)}>Delete</Button>
 						</div>
 					{/if}
@@ -210,6 +222,7 @@
 								{#if canManage}
 									<div class="flex shrink-0 gap-1.5">
 										<Button variant="outline" size="sm" onclick={() => openEdit(t)}>Edit</Button>
+										<Button variant="outline" size="sm" onclick={() => copy(t)}>Copy</Button>
 										<Button variant="outline" size="sm" onclick={() => remove(t)}>Delete</Button>
 									</div>
 								{/if}

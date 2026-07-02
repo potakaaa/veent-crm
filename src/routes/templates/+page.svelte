@@ -40,6 +40,8 @@
 	let category = $state<string>('Other');
 	let body = $state('');
 	let formError = $state('');
+	let saving = $state(false);
+	let deleteTarget = $state<MessageTemplate | null>(null);
 
 	function openCreate() {
 		editingId = null;
@@ -60,11 +62,13 @@
 	}
 
 	async function save() {
+		if (saving) return;
 		const parsed = templateFormSchema.safeParse({ title, category, body });
 		if (!parsed.success) {
 			formError = parsed.error.issues[0]?.message ?? 'Check the form.';
 			return;
 		}
+		saving = true;
 		try {
 			const res = editingId
 				? await fetch('/api/templates', {
@@ -86,6 +90,8 @@
 			toasts.success(editingId ? 'Template updated' : 'Template created');
 		} catch (err) {
 			formError = err instanceof Error ? err.message : 'Unable to save template.';
+		} finally {
+			saving = false;
 		}
 	}
 
@@ -100,8 +106,13 @@
 		}
 	}
 
-	async function remove(t: MessageTemplate) {
-		if (!confirm(`Delete the template “${t.title}”? Reps will no longer see it.`)) return;
+	function remove(t: MessageTemplate) {
+		deleteTarget = t;
+	}
+
+	async function confirmDelete() {
+		const t = deleteTarget;
+		if (!t) return;
 		try {
 			const res = await fetch('/api/templates', {
 				method: 'DELETE',
@@ -118,6 +129,8 @@
 			toasts.push(err instanceof Error ? err.message : 'Unable to delete template.', {
 				tone: 'warn'
 			});
+		} finally {
+			deleteTarget = null;
 		}
 	}
 </script>
@@ -280,6 +293,31 @@
 	</div>
 	{#snippet footer()}
 		<Button variant="outline" class="flex-1" onclick={() => (formOpen = false)}>Cancel</Button>
-		<Button class="flex-[2]" onclick={save}>{editingId ? 'Save changes' : 'Add template'}</Button>
+		<Button class="flex-[2]" onclick={save} disabled={saving}
+			>{editingId ? 'Save changes' : 'Add template'}</Button
+		>
 	{/snippet}
 </Modal>
+
+{#if deleteTarget}
+	<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+		<div class="mx-4 w-full max-w-sm rounded-xl bg-white p-6 shadow-xl">
+			<h3 class="mb-1 text-base font-semibold text-gray-900">Delete template?</h3>
+			<p class="mb-4 text-sm text-gray-500">
+				"{deleteTarget.title}" will be removed. Reps will no longer see it.
+			</p>
+			<div class="flex justify-end gap-2">
+				<button
+					onclick={() => (deleteTarget = null)}
+					class="rounded-lg border border-gray-200 px-3 py-1.5 text-sm hover:bg-gray-50"
+					>Cancel</button
+				>
+				<button
+					onclick={confirmDelete}
+					class="rounded-lg bg-red-600 px-3 py-1.5 text-sm text-white hover:bg-red-700"
+					>Delete</button
+				>
+			</div>
+		</div>
+	</div>
+{/if}

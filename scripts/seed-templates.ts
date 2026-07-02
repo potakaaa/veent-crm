@@ -121,7 +121,6 @@ async function load(rows: SeedRow[]): Promise<void> {
 	// Lazy imports so --dry-run never touches the DB layer or the $lib-free schema module.
 	const postgres = (await import('postgres')).default;
 	const { drizzle } = await import('drizzle-orm/postgres-js');
-	const { and, eq, isNull } = await import('drizzle-orm');
 	const schema = await import('../src/lib/server/db/schema');
 
 	const url = process.env.DATABASE_URL;
@@ -136,24 +135,16 @@ async function load(rows: SeedRow[]): Promise<void> {
 
 	try {
 		for (const row of rows) {
-			// Idempotency guard: skip if a non-deleted template with this title already exists.
-			const existing = await db
-				.select({ id: crmMessageTemplates.id })
-				.from(crmMessageTemplates)
-				.where(and(eq(crmMessageTemplates.title, row.title), isNull(crmMessageTemplates.deletedAt)))
-				.limit(1);
-
-			if (existing.length) {
-				skippedExisting++;
-				continue;
-			}
-
-			await db.insert(crmMessageTemplates).values({
-				category: row.category,
-				title: row.title,
-				body: row.body
-			});
-			inserted++;
+			// Idempotency guard: atomic insert relying on the partial unique index
+			// (crm_message_templates_title_active_uq). onConflictDoNothing skips an
+			// existing non-deleted title without a separate SELECT round-trip.
+			const result = await db
+				.insert(crmMessageTemplates)
+				.values({ category: row.category, title: row.title, body: row.body })
+				.onConflictDoNothing()
+				.returning({ id: crmMessageTemplates.id });
+			if (result.length) inserted++;
+			else skippedExisting++;
 		}
 
 		console.log('\n=== Seed result ===');

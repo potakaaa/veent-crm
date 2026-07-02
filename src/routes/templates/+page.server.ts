@@ -1,7 +1,7 @@
 import type { PageServerLoad } from './$types';
 import { error } from '@sveltejs/kit';
 import { listTemplates } from '$lib/server/db/templates';
-import type { User } from '$lib/types';
+import { sessionToUser } from '$lib/server/db/users';
 
 // Manager-only: outreach message template management. Mirrors /team's guard.
 //
@@ -19,13 +19,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 
 	const templates = await listTemplates();
 
-	const currentUser: User = {
-		id: locals.user.id,
-		email: locals.user.email,
-		name: locals.user.name,
-		role: locals.user.role,
-		active: true
-	};
+	const currentUser = sessionToUser(locals.user!);
 
 	return { templates, currentUser };
 };

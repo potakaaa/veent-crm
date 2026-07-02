@@ -16,6 +16,7 @@
 		MessageTemplate
 	} from '$lib/types';
 	import { fillTemplate } from '$lib/data/templates';
+	import type { TemplateVars } from '$lib/data/templates';
 	import { SvelteMap } from 'svelte/reactivity';
 
 	let {
@@ -56,11 +57,12 @@
 	let pendingTemplate = $state<MessageTemplate | null>(null);
 
 	function fill(t: MessageTemplate): string {
-		return fillTemplate(t.body, {
+		const vars: TemplateVars = {
 			organizerName: lead.name,
 			eventName: lead.eventName ?? '',
 			repName
-		});
+		};
+		return fillTemplate(t.body, vars);
 	}
 
 	// REPLACE semantics (AC-9/AC-10): selecting a template overwrites the note.

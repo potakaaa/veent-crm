@@ -236,17 +236,19 @@ No SPEC criterion is proven by Known-Gap. Agent-Probe rows are the accepted prov
 
 1. **Selected plan file:** `process/features/outreach-templates/active/outreach-templates_02-07-26/outreach-templates_PLAN_02-07-26.md`
 2. **Last completed phase/step:** none — plan just written, no code changes yet.
-3. **Validate-contract status:** pending (vc-validate-agent writes the `## Phase Completion Rules
+3. **Validate-contract status:** pending (vc-validate-agent writes the `## Validate Contract` section before EXECUTE).
+4. **Supporting context loaded:** SPEC (same folder); `process/context/all-context.md`; `process/context/tests/all-tests.md`; `process/context/planning/all-planning.md`; reference files `schema.ts`, `templates.ts`, `LogTouchForm.svelte`, `team/+page.server.ts`, `api/users/+server.ts`, `leads/[id]/+page.server.ts`, `meetings.ts` accessor, `leads-db.spec.ts`, `import.ts`, `schemas.ts`.
+5. **Next step for a fresh agent:** run VALIDATE (V1–V7) on this plan, then EXECUTE Phase 1 checklist items 1–9 and stop at the Phase-1 gate. Use `bun run check` + `bun run test:unit:ci` as the per-phase gate commands; `bun run db:generate` for the migration; `SKIP_DB` self-skips DB specs without `DATABASE_URL`.
+
+---
+
+## Phase Completion Rules
 
 A phase is `CODE DONE` when its checklist items are implemented and its phase gate command (`bun run check` + `bun run test:unit:ci`) is green. A phase is only `VERIFIED` when its phase gate is green AND its mapped Verification Evidence rows are satisfied — Fully-Automated gates passing in CI, Hybrid gates run with a recorded manual verification note, and Agent-Probe walkthroughs recorded. Do NOT mark any phase `✅ VERIFIED` without both the automated gate evidence and (for rep-facing flows) the Agent-Probe walkthrough record; user confirmation of the manager CRUD flow and composer flow is required before the feature as a whole is VERIFIED. Code-only completion is `CODE DONE`, never `VERIFIED`.
 
 ## Next Step
 
 Run VALIDATE on this plan (say **ENTER VALIDATE MODE**) before EXECUTE. Per RIPER-5, VALIDATE is mandatory before implementation for this schema-migration + manager-auth surface.
-
-## Validate Contract` section before EXECUTE).
-4. **Supporting context loaded:** SPEC (same folder); `process/context/all-context.md`; `process/context/tests/all-tests.md`; `process/context/planning/all-planning.md`; reference files `schema.ts`, `templates.ts`, `LogTouchForm.svelte`, `team/+page.server.ts`, `api/users/+server.ts`, `leads/[id]/+page.server.ts`, `meetings.ts` accessor, `leads-db.spec.ts`, `import.ts`, `schemas.ts`.
-5. **Next step for a fresh agent:** run VALIDATE (V1–V7) on this plan, then EXECUTE Phase 1 checklist items 1–9 and stop at the Phase-1 gate. Use `bun run check` + `bun run test:unit:ci` as the per-phase gate commands; `bun run db:generate` for the migration; `SKIP_DB` self-skips DB specs without `DATABASE_URL`.
 
 ---
 

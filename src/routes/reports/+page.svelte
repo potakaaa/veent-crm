@@ -195,7 +195,7 @@
 		<button
 			type="submit"
 			disabled={outreachLoading}
-			class="h-[34px] rounded-control bg-primary px-3.5 font-mono text-[12.5px] font-semibold text-white transition-opacity hover:bg-primary-strong disabled:cursor-not-allowed disabled:opacity-50"
+			class="focus-ring h-[34px] rounded-control bg-primary px-3.5 font-mono text-[12.5px] font-semibold text-white transition-opacity hover:bg-primary-strong disabled:cursor-not-allowed disabled:opacity-50"
 		>
 			{outreachLoading ? 'Applying…' : 'Apply'}
 		</button>
@@ -203,7 +203,7 @@
 			<button
 				type="button"
 				onclick={clearFilters}
-				class="h-[34px] rounded-control border border-hairline bg-panel px-3.5 font-mono text-[12.5px] text-ink-600 hover:bg-panel-sunken"
+				class="focus-ring h-[34px] rounded-control border border-hairline bg-panel px-3.5 font-mono text-[12.5px] text-ink-600 hover:bg-panel-sunken"
 			>
 				Clear
 			</button>
@@ -237,7 +237,7 @@
 				{/if}
 			</div>
 			<div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
-				<div class="rounded-control border border-hairline bg-[#fdf3f2] p-4">
+				<div class="rounded-control border border-hairline bg-selected p-4">
 					<div class="font-mono text-[10.5px] uppercase tracking-[0.8px] text-ink-300">
 						Leads reached out
 					</div>
@@ -246,7 +246,7 @@
 					</div>
 					<div class="mt-0.5 text-[12px] text-ink-400">first reached-out date set</div>
 				</div>
-				<div class="rounded-control border border-hairline bg-[#fdf3f2] p-4">
+				<div class="rounded-control border border-hairline bg-selected p-4">
 					<div class="font-mono text-[10.5px] uppercase tracking-[0.8px] text-ink-300">
 						Leads that replied
 					</div>
@@ -255,7 +255,7 @@
 					</div>
 					<div class="mt-0.5 text-[12px] text-ink-400">leads with a replied activity</div>
 				</div>
-				<div class="rounded-control border border-hairline bg-[#fdf3f2] p-4">
+				<div class="rounded-control border border-hairline bg-selected p-4">
 					<div class="font-mono text-[10.5px] uppercase tracking-[0.8px] text-ink-300">
 						Leads with meeting
 					</div>
@@ -434,7 +434,7 @@
 			</div>
 			<div class="flex flex-wrap gap-4">
 				{#each reportData.currencyTotals as c (c.currency)}
-					<div class="min-w-[200px] flex-1 rounded-control border border-hairline bg-[#fdf3f2] p-4">
+					<div class="min-w-[200px] flex-1 rounded-control border border-hairline bg-selected p-4">
 						<div class="font-mono text-[11px] tracking-[1px] text-ink-300">{c.label}</div>
 						<div class="mt-1 font-mono text-[26px] font-semibold tracking-[-1px] tnum">
 							{formatMoney(c.total, c.currency)}

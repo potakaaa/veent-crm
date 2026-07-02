@@ -278,7 +278,8 @@
 				<button
 					onclick={bulkClaim}
 					disabled={bulkPending}
-					class="h-[34px] rounded-control bg-primary px-3.5 text-[12.5px] font-semibold text-white disabled:opacity-50"
+					aria-label="Claim {selectedIds.length} selected leads"
+					class="focus-ring h-[34px] rounded-control bg-primary px-3.5 text-[12.5px] font-semibold text-white disabled:opacity-50"
 				>
 					{bulkPending ? 'Claiming…' : `Claim ${selectedIds.length}`}
 				</button>
@@ -459,7 +460,8 @@
 						<button
 							onclick={() => claim(l)}
 							disabled={claiming[l.id]}
-							class="h-[30px] flex-1 rounded-[7px] bg-primary text-[12.5px] font-semibold text-white hover:bg-primary-strong disabled:opacity-50"
+							aria-label="Claim {l.name}"
+							class="focus-ring h-[30px] flex-1 rounded-[7px] bg-primary text-[12.5px] font-semibold text-white hover:bg-primary-strong disabled:opacity-50"
 						>
 							{claiming[l.id] ? 'Claiming…' : 'Claim'}
 						</button>

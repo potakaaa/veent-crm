@@ -177,7 +177,17 @@
 		<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
 			{#each data.templates as t (t.id)}
 				{@const accent = categoryColor(t.category)}
-				<Card class="flex flex-col gap-3 rounded-control p-4">
+				<Card class="relative flex flex-col gap-3 rounded-control p-4">
+					<Button
+						variant="ghost"
+						size="icon"
+						class="absolute right-2 top-2 size-8 text-ink-400 hover:text-ink-600"
+						aria-label="Copy template"
+						title="Copy"
+						onclick={() => copy(t)}
+					>
+						<Icon name="copy" size={15} />
+					</Button>
 					<div class="flex w-fit items-center gap-1.5 font-mono text-[11px] text-ink-500">
 						<span
 							class="inline-block size-[7px] shrink-0 rounded-full"
@@ -190,7 +200,6 @@
 					{#if canManage}
 						<div class="mt-auto flex gap-1.5 pt-1">
 							<Button variant="outline" size="sm" onclick={() => openEdit(t)}>Edit</Button>
-							<Button variant="outline" size="sm" onclick={() => copy(t)}>Copy</Button>
 							<Button variant="outline" size="sm" onclick={() => remove(t)}>Delete</Button>
 						</div>
 					{/if}

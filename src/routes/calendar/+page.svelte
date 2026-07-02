@@ -3,6 +3,7 @@
 	import { page, navigating } from '$app/state';
 	import { SvelteURLSearchParams } from 'svelte/reactivity';
 	import CalendarGrid from '$lib/components/calendar/CalendarGrid.svelte';
+	import EmptyState from '$lib/components/shared/EmptyState.svelte';
 	import Icon from '$lib/components/shared/Icon.svelte';
 	import PageHeader from '$lib/components/shared/PageHeader.svelte';
 	import {
@@ -173,5 +174,15 @@
 
 	<div class={navLoading ? 'opacity-60 transition-opacity' : 'transition-opacity'}>
 		<CalendarGrid {view} entries={data.entries} visibleDate={anchor} />
+		{#if data.entries.length === 0}
+			<!-- C2: empty-state messaging for a {view} with no meetings or follow-ups. The grid
+			     above still renders (AC9) — this is an additive "no data yet" cue below it. -->
+			<div data-testid="calendar-empty-state" class="mt-4">
+				<EmptyState
+					title="No meetings or follow-ups {view === 'week' ? 'this week' : 'this month'}"
+					hint="Scheduled meetings and lead follow-ups will appear on this grid."
+				/>
+			</div>
+		{/if}
 	</div>
 </div>

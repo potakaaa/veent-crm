@@ -20,6 +20,7 @@
 	import ReassignModal from '$lib/components/leads/ReassignModal.svelte';
 	import DiscardIssueModal from '$lib/components/leads/DiscardIssueModal.svelte';
 	import MeetingsPanel from '$lib/components/meetings/MeetingsPanel.svelte';
+	import { Tabs } from '$lib/components/ui/tabs';
 	import { toasts } from '$lib/stores/toasts.svelte';
 	import { canEditLead, canReassign } from '$lib/utils/permissions';
 	import { riskMeta } from '$lib/utils/risk';
@@ -48,6 +49,14 @@
 	$effect(() => {
 		if (lead.stage !== 'won' && activeTab === 'onboarding') activeTab = 'overview';
 	});
+
+	// Tab strip definition (shared Tabs component, underline variant). Onboarding is
+	// only offered for won leads.
+	const detailTabs = $derived([
+		{ value: 'overview', label: 'Overview' },
+		{ value: 'meetings', label: 'Meetings' },
+		...(lead.stage === 'won' ? [{ value: 'onboarding', label: 'Onboarding' }] : [])
+	]);
 
 	// Editable onboarding form fields — resynced whenever server truth changes.
 	let onboardingNotes = $state('');
@@ -431,39 +440,14 @@
 		{/if}
 
 		<!-- tab bar -->
-		<div role="tablist" class="mb-4 flex gap-1 border-b border-hairline">
-			<button
-				role="tab"
-				aria-selected={activeTab === 'overview'}
-				onclick={() => (activeTab = 'overview')}
-				class="border-b-2 px-3 py-2 text-[13px] font-medium {activeTab === 'overview'
-					? 'border-primary text-ink'
-					: 'border-transparent text-ink-400 hover:text-ink'}"
-			>
-				Overview
-			</button>
-			<button
-				role="tab"
-				aria-selected={activeTab === 'meetings'}
-				onclick={() => (activeTab = 'meetings')}
-				class="border-b-2 px-3 py-2 text-[13px] font-medium {activeTab === 'meetings'
-					? 'border-primary text-ink'
-					: 'border-transparent text-ink-400 hover:text-ink'}"
-			>
-				Meetings
-			</button>
-			{#if lead.stage === 'won'}
-				<button
-					role="tab"
-					aria-selected={activeTab === 'onboarding'}
-					onclick={() => (activeTab = 'onboarding')}
-					class="border-b-2 px-3 py-2 text-[13px] font-medium {activeTab === 'onboarding'
-						? 'border-primary text-ink'
-						: 'border-transparent text-ink-400 hover:text-ink'}"
-				>
-					Onboarding
-				</button>
-			{/if}
+		<div class="mb-4">
+			<Tabs
+				variant="underline"
+				ariaLabel="Lead detail sections"
+				tabs={detailTabs}
+				value={activeTab}
+				onValueChange={(v) => (activeTab = v as 'overview' | 'meetings' | 'onboarding')}
+			/>
 		</div>
 
 		{#if activeTab === 'meetings'}

@@ -20,6 +20,9 @@
 	// Per-lead snooze pending state (also the duplicate-submit guard).
 	let snoozing = $state<Record<string, boolean>>({});
 
+	// Screen-reader announcement for the optimistic remove (D2 — non-navigation state change).
+	let liveMessage = $state('');
+
 	// Show the skeleton only while navigating TO this route (never when leaving it),
 	// so already-loaded content is never blanked.
 	const navLoading = $derived(navigating.to?.url.pathname === '/');
@@ -69,6 +72,7 @@
 			timeZone: 'Asia/Manila'
 		});
 		shadowLeads = removeFromList(shadowLeads, l.id); // optimistic remove
+		liveMessage = `Snoozed ${l.name}, follow-up in 3 days`;
 		try {
 			const res = await fetch(`/api/leads/${l.id}/snooze`, {
 				method: 'POST',
@@ -79,11 +83,13 @@
 				const msg = await res.text().catch(() => 'Server error');
 				// Targeted rollback: restore only this lead so concurrent snoozes aren't undone.
 				if (!shadowLeads.some((s) => s.id === l.id)) shadowLeads = [...shadowLeads, l];
+				liveMessage = `Snooze failed for ${l.name}`;
 				toasts.push(`Snooze failed: ${msg}`);
 				return;
 			}
 		} catch {
 			if (!shadowLeads.some((s) => s.id === l.id)) shadowLeads = [...shadowLeads, l];
+			liveMessage = `Snooze failed for ${l.name}`;
 			toasts.push('Snooze failed — server error');
 			return;
 		} finally {
@@ -98,6 +104,8 @@
 </script>
 
 <svelte:head><title>Today · Veent CRM</title></svelte:head>
+
+<div class="sr-only" role="status" aria-live="polite">{liveMessage}</div>
 
 <div class="px-7 pb-16 pt-6">
 	<PageHeader

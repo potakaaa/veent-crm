@@ -14,15 +14,20 @@
 		counts: { overdue: number; unassigned: number };
 		children: Snippet;
 	} = $props();
+
+	// Mobile nav drawer open-state, lifted here so the hamburger in AppTopbar and the drawer
+	// rendered inside AppSidebar (siblings) share one source of truth. Controlled-open only —
+	// no Dialog.Trigger (repo convention).
+	let mobileNavOpen = $state(false);
 </script>
 
-<div class="flex h-screen overflow-hidden bg-[#1a171c]">
-	<AppSidebar {user} {counts} />
+<div class="flex h-screen overflow-hidden bg-nav-bg">
+	<AppSidebar {user} {counts} bind:mobileOpen={mobileNavOpen} />
 	<div class="flex min-w-0 flex-1 flex-col">
-		<AppTopbar />
+		<AppTopbar onMenuClick={() => (mobileNavOpen = true)} />
 		<main
 			class="min-h-0 flex-1 overflow-y-auto bg-canvas"
-			style="background-image: radial-gradient(circle at 100% 0%, rgba(225,29,42,0.05), transparent 26%);"
+			style="background-image: radial-gradient(circle at 100% 0%, var(--color-nav-glow), transparent 26%);"
 		>
 			{@render children()}
 		</main>

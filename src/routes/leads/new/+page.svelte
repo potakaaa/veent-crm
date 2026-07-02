@@ -10,12 +10,14 @@
 	import { Textarea } from '$lib/components/ui/textarea';
 	import { Button } from '$lib/components/ui/button';
 	import { Select, SelectTrigger, SelectContent, SelectItem } from '$lib/components/ui/select';
-	import { Calendar } from '$lib/components/ui/calendar';
-	import * as Dialog from '$lib/components/ui/dialog';
+	import { FieldError, fieldErrorAttrs } from '$lib/components/ui/field-error';
 	import * as Popover from '$lib/components/ui/popover';
 	import OrganizerHoverCard from '$lib/components/OrganizerHoverCard.svelte';
+	import DatePickerField from '$lib/components/leads/DatePickerField.svelte';
 	import { toasts } from '$lib/stores/toasts.svelte';
 	import { hasPotentialDuplicate } from '$lib/utils/dedup';
+	import { createHoverPopover } from '$lib/utils/hover-popover.svelte';
+	import { ownerNameFor } from '$lib/utils/owner';
 	import { formatEventDate } from '$lib/utils/dates';
 	import { leadFormSchema, LEAD_CATEGORIES, LEAD_PLATFORMS } from '$lib/zod/schemas';
 	import type { DateValue } from '@internationalized/date';
@@ -46,63 +48,37 @@
 			? selectedUserIds.filter((x) => x !== id)
 			: [...selectedUserIds, id];
 	}
+	// Date-picker values. The open/temp state, dialog, and calendar markup now live
+	// inside the shared `DatePickerField` component (Phase 2 — Step C1).
 	let selectedDate = $state<DateValue | undefined>(undefined);
-	let dateOpen = $state(false);
-	let tempDate = $state<DateValue | undefined>(undefined);
 	let announcedDate = $state<DateValue | undefined>(undefined);
-	let announcedDateOpen = $state(false);
-	let announcedDateTemp = $state<DateValue | undefined>(undefined);
 	let reachedOutDate = $state<DateValue | undefined>(undefined);
-	let reachedOutDateOpen = $state(false);
-	let reachedOutDateTemp = $state<DateValue | undefined>(undefined);
-	let error = $state('');
+	// Per-field validation errors, keyed by field name (matches leadFormSchema keys +
+	// the manual `eventDateRaw` required check). Populated from
+	// `parsed.error.flatten().fieldErrors` so each field surfaces its own message with
+	// aria-invalid/aria-describedby (Phase 4). `submitError` holds transport/server-level
+	// failures that are not tied to a single field.
+	let fieldErrors = $state<Record<string, string[] | undefined>>({});
+	let submitError = $state('');
 	let saving = $state(false);
 
+	// Still needed for the manual `eventDateRaw` value submitted to the schema.
 	const eventDateDisplay = $derived(selectedDate ? formatEventDate(selectedDate) : '');
-	const announcedDateDisplay = $derived(announcedDate ? formatEventDate(announcedDate) : '');
-	const reachedOutDateDisplay = $derived(reachedOutDate ? formatEventDate(reachedOutDate) : '');
-
-	$effect(() => {
-		if (dateOpen) tempDate = selectedDate;
-	});
-	$effect(() => {
-		if (announcedDateOpen) announcedDateTemp = announcedDate;
-	});
-	$effect(() => {
-		if (reachedOutDateOpen) reachedOutDateTemp = reachedOutDate;
-	});
 
 	// Advisory only — duplicates are surfaced but never block "Create anyway".
 	const dupes = $derived(name.length > 1 ? hasPotentialDuplicate({ name }, data.leads) : []);
 
-	// Hover/focus-controlled duplicate detail card. `openDupeId` holds the id of the
-	// row whose card is open; a short grace-period timer keeps the card from
-	// flicker-closing when the pointer travels from the row into the card content.
-	let openDupeId = $state<string | null>(null);
-	let closeTimer: ReturnType<typeof setTimeout> | undefined;
-
-	function openDupe(id: string) {
-		clearTimeout(closeTimer);
-		openDupeId = id;
-	}
-	function scheduleCloseDupe() {
-		clearTimeout(closeTimer);
-		closeTimer = setTimeout(() => {
-			openDupeId = null;
-		}, 200);
-	}
-	function closeDupeNow() {
-		clearTimeout(closeTimer);
-		openDupeId = null;
-	}
-	function ownerNameFor(ownerId: string | null) {
-		return ownerId ? (data.users.find((u) => u.id === ownerId)?.name ?? null) : null;
-	}
+	// Hover/focus-controlled duplicate detail card. The 200ms grace-period close
+	// timer + handlers now live in the shared `createHoverPopover` hook (Phase 2 —
+	// Step C2), keeping the card from flicker-closing as the pointer travels from
+	// the row into the card content.
+	const dupeHover = createHoverPopover();
 
 	async function create() {
 		if (saving) return; // duplicate-submit guard
 		if (!selectedDate) {
-			error = 'Event date is required.';
+			fieldErrors = { eventDateRaw: ['Event date is required.'] };
+			submitError = '';
 			return;
 		}
 		const parsed = leadFormSchema.safeParse({
@@ -122,10 +98,13 @@
 			selectedUserIds: visibility === 'selected' ? selectedUserIds : undefined
 		});
 		if (!parsed.success) {
-			error = parsed.error.issues[0]?.message ?? 'Please check the form.';
+			// Per-field errors from Zod's flatten(); each field renders its own message.
+			fieldErrors = parsed.error.flatten().fieldErrors as Record<string, string[] | undefined>;
+			submitError = '';
 			return;
 		}
-		error = '';
+		fieldErrors = {};
+		submitError = '';
 		saving = true;
 		try {
 			const res = await fetch('/api/leads', {
@@ -134,14 +113,14 @@
 				body: JSON.stringify(parsed.data)
 			});
 			if (!res.ok) {
-				error = (await res.text().catch(() => '')) || 'Could not create lead.';
+				submitError = (await res.text().catch(() => '')) || 'Could not create lead.';
 				return;
 			}
 			const { id, name: leadName } = (await res.json()) as { id: string; name: string };
 			toasts.success(`Created ${leadName}`);
 			await goto(`/leads/${id}`);
 		} catch {
-			error = 'Could not create lead. Please try again.';
+			submitError = 'Could not create lead. Please try again.';
 		} finally {
 			saving = false;
 		}
@@ -169,7 +148,12 @@
 				still create anyway).
 			</div>
 			{#each dupes as d (d.id)}
-				<Popover.Root open={openDupeId === d.id}>
+				<Popover.Root
+					open={dupeHover.openId === d.id}
+					onOpenChange={(open) => {
+						if (!open) dupeHover.closeNow();
+					}}
+				>
 					<Popover.Trigger>
 						{#snippet child({ props })}
 							<div
@@ -178,13 +162,11 @@
 								role="button"
 								aria-haspopup="dialog"
 								class="flex items-center gap-2.5 rounded-[7px] px-2 py-1.5 hover:bg-panel focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
-								onmouseenter={() => openDupe(d.id)}
-								onmouseleave={scheduleCloseDupe}
-								onfocus={() => openDupe(d.id)}
-								onblur={scheduleCloseDupe}
-								onkeydown={(e) => {
-									if (e.key === 'Escape') closeDupeNow();
-								}}
+								onmouseenter={() => dupeHover.open(d.id)}
+								onmouseleave={dupeHover.scheduleClose}
+								onfocus={() => dupeHover.open(d.id)}
+								onblur={dupeHover.scheduleClose}
+								onkeydown={dupeHover.handleEscape}
 							>
 								<PlatformBadge platform={d.platform} />
 								<span class="flex-1 text-[13px] font-semibold">{d.name}</span>
@@ -196,13 +178,11 @@
 					<Popover.Portal>
 						<Popover.Content
 							side="right"
-							onmouseenter={() => openDupe(d.id)}
-							onmouseleave={scheduleCloseDupe}
-							onkeydown={(e) => {
-								if (e.key === 'Escape') closeDupeNow();
-							}}
+							onmouseenter={() => dupeHover.open(d.id)}
+							onmouseleave={dupeHover.scheduleClose}
+							onkeydown={dupeHover.handleEscape}
 						>
-							<OrganizerHoverCard lead={d} ownerName={ownerNameFor(d.ownerId)} />
+							<OrganizerHoverCard lead={d} ownerName={ownerNameFor(data.users, d.ownerId)} />
 						</Popover.Content>
 					</Popover.Portal>
 				</Popover.Root>
@@ -214,7 +194,13 @@
 		<CardContent class="grid grid-cols-1 gap-4 sm:grid-cols-2">
 			<div class="grid gap-1.5 sm:col-span-2">
 				<Label for="name">Page / organizer name</Label>
-				<Input id="name" bind:value={name} placeholder="e.g. Christian Concerts PH" />
+				<Input
+					id="name"
+					bind:value={name}
+					placeholder="e.g. Christian Concerts PH"
+					{...fieldErrorAttrs('name', fieldErrors.name)}
+				/>
+				<FieldError id="name" errors={fieldErrors.name} />
 			</div>
 			<div class="grid gap-1.5">
 				<Label for="category">Category <span class="text-ink-400">(optional)</span></Label>
@@ -237,156 +223,77 @@
 			</div>
 			<div class="grid gap-1.5">
 				<Label for="location">Location <span class="text-ink-400">(optional)</span></Label>
-				<Input id="location" bind:value={location} placeholder="Manila" />
+				<Input
+					id="location"
+					bind:value={location}
+					placeholder="Manila"
+					{...fieldErrorAttrs('location', fieldErrors.location)}
+				/>
+				<FieldError id="location" errors={fieldErrors.location} />
 			</div>
 			<div class="grid gap-1.5">
 				<Label for="email">Contact email <span class="text-ink-400">(optional)</span></Label>
-				<Input id="email" bind:value={email} placeholder="hello@page.ph" />
+				<Input
+					id="email"
+					bind:value={email}
+					placeholder="hello@page.ph"
+					{...fieldErrorAttrs('email', fieldErrors.contactEmail)}
+				/>
+				<FieldError id="email" errors={fieldErrors.contactEmail} />
 			</div>
 			<div class="grid gap-1.5">
 				<Label for="pageUrl">Page URL <span class="text-ink-400">(optional)</span></Label>
-				<Input id="pageUrl" bind:value={pageUrl} placeholder="https://facebook.com/…" />
+				<Input
+					id="pageUrl"
+					bind:value={pageUrl}
+					placeholder="https://facebook.com/…"
+					{...fieldErrorAttrs('pageUrl', fieldErrors.pageUrl)}
+				/>
+				<FieldError id="pageUrl" errors={fieldErrors.pageUrl} />
 			</div>
 			<div class="grid gap-1.5">
 				<Label for="eventName">Event name <span class="text-ink-400">(optional)</span></Label>
-				<Input id="eventName" bind:value={eventName} placeholder="Worship Night Vol. 4" />
+				<Input
+					id="eventName"
+					bind:value={eventName}
+					placeholder="Worship Night Vol. 4"
+					{...fieldErrorAttrs('eventName', fieldErrors.eventName)}
+				/>
+				<FieldError id="eventName" errors={fieldErrors.eventName} />
 			</div>
 			<div class="grid gap-1.5">
 				<Label for="eventLink">Event link <span class="text-ink-400">(optional)</span></Label>
-				<Input id="eventLink" bind:value={eventLink} placeholder="https://facebook.com/events/…" />
+				<Input
+					id="eventLink"
+					bind:value={eventLink}
+					placeholder="https://facebook.com/events/…"
+					{...fieldErrorAttrs('eventLink', fieldErrors.eventLink)}
+				/>
+				<FieldError id="eventLink" errors={fieldErrors.eventLink} />
 			</div>
-			<div class="grid gap-1.5 sm:col-span-2">
-				<Label for="eventDate">Event date <span class="text-red-500">*</span></Label>
-				<Dialog.Root bind:open={dateOpen}>
-					<Dialog.Trigger
-						id="eventDate"
-						class="flex h-9 w-full items-center justify-between rounded-control border border-hairline bg-panel px-3 py-2 text-left text-[13px] shadow-sm transition hover:bg-panel-sunken focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary {!eventDateDisplay
-							? 'text-ink-400'
-							: 'text-ink'}"
-					>
-						{eventDateDisplay || 'Pick a date'}
-						<Icon name="calendar" size={15} />
-					</Dialog.Trigger>
-					<Dialog.Content class="w-[min(92vw,400px)] gap-0 p-5" showCloseButton={false}>
-						<Dialog.Header class="mb-3 p-0">
-							<Dialog.Title>Select event date</Dialog.Title>
-						</Dialog.Header>
-						<div class="rounded-xl bg-panel-sunken p-3">
-							<Calendar
-								type="single"
-								bind:value={tempDate}
-								class="w-full [--cell-size:--spacing(9)]"
-							/>
-						</div>
-						<div class="mt-4 flex justify-end gap-2">
-							<Dialog.Close
-								class="rounded-control border border-hairline bg-panel px-3 py-1.5 text-[13px] font-medium text-ink hover:bg-panel-sunken"
-							>
-								Cancel
-							</Dialog.Close>
-							<button
-								onclick={() => {
-									selectedDate = tempDate;
-									dateOpen = false;
-								}}
-								class="rounded-control bg-primary px-3 py-1.5 text-[13px] font-semibold text-white hover:bg-primary-strong"
-							>
-								Done
-							</button>
-						</div>
-					</Dialog.Content>
-				</Dialog.Root>
-			</div>
+			<DatePickerField
+				id="eventDate"
+				label="Event date"
+				title="Select event date"
+				bind:value={selectedDate}
+				required
+				fullWidth
+				errors={fieldErrors.eventDateRaw}
+			/>
 
-			<div class="grid gap-1.5">
-				<Label for="firstAnnouncedDate"
-					>First announced <span class="text-ink-400">(optional)</span></Label
-				>
-				<Dialog.Root bind:open={announcedDateOpen}>
-					<Dialog.Trigger
-						id="firstAnnouncedDate"
-						class="flex h-9 w-full items-center justify-between rounded-control border border-hairline bg-panel px-3 py-2 text-left text-[13px] shadow-sm transition hover:bg-panel-sunken focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary {!announcedDateDisplay
-							? 'text-ink-400'
-							: 'text-ink'}"
-					>
-						{announcedDateDisplay || 'Pick a date'}
-						<Icon name="calendar" size={15} />
-					</Dialog.Trigger>
-					<Dialog.Content class="w-[min(92vw,400px)] gap-0 p-5" showCloseButton={false}>
-						<Dialog.Header class="mb-3 p-0">
-							<Dialog.Title>First announced date</Dialog.Title>
-						</Dialog.Header>
-						<div class="rounded-xl bg-panel-sunken p-3">
-							<Calendar
-								type="single"
-								bind:value={announcedDateTemp}
-								class="w-full [--cell-size:--spacing(9)]"
-							/>
-						</div>
-						<div class="mt-4 flex justify-end gap-2">
-							<Dialog.Close
-								class="rounded-control border border-hairline bg-panel px-3 py-1.5 text-[13px] font-medium text-ink hover:bg-panel-sunken"
-							>
-								Cancel
-							</Dialog.Close>
-							<button
-								onclick={() => {
-									announcedDate = announcedDateTemp;
-									announcedDateOpen = false;
-								}}
-								class="rounded-control bg-primary px-3 py-1.5 text-[13px] font-semibold text-white hover:bg-primary-strong"
-							>
-								Done
-							</button>
-						</div>
-					</Dialog.Content>
-				</Dialog.Root>
-			</div>
+			<DatePickerField
+				id="firstAnnouncedDate"
+				label="First announced"
+				title="First announced date"
+				bind:value={announcedDate}
+			/>
 
-			<div class="grid gap-1.5">
-				<Label for="firstReachedOutDate"
-					>First reached out <span class="text-ink-400">(optional)</span></Label
-				>
-				<Dialog.Root bind:open={reachedOutDateOpen}>
-					<Dialog.Trigger
-						id="firstReachedOutDate"
-						class="flex h-9 w-full items-center justify-between rounded-control border border-hairline bg-panel px-3 py-2 text-left text-[13px] shadow-sm transition hover:bg-panel-sunken focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary {!reachedOutDateDisplay
-							? 'text-ink-400'
-							: 'text-ink'}"
-					>
-						{reachedOutDateDisplay || 'Pick a date'}
-						<Icon name="calendar" size={15} />
-					</Dialog.Trigger>
-					<Dialog.Content class="w-[min(92vw,400px)] gap-0 p-5" showCloseButton={false}>
-						<Dialog.Header class="mb-3 p-0">
-							<Dialog.Title>First reached out date</Dialog.Title>
-						</Dialog.Header>
-						<div class="rounded-xl bg-panel-sunken p-3">
-							<Calendar
-								type="single"
-								bind:value={reachedOutDateTemp}
-								class="w-full [--cell-size:--spacing(9)]"
-							/>
-						</div>
-						<div class="mt-4 flex justify-end gap-2">
-							<Dialog.Close
-								class="rounded-control border border-hairline bg-panel px-3 py-1.5 text-[13px] font-medium text-ink hover:bg-panel-sunken"
-							>
-								Cancel
-							</Dialog.Close>
-							<button
-								onclick={() => {
-									reachedOutDate = reachedOutDateTemp;
-									reachedOutDateOpen = false;
-								}}
-								class="rounded-control bg-primary px-3 py-1.5 text-[13px] font-semibold text-white hover:bg-primary-strong"
-							>
-								Done
-							</button>
-						</div>
-					</Dialog.Content>
-				</Dialog.Root>
-			</div>
+			<DatePickerField
+				id="firstReachedOutDate"
+				label="First reached out"
+				title="First reached out date"
+				bind:value={reachedOutDate}
+			/>
 
 			<div class="grid gap-1.5 sm:col-span-2">
 				<Label for="visibility">Visibility</Label>
@@ -421,6 +328,7 @@
 							<p class="text-[12px] text-ink-400">No teammates available to grant.</p>
 						{/if}
 					</div>
+					<FieldError id="visibility" errors={fieldErrors.selectedUserIds} />
 				{/if}
 			</div>
 
@@ -434,7 +342,9 @@
 				/>
 			</div>
 
-			{#if error}<p class="text-[12.5px] font-medium text-overdue sm:col-span-2">{error}</p>{/if}
+			{#if submitError}<p class="text-[12.5px] font-medium text-overdue sm:col-span-2">
+					{submitError}
+				</p>{/if}
 
 			<div class="flex items-center justify-end gap-2.5 sm:col-span-2">
 				<Button variant="outline" href="/leads">Cancel</Button>

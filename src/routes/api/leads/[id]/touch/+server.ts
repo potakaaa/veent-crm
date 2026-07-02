@@ -8,7 +8,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 
 	const lead = await getLead(params.id, locals.user.id, locals.user.role);
 	if (!lead) throw error(404, 'Lead not found');
-	if (locals.user.role !== 'manager' && lead.ownerId !== locals.user.id) {
+	if (locals.user.role === 'rep' && lead.ownerId !== locals.user.id) {
 		throw error(403, 'Forbidden');
 	}
 

@@ -82,7 +82,8 @@
 						body: JSON.stringify(parsed.data)
 					});
 			if (!res.ok) {
-				formError = 'Unable to save template — try again.';
+				const text = await res.text().catch(() => '');
+				formError = text || 'Unable to save template — try again.';
 				return;
 			}
 			formOpen = false;
@@ -120,7 +121,8 @@
 				body: JSON.stringify({ id: t.id })
 			});
 			if (!res.ok) {
-				toasts.push('Unable to delete template.', { tone: 'warn' });
+				const text = await res.text().catch(() => '');
+				toasts.push(text || 'Unable to delete template.', { tone: 'warn' });
 				return;
 			}
 			await invalidateAll();
@@ -299,25 +301,17 @@
 	{/snippet}
 </Modal>
 
-{#if deleteTarget}
-	<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-		<div class="mx-4 w-full max-w-sm rounded-xl bg-white p-6 shadow-xl">
-			<h3 class="mb-1 text-base font-semibold text-gray-900">Delete template?</h3>
-			<p class="mb-4 text-sm text-gray-500">
-				"{deleteTarget.title}" will be removed. Reps will no longer see it.
-			</p>
-			<div class="flex justify-end gap-2">
-				<button
-					onclick={() => (deleteTarget = null)}
-					class="rounded-lg border border-gray-200 px-3 py-1.5 text-sm hover:bg-gray-50"
-					>Cancel</button
-				>
-				<button
-					onclick={confirmDelete}
-					class="rounded-lg bg-red-600 px-3 py-1.5 text-sm text-white hover:bg-red-700"
-					>Delete</button
-				>
-			</div>
-		</div>
-	</div>
-{/if}
+<Modal
+	open={deleteTarget !== null}
+	title="Delete template?"
+	subtitle={deleteTarget
+		? `"${deleteTarget.title}" will be removed. Reps will no longer see it.`
+		: ''}
+	onclose={() => (deleteTarget = null)}
+>
+	<div></div>
+	{#snippet footer()}
+		<Button variant="outline" class="flex-1" onclick={() => (deleteTarget = null)}>Cancel</Button>
+		<Button class="flex-[2] bg-red-600 hover:bg-red-700" onclick={confirmDelete}>Delete</Button>
+	{/snippet}
+</Modal>

@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX IF NOT EXISTS "crm_users_single_super_manager_uq" ON "crm_users" USING btree ("role") WHERE role = 'super_manager' AND active = true;

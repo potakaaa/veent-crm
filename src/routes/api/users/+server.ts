@@ -2,6 +2,7 @@ import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { userFormSchema } from '$lib/zod/schemas';
 import { createUser } from '$lib/server/db/users';
+import { canManageUsers } from '$lib/utils/permissions';
 import { pendingWelcomeEmails } from '$lib/server/email-templates';
 import { getAuth } from '$lib/server/auth';
 
@@ -9,7 +10,7 @@ import { getAuth } from '$lib/server/auth';
 // welcome email containing a ready-to-use sign-in link. Better Auth still owns
 // token issuance — we just trigger signInMagicLink, which fires sendMagicLink.
 export const POST: RequestHandler = async ({ request, locals }) => {
-	if (!locals.user || locals.user.role !== 'manager') {
+	if (!canManageUsers(locals.user)) {
 		throw error(403, 'Manager only');
 	}
 
@@ -19,6 +20,12 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	}
 
 	const { name, email, role } = parsed.data;
+
+	// super_manager is a singleton reachable ONLY via the promote-super flow —
+	// never created directly through the add-rep path.
+	if (role === 'super_manager') {
+		throw error(400, 'Super manager can only be assigned via role transfer');
+	}
 
 	let user;
 	try {

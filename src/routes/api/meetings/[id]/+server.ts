@@ -8,7 +8,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 
 	const meeting = await getMeeting(params.id);
 	if (!meeting) throw error(404, 'Meeting not found');
-	if (locals.user.role !== 'manager' && meeting.organizerId !== locals.user.id) {
+	if (locals.user.role === 'rep' && meeting.organizerId !== locals.user.id) {
 		throw error(403, 'Forbidden');
 	}
 
@@ -44,7 +44,7 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
 
 	const meeting = await getMeeting(params.id);
 	if (!meeting) throw error(404, 'Meeting not found');
-	if (locals.user.role !== 'manager' && meeting.organizerId !== locals.user.id) {
+	if (locals.user.role === 'rep' && meeting.organizerId !== locals.user.id) {
 		throw error(403, 'Forbidden');
 	}
 

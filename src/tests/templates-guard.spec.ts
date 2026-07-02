@@ -3,17 +3,23 @@
  *
  * Two layers are proven here without a DB:
  *  1. The `isManager()` predicate itself rejects reps and allows managers.
- *  2. Every /api/templates verb (POST/PATCH/DELETE) AND the /templates page load
- *     throw 403 for a signed-in rep. The manager guard runs BEFORE any DB access,
- *     so a rep never reaches Drizzle — these run green with no DATABASE_URL.
+ *  2. Every /api/templates write verb (POST/PATCH/DELETE) throws 403 for a rep.
+ *     The manager guard runs BEFORE any DB access — these run green with no DATABASE_URL.
+ *  3. The /templates page load succeeds for reps (read-only view; Templates moved to Workspace).
  *
  * The manager-SUCCESS path (verb reaches the DB) is DB-backed and is proven at the
  * Agent-Probe tier per the plan's Verification Evidence table, not here.
  */
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { isManager } from '$lib/utils/permissions';
 import type { User } from '$lib/types';
 import { POST, PATCH, DELETE } from '../routes/api/templates/+server';
+
+// Mock the DB layer so page load tests never need a real database.
+vi.mock('$lib/server/db/templates', () => ({
+	listTemplates: vi.fn().mockResolvedValue([])
+}));
+
 import { load } from '../routes/templates/+page.server';
 
 const manager: User = {
@@ -73,9 +79,18 @@ describe('/api/templates per-verb manager guard rejects a rep with 403 (AC-4)', 
 	});
 });
 
-describe('/templates page load manager guard rejects a rep with 403 (AC-4)', () => {
-	it('load → 403', async () => {
+describe('/templates page load allows any authenticated user (AC-4 revised — Templates moved to Workspace section)', () => {
+	it('load → resolves for a rep (read-only view)', async () => {
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		await expect403(() => load({ locals: { user: rep } } as any));
+		const result = await load({ locals: { user: rep } } as any);
+		expect(result).toHaveProperty('templates');
+		expect(result).toHaveProperty('currentUser');
+		expect((result as { currentUser: { role: string } }).currentUser.role).toBe('rep');
+	});
+	it('load → 401 when unauthenticated', async () => {
+		await expect(
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			Promise.resolve().then(() => load({ locals: { user: null } } as any))
+		).rejects.toMatchObject({ status: 401 });
 	});
 });

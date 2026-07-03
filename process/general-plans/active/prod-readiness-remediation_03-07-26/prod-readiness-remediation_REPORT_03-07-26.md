@@ -27,7 +27,10 @@ All 12 checklist items (E1–E10) executed in order. SIMPLE single-phase plan.
   `fetch` var / zod parse result). Fully shadowed → deletion safe. No unshadowed consumer found.
 - **E2** — deleted `src/lib/services/` (index.ts, mock-crm-client.ts, crm-client.ts),
   `src/lib/data/mock-data.ts`, `src/lib/server/mock.ts`, `src/lib/components/StubNote.svelte`.
-- **E3** — grep-clean gate: `grep -rn "lib/services|mock-data|server/mock|StubNote|mockCrmClient|CrmClient" src/` → 0 hits.
+- **E3** — grep-clean gate: `grep -rnE "lib/services|mock-data|server/mock|StubNote|mockCrmClient|CrmClient" src/` → 0 hits.
+  (Corrected 03-07-26: the original command omitted `-E`, so plain BRE `grep` treated `|` as a
+  literal character instead of alternation, meaning the gate silently checked nothing. Re-run with
+  `-E` confirms the same 0-hit result — the marker set is genuinely clean.)
 - **E4 / E4a (decision gate)** — `src/lib/server/db/index.ts`: removed the hardcoded
   `postgres://crm:crm@localhost:5432/veent_crm` fallback. **Chose path b2 (lazy guard)**: the client
   is lazily constructed behind a `Proxy`, so importing `db` never touches `DATABASE_URL` (import-safe),

@@ -23,7 +23,7 @@
     },
     {
       "id": "hard-constraint-server-untouched",
-      "command": "git diff --name-only HEAD | grep +page.server.ts|server/db/leads.ts",
+      "command": "git diff --name-only HEAD | grep -E '\\+page\\.server\\.ts|server/db/leads\\.ts'",
       "expected": "no match",
       "result": "no match; changed files = EmptyState.svelte, LeadGrid.svelte, leads/+page.svelte only",
       "status": "PASS"

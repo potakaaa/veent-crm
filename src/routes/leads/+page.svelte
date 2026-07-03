@@ -129,17 +129,17 @@
 			(data.filters.hasFutureEvents ? 1 : 0) +
 			(weeksActive ? 1 : 0)
 	);
-	const anyFilterActive = $derived(
-		Boolean(
-			data.filters.stage ||
-			data.filters.platform ||
-			data.filters.country ||
-			data.filters.search ||
-			data.filters.staleOnly ||
-			data.filters.hasFutureEvents ||
-			weeksActive
-		)
-	);
+	// Href for the popover's own "Clear all" — resets only the 3 controls housed in this
+	// popover (stale/future/weeks), preserving stage/platform/country/search/segment.
+	const secondaryClearHref = $derived.by(() => {
+		const params = new SvelteURLSearchParams(page.url.searchParams);
+		params.delete('staleOnly');
+		params.delete('hasFutureEvents');
+		params.delete('weeksAhead');
+		params.delete('page');
+		const qs = params.toString();
+		return `/leads${qs ? '?' + qs : ''}`;
+	});
 	// Shared active/inactive chrome for the token-unified filter toggles/pills.
 	const chipActive = 'bg-selected border-primary text-primary-strong';
 	const chipActiveStale = 'bg-stale/12 border-stale text-ink-700';
@@ -237,16 +237,16 @@
 					<span class="font-mono text-[10.5px] uppercase tracking-[0.4px] text-ink-300"
 						>Filters</span
 					>
-					{#if anyFilterActive}
+					{#if secondaryCount > 0}
 						<a
-							href="/leads?segment={activeSegment}"
+							href={secondaryClearHref}
 							class="font-mono text-[11.5px] text-primary hover:underline">Clear all</a
 						>
 					{/if}
 				</div>
 
 				<button
-					onclick={() => setFilter('staleOnly', data.filters.staleOnly ? undefined : true)}
+					onclick={() => setFilter('staleOnly', data.filters.staleOnly ? undefined : '1')}
 					aria-pressed={data.filters.staleOnly}
 					class="flex h-8 w-full items-center gap-2 rounded-md border px-2.5 text-[12.5px] transition-colors {data
 						.filters.staleOnly

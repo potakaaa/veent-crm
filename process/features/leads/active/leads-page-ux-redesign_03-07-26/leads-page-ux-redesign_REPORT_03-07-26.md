@@ -8,7 +8,7 @@ plan: process/features/leads/active/leads-page-ux-redesign_03-07-26/leads-page-u
 
 # Leads Page UX Redesign — EXECUTE Report
 
-**TL;DR:** All 10 checklist items implemented. AC1 (`bun run check`) and AC4 (color-literal grep) automated gates are green. AC2/AC3/AC5/AC6 are the pre-accepted Agent-Probe (manual visual) tier; authed-render visual proof remains a documented known-gap (no shared Playwright auth fixture). CODE DONE achieved; full VERIFIED requires a human authed visual pass.
+**TL;DR:** Checklist items 1–9 implemented; item 10 (manual visual gate) partial. AC1 (`bun run check`) and AC4 (color-literal grep) automated gates are green. AC2/AC3/AC5/AC6 are the pre-accepted Agent-Probe (manual visual) tier and remain unverified — authed-render visual proof is a documented known-gap (no shared Playwright auth fixture). CODE DONE achieved; VERIFIED is NOT yet reached and requires a human authed visual pass.
 
 ## What Was Done
 

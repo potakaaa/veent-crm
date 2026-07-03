@@ -21,7 +21,10 @@
 <Card class="gap-0 rounded-control p-12 text-center">
 	{#if icon}
 		<div
-			class="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-full bg-primary/10 text-primary"
+			class="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-full {tone ===
+			'success'
+				? 'bg-fresh/10 text-fresh'
+				: 'bg-primary/10 text-primary'}"
 		>
 			<Icon name={icon} size={22} />
 		</div>

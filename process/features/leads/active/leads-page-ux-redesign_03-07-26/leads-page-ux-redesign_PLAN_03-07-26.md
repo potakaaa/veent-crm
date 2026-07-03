@@ -20,7 +20,7 @@ The `/leads` "My Leads" page currently has a crowded two-row toolbar with visual
 
 - A dangling `Separator` after the segment Tabs (lines 143) that separates nothing.
 - Four different ad-hoc active-filter color languages: amber (`Stale only`), violet (`Future events`), indigo (weeks preset pills), ink (`All` weeks button).
-- A hand-rolled 5-control "Beyond [4w][8w][12w][number][All]" cluster built from raw `<button>`/`<input>` markup instead of a primitive.
+- A hand-rolled 5-control "Beyond 4w / 8w / 12w / custom number / All" cluster built from raw `<button>`/`<input>` markup instead of a primitive.
 - Small 28px (`h-7`) hit-targets on the weeks controls.
 - A bare empty state (title + hint, no icon, no action buttons).
 
@@ -159,12 +159,12 @@ Legacy line form:
 - Component + Playwright e2e assertions: known-gap: documented (shared auth fixture blocked repo-wide)
 
 Failing stub (AC1 — Fully-Automated):
-```
+```text
 test("should pass bun run check with no new type errors after leads toolbar + EmptyState changes", () => { throw new Error("NOT IMPLEMENTED — TDD stub: bun run check exits 0") })
 ```
 
 Failing stub (AC4 — Fully-Automated):
-```
+```text
 test("should have no violet/indigo/amber color literals in leads +page.svelte toolbar", () => { throw new Error("NOT IMPLEMENTED — TDD stub: grep for violet-|indigo-|92560b|194,113,12 returns nothing") })
 ```
 
@@ -212,7 +212,7 @@ This is a single-phase SIMPLE plan. Completion status vocabulary:
 
 ## Autonomous Goal Block
 
-```
+```text
 SESSION GOAL: Leads Page UX Redesign — declutter the /leads toolbar (primary/secondary filter split + one "Filters" popover with active-count badge), unify active-filter styling onto design tokens, upgrade the empty state (icon + CTAs), enlarge hit-targets — UI-only, filter URL-param contract preserved verbatim.
 Charter + umbrella plan: N/A — single plan.
 Autonomy: standard single-plan; EXECUTE requires explicit "ENTER EXECUTE MODE". No autonomous phase program.

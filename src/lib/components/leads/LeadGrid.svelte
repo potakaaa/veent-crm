@@ -154,7 +154,7 @@
 					class="border-stage-contacted text-stage-contacted hover:bg-stage-contacted/10"
 					>Up for grabs</Button
 				>
-				<Button size="sm" href="/leads/new">Add lead</Button>
+				<Button variant="destructive" size="sm" href="/leads/new">Add lead</Button>
 			{/snippet}
 		</EmptyState>
 	{/snippet}

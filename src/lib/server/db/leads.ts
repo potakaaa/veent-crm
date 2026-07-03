@@ -388,12 +388,12 @@ export async function listLeadsFiltered(
 
 	// Weeks-ahead minimum: show leads whose event is at least N weeks away.
 	// Leads with no event date are always included. Past events are always excluded.
-	if (weeksAhead !== null && weeksAhead > 0) {
-		const days = String(weeksAhead * 7);
+	// Skipped when a specific date is provided — the date filter already scopes results.
+	if (!date && weeksAhead !== null && weeksAhead > 0) {
 		conditions.push(
 			sql`(
 				${crmLeads.eventDate} IS NULL
-				OR ${crmLeads.eventDate} >= CURRENT_DATE + INTERVAL ${sql.raw(`'${days} days'`)}
+				OR ${crmLeads.eventDate} >= CURRENT_DATE + make_interval(days => ${weeksAhead * 7})
 			)`
 		);
 	}
@@ -545,13 +545,13 @@ export async function listUnassignedLeads(
 	}
 
 	// Weeks-ahead minimum: show only leads with events at least N weeks out.
-	const weeksAhead = filters?.weeksAhead ?? 8;
+	// undefined → default 8; null → no limit (All).
+	const weeksAhead: number | null = filters?.weeksAhead !== undefined ? filters.weeksAhead : 8;
 	if (weeksAhead !== null && weeksAhead > 0) {
-		const days = String(weeksAhead * 7);
 		conditions.push(
 			sql`(
 				${crmLeads.eventDate} IS NULL
-				OR ${crmLeads.eventDate} >= CURRENT_DATE + INTERVAL ${sql.raw(`'${days} days'`)}
+				OR ${crmLeads.eventDate} >= CURRENT_DATE + make_interval(days => ${weeksAhead * 7})
 			)`
 		);
 	}

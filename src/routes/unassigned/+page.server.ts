@@ -56,7 +56,7 @@ export const load: PageServerLoad = async ({ url }) => {
 	return {
 		leads,
 		users,
-		sort: sort ?? '',
+		sort: sort ?? 'event',
 		dir,
 		categoryOptions: [...leadCategory.enumValues],
 		countryOptions,

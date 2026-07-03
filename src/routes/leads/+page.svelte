@@ -212,6 +212,7 @@
 			{#each WEEKS_PRESETS as w (w)}
 				<button
 					onclick={() => setWeeks(w)}
+					aria-pressed={data.filters.weeksAhead !== null && (data.filters.weeksAhead ?? 8) === w}
 					class="h-7 rounded-[5px] border px-2 font-mono text-[11.5px] transition-colors {data
 						.filters.weeksAhead !== null && (data.filters.weeksAhead ?? 8) === w
 						? 'border-indigo-400 bg-indigo-50 font-semibold text-indigo-700'
@@ -224,10 +225,12 @@
 				value={weeksInput}
 				oninput={onWeeksInput}
 				placeholder="—"
+				aria-label="Minimum weeks until event"
 				class="h-7 w-12 rounded-[5px] border border-hairline bg-panel px-2 font-mono text-[11.5px] text-ink focus:outline-none focus:ring-1 focus:ring-primary"
 			/>
 			<button
 				onclick={() => setWeeks('all')}
+				aria-pressed={data.filters.weeksAhead === null}
 				class="h-7 rounded-[5px] border px-2 font-mono text-[11.5px] transition-colors {data.filters
 					.weeksAhead === null
 					? 'border-ink-300 bg-panel-sunken font-semibold text-ink'

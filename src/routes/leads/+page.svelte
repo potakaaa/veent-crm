@@ -150,7 +150,7 @@
 <svelte:head><title>My Leads · Veent CRM</title></svelte:head>
 
 <div class="px-7 pb-16 pt-6">
-	<PageHeader title="My Leads" subtitle="Search the command bar before adding a page.">
+	<PageHeader title="My Leads">
 		{#snippet actions()}
 			<span class="font-mono text-[12px] text-ink-300">{data.total} matching</span>
 			<Button variant="outline" size="sm" href={exportHref}>Export CSV</Button>

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { SvelteURLSearchParams } from 'svelte/reactivity';
 	import PageHeader from '$lib/components/shared/PageHeader.svelte';
 	import Avatar from '$lib/components/shared/Avatar.svelte';
 	import EmptyState from '$lib/components/shared/EmptyState.svelte';
@@ -43,6 +44,16 @@
 	let reportData = $state<ReportData | null>(null);
 	let showAllLeaderboard = $state(false);
 	const LEADERBOARD_PREVIEW = 5;
+	let leaderboardMetric = $state<'touches' | 'wins'>('touches');
+	const sortedLeaderboard = $derived(
+		reportData
+			? [...reportData.leaderboard].sort((a, b) =>
+					leaderboardMetric === 'wins'
+						? b.wins - a.wins || b.touches - a.touches
+						: b.touches - a.touches || b.wins - a.wins
+				)
+			: []
+	);
 	let outreachData = $state<OutreachMetrics | null>(null);
 	let outreachLoading = $state(false);
 
@@ -86,6 +97,34 @@
 	});
 
 	const hasFilter = $derived(!!(filterFrom || filterTo || filterRepId));
+
+	function exportHref(type: string) {
+		const p = new SvelteURLSearchParams({ type });
+		if (filterFrom) p.set('from', filterFrom);
+		if (filterTo) p.set('to', filterTo);
+		if (filterRepId) p.set('repId', filterRepId);
+		return `/api/reports/export?${p}`;
+	}
+
+	const repPerfHref = $derived(exportHref('rep-performance'));
+	const outreachHref = $derived(exportHref('outreach-detail'));
+
+	function fmtDate(iso: string) {
+		return new Date(iso + 'T00:00:00').toLocaleDateString('en-US', {
+			month: 'short',
+			day: 'numeric'
+		});
+	}
+
+	const exportPeriod = $derived(
+		filterFrom && filterTo
+			? `${fmtDate(filterFrom)} – ${fmtDate(filterTo)}`
+			: filterFrom
+				? `from ${fmtDate(filterFrom)}`
+				: filterTo
+					? `to ${fmtDate(filterTo)}`
+					: 'all time'
+	);
 
 	function buildQuery(parts: [string, string][]): string {
 		const qs = parts
@@ -133,24 +172,23 @@
 <svelte:head><title>Reports · Veent CRM</title></svelte:head>
 
 <div class="px-7 pb-16 pt-6">
-	<PageHeader
-		title="Reports"
-		subtitle="Pipeline health and rep activity. Deal value is shown per currency — never summed across PHP and SGD."
-	>
+	<PageHeader title="Reports" subtitle="Pipeline health and rep activity.">
 		{#snippet actions()}
 			<a
-				href="/api/reports/export?type=won"
-				class="inline-flex h-[34px] items-center rounded-control border border-hairline bg-panel px-3 font-mono text-[12.5px] text-ink-600"
+				href={repPerfHref}
+				class="inline-flex h-[34px] shrink-0 items-center gap-2 whitespace-nowrap rounded-control border border-hairline bg-panel px-3 font-mono text-[12.5px] text-ink-600"
 				download
 			>
-				Won deals CSV
+				Rep performance
+				<span class="text-ink-300">{exportPeriod}</span>
 			</a>
 			<a
-				href="/api/reports/export?type=view"
-				class="inline-flex h-[34px] items-center rounded-control border border-hairline bg-panel px-3 font-mono text-[12.5px] text-ink-600"
+				href={outreachHref}
+				class="inline-flex h-[34px] shrink-0 items-center gap-2 whitespace-nowrap rounded-control border border-hairline bg-panel px-3 font-mono text-[12.5px] text-ink-600"
 				download
 			>
-				Export view CSV
+				Outreach detail
+				<span class="text-ink-300">{exportPeriod}</span>
 			</a>
 		{/snippet}
 	</PageHeader>
@@ -312,7 +350,6 @@
 		</div>
 	{:else}
 		{@const maxCount = Math.max(...reportData.funnel.map((f) => f.count), 1)}
-		{@const maxTouches = Math.max(...reportData.leaderboard.map((r) => r.touches), 1)}
 
 		<!-- Pipeline funnel + rep leaderboard -->
 		<div class="mb-[18px] grid grid-cols-1 gap-[18px] lg:grid-cols-[1.1fr_1fr]">
@@ -342,9 +379,22 @@
 			</div>
 
 			<div class="flex flex-col rounded-control border border-hairline bg-panel p-5">
-				<div class="mb-4 text-[14px] font-bold">Rep leaderboard</div>
-				{#if reportData.leaderboard.length === 0}
-					<!-- C2: empty-state messaging for a leaderboard with no reps/activity yet. -->
+				<div class="mb-4 flex items-center justify-between">
+					<span class="text-[14px] font-bold">Rep leaderboard</span>
+					<div class="flex gap-0 rounded-[6px] border border-hairline bg-panel-sunken p-[3px]">
+						{#each ['touches', 'wins'] as const as m (m)}
+							<button
+								onclick={() => (leaderboardMetric = m)}
+								aria-pressed={leaderboardMetric === m}
+								class="rounded-[4px] px-2.5 py-[3px] font-mono text-[11px] capitalize transition-colors {leaderboardMetric ===
+								m
+									? 'bg-panel font-semibold text-ink shadow-sm'
+									: 'text-ink-400 hover:text-ink-600'}">{m}</button
+							>
+						{/each}
+					</div>
+				</div>
+				{#if sortedLeaderboard.length === 0}
 					<div data-testid="leaderboard-empty-state">
 						<EmptyState
 							title="No rep activity yet"
@@ -352,19 +402,28 @@
 						/>
 					</div>
 				{/if}
-				{#if reportData.leaderboard.length > 0}
+				{#if sortedLeaderboard.length > 0}
+					{@const visibleRows = showAllLeaderboard
+						? sortedLeaderboard
+						: sortedLeaderboard.slice(0, LEADERBOARD_PREVIEW)}
+					{@const maxVal = Math.max(
+						...sortedLeaderboard.map((r) => (leaderboardMetric === 'wins' ? r.wins : r.touches)),
+						1
+					)}
+					{@const barColor = leaderboardMetric === 'wins' ? '#22c55e' : '#6366f1'}
 					<div class="mb-5 space-y-[7px]">
-						{#each showAllLeaderboard ? reportData.leaderboard : reportData.leaderboard.slice(0, LEADERBOARD_PREVIEW) as r (r.repId)}
+						{#each visibleRows as r (r.repId)}
+							{@const val = leaderboardMetric === 'wins' ? r.wins : r.touches}
 							<div class="flex items-center gap-3">
 								<div class="w-[72px] shrink-0 truncate text-right text-[11.5px] text-ink-500">
 									{r.name.split(' ')[0]}
 								</div>
 								<div class="relative min-w-0 flex-1">
 									<div class="h-[26px] w-full overflow-hidden rounded-[5px] bg-panel-sunken">
-										{#if r.touches > 0}
+										{#if val > 0}
 											<div
-												class="flex h-full items-center rounded-[5px] bg-[#6366f1] pl-2.5 transition-all"
-												style="width:{Math.max((r.touches / maxTouches) * 100, 8)}%"
+												class="flex h-full items-center rounded-[5px] pl-2.5 transition-all"
+												style="width:{Math.max((val / maxVal) * 100, 8)}%; background:{barColor}"
 											>
 												<span
 													class="truncate pr-2 font-mono text-[10.5px] font-medium text-white/90"
@@ -375,29 +434,14 @@
 										{/if}
 									</div>
 								</div>
-								<div class="flex w-[52px] shrink-0 items-center gap-1.5">
-									<span class="font-mono text-[12.5px] text-ink-500">{r.touches || '—'}</span>
-									{#if r.wins > 0}
-										<span
-											class="rounded-[3px] bg-[#22c55e]/15 px-1 font-mono text-[9.5px] font-semibold text-[#16a34a]"
-										>
-											{r.wins}W
-										</span>
-									{/if}
-								</div>
+								<span class="w-[28px] shrink-0 text-right font-mono text-[12.5px] text-ink-500"
+									>{val || '—'}</span
+								>
 							</div>
 						{/each}
-						<div class="flex items-center gap-4 pt-1 text-[11px] text-ink-300">
-							<span class="flex items-center gap-1.5">
-								<span class="inline-block h-[9px] w-[9px] rounded-[2px] bg-[#6366f1]"></span>Touches
-							</span>
-							<span class="flex items-center gap-1.5">
-								<span class="inline-block h-[9px] w-[9px] rounded-[2px] bg-[#22c55e]"></span>Wins
-							</span>
-						</div>
 					</div>
 				{/if}
-				{#if reportData.leaderboard.length > 0}
+				{#if sortedLeaderboard.length > 0}
 					<div
 						class="grid grid-cols-[1.6fr_0.9fr_0.9fr_0.7fr] gap-2 border-b border-hairline pb-2 font-mono text-[10px] uppercase tracking-[0.4px] text-ink-300"
 					>
@@ -406,7 +450,7 @@
 						><span class="text-right">Wins</span>
 					</div>
 				{/if}
-				{#each showAllLeaderboard ? reportData.leaderboard : reportData.leaderboard.slice(0, LEADERBOARD_PREVIEW) as r (r.repId)}
+				{#each showAllLeaderboard ? sortedLeaderboard : sortedLeaderboard.slice(0, LEADERBOARD_PREVIEW) as r (r.repId)}
 					<div
 						class="grid grid-cols-[1.6fr_0.9fr_0.9fr_0.7fr] items-center gap-2 border-b border-panel-sunken py-2 last:border-b-0"
 					>
@@ -423,14 +467,14 @@
 						>
 					</div>
 				{/each}
-				{#if reportData.leaderboard.length > LEADERBOARD_PREVIEW}
+				{#if sortedLeaderboard.length > LEADERBOARD_PREVIEW}
 					<button
 						onclick={() => (showAllLeaderboard = !showAllLeaderboard)}
 						class="mt-2 w-full rounded-[5px] py-1.5 text-[11.5px] text-ink-400 transition-colors hover:bg-panel-sunken hover:text-ink-600"
 					>
 						{showAllLeaderboard
 							? 'Show less'
-							: `Show ${reportData.leaderboard.length - LEADERBOARD_PREVIEW} more`}
+							: `Show ${sortedLeaderboard.length - LEADERBOARD_PREVIEW} more`}
 					</button>
 				{/if}
 			</div>
@@ -440,9 +484,6 @@
 		<div class="rounded-control border border-hairline bg-panel p-5">
 			<div class="mb-3.5 flex items-center justify-between">
 				<div class="text-[14px] font-bold">Won deals — by currency</div>
-				<span class="text-[11.5px] text-ink-200"
-					>manually captured in Veent · never read from external systems</span
-				>
 			</div>
 			<div class="flex flex-wrap gap-4">
 				{#each reportData.currencyTotals as c (c.currency)}

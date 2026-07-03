@@ -87,7 +87,7 @@ async function fetchReport(): Promise<ReportData> {
 			replies: touchMap[u.id]?.replies ?? 0,
 			wins: winMap[u.id] ?? 0
 		}))
-		.sort((a, b) => b.wins - a.wins || b.touches - a.touches);
+		.sort((a, b) => b.touches - a.touches || b.wins - a.wins);
 
 	const currencyTotals = currencyRows
 		.filter((r) => r.currency)

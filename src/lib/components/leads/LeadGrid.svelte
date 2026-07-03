@@ -8,6 +8,7 @@
 	import EmptyState from '$lib/components/shared/EmptyState.svelte';
 	import AppealScoreBadge from '$lib/components/AppealScoreBadge.svelte';
 	import DataGridShell from '$lib/components/leads/DataGridShell.svelte';
+	import { Button } from '$lib/components/ui/button';
 	import { riskMeta } from '$lib/utils/risk';
 	import { ownerNameFor } from '$lib/utils/owner';
 	import type { Lead, User } from '$lib/types';
@@ -133,8 +134,20 @@
 
 	{#snippet empty()}
 		<EmptyState
+			icon="leads"
 			title="Nothing here yet"
 			hint="No leads match this view — go prospect, or check Up for grabs."
-		/>
+		>
+			{#snippet actions()}
+				<Button
+					variant="outline"
+					size="sm"
+					href="/unassigned"
+					class="border-stage-contacted text-stage-contacted hover:bg-stage-contacted/10"
+					>Up for grabs</Button
+				>
+				<Button size="sm" href="/leads/new">Add lead</Button>
+			{/snippet}
+		</EmptyState>
 	{/snippet}
 </DataGridShell>

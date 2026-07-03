@@ -1,0 +1,43 @@
+{
+  "evl_run": {
+    "date": "2026-07-03",
+    "plan": "process/features/leads/active/leads-page-ux-redesign_03-07-26/leads-page-ux-redesign_PLAN_03-07-26.md",
+    "invocation": "EVL confirmation run (post-DONE independent re-verification)",
+    "diff_aware": false,
+    "note": "EVL: ran EXACT validate-contract gates, not diff-selected"
+  },
+  "gates": [
+    {
+      "id": "AC1",
+      "command": "bun run check",
+      "expected": "exit 0",
+      "result": "exit 0; 0 ERRORS, 1 pre-existing WARNING in src/routes/leads/[id]/+page.svelte (state_referenced_locally — NOT a file changed in this task)",
+      "status": "PASS"
+    },
+    {
+      "id": "AC4",
+      "command": "grep -nE \"violet-|indigo-|92560b|194,113,12\" src/routes/leads/+page.svelte",
+      "expected": "no output",
+      "result": "no output",
+      "status": "PASS"
+    },
+    {
+      "id": "hard-constraint-server-untouched",
+      "command": "git diff --name-only HEAD | grep +page.server.ts|server/db/leads.ts",
+      "expected": "no match",
+      "result": "no match; changed files = EmptyState.svelte, LeadGrid.svelte, leads/+page.svelte only",
+      "status": "PASS"
+    },
+    {
+      "id": "EmptyState-caller-safety",
+      "command": "typecheck across 3 other callers (calendar, reminders, reports)",
+      "expected": "all compile",
+      "result": "covered by bun run check (0 errors); new icon?/actions props confirmed additive/optional",
+      "status": "PASS"
+    }
+  ],
+  "known_gaps": [
+    "AC2/AC3/AC5/AC6 authed in-browser visual verification — pre-accepted known-gap (shared Playwright auth fixture blocked). Correctly flagged outstanding, NOT marked done."
+  ],
+  "overall": "DONE"
+}

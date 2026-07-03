@@ -54,7 +54,9 @@
 	} = $props();
 
 	// Stack into a single-column card below `lg`, expand to the full column grid at `lg+`.
-	const rowClass = $derived(`grid grid-cols-1 gap-1.5 lg:gap-3 ${cols}`);
+	// gap-4 (not gap-3) — deliberate spacing fix from feat/leads-page-ux-redesign (04c8bbe)
+	// for the event+date column; preserved across the mobileBare merge from development.
+	const rowClass = $derived(`grid grid-cols-1 gap-1.5 lg:gap-4 ${cols}`);
 
 	const outerClass = $derived(
 		mobileBare

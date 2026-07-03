@@ -40,8 +40,10 @@ export const load: PageServerLoad = async ({ url }) => {
 	const validCategories = new Set<string>(leadCategory.enumValues);
 	const category = rawCategory.filter((c) => validCategories.has(c));
 
+	const search = url.searchParams.get('q')?.trim() || undefined;
+
 	const [result, users, countryOptions] = await Promise.all([
-		listUnassignedLeads(page, PAGE_SIZE, sort, dir, { country, category, weeksAhead }),
+		listUnassignedLeads(page, PAGE_SIZE, sort, dir, { country, category, weeksAhead, search }),
 		listUsers(),
 		getUnassignedLeadCountries()
 	]);
@@ -60,7 +62,7 @@ export const load: PageServerLoad = async ({ url }) => {
 		dir,
 		categoryOptions: [...leadCategory.enumValues],
 		countryOptions,
-		filters: { country, category, weeksAhead },
+		filters: { country, category, weeksAhead, search: search ?? '' },
 		pagination: {
 			page,
 			pageSize: PAGE_SIZE,

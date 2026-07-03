@@ -133,10 +133,7 @@
 <svelte:head><title>Reports · Veent CRM</title></svelte:head>
 
 <div class="px-7 pb-16 pt-6">
-	<PageHeader
-		title="Reports"
-		subtitle="Pipeline health and rep activity. Deal value is shown per currency — never summed across PHP and SGD."
-	>
+	<PageHeader title="Reports" subtitle="Pipeline health and rep activity.">
 		{#snippet actions()}
 			<a
 				href="/api/reports/export?type=won"
@@ -440,9 +437,6 @@
 		<div class="rounded-control border border-hairline bg-panel p-5">
 			<div class="mb-3.5 flex items-center justify-between">
 				<div class="text-[14px] font-bold">Won deals — by currency</div>
-				<span class="text-[11.5px] text-ink-200"
-					>manually captured in Veent · never read from external systems</span
-				>
 			</div>
 			<div class="flex flex-wrap gap-4">
 				{#each reportData.currencyTotals as c (c.currency)}

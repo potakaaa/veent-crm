@@ -388,6 +388,7 @@
 						{#each ['touches', 'wins'] as const as m (m)}
 							<button
 								onclick={() => (leaderboardMetric = m)}
+								aria-pressed={leaderboardMetric === m}
 								class="rounded-[4px] px-2.5 py-[3px] font-mono text-[11px] capitalize transition-colors {leaderboardMetric ===
 								m
 									? 'bg-panel font-semibold text-ink shadow-sm'

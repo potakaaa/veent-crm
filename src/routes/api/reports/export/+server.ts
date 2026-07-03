@@ -1,14 +1,20 @@
 import type { RequestHandler } from './$types';
 import { db } from '$lib/server/db';
 import { crmLeads, crmUsers, crmActivities, crmMeetings } from '$lib/server/db/schema';
-import { eq, isNull, isNotNull, and, count, gte, lte, sql } from 'drizzle-orm';
+import { eq, isNull, isNotNull, and, count, gte, lte, sql, inArray } from 'drizzle-orm';
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+function sanitizeCell(raw: unknown): string {
+	const s = String(raw ?? '');
+	// Neutralize spreadsheet formula injection (=, +, -, @, tab, CR as first char)
+	return /^[=+\-@\t\r]/.test(s) ? `'${s}` : s;
+}
 
 function makeCsv(headers: string[], rows: Record<string, unknown>[]): string {
 	const csvRows = [
 		headers.join(','),
-		...rows.map((r) => headers.map((h) => `"${String(r[h] ?? '').replace(/"/g, '""')}"`).join(','))
+		...rows.map((r) => headers.map((h) => `"${sanitizeCell(r[h]).replace(/"/g, '""')}"`).join(','))
 	];
 	// UTF-8 BOM for Excel
 	return '﻿' + csvRows.join('\r\n');
@@ -196,7 +202,7 @@ export const GET: RequestHandler = async ({ url }) => {
 			firstReachedOutDate: crmLeads.firstReachedOutDate
 		})
 		.from(crmLeads)
-		.where(isNull(crmLeads.deletedAt));
+		.where(and(isNull(crmLeads.deletedAt), inArray(crmLeads.id, leadIds)));
 
 	const users = await db.select({ id: crmUsers.id, name: crmUsers.name }).from(crmUsers);
 

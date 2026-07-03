@@ -55,7 +55,7 @@ Files modified (Blast Radius):
 4. `src/lib/components/meetings/MeetingsPanel.svelte`
 5. `src/tests/meetings.spec.ts` (or a new `meetings-filters.spec.ts`)
 
-`src/routes/meetings/+page.svelte` — confirm no change needed (props already forwarded); see step 8.
+`src/routes/meetings/+page.svelte` — MODIFIED: add the `filters={data.filters}` prop to `<MeetingsPanel>` (required — see step 15); no other change.
 
 ## Public Contracts
 

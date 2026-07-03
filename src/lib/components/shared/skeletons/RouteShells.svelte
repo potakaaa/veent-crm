@@ -266,7 +266,7 @@
 			</div>
 			<!-- day cells: day-number circle is dynamic (skeleton) -->
 			<div class="grid grid-cols-7">
-				{#each Array(35) as _, i (i)}
+				{#each Array(42) as _, i (i)}
 					<div
 						class="flex min-h-[104px] flex-col gap-1 border-b border-r border-hairline bg-panel p-1.5"
 					>

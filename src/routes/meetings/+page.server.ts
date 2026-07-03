@@ -9,15 +9,15 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 
 	// Trusted server-side meId (locals.user.id) — never client-provided.
 	const parsed = parseMeetingFilterParams(url.searchParams, locals.user.id);
-	const leadFilter = url.searchParams.get('lead') ?? '';
 
 	const [{ meetings, total }, users, selectedLeadRow] = await Promise.all([
 		listMeetingsPaginated(1, 8, parsed),
 		listUsers(),
 		// The lead options are now fetched on demand by LeadCombobox (GET /api/leads).
-		// Only resolve the currently-selected lead's label for the filter trigger, and
-		// keep it visibility-scoped (GitHub #87) via getLead.
-		leadFilter ? getLead(leadFilter, locals.user.id, locals.user.role) : Promise.resolve(null)
+		// Only resolve the currently-selected lead's label for the filter trigger, using
+		// the VALIDATED lead id (parsed.leadId — undefined for junk/invalid) so bad ids
+		// never reach getLead, and keep it visibility-scoped (GitHub #87).
+		parsed.leadId ? getLead(parsed.leadId, locals.user.id, locals.user.role) : Promise.resolve(null)
 	]);
 
 	const selectedLead = selectedLeadRow
@@ -40,7 +40,8 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		lead: url.searchParams.get('lead') ?? '',
 		dateFrom: url.searchParams.get('dateFrom') ?? '',
 		dateTo: url.searchParams.get('dateTo') ?? '',
-		sortDir: (url.searchParams.get('sortDir') === 'asc' ? 'asc' : 'desc') as 'asc' | 'desc'
+		// Reuse the already-parsed, allow-listed value instead of re-deriving it.
+		sortDir: parsed.sortDir
 	};
 
 	return { meetings, total, users, selectedLead, me, filters };

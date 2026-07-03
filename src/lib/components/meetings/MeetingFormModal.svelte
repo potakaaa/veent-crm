@@ -128,6 +128,7 @@
 			<LeadCombobox
 				mode="assign"
 				bind:value={selectedLeadId}
+				selectedLabel={meeting?.leadName}
 				id="mtg-lead"
 				{...fieldErrorAttrs('mtg-lead', fieldErrors.leadId)}
 			/>

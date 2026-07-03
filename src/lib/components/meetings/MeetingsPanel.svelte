@@ -402,7 +402,7 @@
 				</div>
 			{/each}
 		</div>
-	{:else if meetings.length === 0}
+	{:else if allMeetings.length === 0}
 		<div class="py-8 text-center text-[13px] text-ink-400">No meetings yet.</div>
 	{:else}
 		<div class="flex flex-col gap-2.5">

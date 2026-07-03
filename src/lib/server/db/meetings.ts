@@ -198,11 +198,17 @@ export async function listMeetingsPaginated(
 	const conditions: SQL[] = [isNull(crmMeetings.deletedAt) as SQL];
 	if (filters.organizerId) conditions.push(eq(crmMeetings.organizerId, filters.organizerId));
 	if (filters.leadId) conditions.push(eq(crmMeetings.leadId, filters.leadId));
-	if (filters.dateFrom) conditions.push(sql`${crmMeetings.startAt} >= ${filters.dateFrom}::date`);
+	// Anchor the date bounds to UTC midnight (`AT TIME ZONE 'UTC'`) so the comparison
+	// is stable regardless of the Postgres session timezone, matching the UTC parsing
+	// in parseMeetingFilterParams (`new Date(raw + 'T00:00:00Z')`).
+	if (filters.dateFrom)
+		conditions.push(sql`${crmMeetings.startAt} >= (${filters.dateFrom}::date AT TIME ZONE 'UTC')`);
 	// dateTo uses `< dateTo + 1 day` (not `<= dateTo`) so the "to" date is inclusive
 	// of the whole day given startAt is a timestamp.
 	if (filters.dateTo)
-		conditions.push(sql`${crmMeetings.startAt} < (${filters.dateTo}::date + INTERVAL '1 day')`);
+		conditions.push(
+			sql`${crmMeetings.startAt} < ((${filters.dateTo}::date + INTERVAL '1 day') AT TIME ZONE 'UTC')`
+		);
 	// Single shared `where` applied to BOTH the page query and the count() query so
 	// `total` (and therefore hasMore) reflects the filtered set.
 	const where = and(...conditions);

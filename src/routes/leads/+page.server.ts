@@ -46,7 +46,24 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	]);
 	const rawSort = url.searchParams.get('sort') ?? '';
 	const sort = LEADS_SORT_COLS_SET.has(rawSort) ? rawSort : undefined;
-	const dir = url.searchParams.get('dir') === 'asc' ? ('asc' as const) : ('desc' as const);
+	const effectiveSort = sort ?? 'event';
+	const rawDir = url.searchParams.get('dir');
+	const dir =
+		rawDir === 'asc'
+			? ('asc' as const)
+			: rawDir === 'desc'
+				? ('desc' as const)
+				: effectiveSort === 'event'
+					? ('asc' as const)
+					: ('desc' as const);
+
+	const rawWeeksAhead = url.searchParams.get('weeksAhead') ?? '';
+	const weeksAhead: number | null =
+		rawWeeksAhead === 'all'
+			? null
+			: rawWeeksAhead === ''
+				? 8
+				: Math.max(1, parseInt(rawWeeksAhead, 10) || 8);
 
 	const [result, users, countries] = await Promise.all([
 		listLeadsFiltered({
@@ -64,7 +81,8 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 			page,
 			pageSize: PAGE_SIZE,
 			sort,
-			dir
+			dir,
+			weeksAhead
 		}),
 		listUsers(),
 		getLeadCountries()
@@ -101,9 +119,10 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 			hasFutureEvents,
 			search,
 			date,
-			dateField
+			dateField,
+			weeksAhead
 		},
-		sort: sort ?? 'lastActivity',
+		sort: sort ?? 'event',
 		dir,
 		pagination: {
 			page,

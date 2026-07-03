@@ -102,6 +102,25 @@
 		data.filters.country.length > 0 || data.filters.category.length > 0
 	);
 
+	const WEEKS_PRESETS = [4, 8, 12] as const;
+	let weeksInput = $derived(
+		data.filters.weeksAhead === null ? '' : String(data.filters.weeksAhead ?? 8)
+	);
+	let weeksTimer: ReturnType<typeof setTimeout> | null = null;
+	function setWeeks(w: number | 'all') {
+		navigate({ weeksAhead: w === 'all' ? 'all' : w, page: undefined });
+	}
+	function onWeeksInput(e: Event & { currentTarget: HTMLInputElement }) {
+		const raw = e.currentTarget.value;
+		weeksInput = raw;
+		if (weeksTimer) clearTimeout(weeksTimer);
+		const n = parseInt(raw, 10);
+		if (!raw) return;
+		weeksTimer = setTimeout(() => {
+			if (n > 0) setWeeks(n);
+		}, 400);
+	}
+
 	const table = $derived(
 		makeSortTable({
 			data: shadowLeads,
@@ -316,6 +335,33 @@
 				Clear all filters
 			</button>
 		{/if}
+		<div class="ml-auto flex items-center gap-1.5">
+			<span class="text-[12px] text-ink-400">Beyond</span>
+			{#each WEEKS_PRESETS as w (w)}
+				<button
+					onclick={() => setWeeks(w)}
+					class="h-7 rounded-[5px] border px-2 font-mono text-[11.5px] transition-colors {data
+						.filters.weeksAhead !== null && (data.filters.weeksAhead ?? 8) === w
+						? 'border-indigo-400 bg-indigo-50 font-semibold text-indigo-700'
+						: 'border-hairline bg-panel text-ink-500 hover:bg-panel-sunken'}">{w}w</button
+				>
+			{/each}
+			<input
+				type="number"
+				min="1"
+				value={weeksInput}
+				oninput={onWeeksInput}
+				placeholder="—"
+				class="h-7 w-12 rounded-[5px] border border-hairline bg-panel px-2 font-mono text-[11.5px] text-ink focus:outline-none focus:ring-1 focus:ring-primary"
+			/>
+			<button
+				onclick={() => setWeeks('all')}
+				class="h-7 rounded-[5px] border px-2 font-mono text-[11.5px] transition-colors {data.filters
+					.weeksAhead === null
+					? 'border-ink-300 bg-panel-sunken font-semibold text-ink'
+					: 'border-hairline bg-panel text-ink-400 hover:bg-panel-sunken'}">All</button
+			>
+		</div>
 	</div>
 
 	<DataGridShell {cols} loading={navLoading} skeletonCells={10} isEmpty={shadowLeads.length === 0}>
@@ -383,10 +429,10 @@
 									onkeydown={hover.handleEscape}
 								>
 									<a href="/leads/{l.id}" class="min-w-0 block">
-										<div class="flex items-center gap-1.5 text-[13px] font-semibold">
-											{l.name}
+										<div class="flex min-w-0 items-center gap-1.5 text-[13px] font-semibold">
+											<span class="truncate">{l.name}</span>
 											{#if l.siblings}<span
-													class="rounded-[4px] bg-[rgba(194,113,12,0.1)] px-[5px] py-px font-mono text-[9.5px] text-stale"
+													class="shrink-0 rounded-[4px] bg-[rgba(194,113,12,0.1)] px-[5px] py-px font-mono text-[9.5px] text-stale"
 													>{l.siblings} events</span
 												>{/if}
 										</div>

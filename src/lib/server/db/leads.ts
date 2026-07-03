@@ -316,6 +316,7 @@ export interface ListLeadsParams {
 	country?: string;
 	staleOnly?: boolean;
 	hasFutureEvents?: boolean;
+	weeksAhead?: number | null;
 	search?: string;
 	date?: string;
 	dateField?: 'event_date' | 'created_at';
@@ -342,6 +343,7 @@ export async function listLeadsFiltered(
 		country,
 		staleOnly = false,
 		hasFutureEvents = false,
+		weeksAhead = 8,
 		search,
 		date,
 		dateField,
@@ -384,6 +386,18 @@ export async function listLeadsFiltered(
 		conditions.push(eq(crmLeads.hasFutureEvents, true));
 	}
 
+	// Weeks-ahead minimum: show leads whose event is at least N weeks away.
+	// Leads with no event date are always included. Past events are always excluded.
+	if (weeksAhead !== null && weeksAhead > 0) {
+		const days = String(weeksAhead * 7);
+		conditions.push(
+			sql`(
+				${crmLeads.eventDate} IS NULL
+				OR ${crmLeads.eventDate} >= CURRENT_DATE + INTERVAL ${sql.raw(`'${days} days'`)}
+			)`
+		);
+	}
+
 	// Search: case-insensitive against name and normalizedHandle.
 	// Ingest stores handles without '@' (e.g. 'acmefb'); manual creation stores with '@'.
 	// Strip a leading '@' so "copied handle" queries match both storage formats.
@@ -419,7 +433,7 @@ export async function listLeadsFiltered(
 	const validSort: LeadsSortCol =
 		sort && (LEADS_SORT_COLS as readonly string[]).includes(sort)
 			? (sort as LeadsSortCol)
-			: 'lastActivity';
+			: 'event';
 	const sortFn = dir === 'asc' ? asc : desc;
 
 	let leadsOrder: SQL[];
@@ -517,7 +531,7 @@ export async function listUnassignedLeads(
 	pageSize = 25,
 	sort?: string,
 	dir?: 'asc' | 'desc',
-	filters?: { country?: string[]; category?: string[] }
+	filters?: { country?: string[]; category?: string[]; weeksAhead?: number | null }
 ): Promise<{ leads: Lead[]; total: number }> {
 	const conditions = unassignedBaseConditions();
 
@@ -528,6 +542,18 @@ export async function listUnassignedLeads(
 	}
 	if (filters?.category && filters.category.length > 0) {
 		conditions.push(inArray(crmLeads.category, filters.category as DbLead['category'][]));
+	}
+
+	// Weeks-ahead minimum: show only leads with events at least N weeks out.
+	const weeksAhead = filters?.weeksAhead ?? 8;
+	if (weeksAhead !== null && weeksAhead > 0) {
+		const days = String(weeksAhead * 7);
+		conditions.push(
+			sql`(
+				${crmLeads.eventDate} IS NULL
+				OR ${crmLeads.eventDate} >= CURRENT_DATE + INTERVAL ${sql.raw(`'${days} days'`)}
+			)`
+		);
 	}
 
 	const where = and(...conditions);

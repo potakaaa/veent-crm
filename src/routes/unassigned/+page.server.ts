@@ -16,7 +16,24 @@ export const load: PageServerLoad = async ({ url }) => {
 	const UNASSIGNED_SORT_COLS_SET = new Set(['name', 'event', 'stage', 'source', 'appeal']);
 	const rawSort = url.searchParams.get('sort') ?? '';
 	const sort = UNASSIGNED_SORT_COLS_SET.has(rawSort) ? rawSort : undefined;
-	const dir = url.searchParams.get('dir') === 'asc' ? ('asc' as const) : ('desc' as const);
+	const rawDir = url.searchParams.get('dir');
+	const effectiveSort = sort ?? 'event';
+	const dir =
+		rawDir === 'asc'
+			? ('asc' as const)
+			: rawDir === 'desc'
+				? ('desc' as const)
+				: effectiveSort === 'event'
+					? ('asc' as const)
+					: ('desc' as const);
+
+	const rawWeeksAhead = url.searchParams.get('weeksAhead') ?? '';
+	const weeksAhead: number | null =
+		rawWeeksAhead === 'all'
+			? null
+			: rawWeeksAhead === ''
+				? 8
+				: Math.max(1, parseInt(rawWeeksAhead, 10) || 8);
 
 	const country = parseFilterCsv(url.searchParams.get('country'));
 	const rawCategory = parseFilterCsv(url.searchParams.get('category'));
@@ -24,7 +41,7 @@ export const load: PageServerLoad = async ({ url }) => {
 	const category = rawCategory.filter((c) => validCategories.has(c));
 
 	const [result, users, countryOptions] = await Promise.all([
-		listUnassignedLeads(page, PAGE_SIZE, sort, dir, { country, category }),
+		listUnassignedLeads(page, PAGE_SIZE, sort, dir, { country, category, weeksAhead }),
 		listUsers(),
 		getUnassignedLeadCountries()
 	]);
@@ -43,7 +60,7 @@ export const load: PageServerLoad = async ({ url }) => {
 		dir,
 		categoryOptions: [...leadCategory.enumValues],
 		countryOptions,
-		filters: { country, category },
+		filters: { country, category, weeksAhead },
 		pagination: {
 			page,
 			pageSize: PAGE_SIZE,

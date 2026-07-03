@@ -12,6 +12,7 @@ import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { magicLink } from 'better-auth/plugins/magic-link';
 import { dash } from '@better-auth/infra';
+import { dev } from '$app/environment';
 import { eq } from 'drizzle-orm';
 import { db } from '$lib/server/db/index';
 import { baUser, baAccount, baSession, baVerification, crmUsers } from '$lib/server/db/schema';
@@ -42,7 +43,7 @@ function createAuth() {
 		plugins: [
 			magicLink({
 				sendMagicLink: async ({ email, url }) => {
-					console.log(`\n[DEV] Magic link for ${email}:\n${url}\n`);
+					if (dev) console.log(`\n[DEV] Magic link for ${email}:\n${url}\n`);
 					if (pendingWelcomeEmails.has(email)) {
 						// This email was just added by a manager via POST /api/users — send the
 						// welcome template with a personalized name looked up from crm_users.

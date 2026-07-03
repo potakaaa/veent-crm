@@ -10,8 +10,8 @@ export const GET: RequestHandler = async ({ request }) => {
 	const secret = env.REMINDERS_ENDPOINT_SECRET;
 	const provided = request.headers.get('authorization')?.replace(/^Bearer\s+/i, '');
 
-	// STUB: if no secret is configured (v0), allow; once set, require a match.
-	if (secret && provided !== secret) throw error(401, 'unauthorized');
+	// Require a configured secret; fail closed (matches the /api/reminders/notify sibling).
+	if (!secret || provided !== secret) throw error(401, 'unauthorized');
 
 	const due = await getDueReminders(); // STUB returns []
 	// Read-only preview of due meeting-reminder checkpoints. MUST NOT mark anything sent —

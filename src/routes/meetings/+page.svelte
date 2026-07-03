@@ -12,5 +12,12 @@
 		<div class="mt-1 text-[12.5px] text-ink-400">Every meeting across all leads.</div>
 	</div>
 
-	<MeetingsPanel meetings={data.meetings} users={data.users} me={data.me} leads={data.leads} />
+	<MeetingsPanel
+		meetings={data.meetings}
+		total={data.total}
+		users={data.users}
+		me={data.me}
+		selectedLead={data.selectedLead}
+		filters={data.filters}
+	/>
 </div>

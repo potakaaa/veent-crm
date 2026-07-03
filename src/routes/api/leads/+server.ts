@@ -1,7 +1,31 @@
 import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { leadFormSchema } from '$lib/zod/schemas';
-import { createLead } from '$lib/server/db/leads';
+import { createLead, listLeadsFiltered } from '$lib/server/db/leads';
+
+/**
+ * Session-scoped lead search for the meetings LeadCombobox.
+ * SECURITY (AC4): userId/role/segment are derived ONLY from `locals.user` and the
+ * server-hardcoded `segment: 'all'`. Client-supplied `?userId=`, `?role=`, `?segment=`
+ * are NEVER read — only `q` (search term) and `page` are trusted, and only for
+ * search/pagination. Widening visibility via query params is impossible by construction.
+ */
+export const GET: RequestHandler = async ({ url, locals }) => {
+	if (!locals.user) throw error(401, 'Unauthorized');
+
+	const q = url.searchParams.get('q') ?? undefined;
+	const page = Number(url.searchParams.get('page')) || 1;
+
+	const { leads, total } = await listLeadsFiltered({
+		userId: locals.user.id,
+		role: locals.user.role,
+		segment: 'all',
+		search: q,
+		page
+	});
+
+	return json({ leads: leads.map((l) => ({ id: l.id, name: l.name })), total });
+};
 
 export const POST: RequestHandler = async ({ request, locals }) => {
 	if (!locals.user) throw error(401, 'Unauthorized');

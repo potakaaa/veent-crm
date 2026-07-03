@@ -5,7 +5,7 @@
  */
 import { describe, it, expect } from 'vitest';
 import { meetingFormSchema, meetingUpdateSchema } from '$lib/zod/schemas';
-import { dbRowToMeeting } from '$lib/server/db/meetings';
+import { dbRowToMeeting, parseMeetingFilterParams } from '$lib/server/db/meetings';
 import type { CrmMeeting } from '$lib/server/db/schema';
 import type { MeetingAttendee } from '$lib/types';
 
@@ -135,5 +135,61 @@ describe('dbRowToMeeting', () => {
 		expect(m.notes).toBeUndefined();
 		expect(m.outcome).toBeUndefined();
 		expect(m.attendees).toEqual([]);
+	});
+});
+
+describe('parseMeetingFilterParams', () => {
+	const ME = '99999999-9999-4999-8999-999999999999';
+	const FOREIGN = '44444444-4444-4444-4444-444444444444';
+	const parse = (qs: string) => parseMeetingFilterParams(new URLSearchParams(qs), ME);
+
+	// --- organizer resolution (security-sensitive: 'mine'/absent/junk → meId) ---
+	it("resolves 'mine' to the caller id (meId), never a client value", () => {
+		expect(parse('organizer=mine').organizerId).toBe(ME);
+	});
+
+	it('resolves an ABSENT organizer param to meId (same as mine — the default self-view)', () => {
+		expect(parse('').organizerId).toBe(ME);
+	});
+
+	it('resolves an empty organizer param to meId', () => {
+		expect(parse('organizer=').organizerId).toBe(ME);
+	});
+
+	it("maps 'all' to undefined (no organizer condition)", () => {
+		expect(parse('organizer=all').organizerId).toBeUndefined();
+	});
+
+	it('passes a foreign UUID through as-is (explicit teammate filter)', () => {
+		expect(parse(`organizer=${FOREIGN}`).organizerId).toBe(FOREIGN);
+	});
+
+	it('falls back non-UUID junk to meId (safe default, NOT undefined)', () => {
+		expect(parse('organizer=notauuid').organizerId).toBe(ME);
+	});
+
+	// --- lead ---
+	it('keeps a valid lead UUID and drops junk', () => {
+		expect(parse(`lead=${FOREIGN}`).leadId).toBe(FOREIGN);
+		expect(parse('lead=nope').leadId).toBeUndefined();
+		expect(parse('').leadId).toBeUndefined();
+	});
+
+	// --- sortDir allow-list ---
+	it("defaults sortDir to 'desc' for any non-'asc' value", () => {
+		expect(parse('sortDir=asc').sortDir).toBe('asc');
+		expect(parse('sortDir=desc').sortDir).toBe('desc');
+		expect(parse('sortDir=garbage').sortDir).toBe('desc');
+		expect(parse('').sortDir).toBe('desc');
+	});
+
+	// --- date validation ---
+	it('keeps valid YYYY-MM-DD dates and drops invalid ones', () => {
+		expect(parse('dateFrom=2026-07-01&dateTo=2026-07-31').dateFrom).toBe('2026-07-01');
+		expect(parse('dateFrom=2026-07-01&dateTo=2026-07-31').dateTo).toBe('2026-07-31');
+		expect(parse('dateFrom=2026-13-99').dateFrom).toBeUndefined(); // impossible month/day
+		expect(parse('dateFrom=07-01-2026').dateFrom).toBeUndefined(); // wrong format
+		expect(parse('dateTo=notadate').dateTo).toBeUndefined();
+		expect(parse('').dateFrom).toBeUndefined();
 	});
 });

@@ -80,3 +80,45 @@ This is intentional parity with existing practice, not an oversight, but it mean
 **Follow-up still needed:** a proper reconciliation pass (per the original Suggested Resolution
 above) that confirms live DB state and regenerates a fully consistent snapshot chain, covering
 both this drift instance and the original `0014_agreements_fields.sql` one.
+
+## Update 03-07-26 — full drift scope measured against the live Neon DB (vercel-deploy-migration EXECUTE)
+
+The `vercel-deploy-migration_03-07-26` EXECUTE session needed a clean `bun run db:generate`
+(to add `crm_users.pending_welcome`) and attempted the Section C reconciliation. It STOPPED and
+deferred the whole migration back to this backlog item because the drift is materially broader
+than any prior note captured. Concrete truth, measured via a **read-only** `information_schema`
+probe against the live Neon DB (`ep-still-night-...-pooler...neon.tech`) — no writes, no
+`db:push`, no migration applied:
+
+1. **`crm_leads` — snapshot 0019 is missing 10 columns that exist in the live DB and in
+   `schema.ts`:** `onboarding_notes`, `contract_url`, `onboarding_start_date`, `go_live_date`
+   (onboarding block) + `fee_structure`, `transaction_fee_pct`, `convenience_fee_pesos`,
+   `service_fee_pct`, `service_fee_per_ticket_pesos`, `bank_charges_absorbed` (agreements block).
+   Live `crm_leads` = 47 cols; snapshot 0019 = 37 cols. All 10 already applied in live DB.
+2. **`crm_message_templates` — the entire table is missing from snapshot 0019** (exists in live
+   DB and `schema.ts`). A naive `db:generate` emits a `CREATE TABLE crm_message_templates` +
+   its unique index, which would fail against the live DB that already has it.
+3. **Snapshot `id`/`prevId` chain is corrupt with DUPLICATE ids:** snapshots 15≡16 share
+   `id=2123a194`; 17≡18≡19 share `id=e7b44582`. `drizzle-kit generate` hard-errors
+   ("pointing to a parent snapshot ... which is a collision") and refuses to run until the chain
+   is linearized (each `prevId` = the previous snapshot's unique `id`).
+
+**Why deferred (not fixed here):** reconciling a live-DB-ahead-of-snapshot state requires a
+human baseline decision (mark-the-catch-up-migration-as-applied vs. author an idempotent
+`IF NOT EXISTS` catch-up vs. `drizzle-kit` baseline reset). That is a HIGH-risk migration-baseline
+call on a schema-migration surface with no CI harness — out of scope for an autonomous EXECUTE
+pass, and exactly the R1 risk the vercel-deploy plan flagged as manual-first. The EXECUTE session
+reverted all its trial `drizzle/` edits back to the committed state; the migration folder is
+unchanged from before that session.
+
+**Concrete recipe for the reconciliation pass (all confirmed feasible this session):**
+- Fold the 10 `crm_leads` columns + the `crm_message_templates` table (+ its unique index) into
+  the head snapshot so it matches `schema.ts`/live.
+- Linearize the `id`/`prevId` chain (assign unique ids to the duplicated snapshots 15–19, relink
+  `prevId` = previous snapshot id). Metadata-only, git-reversible.
+- Decide the catch-up baseline strategy (above) so the catch-up migration is NOT applied to the
+  already-migrated live DB.
+- THEN add `crm_users.pending_welcome boolean NOT NULL DEFAULT false` to `schema.ts` and
+  `db:generate` — it must emit ONLY the single `crm_users` ALTER. Apply manual-first with the
+  risk-evidence pack. This unblocks Sections C/D/E of `vercel-deploy-migration_03-07-26`
+  (pending_welcome DB column + the in-memory-Set → DB-flag serverless fix).

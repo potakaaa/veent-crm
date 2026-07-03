@@ -7,6 +7,8 @@
 	// AC4: meeting vs follow-up are visually distinct — blue calendar-dot vs amber clock,
 	// distinct border/background classes, plus a machine-readable data-entry-type attribute.
 	const isMeeting = $derived(entry.type === 'meeting');
+	// B3: text label for the meeting/follow-up type indicator (previously colour+icon only).
+	const typeLabel = $derived(isMeeting ? 'Meeting' : 'Follow-up');
 	const timeLabel = $derived(
 		new Date(entry.startAt).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' })
 	);
@@ -26,6 +28,11 @@
 	{#if detailed}
 		<div class="flex items-center gap-1">
 			<Icon name={isMeeting ? 'calendar' : 'reminders'} size={11} />
+			<span
+				class="rounded-[3px] px-1 font-mono text-[9px] uppercase tracking-[0.4px] {isMeeting
+					? 'bg-blue-100 text-blue-700'
+					: 'bg-amber-100 text-amber-700'}">{typeLabel}</span
+			>
 			<span class="font-mono text-[10px] tabular-nums opacity-80">{timeLabel}</span>
 		</div>
 		<span class="truncate font-semibold">{entry.title}</span>
@@ -34,6 +41,7 @@
 		{/if}
 	{:else}
 		<Icon name={isMeeting ? 'calendar' : 'reminders'} size={11} />
+		<span class="sr-only">{typeLabel}:</span>
 		<span class="truncate">{entry.title}</span>
 	{/if}
 </a>

@@ -1,5 +1,7 @@
 <script lang="ts">
-	import { invalidateAll } from '$app/navigation';
+	import { goto, invalidateAll, afterNavigate } from '$app/navigation';
+	import { page } from '$app/state';
+	import { SvelteURLSearchParams } from 'svelte/reactivity';
 	import PageHeader from '$lib/components/shared/PageHeader.svelte';
 	import Modal from '$lib/components/shared/Modal.svelte';
 	import Icon from '$lib/components/shared/Icon.svelte';
@@ -19,10 +21,36 @@
 	let { data } = $props();
 	const canManage = $derived(isManager(data.currentUser));
 
-	// View toggle: card grid (default) vs the existing category-grouped list.
+	// View toggle persists client-side only.
 	let viewMode = $state<'card' | 'list'>('card');
 
-	// Group non-deleted templates by category (server already sorts category→title).
+	// Search input has a local mirror for instant typing feedback + debounce.
+	// $derived allows re-sync on back/forward navigation; assignment still works for live typing.
+	let searchInput = $derived(data.filters.q ?? '');
+	let searchTimer: ReturnType<typeof setTimeout> | null = null;
+
+	let paging = $state(false);
+	afterNavigate(() => {
+		paging = false;
+	});
+
+	function navigate(patch: Record<string, string | undefined>) {
+		const params = new SvelteURLSearchParams(page.url.searchParams);
+		for (const [k, v] of Object.entries(patch)) {
+			if (v === undefined || v === '') params.delete(k);
+			else params.set(k, v);
+		}
+		goto(`?${params}`, { keepFocus: true });
+	}
+
+	function onSearchInput(e: Event & { currentTarget: HTMLInputElement }) {
+		const val = e.currentTarget.value;
+		searchInput = val;
+		if (searchTimer) clearTimeout(searchTimer);
+		searchTimer = setTimeout(() => navigate({ q: val || undefined, page: undefined }), 300);
+	}
+
+	// Group the current page of templates by category (server already sorted).
 	const grouped = $derived.by(() => {
 		const map = new SvelteMap<string, MessageTemplate[]>();
 		for (const t of data.templates) {
@@ -32,6 +60,13 @@
 		}
 		return [...map.entries()];
 	});
+
+	// When sorted chronologically, render a flat list across all categories so
+	// the global time order is visible. Category grouping only makes sense for
+	// the default title (alphabetical) sort.
+	const isChronologicalSort = $derived(
+		data.filters.sort === 'newest' || data.filters.sort === 'oldest'
+	);
 
 	// --- Create / edit modal state ---
 	let formOpen = $state(false);
@@ -161,81 +196,180 @@
 		</div>
 	{/if}
 
-	<div class="mb-4 inline-flex gap-1 rounded-control border border-border bg-panel-subtle p-1">
-		<button
-			type="button"
-			class="rounded-[6px] px-3 py-1 text-[12.5px] font-medium transition-colors {viewMode ===
-			'card'
-				? 'bg-white text-ink-600 shadow-sm'
-				: 'text-ink-400 hover:text-ink-600'}"
-			onclick={() => (viewMode = 'card')}
+	<!-- toolbar: view toggle + search + category filter + sort -->
+	<div class="mb-4 flex flex-wrap items-center gap-2.5">
+		<div class="inline-flex gap-1 rounded-control border border-border bg-panel-subtle p-1">
+			<button
+				type="button"
+				class="rounded-[6px] px-3 py-1 text-[12.5px] font-medium transition-colors {viewMode ===
+				'card'
+					? 'bg-white text-ink-600 shadow-sm'
+					: 'text-ink-400 hover:text-ink-600'}"
+				onclick={() => (viewMode = 'card')}
+			>
+				Cards
+			</button>
+			<button
+				type="button"
+				class="rounded-[6px] px-3 py-1 text-[12.5px] font-medium transition-colors {viewMode ===
+				'list'
+					? 'bg-white text-ink-600 shadow-sm'
+					: 'text-ink-400 hover:text-ink-600'}"
+				onclick={() => (viewMode = 'list')}
+			>
+				List
+			</button>
+		</div>
+
+		<Select
+			type="single"
+			value={data.filters.category ?? ''}
+			onValueChange={(v) => navigate({ category: v || undefined, page: undefined })}
 		>
-			Cards
-		</button>
-		<button
-			type="button"
-			class="rounded-[6px] px-3 py-1 text-[12.5px] font-medium transition-colors {viewMode ===
-			'list'
-				? 'bg-white text-ink-600 shadow-sm'
-				: 'text-ink-400 hover:text-ink-600'}"
-			onclick={() => (viewMode = 'list')}
+			<SelectTrigger size="sm" class="w-36" aria-label="Filter by category"
+				>{data.filters.category || 'All categories'}</SelectTrigger
+			>
+			<SelectContent>
+				<SelectItem value="" label="All categories">All categories</SelectItem>
+				{#each LEAD_CATEGORIES as c (c)}<SelectItem value={c} label={c}>{c}</SelectItem>{/each}
+			</SelectContent>
+		</Select>
+
+		<Select
+			type="single"
+			value={data.filters.sort}
+			onValueChange={(v) => navigate({ sort: v === 'title' ? undefined : v, page: undefined })}
 		>
-			List
-		</button>
+			<SelectTrigger size="sm" class="w-32" aria-label="Sort templates">
+				{data.filters.sort === 'newest'
+					? 'Newest'
+					: data.filters.sort === 'oldest'
+						? 'Oldest'
+						: 'Title A–Z'}
+			</SelectTrigger>
+			<SelectContent>
+				<SelectItem value="title" label="Title A–Z">Title A–Z</SelectItem>
+				<SelectItem value="newest" label="Newest">Newest</SelectItem>
+				<SelectItem value="oldest" label="Oldest">Oldest</SelectItem>
+			</SelectContent>
+		</Select>
+
+		<Input
+			value={searchInput}
+			oninput={onSearchInput}
+			placeholder="Search templates…"
+			aria-label="Search templates"
+			class="ml-auto h-8 w-52"
+		/>
 	</div>
 
-	{#if data.templates.length === 0}
+	{#snippet categoryHeader(cat: string, accent: string, count: number)}
+		<div class="mb-2 flex items-center gap-2">
+			<div class="flex items-center gap-1.5 font-mono text-[11px] text-ink-500">
+				<span
+					class="inline-block size-[7px] shrink-0 rounded-full"
+					style="background-color:{accent}"
+				></span>
+				{cat}
+			</div>
+			<span class="text-[12px] text-ink-300">{count}</span>
+		</div>
+	{/snippet}
+
+	{#if data.pagination.total === 0}
 		<Card class="rounded-control px-6 py-10 text-center text-[13px] text-ink-300">
-			No templates yet. {#if canManage}Add your first one above.{/if}
+			{data.filters.q || data.filters.category
+				? 'No templates match your filters.'
+				: canManage
+					? 'No templates yet. Add your first one above.'
+					: 'No templates yet.'}
 		</Card>
 	{:else if viewMode === 'card'}
-		<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+		{#if isChronologicalSort}
+			<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+				{#each data.templates as t (t.id)}
+					<Card class="relative flex flex-col gap-3 rounded-control p-4">
+						<Button
+							variant="ghost"
+							size="icon"
+							class="absolute right-2 top-2 size-8 text-ink-400 hover:text-ink-600"
+							aria-label="Copy template"
+							title="Copy"
+							onclick={() => copy(t)}
+						>
+							<Icon name="copy" size={15} />
+						</Button>
+						<div class="text-[13px] font-semibold text-ink-600">{t.title}</div>
+						<p class="line-clamp-3 text-[12.5px] text-ink-500">{t.body}</p>
+						{#if canManage}
+							<div class="mt-auto flex gap-1.5 pt-1">
+								<Button variant="outline" size="sm" onclick={() => openEdit(t)}>Edit</Button>
+								<Button variant="outline" size="sm" onclick={() => remove(t)}>Delete</Button>
+							</div>
+						{/if}
+					</Card>
+				{/each}
+			</div>
+		{:else}
+			<div class="flex flex-col gap-6">
+				{#each grouped as [cat, items] (cat)}
+					{@const accent = categoryColor(cat)}
+					<section>
+						{@render categoryHeader(cat, accent, items.length)}
+						<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+							{#each items as t (t.id)}
+								<Card class="relative flex flex-col gap-3 rounded-control p-4">
+									<Button
+										variant="ghost"
+										size="icon"
+										class="absolute right-2 top-2 size-8 text-ink-400 hover:text-ink-600"
+										aria-label="Copy template"
+										title="Copy"
+										onclick={() => copy(t)}
+									>
+										<Icon name="copy" size={15} />
+									</Button>
+									<div class="text-[13px] font-semibold text-ink-600">{t.title}</div>
+									<p class="line-clamp-3 text-[12.5px] text-ink-500">{t.body}</p>
+									{#if canManage}
+										<div class="mt-auto flex gap-1.5 pt-1">
+											<Button variant="outline" size="sm" onclick={() => openEdit(t)}>Edit</Button>
+											<Button variant="outline" size="sm" onclick={() => remove(t)}>Delete</Button>
+										</div>
+									{/if}
+								</Card>
+							{/each}
+						</div>
+					</section>
+				{/each}
+			</div>
+		{/if}
+	{:else if isChronologicalSort}
+		<Card class="gap-0 overflow-hidden rounded-control py-0">
 			{#each data.templates as t (t.id)}
-				{@const accent = categoryColor(t.category)}
-				<Card class="relative flex flex-col gap-3 rounded-control p-4">
-					<Button
-						variant="ghost"
-						size="icon"
-						class="absolute right-2 top-2 size-8 text-ink-400 hover:text-ink-600"
-						aria-label="Copy template"
-						title="Copy"
-						onclick={() => copy(t)}
-					>
-						<Icon name="copy" size={15} />
-					</Button>
-					<div class="flex w-fit items-center gap-1.5 font-mono text-[11px] text-ink-500">
-						<span
-							class="inline-block size-[7px] shrink-0 rounded-full"
-							style="background-color:{accent}"
-						></span>
-						{t.category}
+				<div
+					class="flex items-start justify-between gap-4 border-b border-border px-4 py-3 last:border-b-0"
+				>
+					<div class="min-w-0">
+						<div class="text-[13px] font-semibold text-ink-600">{t.title}</div>
+						<p class="mt-1 whitespace-pre-wrap text-[12.5px] text-ink-500">{t.body}</p>
 					</div>
-					<div class="text-[13px] font-semibold text-ink-600">{t.title}</div>
-					<p class="line-clamp-3 text-[12.5px] text-ink-500">{t.body}</p>
 					{#if canManage}
-						<div class="mt-auto flex gap-1.5 pt-1">
+						<div class="flex shrink-0 gap-1.5">
 							<Button variant="outline" size="sm" onclick={() => openEdit(t)}>Edit</Button>
+							<Button variant="outline" size="sm" onclick={() => copy(t)}>Copy</Button>
 							<Button variant="outline" size="sm" onclick={() => remove(t)}>Delete</Button>
 						</div>
 					{/if}
-				</Card>
+				</div>
 			{/each}
-		</div>
+		</Card>
 	{:else}
 		<div class="flex flex-col gap-6">
 			{#each grouped as [cat, items] (cat)}
 				{@const accent = categoryColor(cat)}
 				<section>
-					<div class="mb-2 flex items-center gap-2">
-						<div class="flex items-center gap-1.5 font-mono text-[11px] text-ink-500">
-							<span
-								class="inline-block size-[7px] shrink-0 rounded-full"
-								style="background-color:{accent}"
-							></span>
-							{cat}
-						</div>
-						<span class="text-[12px] text-ink-300">{items.length}</span>
-					</div>
+					{@render categoryHeader(cat, accent, items.length)}
 					<Card class="gap-0 overflow-hidden rounded-control py-0">
 						{#each items as t (t.id)}
 							<div
@@ -257,6 +391,37 @@
 					</Card>
 				</section>
 			{/each}
+		</div>
+	{/if}
+
+	<!-- pagination -->
+	{#if data.pagination.totalPages > 1}
+		{@const { page: pg, pageSize, total, totalPages } = data.pagination}
+		{@const start = (pg - 1) * pageSize + 1}
+		{@const end = Math.min(pg * pageSize, total)}
+		<div class="mt-5 flex items-center justify-between text-[13px] text-ink-300">
+			<span class="font-mono">{start}–{end} of {total}</span>
+			<div class="flex items-center gap-2">
+				<Button
+					variant="outline"
+					size="sm"
+					disabled={pg <= 1 || paging}
+					onclick={() => {
+						paging = true;
+						navigate({ page: String(pg - 1) });
+					}}>← Prev</Button
+				>
+				<span class="font-mono">Page {pg} of {totalPages}</span>
+				<Button
+					variant="outline"
+					size="sm"
+					disabled={pg >= totalPages || paging}
+					onclick={() => {
+						paging = true;
+						navigate({ page: String(pg + 1) });
+					}}>Next →</Button
+				>
+			</div>
 		</div>
 	{/if}
 </div>

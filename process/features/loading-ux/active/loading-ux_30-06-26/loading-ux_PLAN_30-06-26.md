@@ -86,6 +86,16 @@ No schema, no API route, no auth surface touched. Risk class: **UI-only, low**.
 17. `src/routes/unassigned/+page.svelte` (Unassigned) — page skeleton; claim/bulkClaim/assignTo pending + optimistic remove
 18. `src/routes/review/+page.svelte` (Review) — page skeleton; resolve pending (must ADD `use:enhance` — see step 20) + optimistic remove
 19. `src/routes/reminders/+page.svelte` (Reminders) — page skeleton
+    > **SUPERSEDED (02-07-26) by sitewide-ux-refresh Phase 5, AC13 (Theme F).** This plan
+    > originally scoped Reminders (item 19) to a page skeleton ONLY, deliberately excluding the
+    > snooze optimistic-remove/rollback pattern that Today (item 12) received. That exclusion is
+    > now reversed by an explicit SPEC decision: Reminders' Snooze button was aligned UP to Today's
+    > mature optimistic pattern (`snoozing` pending state, `removeFromList()` optimistic remove,
+    > per-lead rollback, `snoozing` prop passed to the shared `LeadListRow`, plus an `aria-live`
+    > announcement). See
+    > `process/features/ux-enhancement/active/sitewide-ux-refresh_02-07-26/phase-05-token-sweep_PLAN_02-07-26.md`
+    > (Step C) and its phase report. Recorded here so the two plans stay reconciled rather than
+    > silently diverging.
 20. `src/routes/reports/+page.svelte` (Reports) — page skeleton
 21. `src/routes/team/+page.svelte` (Team) — page skeleton
 

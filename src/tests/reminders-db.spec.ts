@@ -156,6 +156,15 @@ describe.skipIf(SKIP_DB)('getRemindersQueue — upcoming bucket (DB)', () => {
 		expect(found).toBeDefined();
 	});
 
+	it('lead with a follow-up exactly 7 days out appears in upcoming (boundary)', async () => {
+		const lead = await makeTestLead('Boundary Org');
+		await bookFollowUp(lead.id, MANAGER_UUID, new Date(Date.now() + 7 * 86_400_000));
+
+		const { due, upcoming } = await getRemindersQueue(MANAGER_UUID);
+		expect(due.find((l) => l.id === lead.id)).toBeUndefined();
+		expect(upcoming.find((l) => l.id === lead.id)).toBeDefined();
+	});
+
 	it('lead with a follow-up +10 days appears in neither due nor upcoming', async () => {
 		const lead = await makeTestLead('Far Future Org');
 		await bookFollowUp(lead.id, MANAGER_UUID, new Date(Date.now() + 10 * 86_400_000));

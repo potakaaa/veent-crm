@@ -53,6 +53,22 @@
 	--color-nav-glow: rgba(225, 29, 42, 0.05); /* shell main radial-gradient accent */
 
 	/*
+	 * Sidebar aliases — collapsible-sidebar (issue #158). ALIAS ONLY — each maps 1:1 onto the
+	 * closest existing --color-nav-* value so the shadcn-svelte Sidebar primitive's structural
+	 * chrome (bg-sidebar / text-sidebar-foreground / bg-sidebar-accent / border-sidebar-border /
+	 * ring-sidebar-ring) inherits the existing dark-espresso nav palette instead of shadcn's
+	 * default light theme. Variable names match the utility classes the GENERATED sidebar
+	 * components actually read (bg-sidebar -> --color-sidebar, etc.), confirmed from generated
+	 * code, not shadcn public docs. Hand-tuned nav-link markup keeps its own --color-nav-* classes.
+	 */
+	--color-sidebar: var(--color-nav-bg); /* Sidebar container base bg */
+	--color-sidebar-foreground: var(--color-nav-fg); /* Sidebar default text */
+	--color-sidebar-accent: var(--color-nav-badge-fallback); /* menu-button/trigger hover bg */
+	--color-sidebar-accent-foreground: var(--color-nav-fg); /* hover text */
+	--color-sidebar-border: var(--color-nav-border); /* internal separators/borders */
+	--color-sidebar-ring: var(--color-focus-ring); /* focus-visible ring */
+
+	/*
 	 * Focus ring — Phase 1 (sitewide-ux-refresh). Shared focus-visible ring token, consumed
 	 * by the `.focus-ring` utility (defined in @layer components below). Applied to nav links
 	 * + sign-out in this phase; Phase 5 sweeps it to ui/button, form inputs, calendar cells.

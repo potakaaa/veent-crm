@@ -9,7 +9,7 @@ feature: reminders
 
 Date: 03-07-26
 Status: CODE DONE — EVL green 03-07-26; manual/agent-probe verification of AC1–AC5 pending
-Complexity: SIMPLE — 3 file edits, no schema, no new API route, no new DB column, no new query shape.
+Complexity: SIMPLE — 4 file edits (3 source + 1 test), no schema, no new API route, no new DB column, no new query shape.
 
 ## Overview
 

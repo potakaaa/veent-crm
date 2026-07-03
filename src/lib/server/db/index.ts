@@ -11,14 +11,19 @@
 // calendar-db.spec.ts) — they need a constructible client but never open a socket, so a
 // placeholder is safe here even though it would be unsafe in production.
 
-import { drizzle } from 'drizzle-orm/postgres-js';
+import { drizzle as drizzlePg } from 'drizzle-orm/postgres-js';
+import { drizzle as drizzleNeon } from 'drizzle-orm/neon-http';
+import { neon } from '@neondatabase/serverless';
 import postgres from 'postgres';
 import * as schema from './schema';
 import { env } from '$env/dynamic/private';
 
-type Database = ReturnType<typeof createDb>;
+// Canonical DB type is postgres-js — both drivers share the same Drizzle query API at
+// runtime, so we cast the Neon instance rather than exposing a union type (a union would
+// incorrectly intersect method signatures like .returning() and break callers).
+type Database = ReturnType<typeof drizzlePg<typeof schema>>;
 
-function createDb() {
+function createDb(): Database {
 	if (!env.DATABASE_URL && !process.env.VITEST) {
 		throw new Error('DATABASE_URL env var is not set');
 	}
@@ -28,13 +33,14 @@ function createDb() {
 		env.DATABASE_URL ?? 'postgres://placeholder:placeholder@localhost:5432/placeholder';
 	const connectionString = rawUrl.replace(/[&?]channel_binding=[^&]*/g, '');
 
-	// Neon pooler uses PgBouncer in transaction mode which doesn't support prepared
-	// statements. Detect by checking for the Neon hostname and disable accordingly.
-	// Local Docker Postgres keeps prepare: true for performance.
-	const isNeon = connectionString.includes('neon.tech');
-	const client = postgres(connectionString, { max: 10, prepare: !isNeon });
+	if (connectionString.includes('neon.tech')) {
+		// Neon (Vercel / serverless): HTTP driver avoids TCP handshake overhead.
+		// Each query is an HTTP fetch — no persistent connection needed, ~20-50ms vs ~200ms cold TCP.
+		return drizzleNeon(neon(connectionString), { schema }) as unknown as Database;
+	}
 
-	return drizzle(client, { schema });
+	// Local Docker / self-hosted Postgres: keep postgres-js TCP pool with prepared statements.
+	return drizzlePg(postgres(connectionString, { max: 10, prepare: true }), { schema });
 }
 
 let _db: Database | undefined;

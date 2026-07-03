@@ -16,7 +16,7 @@
 		<span class="truncate text-[12px] font-semibold" style="color:{accent}">{label}</span>
 	</div>
 	<div class="px-4 pb-4 pt-3">
-		<div class="tnum text-[32px] font-extrabold leading-none tracking-[-1.2px] text-ink">
+		<div class="tnum truncate text-[32px] font-extrabold leading-none tracking-[-1.2px] text-ink">
 			{value}
 		</div>
 	</div>

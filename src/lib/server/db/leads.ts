@@ -561,9 +561,11 @@ export async function listUnassignedLeads(
 	// leading '@' so "copied handle" queries match both storage formats.
 	const search = filters?.search?.trim();
 	if (search) {
-		const nameLike = `%${search}%`;
+		// Escape LIKE metacharacters (\, %, _) so literal input never acts as a wildcard.
+		const escapeLike = (s: string) => s.replace(/[\\%_]/g, '\\$&');
+		const nameLike = `%${escapeLike(search)}%`;
 		const handleSearch = search.startsWith('@') ? search.slice(1) : search;
-		const handleLike = `%${handleSearch}%`;
+		const handleLike = `%${escapeLike(handleSearch)}%`;
 		conditions.push(
 			or(
 				ilike(crmLeads.name, nameLike),

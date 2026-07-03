@@ -154,13 +154,4 @@
 			</div>
 		</div>
 	{/each}
-
-	<div class="mt-2 flex flex-wrap items-center gap-3.5 font-mono text-[11px] text-ink-200">
-		{#each [['j k', 'move'], ['↵', 'open'], ['e', 'log touch'], ['s', 'snooze']] as [key, label] (key)}
-			<span
-				><kbd class="rounded-[4px] bg-panel-sunken px-1.5 py-0.5 text-ink-600">{key}</kbd>
-				{label}</span
-			>
-		{/each}
-	</div>
 </div>

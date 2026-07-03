@@ -4,6 +4,7 @@
 	import Icon from '$lib/components/shared/Icon.svelte';
 	import { DetailSkeleton } from '$lib/components/shared/skeletons';
 	import { patchRecord } from '$lib/utils/optimistic';
+	import { Button } from '$lib/components/ui/button';
 	import Avatar from '$lib/components/shared/Avatar.svelte';
 	import PlatformBadge from '$lib/components/shared/PlatformBadge.svelte';
 	import StageChip from '$lib/components/shared/StageChip.svelte';
@@ -370,57 +371,98 @@
 		<!-- header -->
 		<div class="mb-4 overflow-hidden rounded-frame border border-hairline bg-panel shadow-frame">
 			<div class="h-[3px]" style="background:{stageColor(lead.stage)}"></div>
-			<div class="flex items-center gap-3.5 px-[18px] py-4">
-				<PlatformBadge platform={lead.platform} size="lg" />
-				<div class="min-w-0 flex-1">
-					<div class="flex flex-wrap items-center gap-2.5">
-						<h1 class="text-[23px] font-extrabold tracking-[-0.6px] text-ink">
-							{lead.name}
-						</h1>
-						<StageChip stage={lead.stage} />
-						<AgeBadge label={lead.age.label} type={lead.age.type} />
-						{#if lead.hasFutureEvents}
-							<FutureEventsBadge />
-						{/if}
-						<AppealScoreBadge
-							score={computeAppealScore(
-								lead.eventDate,
-								lead.firstAnnouncedDate,
-								lead.firstReachedOutDate,
-								today()
-							)}
-						/>
-					</div>
-					<div class="mt-[5px] font-mono text-[12px] text-ink-300">
-						{lead.category} · {lead.location}
+			<div class="flex flex-col gap-3 px-[18px] py-4 lg:flex-row lg:items-center lg:gap-3.5">
+				<!-- avatar + name + badges + subline (always visible, reflows at all widths) -->
+				<div class="flex min-w-0 items-start gap-3 lg:flex-1 lg:items-center">
+					<PlatformBadge platform={lead.platform} size="lg" />
+					<div class="min-w-0 flex-1">
+						<div class="flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
+							<h1
+								class="text-[20px] font-extrabold tracking-[-0.6px] break-words text-ink sm:text-[23px]"
+							>
+								{lead.name}
+							</h1>
+							<StageChip stage={lead.stage} />
+							<AgeBadge label={lead.age.label} type={lead.age.type} />
+							{#if lead.hasFutureEvents}
+								<FutureEventsBadge />
+							{/if}
+							<AppealScoreBadge
+								score={computeAppealScore(
+									lead.eventDate,
+									lead.firstAnnouncedDate,
+									lead.firstReachedOutDate,
+									today()
+								)}
+							/>
+						</div>
+						<div class="mt-[5px] font-mono text-[12px] text-ink-300">
+							{lead.category} · {lead.location}
+						</div>
 					</div>
 				</div>
-				<div class="text-right">
+
+				<!-- mobile-only: divider + owner/next-action row (own line, never shares the name row) -->
+				<div
+					class="flex flex-wrap items-center justify-between gap-2 border-t border-hairline pt-3 lg:hidden"
+				>
+					<div class="flex items-center gap-2 text-[12.5px] text-ink-500">
+						owner <Avatar name={ownerName} />
+					</div>
+					<div class="text-right">
+						<div class="font-mono text-[9.5px] uppercase tracking-[0.6px] text-ink-200">
+							next action
+						</div>
+						<div class="mt-0.5 text-[13.5px] font-bold" style="color:{risk.color}">
+							{risk.label}
+						</div>
+					</div>
+				</div>
+
+				<!-- desktop-only: next-action risk block, own column -->
+				<div class="hidden text-right lg:block lg:shrink-0">
 					<div class="font-mono text-[9.5px] uppercase tracking-[0.6px] text-ink-200">
 						next action
 					</div>
 					<div class="mt-0.5 text-[13.5px] font-bold" style="color:{risk.color}">{risk.label}</div>
 				</div>
-				<div class="flex items-center gap-3 border-l border-hairline pl-3.5">
+
+				<!-- desktop-only: actions + owner, own column -->
+				<div class="hidden items-center gap-3 border-l border-hairline pl-3.5 lg:flex lg:shrink-0">
 					{#if canEdit}
-						<a
-							href="/leads/{lead.id}/edit"
-							class="rounded-control border border-hairline bg-panel px-3 py-1.5 text-[12.5px] font-medium text-ink hover:bg-panel-sunken"
-						>
-							Edit
-						</a>
-						<button
+						<Button href="/leads/{lead.id}/edit" variant="outline" size="sm">Edit</Button>
+						<Button
+							variant="outline"
+							size="sm"
 							disabled={mutating}
 							onclick={() => (discardOpen = true)}
-							class="rounded-control border border-hairline bg-panel px-3 py-1.5 text-[12.5px] font-medium text-red-500 hover:border-red-300 hover:bg-red-50 disabled:opacity-50"
+							class="text-red-500 hover:border-red-300 hover:bg-red-50"
 						>
 							Discard
-						</button>
+						</Button>
 					{/if}
 					<div class="flex items-center gap-2 text-[12.5px] text-ink-500">
 						owner <Avatar name={ownerName} />
 					</div>
 				</div>
+
+				<!-- mobile-only: edit/discard actions, own row -->
+				{#if canEdit}
+					<div class="flex items-center gap-2 lg:hidden">
+						<Button href="/leads/{lead.id}/edit" variant="outline" size="sm" class="flex-1">
+							Edit
+						</Button>
+						<Button
+							variant="outline"
+							size="sm"
+							disabled={mutating}
+							onclick={() => (discardOpen = true)}
+							class="flex-1 text-red-500 hover:border-red-300 hover:bg-red-50"
+						>
+							Discard
+						</Button>
+					</div>
+				{/if}
 			</div>
 		</div>
 
@@ -716,13 +758,14 @@
 					</div>
 
 					<div class="mt-5 flex justify-end">
-						<button
+						<Button
 							onclick={saveOnboarding}
-							disabled={savingOnboarding}
-							class="h-[34px] rounded-control bg-primary px-4 font-mono text-[12.5px] font-semibold text-white transition-opacity hover:bg-primary-strong disabled:cursor-not-allowed disabled:opacity-50"
+							loading={savingOnboarding}
+							loadingText="Saving…"
+							class="h-[34px] px-4 font-mono text-[12.5px] font-semibold"
 						>
-							{savingOnboarding ? 'Saving…' : 'Save'}
-						</button>
+							Save
+						</Button>
 					</div>
 				</div>
 			</div>
@@ -738,7 +781,7 @@
 					<div class="mb-3 font-mono text-[11px] uppercase tracking-[0.5px] text-ink-300">
 						Lead &amp; event
 					</div>
-					<div class="grid grid-cols-2 gap-x-6 gap-y-3">
+					<div class="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2">
 						{#each fields as f (f.label)}
 							<div>
 								<div class="mb-0.5 text-[11px] text-ink-300">{f.label}</div>
@@ -791,23 +834,24 @@
 
 				<div class="flex flex-col gap-2.5 rounded-control border border-hairline bg-panel p-4">
 					{#if lead.stage !== 'won'}
-						<button
+						<Button
 							disabled={!canEdit || mutating}
 							onclick={() => (wonOpen = true)}
-							class="flex h-[38px] items-center justify-center gap-1.5 rounded-control bg-fresh text-[13px] font-semibold text-white disabled:opacity-50"
+							variant="success"
+							class="h-[38px] w-full gap-1.5 text-[13px]"
 						>
 							<Icon name="check" size={15} stroke={2.2} />
 							Mark won
-						</button>
+						</Button>
 					{/if}
-					<button
+					<Button
 						disabled={!canEdit || mutating}
 						onclick={() => (lostOpen = true)}
-						class="h-9 rounded-control border border-hairline bg-panel text-[13px] font-medium disabled:opacity-50"
-						style="color:#71717a"
+						variant="outline"
+						class="h-9 w-full text-[13px] font-medium text-ink-500"
 					>
 						Mark lost
-					</button>
+					</Button>
 				</div>
 
 				<div class="rounded-control border border-hairline bg-panel p-4">
@@ -818,13 +862,15 @@
 						<Avatar name={ownerName} size="lg" />
 						<span class="text-[13px] font-semibold">{ownerName ?? 'Unassigned'}</span>
 					</div>
-					<button
+					<Button
 						disabled={!canReassign(data.me) || mutating}
 						onclick={() => (reassignOpen = true)}
-						class="h-[34px] w-full rounded-control border border-hairline bg-panel text-[12.5px] font-medium text-ink-600 disabled:opacity-50"
+						variant="outline"
+						size="sm"
+						class="h-[34px] w-full text-[12.5px] font-medium text-ink-600"
 					>
 						Reassign
-					</button>
+					</Button>
 				</div>
 
 				<div class="rounded-control border border-hairline bg-panel p-4">

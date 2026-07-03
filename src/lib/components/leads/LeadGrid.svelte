@@ -108,7 +108,7 @@
 						</div>
 					</div>
 				</div>
-				<div class="min-w-0 lg:contents">
+				<div class="min-w-0">
 					<div class="flex items-center gap-1.5">
 						<span class="truncate text-[12.5px] text-ink-600">{l.eventName ?? '—'}</span>
 						<EventBadge date={l.eventDate} />

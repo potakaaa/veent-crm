@@ -199,12 +199,12 @@
 
 	{#if navLoading}
 		<!-- A2: skeleton mirrors the real board's actual layout — a horizontal row of
-		     fixed-width (w-[286px]) scrolling columns — rather than a responsive grid that
-		     misleadingly implied the board reflows at breakpoints. -->
+		     dynamic-width (min-w-[260px] flex-1) columns that stretch to fill the row when
+		     few fit and fall back to horizontal scrolling once too many are present. -->
 		<div class="flex min-h-0 flex-1 gap-3.5 overflow-x-auto pb-2" data-testid="pipeline-skeleton">
 			{#each Array(5) as _, i (i)}
 				<div
-					class="flex w-[286px] shrink-0 flex-col gap-2 rounded-frame border border-hairline bg-panel-subtle p-2"
+					class="flex min-w-[260px] flex-1 flex-col gap-2 rounded-frame border border-hairline bg-panel-subtle p-2"
 				>
 					<CardSkeleton />
 					<CardSkeleton />

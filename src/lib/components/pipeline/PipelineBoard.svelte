@@ -53,6 +53,29 @@
 
 	let dragId = $state<string | null>(null);
 
+	// A1: only show the right-edge scroll fade when the board actually overflows
+	// horizontally, so it never renders over blank trailing canvas on wide screens.
+	let scrollEl = $state<HTMLElement | null>(null);
+	let canScroll = $state(false);
+
+	function checkScroll() {
+		if (scrollEl) canScroll = scrollEl.scrollWidth > scrollEl.clientWidth + 1;
+	}
+
+	// Re-check when the board data changes (columns/cards added or removed).
+	$effect(() => {
+		void columns;
+		checkScroll();
+	});
+
+	// Re-check on viewport/layout resize.
+	$effect(() => {
+		if (!scrollEl) return;
+		const ro = new ResizeObserver(() => checkScroll());
+		ro.observe(scrollEl);
+		return () => ro.disconnect();
+	});
+
 	function drop(stage: Stage) {
 		if (dragId && onMove) onMove(dragId, stage);
 		dragId = null;
@@ -72,14 +95,19 @@
 
 <!-- Scroll region wrapper — a right-edge fade cues that the board scrolls horizontally (A1). -->
 <div class="relative min-h-0 flex-1">
-	<div class="flex h-full gap-3.5 overflow-x-auto pb-2" role="list" aria-label="Pipeline stages">
+	<div
+		bind:this={scrollEl}
+		class="flex h-full gap-3.5 overflow-x-auto pb-2"
+		role="list"
+		aria-label="Pipeline stages"
+	>
 		{#each columns as col (col.stage)}
 			{@const total = totalsPerStage[col.stage] ?? col.cards.length}
 			{@const loading = loadingPerStage[col.stage] ?? false}
 			{@const hasMore = col.cards.length < total}
 			<!-- svelte-ignore a11y_no_static_element_interactions -->
 			<div
-				class="flex w-[286px] shrink-0 flex-col"
+				class="flex min-w-[260px] flex-1 flex-col"
 				role="listitem"
 				aria-label="{stageLabel(col.stage)} stage — drop target"
 				ondragover={(e) => e.preventDefault()}
@@ -125,7 +153,6 @@
 							draggable="true"
 							ondragstart={() => (dragId = c.id)}
 							class="cursor-grab rounded-[10px] border border-hairline bg-panel shadow-frame hover:shadow-raised"
-							style="border-left:3px solid {col.color}"
 						>
 							<a
 								href="/leads/{c.id}"
@@ -205,8 +232,10 @@
 			</div>
 		{/each}
 	</div>
-	<div
-		class="pointer-events-none absolute inset-y-0 right-0 w-10 bg-gradient-to-l from-canvas to-transparent"
-		aria-hidden="true"
-	></div>
+	{#if canScroll}
+		<div
+			class="pointer-events-none absolute inset-y-0 right-0 w-10 bg-gradient-to-l from-canvas to-transparent"
+			aria-hidden="true"
+		></div>
+	{/if}
 </div>

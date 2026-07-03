@@ -1471,11 +1471,36 @@ export async function getNavCounts(
 export async function getRemindersQueue(
 	userId: string,
 	role: Role = 'rep'
-): Promise<{ overdue: Lead[]; cold: Lead[] }> {
+): Promise<{ overdue: Lead[]; due: Lead[]; upcoming: Lead[]; cold: Lead[] }> {
 	const queue = await getTodayQueue(userId, role);
 
 	const overdue = queue
 		.filter((l) => l.urgency === 'overdue')
+		.sort(
+			(a, b) =>
+				new Date(a.followUpAt!).getTime() - new Date(b.followUpAt!).getTime() ||
+				a.id.localeCompare(b.id)
+		);
+
+	const due = queue
+		.filter((l) => l.urgency === 'due')
+		.sort(
+			(a, b) =>
+				new Date(a.followUpAt!).getTime() - new Date(b.followUpAt!).getTime() ||
+				a.id.localeCompare(b.id)
+		);
+
+	// Upcoming — future follow-up within the next 7 days. The `urgency !== 'due'`
+	// guard is unconditional so a lead never appears in both `due` and `upcoming`.
+	const now = new Date();
+	const sevenDaysOut = new Date(now.getTime() + 7 * 86_400_000);
+	const upcoming = queue
+		.filter((l) => {
+			if (!l.followUpAt) return false;
+			if (l.urgency === 'due') return false;
+			const t = new Date(l.followUpAt).getTime();
+			return t > now.getTime() && t <= sevenDaysOut.getTime();
+		})
 		.sort(
 			(a, b) =>
 				new Date(a.followUpAt!).getTime() - new Date(b.followUpAt!).getTime() ||
@@ -1490,7 +1515,7 @@ export async function getRemindersQueue(
 				a.id.localeCompare(b.id)
 		);
 
-	return { overdue, cold };
+	return { overdue, due, upcoming, cold };
 }
 
 // ---------------------------------------------------------------------------

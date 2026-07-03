@@ -130,6 +130,42 @@ describe.skipIf(SKIP_DB)('getRemindersQueue — cold bucket (DB)', () => {
 	});
 });
 
+describe.skipIf(SKIP_DB)('getRemindersQueue — due bucket (DB)', () => {
+	it('lead with a follow-up dated today appears in due and not upcoming', async () => {
+		const lead = await makeTestLead('Due Today Org');
+		// Book a follow-up for later today (Manila) so urgency resolves to 'due'.
+		const todayEndish = new Date();
+		todayEndish.setHours(23, 59, 0, 0);
+		await bookFollowUp(lead.id, MANAGER_UUID, todayEndish);
+
+		const { due, upcoming } = await getRemindersQueue(MANAGER_UUID);
+		const inDue = due.find((l) => l.id === lead.id);
+		expect(inDue).toBeDefined();
+		expect(inDue!.urgency).toBe('due');
+		expect(upcoming.find((l) => l.id === lead.id)).toBeUndefined();
+	});
+});
+
+describe.skipIf(SKIP_DB)('getRemindersQueue — upcoming bucket (DB)', () => {
+	it('lead with a follow-up +3 days appears in upcoming', async () => {
+		const lead = await makeTestLead('Upcoming Org');
+		await bookFollowUp(lead.id, MANAGER_UUID, new Date(Date.now() + 3 * 86_400_000));
+
+		const { upcoming } = await getRemindersQueue(MANAGER_UUID);
+		const found = upcoming.find((l) => l.id === lead.id);
+		expect(found).toBeDefined();
+	});
+
+	it('lead with a follow-up +10 days appears in neither due nor upcoming', async () => {
+		const lead = await makeTestLead('Far Future Org');
+		await bookFollowUp(lead.id, MANAGER_UUID, new Date(Date.now() + 10 * 86_400_000));
+
+		const { due, upcoming } = await getRemindersQueue(MANAGER_UUID);
+		expect(due.find((l) => l.id === lead.id)).toBeUndefined();
+		expect(upcoming.find((l) => l.id === lead.id)).toBeUndefined();
+	});
+});
+
 describe.skipIf(SKIP_DB)('getRemindersQueue — exclusions (DB)', () => {
 	it('soft-deleted lead is excluded from both buckets', async () => {
 		const lead = await makeTestLead('Deleted Org');

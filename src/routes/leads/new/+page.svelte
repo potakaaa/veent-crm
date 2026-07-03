@@ -136,10 +136,7 @@
 	>
 		<Icon name="back" size={14} stroke={2} /> Back to leads
 	</a>
-	<PageHeader
-		title="New lead"
-		subtitle="Search the command bar first — dedup is advisory, but two reps shouldn't DM the same page."
-	/>
+	<PageHeader title="New lead" />
 
 	{#if dupes.length}
 		<div class="mb-4 rounded-control border border-stale/30 bg-[rgba(194,113,12,0.08)] p-3">

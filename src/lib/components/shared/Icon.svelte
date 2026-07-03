@@ -24,10 +24,13 @@
 			'M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V6a2 2 0 012-2zM8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01',
 		snowflake: 'M12 2v20M4.5 7L19.5 17M19.5 7L4.5 17',
 		reply: 'M9 17l-5-5 5-5M4 12h11a4 4 0 014 4v2',
+		message: 'M4 5h16v10H9l-4 4V5z',
+		bell: 'M12 3a5 5 0 00-5 5v3.5c0 1-.4 2-1.2 2.8L4 16h16l-1.8-1.7c-.8-.8-1.2-1.8-1.2-2.8V8a5 5 0 00-5-5zM9.5 19a2.5 2.5 0 005 0',
 		copy: 'M9 9V5a2 2 0 012-2h8a2 2 0 012 2v8a2 2 0 01-2 2h-4M5 9h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2v-8a2 2 0 012-2z',
 		arrowUp: 'M12 19V5M5 12l7-7 7 7',
 		arrowDown: 'M12 5v14M5 12l7 7 7-7',
-		crown: 'M3 19h18M5 19V9l7-5 7 5v10'
+		crown: 'M3 19h18M5 19V9l7-5 7 5v10',
+		trash: 'M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6'
 	} as const;
 	export type IconName = keyof typeof ICONS;
 </script>

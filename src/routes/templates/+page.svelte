@@ -23,6 +23,17 @@
 
 	// View toggle persists client-side only.
 	let viewMode = $state<'card' | 'list'>('card');
+	let isMobile = $state(false);
+	$effect(() => {
+		const mq = window.matchMedia('(max-width: 639px)');
+		isMobile = mq.matches;
+		const handler = (e: MediaQueryListEvent) => {
+			isMobile = e.matches;
+		};
+		mq.addEventListener('change', handler);
+		return () => mq.removeEventListener('change', handler);
+	});
+	const effectiveViewMode = $derived(isMobile ? 'card' : viewMode);
 
 	// Search input has a local mirror for instant typing feedback + debounce.
 	// $derived allows re-sync on back/forward navigation; assignment still works for live typing.
@@ -198,7 +209,9 @@
 
 	<!-- toolbar: view toggle + search + category filter + sort -->
 	<div class="mb-4 flex flex-wrap items-center gap-2.5">
-		<div class="inline-flex gap-1 rounded-control border border-border bg-panel-subtle p-1">
+		<div
+			class="hidden sm:inline-flex gap-1 rounded-control border border-border bg-panel-subtle p-1"
+		>
 			<button
 				type="button"
 				class="rounded-[6px] px-3 py-1 text-[12.5px] font-medium transition-colors {viewMode ===
@@ -284,7 +297,7 @@
 					? 'No templates yet. Add your first one above.'
 					: 'No templates yet.'}
 		</Card>
-	{:else if viewMode === 'card'}
+	{:else if effectiveViewMode === 'card'}
 		{#if isChronologicalSort}
 			<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
 				{#each data.templates as t (t.id)}
@@ -302,9 +315,27 @@
 						<div class="text-[13px] font-semibold text-ink-600">{t.title}</div>
 						<p class="line-clamp-3 text-[12.5px] text-ink-500">{t.body}</p>
 						{#if canManage}
-							<div class="mt-auto flex gap-1.5 pt-1">
-								<Button variant="outline" size="sm" onclick={() => openEdit(t)}>Edit</Button>
-								<Button variant="outline" size="sm" onclick={() => remove(t)}>Delete</Button>
+							<div class="mt-auto flex gap-0.5 pt-1">
+								<Button
+									variant="ghost"
+									size="icon"
+									class="size-8 text-ink-400 hover:text-ink-600"
+									title="Edit"
+									aria-label="Edit template"
+									onclick={() => openEdit(t)}
+								>
+									<Icon name="edit" size={15} />
+								</Button>
+								<Button
+									variant="ghost"
+									size="icon"
+									class="size-8 text-ink-400 hover:text-red-500"
+									title="Delete"
+									aria-label="Delete template"
+									onclick={() => remove(t)}
+								>
+									<Icon name="trash" size={15} />
+								</Button>
 							</div>
 						{/if}
 					</Card>
@@ -332,9 +363,27 @@
 									<div class="text-[13px] font-semibold text-ink-600">{t.title}</div>
 									<p class="line-clamp-3 text-[12.5px] text-ink-500">{t.body}</p>
 									{#if canManage}
-										<div class="mt-auto flex gap-1.5 pt-1">
-											<Button variant="outline" size="sm" onclick={() => openEdit(t)}>Edit</Button>
-											<Button variant="outline" size="sm" onclick={() => remove(t)}>Delete</Button>
+										<div class="mt-auto flex gap-0.5 pt-1">
+											<Button
+												variant="ghost"
+												size="icon"
+												class="size-8 text-ink-400 hover:text-ink-600"
+												title="Edit"
+												aria-label="Edit template"
+												onclick={() => openEdit(t)}
+											>
+												<Icon name="edit" size={15} />
+											</Button>
+											<Button
+												variant="ghost"
+												size="icon"
+												class="size-8 text-ink-400 hover:text-red-500"
+												title="Delete"
+												aria-label="Delete template"
+												onclick={() => remove(t)}
+											>
+												<Icon name="trash" size={15} />
+											</Button>
 										</div>
 									{/if}
 								</Card>
@@ -348,17 +397,44 @@
 		<Card class="gap-0 overflow-hidden rounded-control py-0">
 			{#each data.templates as t (t.id)}
 				<div
-					class="flex items-start justify-between gap-4 border-b border-border px-4 py-3 last:border-b-0"
+					class="flex flex-col gap-2 border-b border-border px-4 py-3 last:border-b-0 sm:flex-row sm:items-start sm:justify-between sm:gap-4"
 				>
 					<div class="min-w-0">
 						<div class="text-[13px] font-semibold text-ink-600">{t.title}</div>
 						<p class="mt-1 whitespace-pre-wrap text-[12.5px] text-ink-500">{t.body}</p>
 					</div>
 					{#if canManage}
-						<div class="flex shrink-0 gap-1.5">
-							<Button variant="outline" size="sm" onclick={() => openEdit(t)}>Edit</Button>
-							<Button variant="outline" size="sm" onclick={() => copy(t)}>Copy</Button>
-							<Button variant="outline" size="sm" onclick={() => remove(t)}>Delete</Button>
+						<div class="flex shrink-0 gap-0.5">
+							<Button
+								variant="ghost"
+								size="icon"
+								class="size-8 text-ink-400 hover:text-ink-600"
+								title="Edit"
+								aria-label="Edit template"
+								onclick={() => openEdit(t)}
+							>
+								<Icon name="edit" size={15} />
+							</Button>
+							<Button
+								variant="ghost"
+								size="icon"
+								class="size-8 text-ink-400 hover:text-ink-600"
+								title="Copy"
+								aria-label="Copy template"
+								onclick={() => copy(t)}
+							>
+								<Icon name="copy" size={15} />
+							</Button>
+							<Button
+								variant="ghost"
+								size="icon"
+								class="size-8 text-ink-400 hover:text-red-500"
+								title="Delete"
+								aria-label="Delete template"
+								onclick={() => remove(t)}
+							>
+								<Icon name="trash" size={15} />
+							</Button>
 						</div>
 					{/if}
 				</div>
@@ -373,17 +449,44 @@
 					<Card class="gap-0 overflow-hidden rounded-control py-0">
 						{#each items as t (t.id)}
 							<div
-								class="flex items-start justify-between gap-4 border-b border-border px-4 py-3 last:border-b-0"
+								class="flex flex-col gap-2 border-b border-border px-4 py-3 last:border-b-0 sm:flex-row sm:items-start sm:justify-between sm:gap-4"
 							>
 								<div class="min-w-0">
 									<div class="text-[13px] font-semibold text-ink-600">{t.title}</div>
 									<p class="mt-1 whitespace-pre-wrap text-[12.5px] text-ink-500">{t.body}</p>
 								</div>
 								{#if canManage}
-									<div class="flex shrink-0 gap-1.5">
-										<Button variant="outline" size="sm" onclick={() => openEdit(t)}>Edit</Button>
-										<Button variant="outline" size="sm" onclick={() => copy(t)}>Copy</Button>
-										<Button variant="outline" size="sm" onclick={() => remove(t)}>Delete</Button>
+									<div class="flex shrink-0 gap-0.5">
+										<Button
+											variant="ghost"
+											size="icon"
+											class="size-8 text-ink-400 hover:text-ink-600"
+											title="Edit"
+											aria-label="Edit template"
+											onclick={() => openEdit(t)}
+										>
+											<Icon name="edit" size={15} />
+										</Button>
+										<Button
+											variant="ghost"
+											size="icon"
+											class="size-8 text-ink-400 hover:text-ink-600"
+											title="Copy"
+											aria-label="Copy template"
+											onclick={() => copy(t)}
+										>
+											<Icon name="copy" size={15} />
+										</Button>
+										<Button
+											variant="ghost"
+											size="icon"
+											class="size-8 text-ink-400 hover:text-red-500"
+											title="Delete"
+											aria-label="Delete template"
+											onclick={() => remove(t)}
+										>
+											<Icon name="trash" size={15} />
+										</Button>
 									</div>
 								{/if}
 							</div>

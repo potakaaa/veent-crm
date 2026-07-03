@@ -6,9 +6,10 @@
 	import LeadGrid from '$lib/components/leads/LeadGrid.svelte';
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
-	import { Separator } from '$lib/components/ui/separator';
 	import { Select, SelectTrigger, SelectContent, SelectItem } from '$lib/components/ui/select';
 	import { Tabs } from '$lib/components/ui/tabs';
+	import { Badge } from '$lib/components/ui/badge';
+	import * as Popover from '$lib/components/ui/popover';
 	import { LEAD_STAGES, LEAD_PLATFORMS } from '$lib/zod/schemas';
 	import { stageLabel } from '$lib/utils/stages';
 	import type { LeadSegment, Stage } from '$lib/types';
@@ -119,12 +120,37 @@
 		const qs = p.toString();
 		return `/api/leads/export${qs ? '?' + qs : ''}`;
 	});
+
+	// Presentational-only derived state for the "Filters" popover badge + Clear-all
+	// affordance. Reads the same loaded filters; emits no new URL params.
+	const weeksActive = $derived(data.filters.weeksAhead !== 8);
+	const secondaryCount = $derived(
+		(data.filters.staleOnly ? 1 : 0) +
+			(data.filters.hasFutureEvents ? 1 : 0) +
+			(weeksActive ? 1 : 0)
+	);
+	// Href for the popover's own "Clear all" — resets only the 3 controls housed in this
+	// popover (stale/future/weeks), preserving stage/platform/country/search/segment.
+	const secondaryClearHref = $derived.by(() => {
+		const params = new SvelteURLSearchParams(page.url.searchParams);
+		params.delete('staleOnly');
+		params.delete('hasFutureEvents');
+		params.delete('weeksAhead');
+		params.delete('page');
+		const qs = params.toString();
+		return `/leads${qs ? '?' + qs : ''}`;
+	});
+	// Shared active/inactive chrome for the token-unified filter toggles/pills.
+	const chipActive = 'bg-selected border-primary text-primary-strong';
+	const chipActiveStale = 'bg-stale/12 border-stale text-ink-700';
+	const chipActiveFresh = 'bg-fresh/12 border-fresh text-ink-700';
+	const chipInactive = 'border-hairline bg-panel text-ink-500 hover:bg-panel-sunken';
 </script>
 
 <svelte:head><title>My Leads · Veent CRM</title></svelte:head>
 
 <div class="px-7 pb-16 pt-6">
-	<PageHeader title="My Leads" subtitle="Search the command bar before adding a page.">
+	<PageHeader title="My Leads">
 		{#snippet actions()}
 			<span class="font-mono text-[12px] text-ink-300">{data.total} matching</span>
 			<Button variant="outline" size="sm" href={exportHref}>Export CSV</Button>
@@ -132,7 +158,7 @@
 	</PageHeader>
 
 	<!-- toolbar -->
-	<div class="mb-1.5 flex flex-wrap items-center gap-2.5">
+	<div class="mb-3.5 flex flex-wrap items-center gap-2.5">
 		<Tabs
 			variant="segment"
 			ariaLabel="Filter leads by segment"
@@ -140,16 +166,15 @@
 			value={activeSegment}
 			onValueChange={(v) => setSegment(v as LeadSegment)}
 		/>
-		<Separator orientation="vertical" class="h-[22px]" />
-	</div>
 
-	<div class="mb-3.5 flex flex-wrap items-center gap-2.5">
 		<Select
 			type="single"
 			value={data.filters.stage}
 			onValueChange={(v: string) => setFilter('stage', v)}
 		>
-			<SelectTrigger size="sm"
+			<SelectTrigger
+				size="sm"
+				class={data.filters.stage ? 'border-primary text-primary-strong bg-selected' : ''}
 				>{data.filters.stage ? stageLabel(data.filters.stage as Stage) : 'Stage'}</SelectTrigger
 			>
 			<SelectContent>
@@ -165,7 +190,11 @@
 			value={data.filters.platform}
 			onValueChange={(v: string) => setFilter('platform', v)}
 		>
-			<SelectTrigger size="sm">{data.filters.platform || 'Platform'}</SelectTrigger>
+			<SelectTrigger
+				size="sm"
+				class={data.filters.platform ? 'border-primary text-primary-strong bg-selected' : ''}
+				>{data.filters.platform || 'Platform'}</SelectTrigger
+			>
 			<SelectContent>
 				<SelectItem value="" label="All platforms">All platforms</SelectItem>
 				{#each LEAD_PLATFORMS as p (p)}<SelectItem value={p} label={p}>{p}</SelectItem>{/each}
@@ -178,7 +207,11 @@
 				value={data.filters.country}
 				onValueChange={(v: string) => setFilter('country', v)}
 			>
-				<SelectTrigger size="sm">{data.filters.country || 'Country'}</SelectTrigger>
+				<SelectTrigger
+					size="sm"
+					class={data.filters.country ? 'border-primary text-primary-strong bg-selected' : ''}
+					>{data.filters.country || 'Country'}</SelectTrigger
+				>
 				<SelectContent>
 					<SelectItem value="" label="All countries">All countries</SelectItem>
 					{#each data.countries as c (c)}<SelectItem value={c} label={c}>{c}</SelectItem>{/each}
@@ -186,57 +219,92 @@
 			</Select>
 		{/if}
 
-		<Separator orientation="vertical" class="h-[22px]" />
-
-		<Button
-			variant="outline"
-			size="sm"
-			onclick={() => setFilter('staleOnly', data.filters.staleOnly ? undefined : true)}
-			class={data.filters.staleOnly ? 'border-stale bg-[rgba(194,113,12,0.08)] text-[#92560b]' : ''}
-		>
-			<span class="h-[7px] w-[7px] rounded-full bg-stale"></span> Stale only (&gt;30d)
-		</Button>
-
-		<Button
-			variant="outline"
-			size="sm"
-			onclick={() => setFilter('hasFutureEvents', data.filters.hasFutureEvents ? undefined : '1')}
-			class={data.filters.hasFutureEvents ? 'border-violet-400 bg-violet-100 text-violet-700' : ''}
-		>
-			<span class="h-[7px] w-[7px] rounded-full bg-violet-500"></span> Future events
-		</Button>
-
-		<Separator orientation="vertical" class="h-[22px]" />
-		<div class="flex items-center gap-1.5">
-			<span class="text-[12px] text-ink-400">Beyond</span>
-			{#each WEEKS_PRESETS as w (w)}
-				<button
-					onclick={() => setWeeks(w)}
-					aria-pressed={data.filters.weeksAhead !== null && (data.filters.weeksAhead ?? 8) === w}
-					class="h-7 rounded-[5px] border px-2 font-mono text-[11.5px] transition-colors {data
-						.filters.weeksAhead !== null && (data.filters.weeksAhead ?? 8) === w
-						? 'border-indigo-400 bg-indigo-50 font-semibold text-indigo-700'
-						: 'border-hairline bg-panel text-ink-500 hover:bg-panel-sunken'}">{w}w</button
-				>
-			{/each}
-			<input
-				type="number"
-				min="1"
-				value={weeksInput}
-				oninput={onWeeksInput}
-				placeholder="—"
-				aria-label="Minimum weeks until event"
-				class="h-7 w-12 rounded-[5px] border border-hairline bg-panel px-2 font-mono text-[11.5px] text-ink focus:outline-none focus:ring-1 focus:ring-primary"
-			/>
-			<button
-				onclick={() => setWeeks('all')}
-				aria-pressed={data.filters.weeksAhead === null}
-				class="h-7 rounded-[5px] border px-2 font-mono text-[11.5px] transition-colors {data.filters
-					.weeksAhead === null
-					? 'border-ink-300 bg-panel-sunken font-semibold text-ink'
-					: 'border-hairline bg-panel text-ink-400 hover:bg-panel-sunken'}">All</button
+		<!-- Secondary "Filters" popover: Stale-only, Future events, and weeks-timing group -->
+		<Popover.Root>
+			<Popover.Trigger
+				class="inline-flex h-8 items-center gap-1.5 rounded-md border px-3 text-sm font-medium transition-colors {secondaryCount >
+				0
+					? chipActive
+					: chipInactive}"
 			>
-		</div>
+				Filters
+				{#if secondaryCount > 0}
+					<Badge variant="default" class="h-4 min-w-4 px-1 text-[10px]">{secondaryCount}</Badge>
+				{/if}
+			</Popover.Trigger>
+			<Popover.Content align="start" class="w-72">
+				<div class="flex items-center justify-between pb-0.5">
+					<span class="font-mono text-[10.5px] uppercase tracking-[0.4px] text-ink-300"
+						>Filters</span
+					>
+					{#if secondaryCount > 0}
+						<a
+							href={secondaryClearHref}
+							class="font-mono text-[11.5px] text-primary hover:underline">Clear all</a
+						>
+					{/if}
+				</div>
+
+				<button
+					onclick={() => setFilter('staleOnly', data.filters.staleOnly ? undefined : '1')}
+					aria-pressed={data.filters.staleOnly}
+					class="flex h-8 w-full items-center gap-2 rounded-md border px-2.5 text-[12.5px] transition-colors {data
+						.filters.staleOnly
+						? chipActiveStale
+						: chipInactive}"
+				>
+					<span class="h-[7px] w-[7px] rounded-full bg-stale"></span> Stale only (&gt;30d)
+				</button>
+
+				<button
+					onclick={() =>
+						setFilter('hasFutureEvents', data.filters.hasFutureEvents ? undefined : '1')}
+					aria-pressed={data.filters.hasFutureEvents}
+					class="flex h-8 w-full items-center gap-2 rounded-md border px-2.5 text-[12.5px] transition-colors {data
+						.filters.hasFutureEvents
+						? chipActiveFresh
+						: chipInactive}"
+				>
+					<span class="h-[7px] w-[7px] rounded-full bg-fresh"></span> Future events
+				</button>
+
+				<div class="flex flex-col gap-1.5">
+					<span class="font-mono text-[10.5px] uppercase tracking-[0.4px] text-ink-300"
+						>Event timing</span
+					>
+					<div class="flex flex-wrap items-center gap-1.5">
+						<button
+							onclick={() => setWeeks('all')}
+							aria-pressed={data.filters.weeksAhead === null}
+							class="h-8 rounded-md border px-2.5 font-mono text-[11.5px] transition-colors {data
+								.filters.weeksAhead === null
+								? chipActive
+								: chipInactive}">All future</button
+						>
+						{#each WEEKS_PRESETS as w (w)}
+							<button
+								onclick={() => setWeeks(w)}
+								aria-pressed={data.filters.weeksAhead !== null &&
+									(data.filters.weeksAhead ?? 8) === w}
+								class="h-8 rounded-md border px-2.5 font-mono text-[11.5px] transition-colors {data
+									.filters.weeksAhead !== null && (data.filters.weeksAhead ?? 8) === w
+									? chipActive
+									: chipInactive}">{w}w+</button
+							>
+						{/each}
+						<input
+							type="number"
+							min="1"
+							value={weeksInput}
+							oninput={onWeeksInput}
+							placeholder="—"
+							aria-label="Minimum weeks until event"
+							class="h-8 w-14 rounded-md border border-hairline bg-panel px-2 font-mono text-[11.5px] text-ink focus:outline-none focus:ring-1 focus:ring-primary"
+						/>
+					</div>
+				</div>
+			</Popover.Content>
+		</Popover.Root>
 
 		<Input
 			value={searchInput}

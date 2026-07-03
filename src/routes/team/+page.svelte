@@ -116,6 +116,7 @@
 	// Deactivate/reactivate via the real endpoint. Lead reassignment on deactivate
 	// now happens server-side inside deactivateUser — no client-side lead move.
 	async function toggleActive(u: User) {
+		deactivating[u.id] = true;
 		try {
 			const res = await fetch(`/api/users/${u.id}`, {
 				method: 'PATCH',
@@ -141,12 +142,15 @@
 			toasts.push(err instanceof Error ? err.message : `Unable to update ${u.name}`, {
 				tone: 'warn'
 			});
+		} finally {
+			deactivating[u.id] = false;
 		}
 	}
 
 	// --- Promote/demote rep ↔ manager (with confirmation) --------------------
 	let confirmRoleChange = $state<{ user: User; newRole: 'rep' | 'manager' } | null>(null);
 	let roleChanging = $state(false);
+	let deactivating = $state<Record<string, boolean>>({});
 
 	async function applyRoleChange() {
 		const pending = confirmRoleChange;
@@ -356,8 +360,17 @@
 										<!-- Deactivate/reactivate: reps always (for a manager); managers &
 										     super_managers only by a super_manager, never on themselves. -->
 										{#if u.role === 'rep' || (isSuper && !isSelf)}
-											<Button variant="outline" size="sm" onclick={() => toggleActive(u)}>
-												{u.active ? 'Deactivate' : 'Reactivate'}
+											<Button
+												variant="outline"
+												size="sm"
+												disabled={deactivating[u.id]}
+												onclick={() => toggleActive(u)}
+											>
+												{#if deactivating[u.id]}
+													{u.active ? 'Deactivating…' : 'Reactivating…'}
+												{:else}
+													{u.active ? 'Deactivate' : 'Reactivate'}
+												{/if}
 											</Button>
 										{/if}
 									</div>

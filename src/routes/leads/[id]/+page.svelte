@@ -38,8 +38,6 @@
 	const ownerName = $derived(data.users.find((u) => u.id === lead.ownerId)?.name ?? null);
 	const risk = $derived(riskMeta(lead.urgency));
 
-	// Lead-detail tabs (first-ever tab UI on this page). Overview wraps the
-	// existing content unchanged; Meetings is the new surface.
 	let activeTab = $state<'overview' | 'meetings' | 'onboarding'>(
 		lead.stage === 'won' ? 'onboarding' : 'overview'
 	);

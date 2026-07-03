@@ -289,7 +289,7 @@
 <div class="px-7 pb-16 pt-6">
 	<PageHeader
 		title="Up for grabs"
-		subtitle={`${data.pagination.total} leads with no active owner — former-rep leads and never-assigned pages. Claim one to start working it.`}
+		subtitle={`${data.pagination.total} leads with no active owner. Claim one to start working it.`}
 	>
 		{#snippet actions()}
 			{#if selectedIds.length}

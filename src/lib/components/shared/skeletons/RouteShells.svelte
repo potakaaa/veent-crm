@@ -124,10 +124,7 @@
 	</div>
 {:else if isReports}
 	<div class="px-7 pb-16 pt-6">
-		<PageHeader
-			title="Reports"
-			subtitle="Pipeline health and rep activity. Deal value is shown per currency — never summed across PHP and SGD."
-		/>
+		<PageHeader title="Reports" subtitle="Pipeline health and rep activity." />
 		<!-- Outreach metrics skeleton -->
 		<div class="mb-[18px] rounded-control border border-hairline bg-panel p-5">
 			<Skeleton class="mb-4 h-4 w-36" />

@@ -1,8 +1,10 @@
 import tailwindcss from '@tailwindcss/vite';
 import { defineConfig } from 'vitest/config';
-// Production target = Bun (svelte-adapter-bun). @sveltejs/adapter-node is the documented
-// fallback (see sales-crm.md §Deployment) and stays installed for that purpose.
-import adapter from 'svelte-adapter-bun';
+// Production target = Vercel (Node serverless runtime via @sveltejs/adapter-vercel).
+// @sveltejs/adapter-node stays installed as the documented self-host fallback
+// (see sales-crm.md §Deployment). Default Node runtime — NOT edge: postgres-js and
+// $env/dynamic/private require Node.
+import adapter from '@sveltejs/adapter-vercel';
 import { sveltekit } from '@sveltejs/kit/vite';
 
 export default defineConfig({

@@ -1,21 +1,28 @@
 import type { PageServerLoad } from './$types';
 import { error } from '@sveltejs/kit';
-import { listUsers, listLeads } from '$lib/server/db/leads';
-import { listAllMeetings } from '$lib/server/db/meetings';
+import { listUsers, getLead } from '$lib/server/db/leads';
+import { listMeetingsPaginated, parseMeetingFilterParams } from '$lib/server/db/meetings';
 import type { User } from '$lib/types';
 
-export const load: PageServerLoad = async ({ locals }) => {
+export const load: PageServerLoad = async ({ locals, url }) => {
 	if (!locals.user) throw error(401, 'Unauthorized');
 
-	const [meetings, users, leadsFull] = await Promise.all([
-		listAllMeetings(),
+	// Trusted server-side meId (locals.user.id) — never client-provided.
+	const parsed = parseMeetingFilterParams(url.searchParams, locals.user.id);
+
+	const [{ meetings, total }, users, selectedLeadRow] = await Promise.all([
+		listMeetingsPaginated(1, 8, parsed),
 		listUsers(),
-		// Visibility-scoped (GitHub #87): the meetings lead-picker only lists leads the
-		// current rep can see; managers still see all via the manager no-op.
-		listLeads(locals.user.id, locals.user.role)
+		// The lead options are now fetched on demand by LeadCombobox (GET /api/leads).
+		// Only resolve the currently-selected lead's label for the filter trigger, using
+		// the VALIDATED lead id (parsed.leadId — undefined for junk/invalid) so bad ids
+		// never reach getLead, and keep it visibility-scoped (GitHub #87).
+		parsed.leadId ? getLead(parsed.leadId, locals.user.id, locals.user.role) : Promise.resolve(null)
 	]);
 
-	const leads = leadsFull.map((l) => ({ id: l.id, name: l.name }));
+	const selectedLead = selectedLeadRow
+		? { id: selectedLeadRow.id, name: selectedLeadRow.name }
+		: null;
 
 	const me: User = {
 		id: locals.user.id,
@@ -25,5 +32,17 @@ export const load: PageServerLoad = async ({ locals }) => {
 		active: true
 	};
 
-	return { meetings, users, leads, me };
+	// Raw string values to hydrate the toolbar controls. Absent organizer → 'mine'
+	// so the toolbar shows "Mine" selected — consistent with the parser treating
+	// absent as meId (= the "Mine" default view).
+	const filters = {
+		organizer: url.searchParams.get('organizer') || 'mine',
+		lead: url.searchParams.get('lead') ?? '',
+		dateFrom: url.searchParams.get('dateFrom') ?? '',
+		dateTo: url.searchParams.get('dateTo') ?? '',
+		// Reuse the already-parsed, allow-listed value instead of re-deriving it.
+		sortDir: parsed.sortDir
+	};
+
+	return { meetings, total, users, selectedLead, me, filters };
 };

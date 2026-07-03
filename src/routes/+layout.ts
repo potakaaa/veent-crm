@@ -6,7 +6,8 @@ export const load: LayoutLoad = async ({ url, fetch, data }) => {
 	if (url.pathname === '/login') {
 		return {
 			currentUser: null,
-			counts: { overdue: 0, unassigned: 0 }
+			counts: { overdue: 0, unassigned: 0 },
+			sidebarOpen: data.sidebarOpen
 		};
 	}
 
@@ -21,5 +22,8 @@ export const load: LayoutLoad = async ({ url, fetch, data }) => {
 		? await countsRes.json()
 		: { overdue: 0, unassigned: 0 };
 
-	return { currentUser, counts };
+	// Forward the SSR-read sidebar collapse state from the parent server load. This client load
+	// builds a fresh return object (does not spread ...data), so the field must be re-exposed
+	// explicitly or it never reaches +layout.svelte. (VALIDATE fix P1.)
+	return { currentUser, counts, sidebarOpen: data.sidebarOpen };
 };

@@ -41,7 +41,7 @@
 {#if bare}
 	{@render children()}
 {:else}
-	<AppShell user={data.currentUser} counts={data.counts}>
+	<AppShell user={data.currentUser} counts={data.counts} sidebarOpen={data.sidebarOpen ?? true}>
 		{#if isRouteChange && navigating.to}
 			<RouteShells pathname={navigating.to.url.pathname} />
 		{:else}

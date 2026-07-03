@@ -45,7 +45,7 @@
 	} = $props();
 
 	// Stack into a single-column card below `lg`, expand to the full column grid at `lg+`.
-	const rowClass = $derived(`grid grid-cols-1 gap-1.5 lg:gap-3 ${cols}`);
+	const rowClass = $derived(`grid grid-cols-1 gap-1.5 lg:gap-4 ${cols}`);
 </script>
 
 <div class="overflow-hidden rounded-control border border-hairline bg-panel">

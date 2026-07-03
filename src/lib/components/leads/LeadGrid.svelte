@@ -87,7 +87,7 @@
 		{#each leads as l (l.id)}
 			<a
 				href="/leads/{l.id}"
-				class="{rowClass} min-h-[42px] lg:items-center border-b border-panel-sunken px-4 py-3 lg:py-0 last:border-b-0 hover:bg-[#fcfbfd]"
+				class="{rowClass} min-h-[52px] lg:items-center border-b border-panel-sunken px-4 py-3 last:border-b-0 hover:bg-[#fcfbfd]"
 			>
 				<div class="flex items-center gap-2 lg:contents">
 					<span
@@ -96,7 +96,7 @@
 						title={riskMeta(l.urgency).label}
 					></span>
 					<div class="min-w-0 flex-1 lg:contents">
-						<div class="flex items-center gap-1.5 text-[13px] font-semibold">
+						<div class="flex min-w-0 items-center gap-1.5 text-[13px] font-semibold">
 							<span class="truncate">{l.name}</span>
 							{#if l.siblings}
 								<span
@@ -125,7 +125,9 @@
 				</div>
 				<div class="mt-1 flex flex-wrap items-center gap-1.5 lg:mt-0 lg:contents">
 					<div class="flex items-center lg:contents"><StageChip stage={l.stage} /></div>
-					<div class="flex items-center lg:contents"><Avatar name={ownerName(l.ownerId)} /></div>
+					<div class="flex min-w-0 items-center lg:contents">
+						<Avatar name={ownerName(l.ownerId)} />
+					</div>
 					<div class="flex items-center lg:contents">
 						<AgeBadge label={l.age.label} type={l.age.type} />
 					</div>

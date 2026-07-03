@@ -33,6 +33,12 @@
 	let searchInput = $derived(data.filters.search ?? '');
 	let searchTimer: ReturnType<typeof setTimeout> | null = null;
 
+	const WEEKS_PRESETS = [4, 8, 12] as const;
+	let weeksInput = $derived(
+		data.filters.weeksAhead === null ? '' : String(data.filters.weeksAhead ?? 8)
+	);
+	let weeksTimer: ReturnType<typeof setTimeout> | null = null;
+
 	const segDefs: { key: LeadSegment; label: string }[] = [
 		{ key: 'mine', label: 'Mine' },
 		{ key: 'all', label: 'All' },
@@ -75,6 +81,20 @@
 		}, 300);
 	}
 
+	function setWeeks(w: number | 'all') {
+		setFilter('weeksAhead', w === 'all' ? 'all' : w);
+	}
+	function onWeeksInput(e: Event & { currentTarget: HTMLInputElement }) {
+		const raw = e.currentTarget.value;
+		weeksInput = raw;
+		if (weeksTimer) clearTimeout(weeksTimer);
+		const n = parseInt(raw, 10);
+		if (!raw) return;
+		weeksTimer = setTimeout(() => {
+			if (n > 0) setWeeks(n);
+		}, 400);
+	}
+
 	function sortClick(col: string, sortDir: 'asc' | 'desc') {
 		navigate({ sort: col, dir: sortDir, page: undefined });
 	}
@@ -89,6 +109,12 @@
 		if (data.filters.country) p.set('country', data.filters.country);
 		if (data.filters.staleOnly) p.set('staleOnly', '1');
 		if (data.filters.hasFutureEvents) p.set('hasFutureEvents', '1');
+		if (data.filters.weeksAhead !== 8) {
+			p.set(
+				'weeksAhead',
+				data.filters.weeksAhead === null ? 'all' : String(data.filters.weeksAhead)
+			);
+		}
 		if (data.filters.search) p.set('q', data.filters.search);
 		const qs = p.toString();
 		return `/api/leads/export${qs ? '?' + qs : ''}`;
@@ -179,6 +205,38 @@
 		>
 			<span class="h-[7px] w-[7px] rounded-full bg-violet-500"></span> Future events
 		</Button>
+
+		<Separator orientation="vertical" class="h-[22px]" />
+		<div class="flex items-center gap-1.5">
+			<span class="text-[12px] text-ink-400">Beyond</span>
+			{#each WEEKS_PRESETS as w (w)}
+				<button
+					onclick={() => setWeeks(w)}
+					aria-pressed={data.filters.weeksAhead !== null && (data.filters.weeksAhead ?? 8) === w}
+					class="h-7 rounded-[5px] border px-2 font-mono text-[11.5px] transition-colors {data
+						.filters.weeksAhead !== null && (data.filters.weeksAhead ?? 8) === w
+						? 'border-indigo-400 bg-indigo-50 font-semibold text-indigo-700'
+						: 'border-hairline bg-panel text-ink-500 hover:bg-panel-sunken'}">{w}w</button
+				>
+			{/each}
+			<input
+				type="number"
+				min="1"
+				value={weeksInput}
+				oninput={onWeeksInput}
+				placeholder="—"
+				aria-label="Minimum weeks until event"
+				class="h-7 w-12 rounded-[5px] border border-hairline bg-panel px-2 font-mono text-[11.5px] text-ink focus:outline-none focus:ring-1 focus:ring-primary"
+			/>
+			<button
+				onclick={() => setWeeks('all')}
+				aria-pressed={data.filters.weeksAhead === null}
+				class="h-7 rounded-[5px] border px-2 font-mono text-[11.5px] transition-colors {data.filters
+					.weeksAhead === null
+					? 'border-ink-300 bg-panel-sunken font-semibold text-ink'
+					: 'border-hairline bg-panel text-ink-400 hover:bg-panel-sunken'}">All</button
+			>
+		</div>
 
 		<Input
 			value={searchInput}

@@ -87,28 +87,28 @@
 		{#each leads as l (l.id)}
 			<a
 				href="/leads/{l.id}"
-				class="{rowClass} min-h-[42px] items-center border-b border-panel-sunken px-4 last:border-b-0 hover:bg-[#fcfbfd]"
+				class="{rowClass} min-h-[42px] lg:items-center border-b border-panel-sunken px-4 py-3 lg:py-0 last:border-b-0 hover:bg-[#fcfbfd]"
 			>
-				<div class="flex items-center">
+				<div class="flex items-center gap-2 lg:contents">
 					<span
-						class="h-2 w-2 rounded-full"
+						class="h-2 w-2 shrink-0 rounded-full"
 						style="background:{riskMeta(l.urgency).color}"
 						title={riskMeta(l.urgency).label}
 					></span>
-				</div>
-				<div class="min-w-0">
-					<div class="flex items-center gap-1.5 text-[13px] font-semibold">
-						<span class="truncate">{l.name}</span>
-						{#if l.siblings}
-							<span
-								class="shrink-0 rounded-[4px] bg-[rgba(194,113,12,0.1)] px-[5px] py-px font-mono text-[9.5px] text-stale"
-							>
-								{l.siblings} events
-							</span>
-						{/if}
+					<div class="min-w-0 flex-1 lg:contents">
+						<div class="flex items-center gap-1.5 text-[13px] font-semibold">
+							<span class="truncate">{l.name}</span>
+							{#if l.siblings}
+								<span
+									class="shrink-0 rounded-[4px] bg-[rgba(194,113,12,0.1)] px-[5px] py-px font-mono text-[9.5px] text-stale"
+								>
+									{l.siblings} events
+								</span>
+							{/if}
+						</div>
 					</div>
 				</div>
-				<div class="min-w-0">
+				<div class="min-w-0 lg:contents">
 					<div class="flex items-center gap-1.5">
 						<span class="truncate text-[12.5px] text-ink-600">{l.eventName ?? '—'}</span>
 						<EventBadge date={l.eventDate} />
@@ -123,11 +123,17 @@
 						</div>
 					{/if}
 				</div>
-				<div class="flex items-center"><StageChip stage={l.stage} /></div>
-				<div class="flex items-center"><Avatar name={ownerName(l.ownerId)} /></div>
-				<div class="flex items-center"><AgeBadge label={l.age.label} type={l.age.type} /></div>
-				<div class="flex items-center"><PlatformBadge platform={l.platform} /></div>
-				<div class="flex min-w-0 items-center"><AppealScoreBadge score={l.appealScore} /></div>
+				<div class="mt-1 flex flex-wrap items-center gap-1.5 lg:mt-0 lg:contents">
+					<div class="flex items-center lg:contents"><StageChip stage={l.stage} /></div>
+					<div class="flex items-center lg:contents"><Avatar name={ownerName(l.ownerId)} /></div>
+					<div class="flex items-center lg:contents">
+						<AgeBadge label={l.age.label} type={l.age.type} />
+					</div>
+					<div class="flex items-center lg:contents"><PlatformBadge platform={l.platform} /></div>
+					<div class="flex min-w-0 items-center lg:contents">
+						<AppealScoreBadge score={l.appealScore} />
+					</div>
+				</div>
 			</a>
 		{/each}
 	{/snippet}

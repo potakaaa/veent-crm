@@ -39,17 +39,20 @@ n8n webhook integration, and the reminders UI page.
 
 Status: in-progress (code-complete, EVL green; manual Hybrid/Agent-Probe gates pending)
 
-Automated gates green (EVL confirmed):
+**Reminders screen shape (as of 03-07-26):** `/reminders` renders four sections — **Overdue**, **Due today**, **Upcoming** (next 7 days), **Going cold** — each from its own array returned by `getRemindersQueue`. Return type: `{ overdue: Lead[]; due: Lead[]; upcoming: Lead[]; cold: Lead[] }`. Snooze is bucket-keyed (optimistic remove + rollback targets the correct section). Empty-state reads "Nothing due or coming up soon".
+
+Automated gates green (EVL confirmed — 03-07-26):
 - `bun run check` — 0 errors
-- `bun run test:unit:ci` — 62 passed
-- `bun run build` — exit 0
+- `bun run lint` — clean
+- `bun run test:unit:ci` — 340 passed, 105 skipped (includes E1 due/upcoming DB cases that self-skip in CI via `skipIf(SKIP_DB)`)
 
 Pending manual gates (need live Postgres + dev server):
 - VE-A1b — dedup no-op (insertActivity second identical insert returns null)
 - VE-A2 / VE-A2b — curl POST endpoint; last_activity_at update
 - VE-A3 / VE-A4 — UI smoke (log touch, 7-channel dropdown)
-- VE-B2 — Today view + Reminders page render from real data
+- VE-B2 — Today view + Reminders page render from real data (now four sections)
 - VE-C1 — GET /api/reminders/due with correct Bearer
+- AC1–AC5 (reminders-upcoming-section) — four-section render, snooze-per-bucket, empty-state copy; close via agent-probe or user confirmation against real `/reminders` data; Hybrid E1 DB gate (`SKIP_DB=false bun run test:unit -- src/tests/reminders-db.spec.ts`) needs live Postgres to confirm due/upcoming bucket partition
 
 Known gap (backlog): live n8n dispatch + Viber/Telegram delivery.
 Backlog note: `process/features/reminders/backlog/n8n-reminders-dispatch_NOTE_29-06-26.md`

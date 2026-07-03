@@ -316,6 +316,7 @@ export interface ListLeadsParams {
 	country?: string;
 	staleOnly?: boolean;
 	hasFutureEvents?: boolean;
+	weeksAhead?: number | null;
 	search?: string;
 	date?: string;
 	dateField?: 'event_date' | 'created_at';
@@ -342,6 +343,7 @@ export async function listLeadsFiltered(
 		country,
 		staleOnly = false,
 		hasFutureEvents = false,
+		weeksAhead = 8,
 		search,
 		date,
 		dateField,
@@ -384,6 +386,18 @@ export async function listLeadsFiltered(
 		conditions.push(eq(crmLeads.hasFutureEvents, true));
 	}
 
+	// Weeks-ahead minimum: show leads whose event is at least N weeks away.
+	// Leads with no event date are always included. Past events are always excluded.
+	// Skipped when a specific date is provided — the date filter already scopes results.
+	if (!date && weeksAhead !== null && weeksAhead > 0) {
+		conditions.push(
+			sql`(
+				${crmLeads.eventDate} IS NULL
+				OR ${crmLeads.eventDate} >= CURRENT_DATE + make_interval(days => ${weeksAhead * 7})
+			)`
+		);
+	}
+
 	// Search: case-insensitive against name and normalizedHandle.
 	// Ingest stores handles without '@' (e.g. 'acmefb'); manual creation stores with '@'.
 	// Strip a leading '@' so "copied handle" queries match both storage formats.
@@ -419,7 +433,7 @@ export async function listLeadsFiltered(
 	const validSort: LeadsSortCol =
 		sort && (LEADS_SORT_COLS as readonly string[]).includes(sort)
 			? (sort as LeadsSortCol)
-			: 'lastActivity';
+			: 'event';
 	const sortFn = dir === 'asc' ? asc : desc;
 
 	let leadsOrder: SQL[];
@@ -517,7 +531,7 @@ export async function listUnassignedLeads(
 	pageSize = 25,
 	sort?: string,
 	dir?: 'asc' | 'desc',
-	filters?: { country?: string[]; category?: string[] }
+	filters?: { country?: string[]; category?: string[]; weeksAhead?: number | null }
 ): Promise<{ leads: Lead[]; total: number }> {
 	const conditions = unassignedBaseConditions();
 
@@ -528,6 +542,18 @@ export async function listUnassignedLeads(
 	}
 	if (filters?.category && filters.category.length > 0) {
 		conditions.push(inArray(crmLeads.category, filters.category as DbLead['category'][]));
+	}
+
+	// Weeks-ahead minimum: show only leads with events at least N weeks out.
+	// undefined → default 8; null → no limit (All).
+	const weeksAhead: number | null = filters?.weeksAhead !== undefined ? filters.weeksAhead : 8;
+	if (weeksAhead !== null && weeksAhead > 0) {
+		conditions.push(
+			sql`(
+				${crmLeads.eventDate} IS NULL
+				OR ${crmLeads.eventDate} >= CURRENT_DATE + make_interval(days => ${weeksAhead * 7})
+			)`
+		);
 	}
 
 	const where = and(...conditions);
@@ -1445,16 +1471,31 @@ export async function getNavCounts(
 export async function getRemindersQueue(
 	userId: string,
 	role: Role = 'rep'
-): Promise<{ overdue: Lead[]; cold: Lead[] }> {
+): Promise<{ overdue: Lead[]; due: Lead[]; upcoming: Lead[]; cold: Lead[] }> {
 	const queue = await getTodayQueue(userId, role);
 
-	const overdue = queue
-		.filter((l) => l.urgency === 'overdue')
-		.sort(
-			(a, b) =>
-				new Date(a.followUpAt!).getTime() - new Date(b.followUpAt!).getTime() ||
-				a.id.localeCompare(b.id)
-		);
+	// Shared comparator for buckets sorted by follow-up time then id.
+	const byFollowUpAsc = (a: Lead, b: Lead) =>
+		new Date(a.followUpAt!).getTime() - new Date(b.followUpAt!).getTime() ||
+		a.id.localeCompare(b.id);
+
+	const overdue = queue.filter((l) => l.urgency === 'overdue').sort(byFollowUpAsc);
+
+	const due = queue.filter((l) => l.urgency === 'due').sort(byFollowUpAsc);
+
+	// Upcoming — future follow-up within the next 7 days.
+	// Excludes `due` (already its own bucket) and `cold` (stale leads that happen to have
+	// a future follow-up stay in the cold bucket, not upcoming, to avoid dual-bucket overlap).
+	const now = new Date();
+	const sevenDaysOut = new Date(now.getTime() + 7 * 86_400_000);
+	const upcoming = queue
+		.filter((l) => {
+			if (!l.followUpAt) return false;
+			if (l.urgency === 'due' || l.urgency === 'cold') return false;
+			const t = new Date(l.followUpAt).getTime();
+			return t > now.getTime() && t <= sevenDaysOut.getTime();
+		})
+		.sort(byFollowUpAsc);
 
 	const cold = queue
 		.filter((l) => l.urgency === 'cold')
@@ -1464,7 +1505,7 @@ export async function getRemindersQueue(
 				a.id.localeCompare(b.id)
 		);
 
-	return { overdue, cold };
+	return { overdue, due, upcoming, cold };
 }
 
 // ---------------------------------------------------------------------------

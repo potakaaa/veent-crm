@@ -33,8 +33,8 @@
 
 <div class="flex h-screen bg-ink text-white">
 	<!-- left: form -->
-	<div class="flex flex-1 items-center justify-center p-10">
-		<div class="w-[360px] max-w-full">
+	<div class="flex flex-1 items-center justify-center p-6 sm:p-10">
+		<div class="w-full max-w-[360px]">
 			<div class="mb-9 flex items-center gap-2.5">
 				<div
 					class="flex h-[34px] w-[34px] items-center justify-center rounded-control bg-primary text-[17px] font-bold"

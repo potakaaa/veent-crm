@@ -4,8 +4,8 @@
 
 <svelte:head><title>Access restricted · Veent CRM</title></svelte:head>
 
-<div class="flex h-screen items-center justify-center bg-ink p-10 text-white">
-	<div class="w-[420px] max-w-full">
+<div class="flex h-screen items-center justify-center bg-ink p-6 text-white sm:p-10">
+	<div class="w-full max-w-[420px]">
 		<div class="mb-9 flex items-center gap-2.5">
 			<div
 				class="flex h-[34px] w-[34px] items-center justify-center rounded-control bg-primary text-[17px] font-bold"

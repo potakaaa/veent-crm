@@ -1471,16 +1471,31 @@ export async function getNavCounts(
 export async function getRemindersQueue(
 	userId: string,
 	role: Role = 'rep'
-): Promise<{ overdue: Lead[]; cold: Lead[] }> {
+): Promise<{ overdue: Lead[]; due: Lead[]; upcoming: Lead[]; cold: Lead[] }> {
 	const queue = await getTodayQueue(userId, role);
 
-	const overdue = queue
-		.filter((l) => l.urgency === 'overdue')
-		.sort(
-			(a, b) =>
-				new Date(a.followUpAt!).getTime() - new Date(b.followUpAt!).getTime() ||
-				a.id.localeCompare(b.id)
-		);
+	// Shared comparator for buckets sorted by follow-up time then id.
+	const byFollowUpAsc = (a: Lead, b: Lead) =>
+		new Date(a.followUpAt!).getTime() - new Date(b.followUpAt!).getTime() ||
+		a.id.localeCompare(b.id);
+
+	const overdue = queue.filter((l) => l.urgency === 'overdue').sort(byFollowUpAsc);
+
+	const due = queue.filter((l) => l.urgency === 'due').sort(byFollowUpAsc);
+
+	// Upcoming — future follow-up within the next 7 days.
+	// Excludes `due` (already its own bucket) and `cold` (stale leads that happen to have
+	// a future follow-up stay in the cold bucket, not upcoming, to avoid dual-bucket overlap).
+	const now = new Date();
+	const sevenDaysOut = new Date(now.getTime() + 7 * 86_400_000);
+	const upcoming = queue
+		.filter((l) => {
+			if (!l.followUpAt) return false;
+			if (l.urgency === 'due' || l.urgency === 'cold') return false;
+			const t = new Date(l.followUpAt).getTime();
+			return t > now.getTime() && t <= sevenDaysOut.getTime();
+		})
+		.sort(byFollowUpAsc);
 
 	const cold = queue
 		.filter((l) => l.urgency === 'cold')
@@ -1490,7 +1505,7 @@ export async function getRemindersQueue(
 				a.id.localeCompare(b.id)
 		);
 
-	return { overdue, cold };
+	return { overdue, due, upcoming, cold };
 }
 
 // ---------------------------------------------------------------------------

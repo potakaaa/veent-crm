@@ -313,6 +313,7 @@ export const ingestLeadSchema = z.object({
 	eventName: z.string().optional(),
 	eventDate: dateString.optional(),
 	eventLink: z.string().url().optional(),
+	firstAnnouncedDate: dateString.optional(),
 	sourceRef: z.string().optional(),
 	scraperOrgId: z.number().int().positive().optional(),
 	email: z.string().email().optional(),

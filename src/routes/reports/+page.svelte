@@ -41,6 +41,8 @@
 	// report and outreach kept as stable $state so filter navigations update
 	// the outreach card in-place without skeletonizing the pipeline/leaderboard.
 	let reportData = $state<ReportData | null>(null);
+	let showAllLeaderboard = $state(false);
+	const LEADERBOARD_PREVIEW = 5;
 	let outreachData = $state<OutreachMetrics | null>(null);
 	let outreachLoading = $state(false);
 
@@ -352,7 +354,7 @@
 				{/if}
 				{#if reportData.leaderboard.length > 0}
 					<div class="mb-5 space-y-[7px]">
-						{#each reportData.leaderboard as r (r.repId)}
+						{#each showAllLeaderboard ? reportData.leaderboard : reportData.leaderboard.slice(0, LEADERBOARD_PREVIEW) as r (r.repId)}
 							<div class="flex items-center gap-3">
 								<div class="w-[72px] shrink-0 truncate text-right text-[11.5px] text-ink-500">
 									{r.name.split(' ')[0]}
@@ -404,7 +406,7 @@
 						><span class="text-right">Wins</span>
 					</div>
 				{/if}
-				{#each reportData.leaderboard as r (r.repId)}
+				{#each showAllLeaderboard ? reportData.leaderboard : reportData.leaderboard.slice(0, LEADERBOARD_PREVIEW) as r (r.repId)}
 					<div
 						class="grid grid-cols-[1.6fr_0.9fr_0.9fr_0.7fr] items-center gap-2 border-b border-panel-sunken py-2 last:border-b-0"
 					>
@@ -421,6 +423,16 @@
 						>
 					</div>
 				{/each}
+				{#if reportData.leaderboard.length > LEADERBOARD_PREVIEW}
+					<button
+						onclick={() => (showAllLeaderboard = !showAllLeaderboard)}
+						class="mt-2 w-full rounded-[5px] py-1.5 text-[11.5px] text-ink-400 transition-colors hover:bg-panel-sunken hover:text-ink-600"
+					>
+						{showAllLeaderboard
+							? 'Show less'
+							: `Show ${reportData.leaderboard.length - LEADERBOARD_PREVIEW} more`}
+					</button>
+				{/if}
 			</div>
 		</div>
 

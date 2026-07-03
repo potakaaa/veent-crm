@@ -95,6 +95,7 @@ export const POST: RequestHandler = async ({ request }) => {
 			eventName: lead.eventName ?? null,
 			eventDate: lead.eventDate ?? null,
 			eventLink: lead.eventLink ?? null,
+			firstAnnouncedDate: lead.firstAnnouncedDate ?? null,
 			source: 'scraper',
 			stage: 'new',
 			ownerId: null,

@@ -44,6 +44,10 @@ class SidebarState {
 	handleShortcutKeydown = (e: KeyboardEvent) => {
 		if (e.key === SIDEBAR_KEYBOARD_SHORTCUT && (e.metaKey || e.ctrlKey)) {
 			e.preventDefault();
+			// This repo drives mobile navigation with a separate hand-rolled bits-ui Dialog drawer,
+			// not this provider's Sheet. On a mobile viewport `toggle()` would set `openMobile` and
+			// pop a duplicate nav Sheet, so the keyboard shortcut only acts on the desktop rail.
+			if (this.#isMobile.current) return;
 			this.toggle();
 		}
 	};

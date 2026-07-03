@@ -78,7 +78,7 @@ which the app's `components.json` is already configured to receive.
 
 ## Flow / State Diagram
 
-```
+```text
 Desktop / tablet (>=880px)
 ┌────────────────────────────┐        toggle click /        ┌───────────────────────┐
 │   EXPANDED (current state) │ ────  Cmd/Ctrl+B  ──────────► │  COLLAPSED (icon-only) │

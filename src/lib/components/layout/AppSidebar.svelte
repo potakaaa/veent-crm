@@ -249,13 +249,13 @@
 				class="group/collapsed-trigger relative flex h-[34px] w-[34px] items-center justify-center"
 			>
 				<div
-					class="pointer-events-none absolute inset-0 flex items-center justify-center rounded-[9px] bg-primary text-[17px] font-extrabold shadow-nav-brand opacity-100 transition-opacity group-hover/collapsed-trigger:opacity-0"
+					class="pointer-events-none absolute inset-0 flex items-center justify-center rounded-[9px] bg-primary text-[17px] font-extrabold shadow-nav-brand opacity-100 transition-opacity group-hover/collapsed-trigger:opacity-0 pointer-coarse:opacity-0"
 					aria-hidden="true"
 				>
 					V
 				</div>
 				<Sidebar.Trigger
-					class="absolute inset-0 size-[34px] rounded-[9px] text-nav-faint opacity-0 transition-opacity hover:bg-white/5 hover:text-white focus-visible:opacity-100 group-hover/collapsed-trigger:opacity-100"
+					class="absolute inset-0 size-[34px] rounded-[9px] text-nav-faint opacity-0 transition-opacity hover:bg-white/5 hover:text-white focus-visible:opacity-100 group-hover/collapsed-trigger:opacity-100 pointer-coarse:opacity-100"
 				/>
 			</div>
 		</div>

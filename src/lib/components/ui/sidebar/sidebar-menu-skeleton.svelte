@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import { cn, type WithElementRef } from '$lib/utils';
 	import { Skeleton } from '$lib/components/ui/skeleton/index.js';
 	import type { HTMLAttributes } from 'svelte/elements';
@@ -13,8 +14,12 @@
 		showIcon?: boolean;
 	} = $props();
 
-	// Random width between 50% and 90%
-	const width = `${Math.floor(Math.random() * 40) + 50}%`;
+	// Deterministic default width for SSR + first client render (avoids a hydration mismatch).
+	// Randomised variety is applied client-only, post-mount, so server and client agree initially.
+	let width = $state('70%');
+	onMount(() => {
+		width = `${Math.floor(Math.random() * 40) + 50}%`;
+	});
 </script>
 
 <div

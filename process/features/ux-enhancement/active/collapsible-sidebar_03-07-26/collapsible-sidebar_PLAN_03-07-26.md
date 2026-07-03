@@ -360,7 +360,7 @@ Test gates (C3 5-column table — ADDITIVE; existing consumers still parse the l
 
 Failing stub (Fully-Automated row only — `bun run check` is a repo-wide typecheck command gate,
 not a per-scenario test; no per-scenario TDD stub applies to this row):
-```
+```text
 N/A — this row is a command-level quality gate (typecheck), not a scenario assertion. No stub.
 ```
 

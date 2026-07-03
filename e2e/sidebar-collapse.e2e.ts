@@ -46,17 +46,26 @@ function desktopSidebar(page: Page) {
 	return page.locator('[data-slot="sidebar"][data-side="left"]');
 }
 
+/**
+ * Shared per-test setup: land on the home route (self-skips when the auth gate intervenes),
+ * then return the desktop sidebar container and its visible toggle control
+ * (SidebarTrigger carries an sr-only "Toggle Sidebar" label).
+ */
+async function gotoHomeSidebar(page: Page) {
+	await gotoAuthed(page, '/');
+	return {
+		sidebar: desktopSidebar(page),
+		toggle: page.getByRole('button', { name: 'Toggle Sidebar' }).first()
+	};
+}
+
 test.use({ viewport: DESKTOP });
 
 test.describe('Collapsible sidebar (desktop)', () => {
 	test('toggle-visible-and-collapses-to-icon-rail (AC1)', async ({ page }) => {
-		await gotoAuthed(page, '/');
-
-		const sidebar = desktopSidebar(page);
+		const { sidebar, toggle } = await gotoHomeSidebar(page);
 		await expect(sidebar).toHaveAttribute('data-state', 'expanded');
 
-		// The visible toggle control (SidebarTrigger has an sr-only "Toggle Sidebar" label).
-		const toggle = page.getByRole('button', { name: 'Toggle Sidebar' }).first();
 		await expect(toggle).toBeVisible();
 
 		await toggle.click();
@@ -68,9 +77,7 @@ test.describe('Collapsible sidebar (desktop)', () => {
 	});
 
 	test('icon-click-navigates-to-same-route-in-collapsed-state (AC2)', async ({ page }) => {
-		await gotoAuthed(page, '/');
-		const sidebar = desktopSidebar(page);
-		const toggle = page.getByRole('button', { name: 'Toggle Sidebar' }).first();
+		const { sidebar, toggle } = await gotoHomeSidebar(page);
 
 		await toggle.click();
 		await expect(sidebar).toHaveAttribute('data-state', 'collapsed');
@@ -81,9 +88,7 @@ test.describe('Collapsible sidebar (desktop)', () => {
 	});
 
 	test('collapse-state-persists-across-client-navigation (AC4)', async ({ page }) => {
-		await gotoAuthed(page, '/');
-		const sidebar = desktopSidebar(page);
-		const toggle = page.getByRole('button', { name: 'Toggle Sidebar' }).first();
+		const { sidebar, toggle } = await gotoHomeSidebar(page);
 
 		await toggle.click();
 		await expect(sidebar).toHaveAttribute('data-state', 'collapsed');
@@ -95,8 +100,7 @@ test.describe('Collapsible sidebar (desktop)', () => {
 	});
 
 	test('keyboard-shortcut-toggles-state (AC5)', async ({ page }) => {
-		await gotoAuthed(page, '/');
-		const sidebar = desktopSidebar(page);
+		const { sidebar } = await gotoHomeSidebar(page);
 		await expect(sidebar).toHaveAttribute('data-state', 'expanded');
 
 		// Cmd/Ctrl+B is the shadcn SidebarProvider default, wired at the app root.

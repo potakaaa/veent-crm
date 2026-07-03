@@ -99,7 +99,7 @@ For most substantial tasks:
 | pipeline  | `process/features/pipeline/_GUIDE.md`  | in-progress (`/pipeline` also queries the real DB via `src/lib/server/db/leads.ts`) |
 | import    | `process/features/import/_GUIDE.md`    | not-started (stub pipeline)              |
 | reminders | `process/features/reminders/_GUIDE.md` | in-progress (code-complete, EVL green; manual UI/DB gates pending) |
-| reports   | `process/features/reports/_GUIDE.md`   | not-started (mock data only)             |
+| reports   | `process/features/reports/_GUIDE.md`   | in-progress (real-DB-backed via Drizzle `reports/+page.server.ts`; `layerchart` charts) |
 | calendar  | `process/features/calendar/completed/calendar_01-07-26/` | code-complete, EVL green; e2e written but self-skipping pending shared auth e2e harness (2 known-gaps, pre-accepted) |
 | ux-enhancement | `process/features/ux-enhancement/completed/sitewide-ux-refresh_02-07-26/` | code-complete, EVL-confirmed across all 5 phases (program COMPLETE 02-07-26) — mobile nav drawer + design tokens (`--color-nav-*`/`--color-focus-ring`/`--shadow-nav-*`), consolidated Leads/UFG grid + date-picker + hover-popover, keyboard-accessible pipeline stage change, responsive Pipeline/Calendar/Reports, shared per-field form-error component, shared `Tabs.svelte` + chip token contract, Reminders/Today snooze parity, program-wide ARIA sweep. Known-gaps: shared Playwright auth-fixture (pre-existing, blocks most e2e proof), `@axe-core/playwright` devDependency decision (open), nested-worktree Playwright env blocker (open) — see `sitewide-ux-refresh-program_CLOSEOUT_02-07-26.md` for full SPEC AC1-AC13 scoring and consolidated known-gaps list |
 
@@ -206,11 +206,11 @@ veent-crm/
 - **Adapter:** `svelte-adapter-bun` (primary), `@sveltejs/adapter-node` (fallback)
 - **Database:** PostgreSQL via Drizzle ORM 0.45.x + `postgres` 3.x (postgres-js)
 - **Schema migration:** drizzle-kit 0.31.x (`bun run db:push` / `db:generate` / `db:migrate`)
-- **Auth:** Better Auth 1.6.x — magic-link plugin + Resend email (currently stubbed)
+- **Auth:** Better Auth 1.6.x — magic-link plugin + Resend email (live-wired)
 - **Forms:** Zod 4.x schemas (`src/lib/zod/schemas.ts`) + client `safeParse()` + `fetch()` — Superforms 2.x is installed but unusable (`typebox@1.3.0` conflict breaks `sveltekit-superforms/adapters`); see Key Patterns §Mandatory conventions
 - **UI:** Tailwind CSS 4.x + `@tailwindcss/forms` + `@tailwindcss/typography`
 - **Charts:** `layerchart` 2.0.0-next.48 (shadcn-svelte chart primitives — bar/line/pie/area; reports page). ECharts is NOT installed — do not assume it is present.
-- **Email:** Resend 6.x (magic-link delivery — stubbed)
+- **Email:** Resend 6.x (magic-link delivery — live; real Resend client in `src/lib/server/email.ts`, `RESEND_API_KEY`/`RESEND_FROM`)
 - **Error tracking:** Sentry 10.x (`@sentry/sveltekit` — stubbed)
 - **Testing:** Vitest 4.x (unit) + Playwright 1.60.x (e2e)
 - **Package manager:** Bun (lockfile: `bun.lock`)
@@ -278,13 +278,12 @@ veent-crm/
 
 ## Current Project State (v0 → v1)
 
-**Current state (as of 01-07-26):** Better Auth (magic-link + `crm_users` allowlist) is live-wired in `hooks.server.ts` — `DEV_BYPASS` no longer exists. Leads, pipeline, meetings, reminders, and calendar query the real DB via Drizzle. Reports still renders mock data. No real Sentry yet.
+**Current state (as of 03-07-26):** Better Auth (magic-link + `crm_users` allowlist) is live-wired in `hooks.server.ts` — `DEV_BYPASS` no longer exists. Leads, pipeline, meetings, reminders, calendar, and reports all query the real DB via Drizzle (reports via `reports/+page.server.ts`). Resend email is live-wired. No real Sentry yet (accepted known-gap).
 
 **Remaining v1 work (in priority order):**
 
-1. Reports — replace mock data with real DB-backed `layerchart` charts
-2. Shared Playwright authenticated-session fixture — currently blocks e2e verification for 2+ features (see `process/features/auth/backlog/e2e-auth-bootstrap_NOTE_01-07-26.md`)
-3. Live-DB CI harness for Hybrid-tier test gates (several features carry pre-accepted known-gaps for this)
+1. Shared Playwright authenticated-session fixture — currently blocks e2e verification for 2+ features (see `process/features/auth/backlog/e2e-auth-bootstrap_NOTE_01-07-26.md`)
+2. Live-DB CI harness for Hybrid-tier test gates (several features carry pre-accepted known-gaps for this)
 
 ---
 

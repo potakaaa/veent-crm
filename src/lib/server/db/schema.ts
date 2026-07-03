@@ -394,8 +394,9 @@ export const baSession = pgTable('session', {
 // Composite unique constraint (provider_id, account_id) is enforced via
 // drizzle/0003_ba_account_unique.sql — not managed by Drizzle schema diff
 // per project convention (Better Auth owns this table's migration lifecycle).
-// TODO (when Better Auth is wired): confirm the adapter handles the unique
-// violation gracefully (ON CONFLICT) rather than surfacing a 500.
+// NOTE: Better Auth is live-wired, but whether the adapter handles a
+// (provider_id, account_id) unique violation gracefully (ON CONFLICT) rather
+// than surfacing a 500 remains unverified.
 export const baAccount = pgTable('account', {
 	id: text('id').primaryKey(),
 	accountId: text('account_id').notNull(),

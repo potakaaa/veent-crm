@@ -27,7 +27,8 @@
 		copy: 'M9 9V5a2 2 0 012-2h8a2 2 0 012 2v8a2 2 0 01-2 2h-4M5 9h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2v-8a2 2 0 012-2z',
 		arrowUp: 'M12 19V5M5 12l7-7 7 7',
 		arrowDown: 'M12 5v14M5 12l7 7 7-7',
-		crown: 'M3 19h18M5 19V9l7-5 7 5v10'
+		crown: 'M3 19h18M5 19V9l7-5 7 5v10',
+		trash: 'M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6'
 	} as const;
 	export type IconName = keyof typeof ICONS;
 </script>

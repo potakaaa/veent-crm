@@ -26,6 +26,7 @@
 		isEmpty = false,
 		skeletonCells = 8,
 		skeletonRows = 8,
+		mobileBare = false,
 		header,
 		rows,
 		empty
@@ -36,6 +37,14 @@
 		isEmpty?: boolean;
 		skeletonCells?: number;
 		skeletonRows?: number;
+		/**
+		 * Opt-in, default `false` (unchanged behaviour — `LeadGrid.svelte`/`/leads` never passes
+		 * this, so it always keeps the current panel chrome). When `true`, drops the shell's own
+		 * outer panel box (border/bg/rounded/overflow) below `lg`, applying it only at `lg+`. Use
+		 * when each row already renders its own card chrome on mobile (e.g. `/unassigned`) and an
+		 * outer box around the whole list would double up with the per-row cards.
+		 */
+		mobileBare?: boolean;
 		/** Header cells (rendered inside the shell's responsive, mobile-hidden header container). */
 		header: Snippet;
 		/** Data rows. Receives the shared responsive `rowClass` to apply to each row. */
@@ -46,9 +55,24 @@
 
 	// Stack into a single-column card below `lg`, expand to the full column grid at `lg+`.
 	const rowClass = $derived(`grid grid-cols-1 gap-1.5 lg:gap-3 ${cols}`);
+
+	const outerClass = $derived(
+		mobileBare
+			? 'lg:overflow-hidden lg:rounded-control lg:border lg:border-hairline lg:bg-panel'
+			: 'overflow-hidden rounded-control border border-hairline bg-panel'
+	);
+
+	// Loading skeleton: when mobileBare, give each skeleton row its own small card so it doesn't
+	// look broken floating directly on the canvas with no outer box behind it (temporary state,
+	// doesn't need full per-row card treatment — just enough to read cleanly).
+	const skeletonRowClass = $derived(
+		mobileBare
+			? `${rowClass} min-h-[42px] items-center rounded-[8px] border border-hairline bg-panel px-4 py-2.5 mb-2 last:mb-0 lg:mb-0 lg:rounded-none lg:border-0 lg:border-b lg:border-panel-sunken lg:bg-transparent lg:py-0 lg:last:border-b-0`
+			: `${rowClass} min-h-[42px] items-center border-b border-panel-sunken px-4 last:border-b-0`
+	);
 </script>
 
-<div class="overflow-hidden rounded-control border border-hairline bg-panel">
+<div class={outerClass}>
 	<div
 		class="{rowClass} hidden items-center border-b border-hairline bg-panel-subtle px-4 py-[9px] font-mono text-[10.5px] uppercase tracking-[0.4px] text-ink-300 lg:grid"
 	>
@@ -56,9 +80,7 @@
 	</div>
 	{#if loading}
 		{#each Array(skeletonRows) as _, i (i)}
-			<div
-				class="{rowClass} min-h-[42px] items-center border-b border-panel-sunken px-4 last:border-b-0"
-			>
+			<div class={skeletonRowClass}>
 				{#each Array(skeletonCells) as _, c (c)}
 					<Skeleton class="h-3.5 w-full" />
 				{/each}

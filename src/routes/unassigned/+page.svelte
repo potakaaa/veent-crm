@@ -96,11 +96,24 @@
 		navigate({ [key]: values.join(',') || undefined, page: undefined });
 	}
 	function clearAllFilters() {
-		navigate({ country: undefined, category: undefined, page: undefined });
+		navigate({ country: undefined, category: undefined, q: undefined, page: undefined });
 	}
 	const hasActiveFilters = $derived(
-		data.filters.country.length > 0 || data.filters.category.length > 0
+		data.filters.country.length > 0 ||
+			data.filters.category.length > 0 ||
+			data.filters.search.trim().length > 0
 	);
+
+	let searchInput = $derived(data.filters.search ?? '');
+	let searchTimer: ReturnType<typeof setTimeout> | null = null;
+	function onSearchInput(e: Event & { currentTarget: HTMLInputElement }) {
+		const raw = e.currentTarget.value;
+		searchInput = raw;
+		if (searchTimer) clearTimeout(searchTimer);
+		searchTimer = setTimeout(() => {
+			navigate({ q: raw.trim() || undefined, page: undefined });
+		}, 1300);
+	}
 
 	const WEEKS_PRESETS = [4, 8, 12] as const;
 	let weeksInput = $derived(
@@ -315,6 +328,14 @@
 	</PageHeader>
 
 	<div class="mb-3.5 flex flex-wrap items-center gap-2">
+		<input
+			type="text"
+			value={searchInput}
+			oninput={onSearchInput}
+			placeholder="Search name, event, or handle"
+			aria-label="Search Up for Grabs leads"
+			class="h-[34px] w-56 rounded-control border border-ink-200 bg-white px-2.5 text-[12.5px] text-ink-700 placeholder:text-ink-400 focus:border-primary focus:outline-none"
+		/>
 		<MultiSelectFilter
 			label="Country"
 			options={data.countryOptions}

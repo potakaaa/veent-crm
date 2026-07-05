@@ -531,7 +531,7 @@ export async function listUnassignedLeads(
 	pageSize = 25,
 	sort?: string,
 	dir?: 'asc' | 'desc',
-	filters?: { country?: string[]; category?: string[]; weeksAhead?: number | null }
+	filters?: { country?: string[]; category?: string[]; weeksAhead?: number | null; search?: string }
 ): Promise<{ leads: Lead[]; total: number }> {
 	const conditions = unassignedBaseConditions();
 
@@ -553,6 +553,25 @@ export async function listUnassignedLeads(
 				${crmLeads.eventDate} IS NULL
 				OR ${crmLeads.eventDate} >= CURRENT_DATE + make_interval(days => ${weeksAhead * 7})
 			)`
+		);
+	}
+
+	// Search: case-insensitive against name, event name, and normalizedHandle.
+	// Ingest stores handles without '@'; manual creation stores with '@'. Strip a
+	// leading '@' so "copied handle" queries match both storage formats.
+	const search = filters?.search?.trim();
+	if (search) {
+		// Escape LIKE metacharacters (\, %, _) so literal input never acts as a wildcard.
+		const escapeLike = (s: string) => s.replace(/[\\%_]/g, '\\$&');
+		const nameLike = `%${escapeLike(search)}%`;
+		const handleSearch = search.startsWith('@') ? search.slice(1) : search;
+		const handleLike = `%${escapeLike(handleSearch)}%`;
+		conditions.push(
+			or(
+				ilike(crmLeads.name, nameLike),
+				ilike(sql`COALESCE(${crmLeads.normalizedHandle}, '')`, handleLike),
+				ilike(sql`COALESCE(${crmLeads.eventName}, '')`, nameLike)
+			)!
 		);
 	}
 

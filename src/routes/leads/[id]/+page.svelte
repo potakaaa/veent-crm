@@ -87,6 +87,7 @@
 	let contractUrl = $state('');
 	let onboardingStartDate = $state('');
 	let goLiveDate = $state('');
+	let eventDate = $state('');
 	let savingOnboarding = $state(false);
 
 	// Agreements form fields — resynced whenever server truth changes.
@@ -103,6 +104,7 @@
 		contractUrl = lead.contractUrl ?? '';
 		onboardingStartDate = lead.onboardingStartDate ?? '';
 		goLiveDate = lead.goLiveDate ?? '';
+		eventDate = lead.eventDate ?? '';
 		feeStructure = lead.feeStructure ?? null;
 		transactionFeePct = lead.transactionFeePct ?? 7;
 		convenienceFeePesos = lead.convenienceFeePesos ?? 20;
@@ -126,6 +128,7 @@
 					contractUrl,
 					onboardingStartDate,
 					goLiveDate,
+					eventDate,
 					feeStructure: feeStructure ?? undefined,
 					transactionFeePct,
 					convenienceFeePesos,
@@ -567,12 +570,23 @@
 							</div>
 							<div>
 								<label class="mb-1 block text-[11px] text-ink-300" for="ob-golive"
-									>Go-live date</label
+									>Ticket Sale Start</label
 								>
 								<input
 									id="ob-golive"
 									type="date"
 									bind:value={goLiveDate}
+									class="h-[34px] w-full rounded-control border border-hairline bg-panel px-2.5 font-mono text-[12.5px] text-ink focus:outline-none focus:ring-1 focus:ring-primary"
+								/>
+							</div>
+							<div>
+								<label class="mb-1 block text-[11px] text-ink-300" for="ob-eventdate"
+									>Event Date</label
+								>
+								<input
+									id="ob-eventdate"
+									type="date"
+									bind:value={eventDate}
 									class="h-[34px] w-full rounded-control border border-hairline bg-panel px-2.5 font-mono text-[12.5px] text-ink focus:outline-none focus:ring-1 focus:ring-primary"
 								/>
 							</div>

@@ -223,7 +223,7 @@
 				<span class="text-[12px] font-medium text-ink-500">Filter by rep</span>
 				<Popover bind:open={repOpen}>
 					<PopoverTrigger
-						class="flex h-8 items-center gap-1 rounded-control border border-hairline bg-panel px-2.5 text-[12.5px] text-ink hover:bg-panel-sunken"
+						class="flex h-[34px] items-center gap-1.5 rounded-control border border-hairline bg-panel px-3 text-[12.5px] font-medium text-ink-600 hover:border-primary hover:text-primary"
 					>
 						{data.filterRepId == null
 							? 'All reps'

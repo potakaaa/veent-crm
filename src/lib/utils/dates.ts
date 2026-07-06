@@ -43,15 +43,17 @@ export const todayLabel = (): string =>
 		year: 'numeric'
 	});
 
-/** Human "2h ago" / "3d ago" relative to a reference point (defaults to now). */
+/** Human "5m ago" / "2h ago" / "3d ago" relative to a reference point (defaults to now). */
 export function relativeFromNow(iso: string | undefined, now = new Date()): string {
 	if (!iso) return '—';
 	const d = new Date(iso);
 	if (Number.isNaN(d.getTime())) return iso;
 	const diff = now.getTime() - d.getTime();
 	if (diff < 0) return formatDate(iso);
-	const hours = Math.floor(diff / 3_600_000);
-	if (hours < 1) return 'just now';
+	const minutes = Math.floor(diff / 60_000);
+	if (minutes < 1) return 'just now';
+	if (minutes < 60) return `${minutes}m ago`;
+	const hours = Math.floor(minutes / 60);
 	if (hours < 24) return `${hours}h ago`;
 	return `${Math.floor(hours / 24)}d ago`;
 }

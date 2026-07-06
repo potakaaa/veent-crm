@@ -15,6 +15,7 @@
 	import DedupBanner from '$lib/components/leads/DedupBanner.svelte';
 	import ActivityTimeline from '$lib/components/leads/ActivityTimeline.svelte';
 	import LogTouchForm from '$lib/components/leads/LogTouchForm.svelte';
+	import NotesPanel from '$lib/components/shared/NotesPanel.svelte';
 	import StageControl from '$lib/components/leads/StageControl.svelte';
 	import WonCaptureModal from '$lib/components/leads/WonCaptureModal.svelte';
 	import LostReasonModal from '$lib/components/leads/LostReasonModal.svelte';
@@ -28,6 +29,7 @@
 	import { toasts } from '$lib/stores/toasts.svelte';
 	import { canEditLead, canReassign } from '$lib/utils/permissions';
 	import { riskMeta } from '$lib/utils/risk';
+	import { createNoteHandlers } from '$lib/utils/note-actions';
 	import { formatDate, followUpDate } from '$lib/utils/dates';
 	import { stageColor, stageLabel } from '$lib/utils/stages';
 	import type { AddActivityInput, LostReason, MoveStagePayload, Stage } from '$lib/types';
@@ -239,6 +241,10 @@
 		await invalidateAll();
 		toasts.success('Touch logged · follow-up booked');
 	}
+
+	// $derived (not a one-time call) so the create URL follows `lead.id` across
+	// id → id navigations within this same page instance.
+	const noteHandlers = $derived(createNoteHandlers(`/api/leads/${lead.id}/notes`));
 
 	async function selectStage(stage: Stage) {
 		if (stage === lead.stage) return;
@@ -888,15 +894,6 @@
 					</div>
 				</div>
 
-				{#if lead.notes}
-					<div class="mb-4 rounded-control border border-hairline bg-panel p-4">
-						<div class="mb-2 font-mono text-[11px] uppercase tracking-[0.5px] text-ink-300">
-							Notes
-						</div>
-						<p class="whitespace-pre-wrap text-[13px] leading-relaxed text-ink-600">{lead.notes}</p>
-					</div>
-				{/if}
-
 				<div class="mb-4">
 					<ActivityTimeline
 						activities={data.activities}
@@ -1019,6 +1016,13 @@
 						</div>
 					</div>
 				</div>
+
+				<NotesPanel
+					notes={data.notes}
+					currentUserId={data.me.id}
+					onSubmit={noteHandlers.addNote}
+					onEdit={noteHandlers.editNote}
+				/>
 			</div>
 		</div>
 	</div>

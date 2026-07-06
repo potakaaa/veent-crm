@@ -1485,6 +1485,14 @@ export function buildEventStartRangeConditions(): SQL[] {
 }
 
 /**
+ * Shared WHERE composition for the event-start calendar query. Exported so tests
+ * can assert the exact SQL `getEventDatesInRange` produces without a live DB.
+ */
+export function buildEventStartWhereClause(userId: string, role: Role) {
+	return and(...buildEventStartRangeConditions(), visibilityCondition(userId, role));
+}
+
+/**
  * Returns live-stage leads whose `eventDate` falls within [rangeStart, rangeEnd] —
  * the read model for event-start milestone entries on the calendar. Team-wide, BUT the
  * enforced `visibilityCondition(userId, role)` predicate is applied so restricted
@@ -1504,7 +1512,7 @@ export async function getEventDatesInRange(
 			eventDate: crmLeads.eventDate
 		})
 		.from(crmLeads)
-		.where(and(...buildEventStartRangeConditions(), visibilityCondition(userId, role)));
+		.where(buildEventStartWhereClause(userId, role));
 
 	return rows
 		.map((row) => ({

@@ -14,10 +14,10 @@ import {
 	buildFollowUpsRangeLeadConditions,
 	buildGoLiveRangeConditions,
 	buildEventStartRangeConditions,
+	buildEventStartWhereClause,
 	isWithinRange,
 	normalizeGoLiveDate,
-	normalizeEventDate,
-	visibilityCondition
+	normalizeEventDate
 } from '$lib/server/db/leads';
 import { db } from '$lib/server/db/index';
 import { crmLeads } from '$lib/server/db/schema';
@@ -147,7 +147,7 @@ describe('getEventDatesInRange — visibility-composition regression guard (AC7,
 		const { sql: sqlStr } = db
 			.select()
 			.from(crmLeads)
-			.where(and(...buildEventStartRangeConditions(), visibilityCondition('user-1', 'rep')))
+			.where(buildEventStartWhereClause('user-1', 'rep'))
 			.toSQL();
 
 		// The visibility predicate MUST be composed into the WHERE clause so a future

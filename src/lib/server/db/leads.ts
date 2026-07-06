@@ -1384,6 +1384,72 @@ export async function getFollowUpsInRange(
 }
 
 // ---------------------------------------------------------------------------
+// Calendar go-live milestones — live-stage leads shown on their goLiveDate
+// ---------------------------------------------------------------------------
+
+/**
+ * Calendar-facing summary of a live-stage lead's go-live milestone. Carries only
+ * the lead name (used directly as the calendar title — no derived `handle`) and a
+ * local-midnight ISO string for day-safe grid bucketing.
+ */
+export type LiveLeadSummary = { id: string; name: string; goLiveIso: string };
+
+/**
+ * Normalize a Postgres DATE (`'YYYY-MM-DD'` string from Drizzle) to a local-midnight
+ * ISO string by appending `T00:00:00`. Passing the bare `'YYYY-MM-DD'` to `new Date()`
+ * parses as UTC-midnight, which shifts to the previous day in negative-offset zones and
+ * mis-buckets the go-live milestone. Idempotent: input already containing `T` is returned
+ * as-is.
+ */
+export function normalizeGoLiveDate(dateStr: string): string {
+	return dateStr.includes('T') ? dateStr : `${dateStr}T00:00:00`;
+}
+
+/**
+ * Lead-level predicates for the calendar go-live query. Isolated as a pure, DB-free
+ * helper so the AC1 selection guard can assert the WHERE clause via `.toSQL()` without
+ * a live DB connection (mirrors buildFollowUpsRangeLeadConditions).
+ */
+export function buildGoLiveRangeConditions(): SQL[] {
+	return [
+		isNull(crmLeads.deletedAt) as SQL,
+		eq(crmLeads.stage, 'live'),
+		isNotNull(crmLeads.goLiveDate) as SQL
+	];
+}
+
+/**
+ * Returns live-stage leads whose `goLiveDate` falls within [rangeStart, rangeEnd] —
+ * the read model for go-live milestone entries on the calendar. Team-wide, BUT the
+ * enforced `visibilityCondition(userId, role)` predicate is applied so restricted
+ * (`only_me` / `selected`) live leads never leak onto other users' calendars (concern C2).
+ * Selects only `name` for the calendar title — never the derived `handle` (concern C1).
+ */
+export async function getGoLiveDatesInRange(
+	rangeStart: Date,
+	rangeEnd: Date,
+	userId: string,
+	role: Role
+): Promise<LiveLeadSummary[]> {
+	const rows = await db
+		.select({
+			id: crmLeads.id,
+			name: crmLeads.name,
+			goLiveDate: crmLeads.goLiveDate
+		})
+		.from(crmLeads)
+		.where(and(...buildGoLiveRangeConditions(), visibilityCondition(userId, role)));
+
+	return rows
+		.map((row) => ({
+			id: row.id,
+			name: row.name,
+			goLiveIso: normalizeGoLiveDate(row.goLiveDate!)
+		}))
+		.filter((summary) => isWithinRange(summary.goLiveIso, rangeStart, rangeEnd));
+}
+
+// ---------------------------------------------------------------------------
 // Log touch — persist a real outreach activity
 // ---------------------------------------------------------------------------
 

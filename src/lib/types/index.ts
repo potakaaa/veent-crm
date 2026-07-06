@@ -171,11 +171,11 @@ export interface Meeting {
  * Unified calendar entry — the common shape both meetings and follow-up reminders
  * map into before reaching the calendar grid. `type` drives visual distinction (AC4)
  * and `href` drives click-through (AC5 meeting → /meetings/[id], AC6 followup → /leads/[id],
- * golive → /leads/[id]).
+ * golive → /leads/[id], eventstart → /leads/[id]).
  */
 export interface CalendarEntry {
 	id: string;
-	type: 'meeting' | 'followup' | 'golive';
+	type: 'meeting' | 'followup' | 'golive' | 'eventstart';
 	/** ISO datetime the entry falls on (meeting start, or follow-up due date). */
 	startAt: string;
 	title: string;

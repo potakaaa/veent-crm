@@ -1,6 +1,11 @@
 import type { PageServerLoad } from './$types';
 import { error } from '@sveltejs/kit';
-import { getFollowUpsInRange, getGoLiveDatesInRange, isWithinRange } from '$lib/server/db/leads';
+import {
+	getFollowUpsInRange,
+	getGoLiveDatesInRange,
+	getEventDatesInRange,
+	isWithinRange
+} from '$lib/server/db/leads';
 import { listAllMeetings } from '$lib/server/db/meetings';
 import { computeRange, parseDateParam, toDateParam, type CalendarView } from '$lib/utils/calendar';
 import type { CalendarEntry } from '$lib/types';
@@ -20,10 +25,11 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 	// the merged meetings module untouched (zero regression surface for /meetings), is backward
 	// compatible, and is adequate for v0's small dataset. Server-side param filtering remains a
 	// future optimization if the meeting volume grows.
-	const [followUps, meetings, goLives] = await Promise.all([
+	const [followUps, meetings, goLives, eventStarts] = await Promise.all([
 		getFollowUpsInRange(locals.user.id, start, end),
 		listAllMeetings(),
-		getGoLiveDatesInRange(start, end, locals.user.id, locals.user.role)
+		getGoLiveDatesInRange(start, end, locals.user.id, locals.user.role),
+		getEventDatesInRange(start, end, locals.user.id, locals.user.role)
 	]);
 
 	const meetingEntries: CalendarEntry[] = meetings
@@ -56,9 +62,20 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 		href: `/leads/${l.id}`
 	}));
 
-	const entries = [...meetingEntries, ...followUpEntries, ...goLiveEntries].sort(
-		(a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime()
-	);
+	const eventStartEntries: CalendarEntry[] = eventStarts.map((l) => ({
+		id: `eventstart-${l.id}`,
+		type: 'eventstart',
+		startAt: l.eventStartIso,
+		title: l.name,
+		href: `/leads/${l.id}`
+	}));
+
+	const entries = [
+		...meetingEntries,
+		...followUpEntries,
+		...goLiveEntries,
+		...eventStartEntries
+	].sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime());
 
 	return { entries, view, date: toDateParam(anchor) };
 };

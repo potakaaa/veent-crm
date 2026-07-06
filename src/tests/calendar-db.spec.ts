@@ -13,8 +13,11 @@ import { describe, it, expect } from 'vitest';
 import {
 	buildFollowUpsRangeLeadConditions,
 	buildGoLiveRangeConditions,
+	buildEventStartRangeConditions,
+	buildEventStartWhereClause,
 	isWithinRange,
-	normalizeGoLiveDate
+	normalizeGoLiveDate,
+	normalizeEventDate
 } from '$lib/server/db/leads';
 import { db } from '$lib/server/db/index';
 import { crmLeads } from '$lib/server/db/schema';
@@ -107,5 +110,49 @@ describe('buildGoLiveRangeConditions — live-lead selection guard (AC1, DB-free
 		expect(sqlStr).toContain('go_live_date');
 		expect(sqlStr).toContain('is not null');
 		expect(params).toContain('live');
+	});
+});
+
+describe('normalizeEventDate — day-shift-safe DATE normalization (AC4, DB-free)', () => {
+	it("normalizes a 'YYYY-MM-DD' string to local-midnight ISO without day-shift", () => {
+		expect(normalizeEventDate('2026-07-15')).toBe('2026-07-15T00:00:00');
+	});
+
+	it('is idempotent on input that already contains a time component', () => {
+		expect(normalizeEventDate('2026-07-15T00:00:00')).toBe('2026-07-15T00:00:00');
+		expect(normalizeEventDate('2026-07-15T09:30:00.000Z')).toBe('2026-07-15T09:30:00.000Z');
+	});
+});
+
+describe('buildEventStartRangeConditions — live-lead selection guard (AC1, DB-free)', () => {
+	it("builds WHERE with deleted_at is null, stage = 'live', event_date is not null", () => {
+		const conditions = buildEventStartRangeConditions();
+		const { sql: sqlStr, params } = db
+			.select()
+			.from(crmLeads)
+			.where(and(...conditions))
+			.toSQL();
+
+		expect(sqlStr).toContain('deleted_at');
+		expect(sqlStr).toContain('is null');
+		expect(sqlStr).toContain('stage');
+		expect(sqlStr).toContain('event_date');
+		expect(sqlStr).toContain('is not null');
+		expect(params).toContain('live');
+	});
+});
+
+describe('getEventDatesInRange — visibility-composition regression guard (AC7, DB-free)', () => {
+	it('composes visibilityCondition into the event-start query WHERE (no restricted-lead leak)', () => {
+		const { sql: sqlStr } = db
+			.select()
+			.from(crmLeads)
+			.where(buildEventStartWhereClause('user-1', 'rep'))
+			.toSQL();
+
+		// The visibility predicate MUST be composed into the WHERE clause so a future
+		// refactor cannot silently drop it and leak restricted (only_me/selected) live leads.
+		expect(sqlStr).toContain('owner_id');
+		expect(sqlStr).toContain('visibility');
 	});
 });

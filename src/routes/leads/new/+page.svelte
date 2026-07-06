@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { page } from '$app/state';
 	import PageHeader from '$lib/components/shared/PageHeader.svelte';
 	import PlatformBadge from '$lib/components/shared/PlatformBadge.svelte';
 	import StageChip from '$lib/components/shared/StageChip.svelte';
@@ -19,12 +20,22 @@
 	import { createHoverPopover } from '$lib/utils/hover-popover.svelte';
 	import { ownerNameFor } from '$lib/utils/owner';
 	import { formatEventDate } from '$lib/utils/dates';
-	import { leadFormSchema, LEAD_CATEGORIES, LEAD_PLATFORMS } from '$lib/zod/schemas';
+	import { leadFormSchema, LEAD_CATEGORIES, LEAD_PLATFORMS, LOOSE_UUID_RE } from '$lib/zod/schemas';
 	import type { DateValue } from '@internationalized/date';
 
 	let { data } = $props();
 
-	let name = $state('');
+	// Add Event pre-fill (GitHub #190): read `?organizerId=` from the URL client-side and
+	// keep it only when it is UUID-shaped. Existence is enforced server-side in the POST
+	// handler; a missing/malformed param is silently ignored (form loads normally, no error UI).
+	const prefillOrganizerId = $derived.by(() => {
+		const raw = page.url.searchParams.get('organizerId');
+		return raw && LOOSE_UUID_RE.test(raw) ? raw : undefined;
+	});
+
+	// Add Event pre-fill (GitHub #190): seed the organizer name from `?name=` when present.
+	// URLSearchParams.get() already decodes; a missing/empty param falls back to '' (no error UI).
+	let name = $state(page.url.searchParams.get('name') ?? '');
 	let category = $state<string>('Other');
 	let platform = $state<string>('');
 	let location = $state('');
@@ -95,7 +106,8 @@
 			firstReachedOutDate: reachedOutDate ? reachedOutDate.toString() : undefined,
 			notes: notes.trim() || undefined,
 			visibility,
-			selectedUserIds: visibility === 'selected' ? selectedUserIds : undefined
+			selectedUserIds: visibility === 'selected' ? selectedUserIds : undefined,
+			organizerId: prefillOrganizerId
 		});
 		if (!parsed.success) {
 			// Per-field errors from Zod's flatten(); each field renders its own message.

@@ -90,6 +90,7 @@ export function dbRowToLead(row: DbLead, followUpAt?: string | Date | null): Lea
 		platform: (row.platform ?? 'Other') as Lead['platform'],
 		stage: row.stage as Stage,
 		ownerId: row.ownerId,
+		organizerId: row.organizerId,
 		visibility: row.visibility as Visibility,
 		eventName: row.eventName ?? undefined,
 		eventDate: row.eventDate ?? undefined,
@@ -778,6 +779,7 @@ export async function createLead(
 		notes?: string;
 		visibility?: Visibility;
 		selectedUserIds?: string[];
+		organizerId?: string;
 	},
 	ownerId: string
 ): Promise<Lead> {
@@ -809,6 +811,7 @@ export async function createLead(
 				firstReachedOutDate: input.firstReachedOutDate ?? null,
 				notes: input.notes ?? null,
 				normalizedHandle,
+				organizerId: input.organizerId ?? null,
 				ownerId,
 				visibility,
 				source: 'manual',

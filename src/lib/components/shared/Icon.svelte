@@ -30,7 +30,8 @@
 		arrowUp: 'M12 19V5M5 12l7-7 7 7',
 		arrowDown: 'M12 5v14M5 12l7 7 7-7',
 		crown: 'M3 19h18M5 19V9l7-5 7 5v10',
-		trash: 'M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6'
+		trash: 'M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6',
+		organizers: 'M3 21h18M5 21V7l7-4 7 4v14M9 21v-4h6v4M9 10h.01M15 10h.01M9 13h.01M15 13h.01'
 	} as const;
 	export type IconName = keyof typeof ICONS;
 </script>

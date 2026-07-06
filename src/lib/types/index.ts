@@ -62,6 +62,13 @@ export interface Lead {
 	 * ("Unassigned" when `ownerId` is null). NOT a DB-native column — undefined until enriched.
 	 */
 	ownerName?: string;
+	/** Tagged organizer id, or null when the lead is not tagged to any organizer. */
+	organizerId: string | null;
+	/**
+	 * Organizer display name, resolved at the route-load layer via `getOrganizer()`.
+	 * NOT a DB-native column on the lead — undefined until resolved.
+	 */
+	organizerName?: string;
 	/** Per-lead visibility scope (GitHub #87). Defaults to `everyone`. */
 	visibility: Visibility;
 	/** User ids explicitly granted access when `visibility === 'selected'`. */

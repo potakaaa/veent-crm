@@ -5,15 +5,13 @@ import { and, eq, isNull } from 'drizzle-orm';
 import { ingestBatchSchema } from '$lib/zod/schemas';
 import { db } from '$lib/server/db';
 import { crmLeads } from '$lib/server/db/schema';
-import { normalizeHandle, normalizePlatform, normalizeCountry } from '$lib/server/import-utils';
-
-// Derive a country segment from the free-text location field: take the last comma-separated
-// segment (e.g. "Makati, Philippines" → "Philippines"), or the whole string if no comma.
-function parseCountryFromLocation(location?: string | null): string | null {
-	if (!location) return null;
-	const parts = location.split(',');
-	return parts.length > 1 ? parts[parts.length - 1].trim() : location.trim();
-}
+import { findOrCreateOrganizer } from '$lib/server/db/organizer-find-or-create';
+import {
+	normalizeHandle,
+	normalizePlatform,
+	normalizeCountry,
+	parseCountryFromLocation
+} from '$lib/server/import-utils';
 
 // Scraper intake. Secret-authed (INGEST_SECRET); the scraper never gets DATABASE_URL. The CRM
 // owns validation + dedup-at-the-door (normalized_handle): match = skip, never blind-create.
@@ -72,10 +70,33 @@ export const POST: RequestHandler = async ({ request }) => {
 		// The ingest payload already carries a typed CRM category enum, so it is used as-is.
 		// (mapCategory is for raw scraper strings in the bulk-file path; mapping a valid enum
 		// value here would wrongly demote categories absent from the scraper map, e.g. Camp.)
+		// Best-effort organizer linkage: resolve/create the organizer FIRST, then insert the
+		// lead with organizerId set. A failure here must NOT block lead creation (response
+		// contract unchanged) — log and continue with organizerId null.
+		let organizerId: string | null = null;
+		try {
+			organizerId = await findOrCreateOrganizer(
+				{
+					normalizedHandle,
+					name: lead.pageName,
+					socialFacebook: lead.facebookUrl ?? null,
+					socialInstagram: lead.instagramUrl ?? null,
+					website: lead.url ?? null,
+					email: lead.email ?? null,
+					phone: lead.phone ?? null,
+					location: lead.location ?? null
+				},
+				db
+			);
+		} catch (e) {
+			console.error('findOrCreateOrganizer failed, continuing without organizer link', e);
+		}
+
 		const now = new Date();
 		await db.insert(crmLeads).values({
 			name: lead.pageName,
 			normalizedHandle,
+			organizerId,
 			sourceRef: lead.sourceRef ?? null,
 			scraperOrgId: lead.scraperOrgId ?? null,
 			category: lead.category ?? 'Other',

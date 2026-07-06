@@ -2,6 +2,7 @@ import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { leadFormSchema } from '$lib/zod/schemas';
 import { createLead, listLeadsFiltered } from '$lib/server/db/leads';
+import { getOrganizer } from '$lib/server/db/organizers';
 
 /**
  * Session-scoped lead search for the meetings LeadCombobox.
@@ -44,6 +45,17 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	}
 
 	const { data } = parsed;
+
+	// Stale/invalid organizerId handling (GitHub #190, locked decision): the client only
+	// checks UUID shape, so a syntactically-valid-but-nonexistent id can still arrive here.
+	// This is the single enforcement point — resolve it server-side and silently drop it if
+	// the organizer row does not exist, avoiding a raw FK-violation 500. No error surfaces.
+	let organizerId: string | undefined;
+	if (data.organizerId) {
+		const organizer = await getOrganizer(data.organizerId);
+		if (organizer) organizerId = organizer.id;
+	}
+
 	const lead = await createLead(
 		{
 			name: data.name,
@@ -59,7 +71,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			firstReachedOutDate: data.firstReachedOutDate || undefined,
 			notes: data.notes || undefined,
 			visibility: data.visibility,
-			selectedUserIds: data.selectedUserIds
+			selectedUserIds: data.selectedUserIds,
+			organizerId
 		},
 		locals.user.id
 	);

@@ -12,8 +12,8 @@
 // placeholder is safe here even though it would be unsafe in production.
 
 import { drizzle as drizzlePg } from 'drizzle-orm/postgres-js';
-import { drizzle as drizzleNeon } from 'drizzle-orm/neon-http';
-import { neon } from '@neondatabase/serverless';
+import { drizzle as drizzleNeon } from 'drizzle-orm/neon-serverless';
+import { Pool as NeonPool } from '@neondatabase/serverless';
 import postgres from 'postgres';
 import * as schema from './schema';
 import { env } from '$env/dynamic/private';
@@ -34,9 +34,18 @@ function createDb(): Database {
 	const connectionString = rawUrl.replace(/[&?]channel_binding=[^&]*/g, '');
 
 	if (connectionString.includes('neon.tech')) {
-		// Neon (Vercel / serverless): HTTP driver avoids TCP handshake overhead.
-		// Each query is an HTTP fetch — no persistent connection needed, ~20-50ms vs ~200ms cold TCP.
-		return drizzleNeon(neon(connectionString), { schema }) as unknown as Database;
+		// Neon (Vercel / serverless): WebSocket-based driver (@neondatabase/serverless Pool).
+		// This is Neon's own recommended serverless driver and, unlike the neon-http driver,
+		// it supports real transactions (BEGIN/COMMIT/ROLLBACK) and SELECT ... FOR UPDATE row
+		// locks. Both are required: ~14 call sites use db.transaction(), several with row
+		// locking (e.g. logLeadTouch, snoozeLead). The neon-http driver throws
+		// "No transactions support in neon-http driver" on every one of those paths.
+		//
+		// Tradeoff vs the previous HTTP driver: a WebSocket handshake is slightly heavier than
+		// a one-shot HTTP fetch, but it is the only Neon driver that preserves atomicity, so
+		// correctness wins. No `ws` dependency is needed — @neondatabase/serverless v1 uses the
+		// runtime's global WebSocket (present in Bun and Node 22+) with a bundled fallback.
+		return drizzleNeon(new NeonPool({ connectionString }), { schema }) as unknown as Database;
 	}
 
 	// Local Docker / self-hosted Postgres: keep postgres-js TCP pool with prepared statements.

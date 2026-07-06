@@ -8,15 +8,24 @@
  * To run locally: ensure DATABASE_URL is in .env, then bun run test:unit:ci
  */
 import { describe, it, expect, afterAll } from 'vitest';
-import { createLead, getRemindersQueue, snoozeLead } from '$lib/server/db/leads';
+import {
+	createLead,
+	enrichWithOwnerNames,
+	getAllFollowUpsQueue,
+	getRemindersQueue,
+	snoozeLead
+} from '$lib/server/db/leads';
 import { db } from '$lib/server/db/index';
 import { crmLeads, crmActivities } from '$lib/server/db/schema';
 import { eq, inArray } from 'drizzle-orm';
+import type { Visibility } from '$lib/types';
 
 const SKIP_DB = !process.env.DATABASE_URL;
 
-// Seeded manager UUID from scripts/seed.ts
-const MANAGER_UUID = '00000000-0000-0000-0000-000000000001';
+// Seeded UUIDs from scripts/seed.ts
+const MANAGER_UUID = '00000000-0000-0000-0000-000000000001'; // John Sabuga (manager)
+const REP_JONNA = '00000000-0000-0000-0000-000000000002';
+const REP_ETHYL = '00000000-0000-0000-0000-000000000003';
 const TEST_PREFIX = '__remtest__';
 
 const createdLeadIds: string[] = [];
@@ -37,6 +46,15 @@ async function makeTestLead(name: string, stage: 'new' | 'contacted' | 'replied'
 	if (stage !== 'new') {
 		await db.update(crmLeads).set({ stage }).where(eq(crmLeads.id, lead.id));
 	}
+	return lead;
+}
+
+async function makeOwnedLead(name: string, ownerId: string, visibility: Visibility = 'everyone') {
+	const lead = await createLead(
+		{ name: `${TEST_PREFIX} ${name}`, category: 'Sports', visibility },
+		ownerId
+	);
+	createdLeadIds.push(lead.id);
 	return lead;
 }
 
@@ -224,5 +242,109 @@ describe.skipIf(SKIP_DB)('getRemindersQueue — exclusions (DB)', () => {
 
 		const after = await getRemindersQueue(MANAGER_UUID);
 		expect(after.overdue.find((l) => l.id === lead.id)).toBeUndefined();
+	});
+});
+
+// ---------------------------------------------------------------------------
+// REM-1 — enrichWithOwnerNames (AC2)
+// ---------------------------------------------------------------------------
+
+describe.skipIf(SKIP_DB)('enrichWithOwnerNames (DB)', () => {
+	it('maps a lead ownerId → the owner display name', async () => {
+		const lead = await makeOwnedLead('Enrich Owner', MANAGER_UUID);
+		const [enriched] = await enrichWithOwnerNames([lead]);
+		expect(enriched.ownerName).toBe('John Sabuga');
+	});
+
+	it('maps a null-owner lead to "Unassigned"', async () => {
+		const lead = await makeOwnedLead('Enrich NullOwner', MANAGER_UUID);
+		const [enriched] = await enrichWithOwnerNames([{ ...lead, ownerId: null }]);
+		expect(enriched.ownerName).toBe('Unassigned');
+	});
+});
+
+// ---------------------------------------------------------------------------
+// REM-2 — getAllFollowUpsQueue (AC4, AC5, AC6, AC7)
+// ---------------------------------------------------------------------------
+
+describe.skipIf(SKIP_DB)('getAllFollowUpsQueue — uncapped membership (AC4, DB)', () => {
+	it('includes a +10d lead that the bucketed upcoming window excludes', async () => {
+		const lead = await makeTestLead('AllFollowUps +10d');
+		await bookFollowUp(lead.id, MANAGER_UUID, new Date(Date.now() + 10 * 86_400_000));
+
+		const all = await getAllFollowUpsQueue(MANAGER_UUID, 'manager');
+		expect(all.find((l) => l.id === lead.id)).toBeDefined();
+
+		const { upcoming, due } = await getRemindersQueue(MANAGER_UUID, 'manager');
+		expect(upcoming.find((l) => l.id === lead.id)).toBeUndefined();
+		expect(due.find((l) => l.id === lead.id)).toBeUndefined();
+	});
+});
+
+describe.skipIf(SKIP_DB)('getAllFollowUpsQueue — sort order (AC5, DB)', () => {
+	it('returns leads ascending by followUpAt (soonest first)', async () => {
+		const soon = await makeTestLead('Sort Soon');
+		const later = await makeTestLead('Sort Later');
+		// Book later first to ensure ordering is by followUpAt, not insertion order.
+		await bookFollowUp(later.id, MANAGER_UUID, new Date(Date.now() + 20 * 86_400_000));
+		await bookFollowUp(soon.id, MANAGER_UUID, new Date(Date.now() + 4 * 86_400_000));
+
+		const all = await getAllFollowUpsQueue(MANAGER_UUID, 'manager');
+		const idxSoon = all.findIndex((l) => l.id === soon.id);
+		const idxLater = all.findIndex((l) => l.id === later.id);
+		expect(idxSoon).toBeGreaterThanOrEqual(0);
+		expect(idxLater).toBeGreaterThanOrEqual(0);
+		expect(idxSoon).toBeLessThan(idxLater);
+	});
+});
+
+describe.skipIf(SKIP_DB)('getAllFollowUpsQueue — rep scoping (AC6, DB)', () => {
+	it("a rep never sees another rep's only_me lead, even when filterRepId is supplied", async () => {
+		// Ethyl owns a private (only_me) lead; Jonna (rep) must not see it via any path.
+		const ethylPrivate = await makeOwnedLead('Ethyl Private', REP_ETHYL, 'only_me');
+		await bookFollowUp(ethylPrivate.id, REP_ETHYL, new Date(Date.now() + 3 * 86_400_000));
+
+		// Even if a rep session somehow supplies filterRepId for another rep, it is ignored
+		// AND the visibility predicate still hides the private lead.
+		const jonnaView = await getAllFollowUpsQueue(REP_JONNA, 'rep', { filterRepId: REP_ETHYL });
+		expect(jonnaView.find((l) => l.id === ethylPrivate.id)).toBeUndefined();
+	});
+
+	it('a rep sees their own booked follow-up', async () => {
+		const jonnaOwn = await makeOwnedLead('Jonna Own', REP_JONNA, 'only_me');
+		await bookFollowUp(jonnaOwn.id, REP_JONNA, new Date(Date.now() + 3 * 86_400_000));
+
+		const jonnaView = await getAllFollowUpsQueue(REP_JONNA, 'rep');
+		expect(jonnaView.find((l) => l.id === jonnaOwn.id)).toBeDefined();
+	});
+});
+
+describe.skipIf(SKIP_DB)('getAllFollowUpsQueue — manager filter (AC7, DB)', () => {
+	it('unfiltered manager view spans 2+ distinct owners (base scope NOT single-owner)', async () => {
+		const jonnaLead = await makeOwnedLead('Manager Team Jonna', REP_JONNA);
+		const ethylLead = await makeOwnedLead('Manager Team Ethyl', REP_ETHYL);
+		await bookFollowUp(jonnaLead.id, REP_JONNA, new Date(Date.now() + 5 * 86_400_000));
+		await bookFollowUp(ethylLead.id, REP_ETHYL, new Date(Date.now() + 6 * 86_400_000));
+
+		const all = await getAllFollowUpsQueue(MANAGER_UUID, 'manager');
+		const owners = new Set(
+			all.filter((l) => l.id === jonnaLead.id || l.id === ethylLead.id).map((l) => l.ownerId)
+		);
+		// Regression guard for the Step 1 guardrail: if the base predicate were hardcoded to
+		// eq(ownerId, managerId), neither rep-owned lead would appear and this would be < 2.
+		expect(owners.size).toBeGreaterThanOrEqual(2);
+	});
+
+	it("filterRepId narrows the manager view to that rep's leads only", async () => {
+		const jonnaLead = await makeOwnedLead('Filter Jonna', REP_JONNA);
+		const ethylLead = await makeOwnedLead('Filter Ethyl', REP_ETHYL);
+		await bookFollowUp(jonnaLead.id, REP_JONNA, new Date(Date.now() + 5 * 86_400_000));
+		await bookFollowUp(ethylLead.id, REP_ETHYL, new Date(Date.now() + 6 * 86_400_000));
+
+		const filtered = await getAllFollowUpsQueue(MANAGER_UUID, 'manager', {
+			filterRepId: REP_JONNA
+		});
+		expect(filtered.find((l) => l.id === jonnaLead.id)).toBeDefined();
+		expect(filtered.find((l) => l.id === ethylLead.id)).toBeUndefined();
 	});
 });

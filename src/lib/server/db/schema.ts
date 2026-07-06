@@ -256,8 +256,10 @@ export const crmNotes = pgTable(
 		createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 		updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
 	},
-	(_t) => [
-		check('crm_notes_target_ck', sql`("lead_id" IS NOT NULL) <> ("organizer_id" IS NOT NULL)`)
+	(t) => [
+		check('crm_notes_target_ck', sql`("lead_id" IS NOT NULL) <> ("organizer_id" IS NOT NULL)`),
+		index('crm_notes_lead_idx').on(t.leadId),
+		index('crm_notes_organizer_idx').on(t.organizerId)
 	]
 );
 

@@ -10,6 +10,9 @@ import { crmLeads, crmOrganizers, crmLeadHistory } from '$lib/server/db/schema';
 export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 	if (!locals.user) throw error(401, 'Unauthorized');
 
+	const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+	if (!UUID_RE.test(params.id)) throw error(400, 'Invalid lead id');
+
 	let body: unknown;
 	try {
 		body = await request.json();
@@ -42,21 +45,27 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 		.limit(1);
 	if (!existing) throw error(404, 'Lead not found');
 
-	const [updated] = await db
-		.update(crmLeads)
-		.set({ organizerId, updatedAt: new Date() })
-		.where(eq(crmLeads.id, params.id))
-		.returning();
-	if (!updated) throw error(404, 'Lead not found');
+	const actorUserId = locals.user.id;
+	const updated = await db.transaction(async (tx) => {
+		const [row] = await tx
+			.update(crmLeads)
+			.set({ organizerId, updatedAt: new Date() })
+			.where(eq(crmLeads.id, params.id))
+			.returning();
+		if (!row) return null;
 
-	// Audit trail — every organizer change writes a crm_lead_history row.
-	await db.insert(crmLeadHistory).values({
-		leadId: params.id,
-		actorUserId: locals.user.id,
-		field: 'organizer_id',
-		oldValue: existing.organizerId ?? null,
-		newValue: organizerId ?? null
+		// Audit trail — every organizer change writes a crm_lead_history row.
+		await tx.insert(crmLeadHistory).values({
+			leadId: params.id,
+			actorUserId,
+			field: 'organizer_id',
+			oldValue: existing.organizerId ?? null,
+			newValue: organizerId ?? null
+		});
+
+		return row;
 	});
+	if (!updated) throw error(404, 'Lead not found');
 
 	return json(updated);
 };

@@ -834,7 +834,7 @@
 				<StageControl current={lead.stage} disabled={!canEdit || mutating} onSelect={selectStage} />
 
 				<div class="flex flex-col gap-2.5 rounded-control border border-hairline bg-panel p-4">
-					{#if lead.stage !== 'won'}
+					{#if lead.stage !== 'won' && lead.stage !== 'live'}
 						<Button
 							disabled={!canEdit || mutating}
 							onclick={() => (wonOpen = true)}

@@ -211,7 +211,7 @@ WHERE l.notes IS NOT NULL
 
 This is a single-session COMPLEX plan (one PR), not a phase program. Completion rules:
 
-- **CODE DONE** when checklist steps 1–16 are applied and `bun run check` + `bun run test:unit` pass (Fully-Automated tier green).
+- **CODE DONE** when checklist steps 1–16 are applied and `bun run check` + `bun run test:unit:ci` pass (Fully-Automated tier green).
 - **VERIFIED** requires the Hybrid live-DB gates (step 18 `db:push`, data-migration assertion, tagging/notes insert checks) to pass against a dev DB AND user confirmation of the e2e-blocked UI ACs (AC10/11/12/14) via agent-probe/manual check. Do not mark VERIFIED on code-compile alone.
 - e2e-tier ACs stay CONDITIONAL with registered backlog stubs until the shared Playwright auth fixture lands — they are never declared PASS on known-gap alone.
 

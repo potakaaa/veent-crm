@@ -7,7 +7,6 @@
 	import { Skeleton } from '$lib/components/shared/skeletons';
 	import CalendarHeatmap from '$lib/components/reports/CalendarHeatmap.svelte';
 	import MonthCalendar from '$lib/components/reports/MonthCalendar.svelte';
-	import { formatMoney } from '$lib/utils/currency';
 	import type { HeatmapDay, ReportData, OutreachMetrics } from '$lib/types';
 
 	let { data } = $props();
@@ -480,23 +479,7 @@
 			</div>
 		</div>
 
-		<!-- Won deals by currency -->
-		<div class="rounded-control border border-hairline bg-panel p-5">
-			<div class="mb-3.5 flex items-center justify-between">
-				<div class="text-[14px] font-bold">Won deals — by currency</div>
-			</div>
-			<div class="flex flex-wrap gap-4">
-				{#each reportData.currencyTotals as c (c.currency)}
-					<div class="min-w-[200px] flex-1 rounded-control border border-hairline bg-selected p-4">
-						<div class="font-mono text-[11px] tracking-[1px] text-ink-300">{c.label}</div>
-						<div class="mt-1 font-mono text-[26px] font-semibold tracking-[-1px] tnum">
-							{formatMoney(c.total, c.currency)}
-						</div>
-						<div class="mt-0.5 text-[12.5px] text-ink-500">{c.deals} won deals</div>
-					</div>
-				{/each}
-			</div>
-		</div>
+		<!-- TODO(LEAD-1): restore "Won deals by currency" card once deal value is un-hidden -->
 	{/if}
 
 	<!-- Calendar views — below all summary cards -->

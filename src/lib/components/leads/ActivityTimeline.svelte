@@ -1,5 +1,6 @@
 <script lang="ts">
 	import OutcomeChip from '$lib/components/shared/OutcomeChip.svelte';
+	import * as Popover from '$lib/components/ui/popover';
 	import { OUTCOME_TOKENS } from '$lib/design/tokens';
 	import { formatDate } from '$lib/utils/dates';
 	import { stageLabel } from '$lib/utils/stages';
@@ -23,16 +24,67 @@
 
 	type Entry = { kind: 'activity'; data: Activity } | { kind: 'history'; data: OwnerHistoryRow };
 
-	const entries = $derived.by((): Entry[] => {
+	type FilterPreset = 'all' | '1d' | '3d' | '7d' | 'custom';
+
+	let preset = $state<FilterPreset>('all');
+	let customFrom = $state<string>('');
+	let customTo = $state<string>('');
+	let filterOpen = $state(false);
+
+	const PRESET_LABEL: Record<FilterPreset, string> = {
+		all: 'All time',
+		'1d': 'Last 1 day',
+		'3d': 'Last 3 days',
+		'7d': 'Last 7 days',
+		custom: 'Custom range'
+	};
+
+	const entryIso = (e: Entry) => (e.kind === 'activity' ? e.data.createdAt : e.data.at);
+
+	// Choose a quick preset: reset any stale custom-range values and close the dropdown.
+	function choosePreset(next: Exclude<FilterPreset, 'custom'>) {
+		preset = next;
+		customFrom = '';
+		customTo = '';
+		filterOpen = false;
+	}
+
+	// Changing either date input switches to the custom-range mode.
+	function useCustom() {
+		preset = 'custom';
+	}
+
+	// Reset the filter back to the "All time" default.
+	function clearFilter() {
+		preset = 'all';
+		customFrom = '';
+		customTo = '';
+	}
+
+	const allEntries = $derived.by((): Entry[] => {
 		const all: Entry[] = [
 			...activities.map((a) => ({ kind: 'activity' as const, data: a })),
 			...leadHistory.map((o) => ({ kind: 'history' as const, data: o }))
 		];
-		return all.sort((a, b) => {
-			const ta = a.kind === 'activity' ? a.data.createdAt : a.data.at;
-			const tb = b.kind === 'activity' ? b.data.createdAt : b.data.at;
-			return tb.localeCompare(ta);
-		});
+		return all.sort((a, b) => entryIso(b).localeCompare(entryIso(a)));
+	});
+
+	const entries = $derived.by((): Entry[] => {
+		if (preset === 'all') return allEntries;
+
+		if (preset === 'custom') {
+			if (customFrom === '' && customTo === '') return allEntries;
+			return allEntries.filter((e) => {
+				const day = entryIso(e).slice(0, 10);
+				if (customFrom !== '' && day < customFrom) return false;
+				if (customTo !== '' && day > customTo) return false;
+				return true;
+			});
+		}
+
+		const days = preset === '1d' ? 1 : preset === '3d' ? 3 : 7;
+		const cutoffIso = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+		return allEntries.filter((e) => entryIso(e) >= cutoffIso);
 	});
 
 	const nameOf = (id: string | null) =>
@@ -51,11 +103,78 @@
 </script>
 
 <div class="rounded-control border border-hairline bg-panel p-4">
-	<div class="mb-3.5 flex items-center justify-between">
+	<div class="mb-3.5 flex items-center justify-between gap-2">
 		<div class="font-mono text-[11px] uppercase tracking-[0.5px] text-ink-300">Lead history</div>
-		<span class="font-mono text-[11px] text-ink-300"
-			>{entries.length} event{entries.length === 1 ? '' : 's'}</span
-		>
+		<div class="flex items-center gap-2">
+			<span class="font-mono text-[11px] text-ink-300"
+				>{entries.length} event{entries.length === 1 ? '' : 's'}</span
+			>
+			<Popover.Root bind:open={filterOpen}>
+				<Popover.Trigger
+					class="flex h-[26px] items-center gap-1 rounded-[6px] border border-hairline bg-panel px-2 font-mono text-[11px] text-ink-600 hover:border-primary hover:text-primary {preset !==
+					'all'
+						? 'border-primary text-primary'
+						: ''}"
+				>
+					{PRESET_LABEL[preset]}
+					<span aria-hidden="true" class="text-[9px] leading-none">▾</span>
+				</Popover.Trigger>
+				<Popover.Content align="end" class="w-52">
+					<ul class="flex flex-col">
+						{#each [['all', 'All time'], ['1d', 'Last 1 day'], ['3d', 'Last 3 days'], ['7d', 'Last 7 days']] as [value, optLabel] (value)}
+							<li>
+								<button
+									type="button"
+									onclick={() => choosePreset(value as Exclude<FilterPreset, 'custom'>)}
+									class="flex w-full items-center justify-between rounded-[6px] px-1.5 py-[5px] text-left text-[12.5px] text-ink-600 hover:bg-[#fcfbfd] {preset ===
+									value
+										? 'font-semibold text-primary'
+										: ''}"
+								>
+									<span>{optLabel}</span>
+									{#if preset === value}<span aria-hidden="true">✓</span>{/if}
+								</button>
+							</li>
+						{/each}
+					</ul>
+					<div class="my-1.5 border-t border-hairline"></div>
+					<div class="flex items-center justify-between pb-1">
+						<span class="font-mono text-[10.5px] uppercase tracking-[0.4px] text-ink-300"
+							>Custom range</span
+						>
+						{#if preset !== 'all'}
+							<button
+								type="button"
+								onclick={clearFilter}
+								class="text-[11.5px] font-medium text-primary hover:underline"
+							>
+								Clear
+							</button>
+						{/if}
+					</div>
+					<div class="flex flex-col gap-1.5 font-mono text-[11px] text-ink-300">
+						<label class="flex items-center justify-between gap-2">
+							<span class="uppercase tracking-[0.5px]">From</span>
+							<input
+								type="date"
+								bind:value={customFrom}
+								oninput={useCustom}
+								class="rounded-[4px] border border-hairline bg-panel-sunken px-1.5 py-0.5 text-[11px] text-ink-600"
+							/>
+						</label>
+						<label class="flex items-center justify-between gap-2">
+							<span class="uppercase tracking-[0.5px]">To</span>
+							<input
+								type="date"
+								bind:value={customTo}
+								oninput={useCustom}
+								class="rounded-[4px] border border-hairline bg-panel-sunken px-1.5 py-0.5 text-[11px] text-ink-600"
+							/>
+						</label>
+					</div>
+				</Popover.Content>
+			</Popover.Root>
+		</div>
 	</div>
 	<div class="max-h-[260px] overflow-y-auto pr-1">
 		{#each entries as entry (entry.kind === 'activity' ? `a-${entry.data.id}` : `h-${entry.data.id}`)}

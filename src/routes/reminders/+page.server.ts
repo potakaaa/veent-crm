@@ -39,7 +39,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	const withNames = (arr: Lead[]): Lead[] => arr.map((l) => byId.get(l.id) ?? l);
 
 	// Nudge (no outbound messaging integration yet) — visible outside production only.
-	const nudgeEnabled = env.ENVIRENOMENT !== 'production';
+	const nudgeEnabled = env.ENVIRONMENT !== 'production';
 
 	return {
 		overdue: withNames(overdue),

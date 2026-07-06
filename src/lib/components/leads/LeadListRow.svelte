@@ -15,7 +15,7 @@
 		snoozing = false,
 		showFollowUpMeta = false,
 		// No outbound messaging integration yet — caller decides visibility (dev-only by default,
-		// wired from each route's server load via the ENVIRENOMENT env var).
+		// wired from each route's server load via the ENVIRONMENT env var).
 		nudgeEnabled = false
 	}: {
 		lead: Lead;

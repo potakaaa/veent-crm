@@ -81,7 +81,7 @@ Both features are additive on top of the already-shipped `getRemindersQueue` (`r
 ## Implementation Checklist (dependency-ordered — matches INNOVATE's suggested order)
 
 **Step 0 — grep confirmations (run first, before any edit):**
-```
+```bash
 grep -rn "getRemindersQueue\|getAllFollowUpsQueue\|LeadListRow" src/
 grep -n "role.*rep.*active\|active.*true" src/lib/server/db/leads.ts src/routes/api/leads/\[id\]/owner/+server.ts
 ```

@@ -18,7 +18,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 	};
 
 	// Nudge (no outbound messaging integration yet) — visible outside production only.
-	const nudgeEnabled = env.ENVIRENOMENT !== 'production';
+	const nudgeEnabled = env.ENVIRONMENT !== 'production';
 
 	return { me, leads, nudgeEnabled };
 };

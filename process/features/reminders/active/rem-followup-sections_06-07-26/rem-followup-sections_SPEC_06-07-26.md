@@ -29,7 +29,7 @@ Today, `/reminders` shows four buckets of leads needing a follow-up (Overdue, Du
 - `/reminders` gains a second tab alongside the existing bucketed view. The existing four-section view (Overdue / Due today / Upcoming / Going cold) is unchanged and remains the default/first tab.
 - The new tab shows one combined list of every lead with a pending follow-up, with no 7-day cap — includes everything the bucketed view would show plus anything further out.
 - The full list is sorted by follow-up due date, soonest first, by default.
-- Reps opening the full-list tab always see only their own leads — same ownership scoping as everywhere else in the app — with no filter control shown to them (nothing to filter, since it's already just their own).
+- Reps opening the full-list tab see whatever `visibilityCondition` already allows them elsewhere in the app (owned leads, unassigned leads, `visibility: 'everyone'` leads, and any explicitly-granted leads) — not narrowed to strictly-owned leads. No filter control is shown to them, since their own view already reflects everything they're allowed to see.
 - Managers and super managers opening the full-list tab see every rep's follow-ups by default, plus a dropdown that lets them narrow the list down to one specific rep at a time. Selecting a rep shows only that rep's pending follow-ups; clearing the selection returns to the full team view.
 - Any lead in the full-list tab whose follow-up date has already passed is visually flagged as overdue (distinct color/badge), independent of which "section" it would have belonged to in the bucketed view.
 - Clicking a lead anywhere on either tab still goes to that lead's detail page (`/leads/[id]`) — unchanged from today.
@@ -37,7 +37,7 @@ Today, `/reminders` shows four buckets of leads needing a follow-up (Overdue, Du
 
 ## Flow / State Diagram
 
-```
+```text
 /reminders
 │
 ├── Tab: "Sections" (existing, default, unchanged)
@@ -63,7 +63,7 @@ Both tabs: Snooze / Nudge buttons behave as today
 
 State transitions for the rep filter (manager/super_manager only):
 
-```
+```text
 [All reps] --select rep X--> [Rep X only] --clear/select "All"--> [All reps]
 ```
 

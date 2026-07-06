@@ -1602,7 +1602,16 @@ export async function getAllFollowUpsQueue(
 		isNull(crmLeads.deletedAt) as SQL,
 		ne(crmLeads.stage, 'won'),
 		ne(crmLeads.stage, 'lost'),
-		visibilityCondition(userId, role)
+		visibilityCondition(userId, role),
+		// Push the "has a booked follow-up" filter into SQL so managers (visibilityCondition
+		// = true) don't load every active lead in the company just to discard most of them
+		// in JS below — only leads with at least one followUpAt-bearing activity qualify.
+		exists(
+			db
+				.select({ one: sql`1` })
+				.from(crmActivities)
+				.where(and(eq(crmActivities.leadId, crmLeads.id), isNotNull(crmActivities.followUpAt)))
+		) as SQL
 	];
 
 	// Additive rep narrowing — managers/super_managers only. Ignored for reps by design.
@@ -1610,11 +1619,12 @@ export async function getAllFollowUpsQueue(
 		conditions.push(eq(crmLeads.ownerId, opts.filterRepId));
 	}
 
+	// No .orderBy here — the final `.sort()` below (by followUpAt) is what actually determines
+	// the returned order, so an initial DB-level sort would just be discarded work.
 	const rows = await db
 		.select()
 		.from(crmLeads)
-		.where(and(...conditions))
-		.orderBy(desc(sql`coalesce(${crmLeads.lastActivityAt}, ${crmLeads.createdAt})`));
+		.where(and(...conditions));
 
 	if (rows.length === 0) return [];
 

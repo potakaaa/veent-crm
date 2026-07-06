@@ -52,7 +52,7 @@ export async function listTemplates(): Promise<MessageTemplate[]> {
 	return rows.map(dbRowToTemplate);
 }
 
-export const TEMPLATES_PAGE_SIZE = 20;
+export const TEMPLATES_PAGE_SIZE = 25;
 
 export async function listTemplatesPaginated(opts: {
 	page: number;

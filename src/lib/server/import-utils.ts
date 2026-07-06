@@ -168,3 +168,12 @@ export function normalizeCountry(raw?: string | null): string | null {
 	const key = raw.trim().toLowerCase();
 	return COUNTRY_MAP[key] ?? null;
 }
+
+// Derive a country segment from the free-text location field: take the last comma-separated
+// segment (e.g. "Makati, Philippines" → "Philippines"), or the whole string if no comma.
+export function parseCountryFromLocation(location?: string | null): string | null {
+	if (!location) return null;
+	const parts = location.split(',');
+	const derived = parts.length > 1 ? parts[parts.length - 1].trim() : location.trim();
+	return derived || null;
+}

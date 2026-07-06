@@ -17,7 +17,8 @@ import {
 	claimLead,
 	unclaimLead,
 	reassignLead,
-	getLeadVisibilityGrants
+	getLeadVisibilityGrants,
+	dbRowToLead
 } from '$lib/server/db/leads';
 import { db } from '$lib/server/db/index';
 import { crmLeads, crmLeadHistory } from '$lib/server/db/schema';
@@ -426,5 +427,75 @@ describe.skipIf(SKIP_DB)('lead visibility scoping (DB) — GitHub #87', () => {
 		expect(unclaimed!.visibility).toBe('everyone');
 		expect(unclaimed!.ownerId).toBeNull();
 		expect(await getLeadVisibilityGrants(lead.id)).toHaveLength(0);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// dbRowToLead — organizerId mapping (pure, no DB) — organizer-lead-tagging-ui
+// ---------------------------------------------------------------------------
+function makeMapperRow(overrides: Partial<Parameters<typeof dbRowToLead>[0]> = {}) {
+	const now = new Date('2026-07-06T01:00:00.000Z');
+	return {
+		id: 'uuid-mapper-001',
+		name: 'Mapper Org',
+		category: 'Sports' as const,
+		location: 'Manila',
+		country: null,
+		platform: 'Facebook' as const,
+		socialFacebook: null,
+		socialInstagram: null,
+		socialTiktok: null,
+		socialTwitter: null,
+		pageUrl: null,
+		normalizedHandle: null,
+		contactEmail: null,
+		contactPhone: null,
+		eventName: null,
+		eventDate: null,
+		eventDateRaw: null,
+		eventLink: null,
+		firstAnnouncedDate: null,
+		firstReachedOutDate: null,
+		sourceRef: null,
+		scraperOrgId: null,
+		stage: 'new' as const,
+		lostReason: null,
+		ownerId: 'owner-uuid',
+		organizerId: null,
+		visibility: 'everyone' as const,
+		source: 'manual' as const,
+		lastActivityAt: now,
+		deletedAt: null,
+		wonOrgName: null,
+		dealValueCents: null,
+		currency: 'PHP',
+		signedAt: null,
+		onboardingNotes: null,
+		contractUrl: null,
+		onboardingStartDate: null,
+		goLiveDate: null,
+		feeStructure: null,
+		transactionFeePct: 7,
+		convenienceFeePesos: 20,
+		serviceFeePct: 3,
+		serviceFeePerTicketPesos: 20,
+		bankChargesAbsorbed: null,
+		hasFutureEvents: false,
+		notes: null,
+		createdAt: now,
+		updatedAt: now,
+		...overrides
+	};
+}
+
+describe('dbRowToLead — organizerId mapping', () => {
+	it('should map organizerId from a DbLead row in dbRowToLead', () => {
+		const lead = dbRowToLead(makeMapperRow({ organizerId: 'org-uuid-123' }));
+		expect(lead.organizerId).toBe('org-uuid-123');
+	});
+
+	it('maps a null organizerId to null (untagged lead)', () => {
+		const lead = dbRowToLead(makeMapperRow({ organizerId: null }));
+		expect(lead.organizerId).toBeNull();
 	});
 });

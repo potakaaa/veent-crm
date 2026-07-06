@@ -792,6 +792,7 @@ export async function createLead(
 		notes?: string;
 		visibility?: Visibility;
 		selectedUserIds?: string[];
+		organizerId?: string;
 	},
 	ownerId: string
 ): Promise<Lead> {
@@ -823,6 +824,7 @@ export async function createLead(
 				firstReachedOutDate: input.firstReachedOutDate ?? null,
 				notes: input.notes ?? null,
 				normalizedHandle,
+				organizerId: input.organizerId ?? null,
 				ownerId,
 				visibility,
 				source: 'manual',

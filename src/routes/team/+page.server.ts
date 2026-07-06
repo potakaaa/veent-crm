@@ -7,7 +7,7 @@ import { dbUserToUser, listPipelineLeads } from '$lib/server/db/leads';
 import { isManagerRole } from '$lib/utils/permissions';
 import { sessionToUser } from '$lib/server/db/users';
 
-const PAGE_SIZE = 8;
+const PAGE_SIZE = 25;
 
 const SORT_COLS = ['name', 'email', 'role', 'active'] as const;
 type SortCol = (typeof SORT_COLS)[number];

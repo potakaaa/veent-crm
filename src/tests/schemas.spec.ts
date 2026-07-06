@@ -65,6 +65,30 @@ describe('leadUpdateSchema hasFutureEvents flag (#94)', () => {
 });
 
 // ---------------------------------------------------------------------------
+// leadFormSchema — organizerId pre-fill (GitHub #190, AC7 schema half)
+// ---------------------------------------------------------------------------
+describe('leadFormSchema organizerId (#190)', () => {
+	const UUID = '00000000-0000-0000-0000-000000000001';
+
+	it('accepts a UUID-shaped organizerId', () => {
+		const r = leadFormSchema.safeParse({ name: 'Org', organizerId: UUID });
+		expect(r.success).toBe(true);
+		if (r.success) expect(r.data.organizerId).toBe(UUID);
+	});
+
+	it('accepts an omitted organizerId (optional)', () => {
+		const r = leadFormSchema.safeParse({ name: 'Org' });
+		expect(r.success).toBe(true);
+		if (r.success) expect(r.data.organizerId).toBeUndefined();
+	});
+
+	it('rejects a non-UUID organizerId', () => {
+		const r = leadFormSchema.safeParse({ name: 'Org', organizerId: 'not-a-uuid' });
+		expect(r.success).toBe(false);
+	});
+});
+
+// ---------------------------------------------------------------------------
 // leadUpdateSchema — eventDate empty-string clear path (GitHub #195)
 // ---------------------------------------------------------------------------
 describe('leadUpdateSchema eventDate clear path (#195)', () => {

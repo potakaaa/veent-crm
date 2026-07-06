@@ -64,7 +64,7 @@ export const LEAD_VISIBILITIES = ['only_me', 'everyone', 'selected'] as const;
 // (e.g. 00000000-…-0001) intentionally violate RFC 4122 variant bits, which
 // z.string().uuid() would reject. Grant target ids come from listUsers(), so they
 // must accept those seeded rows too.
-const LOOSE_UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+export const LOOSE_UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 // --- Add / edit a lead (Superforms) ---------------------------------------
 export const leadFormSchema = z
@@ -82,7 +82,10 @@ export const leadFormSchema = z
 		firstReachedOutDate: z.iso.date().or(z.literal('')).optional(),
 		notes: z.string().optional(),
 		visibility: z.enum(LEAD_VISIBILITIES).default('everyone'),
-		selectedUserIds: z.array(z.string().regex(LOOSE_UUID_RE)).optional()
+		selectedUserIds: z.array(z.string().regex(LOOSE_UUID_RE)).optional(),
+		// Recurring-organizer tag pre-fill (GitHub #190). Optional, shape-only UUID check;
+		// existence is enforced server-side in the POST handler (see api/leads/+server.ts).
+		organizerId: z.string().regex(LOOSE_UUID_RE).optional()
 	})
 	.refine((d) => d.visibility !== 'selected' || (d.selectedUserIds?.length ?? 0) > 0, {
 		message: 'Pick at least one teammate when visibility is "Selected people".',

@@ -44,6 +44,7 @@
 		},
 		{ href: '/leads', label: 'My Leads', icon: 'leads' },
 		{ href: '/pipeline', label: 'Pipeline', icon: 'pipeline' },
+		{ href: '/organizers', label: 'Organizers', icon: 'organizers' },
 		{
 			href: '/unassigned',
 			label: 'Up for grabs',
@@ -64,6 +65,7 @@
 		const p = navigating.to?.url.pathname ?? page.url.pathname;
 		if (href === '/') return p === '/';
 		if (href === '/leads') return p === '/leads' || p.startsWith('/leads/');
+		if (href === '/organizers') return p === '/organizers' || p.startsWith('/organizers/');
 		return p.startsWith(href);
 	};
 </script>

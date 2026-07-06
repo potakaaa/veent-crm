@@ -15,7 +15,10 @@
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import { inArray, sql } from 'drizzle-orm';
+import * as schema from '../src/lib/server/db/schema.ts';
 import { crmUsers, crmLeads, crmActivities, crmLeadHistory } from '../src/lib/server/db/schema.ts';
+import { findOrCreateOrganizer } from '../src/lib/server/db/organizer-find-or-create.ts';
+import { normalizeHandle } from '../src/lib/server/import-utils.ts';
 
 // ---------------------------------------------------------------------------
 // Safety guard — refuse to seed production without --force
@@ -33,7 +36,7 @@ if (isProd && !hasForce) {
 // ---------------------------------------------------------------------------
 const url = process.env.DATABASE_URL ?? 'postgres://crm:crm@127.0.0.1:5432/veent_crm';
 const client = postgres(url, { max: 1 });
-const db = drizzle(client);
+const db = drizzle(client, { schema });
 
 // ---------------------------------------------------------------------------
 // User IDs (match existing user seed namespace)
@@ -624,6 +627,38 @@ try {
 	}
 
 	await db.insert(crmUsers).values(users).onConflictDoNothing();
+
+	// Sample organizer data (via the SAME find-or-create path used by ingest/backfill, not raw
+	// inserts): (1) a recurring organizer shared by the two SayawPilipinas seed leads — both
+	// resolve to the SAME organizer through the real handle path; (2) a single-event organizer
+	// for the won deal L(15). organizerId is set on those leads before they are inserted.
+	const sayawOrganizerId = await findOrCreateOrganizer(
+		{
+			normalizedHandle: normalizeHandle(
+				'https://fb.com/SayawPilipinas',
+				undefined,
+				undefined,
+				'Sayaw Pilipinas'
+			),
+			name: 'Sayaw Pilipinas',
+			socialFacebook: 'https://fb.com/SayawPilipinas',
+			location: 'Manila'
+		},
+		db
+	);
+	const iloiloOrganizerId = await findOrCreateOrganizer(
+		{
+			normalizedHandle: normalizeHandle(undefined, undefined, undefined, 'Iloilo Music Fest OKK'),
+			name: 'Iloilo Music Fest OKK',
+			location: 'Iloilo'
+		},
+		db
+	);
+	for (const lead of leads) {
+		if (lead.id === L(22) || lead.id === L(23)) lead.organizerId = sayawOrganizerId;
+		if (lead.id === L(15)) lead.organizerId = iloiloOrganizerId;
+	}
+
 	await db.insert(crmLeads).values(leads).onConflictDoNothing();
 	await db
 		.insert(crmActivities)

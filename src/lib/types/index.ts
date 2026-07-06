@@ -62,6 +62,16 @@ export interface Lead {
 	 * ("Unassigned" when `ownerId` is null). NOT a DB-native column — undefined until enriched.
 	 */
 	ownerName?: string;
+	/**
+	 * Tagged organizer id (crm_organizers, GitHub #188), or null when the lead is not
+	 * tagged to any organizer. Maps directly from the `crm_leads.organizer_id` column.
+	 */
+	organizerId: string | null;
+	/**
+	 * Organizer display name, resolved at the route-load layer via `getOrganizer()`.
+	 * NOT a DB-native column on the lead — undefined until resolved.
+	 */
+	organizerName?: string;
 	/** Per-lead visibility scope (GitHub #87). Defaults to `everyone`. */
 	visibility: Visibility;
 	/** User ids explicitly granted access when `visibility === 'selected'`. */
@@ -78,17 +88,6 @@ export interface Lead {
 	pageUrl?: string;
 	socialFacebook?: string;
 	socialInstagram?: string;
-	/**
-	 * The lead's linked recurring-organizer entity id (crm_organizers, GitHub #188),
-	 * or null when the lead is not tagged to an organizer. Maps directly from the
-	 * `crm_leads.organizer_id` column.
-	 */
-	organizerId?: string | null;
-	/**
-	 * Linked organizer display name — populated by a `crm_organizers` join/lookup at the
-	 * detail-load layer (undefined until enriched, and when `organizerId` is null).
-	 */
-	organizerName?: string;
 	/** Count of sibling leads that share the same page (advisory dedup only). */
 	siblings?: number;
 	source: LeadSource;

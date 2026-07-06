@@ -19,6 +19,8 @@
 	import WonCaptureModal from '$lib/components/leads/WonCaptureModal.svelte';
 	import LostReasonModal from '$lib/components/leads/LostReasonModal.svelte';
 	import ReassignModal from '$lib/components/leads/ReassignModal.svelte';
+	import OrganizerTagModal from '$lib/components/leads/OrganizerTagModal.svelte';
+	import { buildOrganizerTagPatch } from '$lib/components/leads/organizer-tag';
 	import DiscardIssueModal from '$lib/components/leads/DiscardIssueModal.svelte';
 	import MeetingsPanel from '$lib/components/meetings/MeetingsPanel.svelte';
 	import { Tabs } from '$lib/components/ui/tabs';
@@ -156,6 +158,7 @@
 	let wonOpen = $state(false);
 	let lostOpen = $state(false);
 	let reassignOpen = $state(false);
+	let organizerTagOpen = $state(false);
 	let discardOpen = $state(false);
 
 	// Single shared mutation guard — prevents any two actions from running concurrently.
@@ -378,6 +381,36 @@
 		}
 		await invalidateAll(); // $effect reconciles shadow with server truth
 		toasts.success('Lead reassigned');
+	}
+
+	async function confirmOrganizerTag(organizerId: string | null) {
+		if (mutating) return;
+		mutating = true;
+		organizerTagOpen = false;
+		const snapshot = lead;
+		const { body, optimisticPatch } = buildOrganizerTagPatch(organizerId, data.organizers);
+		lead = patchRecord(lead, optimisticPatch); // optimistic organizer tag
+		try {
+			const res = await fetch(`/api/leads/${lead.id}/organizer`, {
+				method: 'PATCH',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(body)
+			});
+			if (!res.ok) {
+				const msg = await res.text().catch(() => 'Server error');
+				lead = snapshot; // rollback
+				toasts.push(`Organizer tag failed: ${msg}`);
+				return;
+			}
+		} catch {
+			lead = snapshot; // rollback on network error
+			toasts.push('Organizer tag failed — server error');
+			return;
+		} finally {
+			mutating = false;
+		}
+		await invalidateAll();
+		toasts.success(organizerId ? 'Lead tagged to organizer' : 'Organizer tag cleared');
 	}
 </script>
 
@@ -835,6 +868,23 @@
 								{/if}
 							</div>
 						{/each}
+						<div>
+							<div class="mb-0.5 text-[11px] text-ink-300">Organizer</div>
+							<div class="flex items-center gap-2">
+								<span class="font-mono text-[13px] text-ink"
+									>{lead.organizerName ?? 'Not tagged'}</span
+								>
+								{#if canEdit}
+									<button
+										type="button"
+										class="font-mono text-[11px] text-blue-600 underline hover:text-blue-800"
+										onclick={() => (organizerTagOpen = true)}
+									>
+										{lead.organizerId ? 'Change' : 'Tag'}
+									</button>
+								{/if}
+							</div>
+						</div>
 					</div>
 				</div>
 
@@ -999,6 +1049,15 @@
 		currentOwnerId={lead.ownerId}
 		onclose={() => (reassignOpen = false)}
 		onconfirm={confirmReassign}
+	/>
+{/if}
+{#if organizerTagOpen}
+	<OrganizerTagModal
+		open={true}
+		organizers={data.organizers}
+		currentOrganizerId={lead.organizerId}
+		onclose={() => (organizerTagOpen = false)}
+		onconfirm={confirmOrganizerTag}
 	/>
 {/if}
 {#if discardOpen}

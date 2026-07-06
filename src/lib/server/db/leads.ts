@@ -531,7 +531,7 @@ export async function listUnassignedLeads(
 	pageSize = 25,
 	sort?: string,
 	dir?: 'asc' | 'desc',
-	filters?: { country?: string[]; category?: string[]; weeksAhead?: number | null }
+	filters?: { country?: string[]; category?: string[]; weeksAhead?: number | null; search?: string }
 ): Promise<{ leads: Lead[]; total: number }> {
 	const conditions = unassignedBaseConditions();
 
@@ -553,6 +553,25 @@ export async function listUnassignedLeads(
 				${crmLeads.eventDate} IS NULL
 				OR ${crmLeads.eventDate} >= CURRENT_DATE + make_interval(days => ${weeksAhead * 7})
 			)`
+		);
+	}
+
+	// Search: case-insensitive against name, event name, and normalizedHandle.
+	// Ingest stores handles without '@'; manual creation stores with '@'. Strip a
+	// leading '@' so "copied handle" queries match both storage formats.
+	const search = filters?.search?.trim();
+	if (search) {
+		// Escape LIKE metacharacters (\, %, _) so literal input never acts as a wildcard.
+		const escapeLike = (s: string) => s.replace(/[\\%_]/g, '\\$&');
+		const nameLike = `%${escapeLike(search)}%`;
+		const handleSearch = search.startsWith('@') ? search.slice(1) : search;
+		const handleLike = `%${escapeLike(handleSearch)}%`;
+		conditions.push(
+			or(
+				ilike(crmLeads.name, nameLike),
+				ilike(sql`COALESCE(${crmLeads.normalizedHandle}, '')`, handleLike),
+				ilike(sql`COALESCE(${crmLeads.eventName}, '')`, nameLike)
+			)!
 		);
 	}
 
@@ -677,6 +696,20 @@ export async function getLeadVisibilityGrants(leadId: string): Promise<string[]>
 export async function listUsers(): Promise<User[]> {
 	const rows = await db.select().from(crmUsers).orderBy(crmUsers.name);
 	return rows.map(dbUserToUser);
+}
+
+/**
+ * Active reps only — the source for the manager-facing rep-filter dropdown on the
+ * "All Follow-Ups" tab. Scoped to `role = 'rep' AND active = true` (deliberately does NOT
+ * return managers/super_managers or deactivated users). Only ever consumed server-side by a
+ * manager/super_manager session; never exposed to a rep.
+ */
+export async function listActiveReps(): Promise<{ id: string; name: string }[]> {
+	return db
+		.select({ id: crmUsers.id, name: crmUsers.name })
+		.from(crmUsers)
+		.where(and(eq(crmUsers.role, 'rep'), eq(crmUsers.active, true)))
+		.orderBy(crmUsers.name);
 }
 
 export async function listActivities(leadId: string): Promise<Activity[]> {
@@ -1506,6 +1539,117 @@ export async function getRemindersQueue(
 		);
 
 	return { overdue, due, upcoming, cold };
+}
+
+// ---------------------------------------------------------------------------
+// Owner-name enrichment — route-load-layer helper (REM-1)
+// ---------------------------------------------------------------------------
+
+/**
+ * Populates `ownerName` on each lead ("Unassigned" when `ownerId` is null) via a single
+ * batched `crmUsers` lookup over the distinct non-null owner ids in the input.
+ *
+ * Purely additive read-path enrichment — deliberately NOT folded into getTodayQueue/
+ * getRemindersQueue (those stay untouched per the plan's hard constraint). Callers opt in at
+ * the route-load layer. Returns new lead objects (does not mutate the inputs).
+ */
+export async function enrichWithOwnerNames(leads: Lead[]): Promise<Lead[]> {
+	if (leads.length === 0) return leads;
+
+	const ownerIds = [
+		...new Set(leads.map((l) => l.ownerId).filter((id): id is string => id !== null))
+	];
+
+	if (ownerIds.length === 0) {
+		return leads.map((l) => ({ ...l, ownerName: 'Unassigned' }));
+	}
+
+	const owners = await db
+		.select({ id: crmUsers.id, name: crmUsers.name })
+		.from(crmUsers)
+		.where(inArray(crmUsers.id, ownerIds));
+
+	const nameMap = new Map(owners.map((o) => [o.id, o.name]));
+
+	return leads.map((l) => ({
+		...l,
+		ownerName: l.ownerId ? (nameMap.get(l.ownerId) ?? 'Unassigned') : 'Unassigned'
+	}));
+}
+
+// ---------------------------------------------------------------------------
+// All follow-ups queue — uncapped read model for the "All Follow-Ups" tab (REM-2)
+// ---------------------------------------------------------------------------
+
+/**
+ * Every pending follow-up visible to the caller, uncapped (no 7-day window), sorted by
+ * `followUpAt` ascending. Backs the "All Follow-Ups" tab on /reminders.
+ *
+ * Base scope is `visibilityCondition(userId, role)` ALONE — deliberately NOT ANDed with
+ * `eq(crmLeads.ownerId, userId)`. This is the load-bearing difference from getTodayQueue/
+ * getFollowUpsInRange (both single-owner-scoped by design): a manager must see the whole
+ * team's follow-ups here, so the manager no-op TRUE from visibilityCondition is what makes
+ * that work. `filterRepId` narrows ADDITIONALLY (never replacing the base scope) and is
+ * honored ONLY for non-rep roles — a rep can never surface another rep's leads via this
+ * path even if `filterRepId` were supplied.
+ */
+export async function getAllFollowUpsQueue(
+	userId: string,
+	role: Role = 'rep',
+	opts?: { filterRepId?: string }
+): Promise<Lead[]> {
+	const conditions: SQL[] = [
+		isNull(crmLeads.deletedAt) as SQL,
+		ne(crmLeads.stage, 'won'),
+		ne(crmLeads.stage, 'lost'),
+		visibilityCondition(userId, role),
+		// Push the "has a booked follow-up" filter into SQL so managers (visibilityCondition
+		// = true) don't load every active lead in the company just to discard most of them
+		// in JS below — only leads with at least one followUpAt-bearing activity qualify.
+		exists(
+			db
+				.select({ one: sql`1` })
+				.from(crmActivities)
+				.where(and(eq(crmActivities.leadId, crmLeads.id), isNotNull(crmActivities.followUpAt)))
+		) as SQL
+	];
+
+	// Additive rep narrowing — managers/super_managers only. Ignored for reps by design.
+	if (opts?.filterRepId && role !== 'rep') {
+		conditions.push(eq(crmLeads.ownerId, opts.filterRepId));
+	}
+
+	// No .orderBy here — the final `.sort()` below (by followUpAt) is what actually determines
+	// the returned order, so an initial DB-level sort would just be discarded work.
+	const rows = await db
+		.select()
+		.from(crmLeads)
+		.where(and(...conditions));
+
+	if (rows.length === 0) return [];
+
+	const leadIds = rows.map((r) => r.id);
+	const followUps = await db
+		.selectDistinctOn([crmActivities.leadId], {
+			leadId: crmActivities.leadId,
+			followUpAt: crmActivities.followUpAt
+		})
+		.from(crmActivities)
+		.where(and(inArray(crmActivities.leadId, leadIds), isNotNull(crmActivities.followUpAt)))
+		.orderBy(crmActivities.leadId, desc(crmActivities.occurredAt));
+
+	const followUpMap = new Map(followUps.map((f) => [f.leadId, f.followUpAt ?? null]));
+
+	// Keep only leads that currently have a follow-up booked (any date — no window cap; this
+	// is the key difference from getFollowUpsInRange's range filter), then sort soonest-first.
+	return rows
+		.filter((row) => followUpMap.get(row.id) != null)
+		.map((row) => dbRowToLead(row, followUpMap.get(row.id) ?? undefined))
+		.sort(
+			(a, b) =>
+				new Date(a.followUpAt!).getTime() - new Date(b.followUpAt!).getTime() ||
+				a.id.localeCompare(b.id)
+		);
 }
 
 // ---------------------------------------------------------------------------

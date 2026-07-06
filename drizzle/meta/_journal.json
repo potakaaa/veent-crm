@@ -141,6 +141,41 @@
       "when": 1782959001001,
       "tag": "0019_amusing_eternity",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1783296413614,
+      "tag": "0020_sparkling_felicia_hardy",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1783296513832,
+      "tag": "0021_third_ulik",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1783296539261,
+      "tag": "0022_unknown_sleepwalker",
+      "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1783296559797,
+      "tag": "0023_sharp_frightful_four",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1783298831035,
+      "tag": "0024_glamorous_blob",
+      "breakpoints": true
     }
   ]
 }

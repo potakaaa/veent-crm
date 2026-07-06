@@ -1,6 +1,6 @@
 {
-  "id": "a85f3aaf-647c-4687-a777-79dbd2d1f005",
-  "prevId": "0aff03db-dc03-4d24-a4aa-595a6a386bde",
+  "id": "c55210bb-d70e-4582-b64c-b7428ca7d838",
+  "prevId": "0251a13f-20cd-4ff4-a592-3c26d1e14976",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -627,6 +627,94 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
+    "public.crm_lead_visibility_grants": {
+      "name": "crm_lead_visibility_grants",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "lead_id": {
+          "name": "lead_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "crm_lead_visibility_grants_lead_user_uq": {
+          "name": "crm_lead_visibility_grants_lead_user_uq",
+          "columns": [
+            {
+              "expression": "lead_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "crm_lead_visibility_grants_lead_id_crm_leads_id_fk": {
+          "name": "crm_lead_visibility_grants_lead_id_crm_leads_id_fk",
+          "tableFrom": "crm_lead_visibility_grants",
+          "tableTo": "crm_leads",
+          "columnsFrom": [
+            "lead_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "crm_lead_visibility_grants_user_id_crm_users_id_fk": {
+          "name": "crm_lead_visibility_grants_user_id_crm_users_id_fk",
+          "tableFrom": "crm_lead_visibility_grants",
+          "tableTo": "crm_users",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
     "public.crm_leads": {
       "name": "crm_leads",
       "schema": "",
@@ -776,6 +864,20 @@
           "primaryKey": false,
           "notNull": false
         },
+        "organizer_id": {
+          "name": "organizer_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "visibility": {
+          "name": "visibility",
+          "type": "crm_lead_visibility",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'everyone'"
+        },
         "source": {
           "name": "source",
           "type": "crm_lead_source",
@@ -820,6 +922,77 @@
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": false
+        },
+        "onboarding_notes": {
+          "name": "onboarding_notes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "contract_url": {
+          "name": "contract_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "onboarding_start_date": {
+          "name": "onboarding_start_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "go_live_date": {
+          "name": "go_live_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "fee_structure": {
+          "name": "fee_structure",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "transaction_fee_pct": {
+          "name": "transaction_fee_pct",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": false,
+          "default": 7
+        },
+        "convenience_fee_pesos": {
+          "name": "convenience_fee_pesos",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": false,
+          "default": 20
+        },
+        "service_fee_pct": {
+          "name": "service_fee_pct",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": false,
+          "default": 3
+        },
+        "service_fee_per_ticket_pesos": {
+          "name": "service_fee_per_ticket_pesos",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": false,
+          "default": 20
+        },
+        "bank_charges_absorbed": {
+          "name": "bank_charges_absorbed",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "has_future_events": {
+          "name": "has_future_events",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
         },
         "source_ref": {
           "name": "source_ref",
@@ -900,6 +1073,21 @@
           "method": "btree",
           "with": {}
         },
+        "crm_leads_organizer_idx": {
+          "name": "crm_leads_organizer_idx",
+          "columns": [
+            {
+              "expression": "organizer_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
         "crm_leads_last_activity_idx": {
           "name": "crm_leads_last_activity_idx",
           "columns": [
@@ -954,6 +1142,19 @@
           "tableTo": "crm_users",
           "columnsFrom": [
             "owner_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "crm_leads_organizer_id_crm_organizers_id_fk": {
+          "name": "crm_leads_organizer_id_crm_organizers_id_fk",
+          "tableFrom": "crm_leads",
+          "tableTo": "crm_organizers",
+          "columnsFrom": [
+            "organizer_id"
           ],
           "columnsTo": [
             "id"
@@ -1237,6 +1438,12 @@
           "primaryKey": false,
           "notNull": true,
           "default": "now()"
+        },
+        "created_by": {
+          "name": "created_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
         }
       },
       "indexes": {
@@ -1257,6 +1464,205 @@
           "with": {}
         }
       },
+      "foreignKeys": {
+        "crm_message_templates_created_by_crm_users_id_fk": {
+          "name": "crm_message_templates_created_by_crm_users_id_fk",
+          "tableFrom": "crm_message_templates",
+          "tableTo": "crm_users",
+          "columnsFrom": [
+            "created_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.crm_notes": {
+      "name": "crm_notes",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "content": {
+          "name": "content",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "author_id": {
+          "name": "author_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "lead_id": {
+          "name": "lead_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "organizer_id": {
+          "name": "organizer_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "crm_notes_author_id_crm_users_id_fk": {
+          "name": "crm_notes_author_id_crm_users_id_fk",
+          "tableFrom": "crm_notes",
+          "tableTo": "crm_users",
+          "columnsFrom": [
+            "author_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "crm_notes_lead_id_crm_leads_id_fk": {
+          "name": "crm_notes_lead_id_crm_leads_id_fk",
+          "tableFrom": "crm_notes",
+          "tableTo": "crm_leads",
+          "columnsFrom": [
+            "lead_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "crm_notes_organizer_id_crm_organizers_id_fk": {
+          "name": "crm_notes_organizer_id_crm_organizers_id_fk",
+          "tableFrom": "crm_notes",
+          "tableTo": "crm_organizers",
+          "columnsFrom": [
+            "organizer_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "crm_notes_target_ck": {
+          "name": "crm_notes_target_ck",
+          "value": "(\"lead_id\" IS NOT NULL) <> (\"organizer_id\" IS NOT NULL)"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.crm_organizers": {
+      "name": "crm_organizers",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "normalized_handle": {
+          "name": "normalized_handle",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "social_facebook": {
+          "name": "social_facebook",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "social_instagram": {
+          "name": "social_instagram",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "website": {
+          "name": "website",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "email": {
+          "name": "email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "phone": {
+          "name": "phone",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "location": {
+          "name": "location",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
@@ -1353,6 +1759,22 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
+        },
+        "crm_users_single_super_manager_uq": {
+          "name": "crm_users_single_super_manager_uq",
+          "columns": [
+            {
+              "expression": "role",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "role = 'super_manager' AND active = true",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
       "foreignKeys": {},
@@ -1445,7 +1867,17 @@
         "replied",
         "in_discussion",
         "won",
+        "live",
         "lost"
+      ]
+    },
+    "public.crm_lead_visibility": {
+      "name": "crm_lead_visibility",
+      "schema": "public",
+      "values": [
+        "only_me",
+        "everyone",
+        "selected"
       ]
     },
     "public.crm_lost_reason": {
@@ -1462,7 +1894,8 @@
       "schema": "public",
       "values": [
         "rep",
-        "manager"
+        "manager",
+        "super_manager"
       ]
     }
   },

@@ -104,7 +104,14 @@ describe('ownerUpdateSchema (owner reassignment validator)', () => {
 // ---------------------------------------------------------------------------
 
 describe('BOARD_STAGES (pipeline column order)', () => {
-	it('matches the expected ordered columns (new → contacted → replied → in_discussion → won)', () => {
-		expect(BOARD_STAGES).toEqual(['new', 'contacted', 'replied', 'in_discussion', 'won']);
+	it('matches the expected ordered columns (new → contacted → replied → in_discussion → won → live)', () => {
+		expect(BOARD_STAGES).toEqual(['new', 'contacted', 'replied', 'in_discussion', 'won', 'live']);
+	});
+});
+
+describe('moveStageSchema — live stage (GitHub #194)', () => {
+	it('accepts the live stage', () => {
+		const r = moveStageSchema.safeParse({ stage: 'live' });
+		expect(r.success).toBe(true);
 	});
 });

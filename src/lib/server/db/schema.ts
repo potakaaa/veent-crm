@@ -14,7 +14,8 @@ import {
 	timestamp,
 	date,
 	uniqueIndex,
-	index
+	index,
+	check
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 
@@ -60,6 +61,7 @@ export const leadStage = pgEnum('crm_lead_stage', [
 	'replied',
 	'in_discussion',
 	'won',
+	'live',
 	'lost'
 ]);
 
@@ -121,6 +123,23 @@ export const crmUsers = pgTable(
 );
 
 // ---------------------------------------------------------------------------
+// crm_organizers — recurring event-organizer entity a lead can be tagged to (GitHub #188)
+// ---------------------------------------------------------------------------
+export const crmOrganizers = pgTable('crm_organizers', {
+	id: uuid('id').primaryKey().defaultRandom(),
+	name: text('name').notNull(),
+	normalizedHandle: text('normalized_handle'),
+	socialFacebook: text('social_facebook'),
+	socialInstagram: text('social_instagram'),
+	website: text('website'),
+	email: text('email'),
+	phone: text('phone'),
+	location: text('location'),
+	createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+	updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
+});
+
+// ---------------------------------------------------------------------------
 // crm_leads — one organizer-page outreach (lead & advisory-dedup unit)
 // ---------------------------------------------------------------------------
 export const crmLeads = pgTable(
@@ -158,6 +177,11 @@ export const crmLeads = pgTable(
 
 		// null = unassigned "up for grabs"; claim = atomic conditional update
 		ownerId: uuid('owner_id').references(() => crmUsers.id, { onDelete: 'set null' }),
+
+		// recurring-organizer tag (GitHub #188); nullable, many leads → one organizer
+		organizerId: uuid('organizer_id').references(() => crmOrganizers.id, {
+			onDelete: 'set null'
+		}),
 
 		// Per-lead visibility scope (GitHub #87). Enforced on every rep-facing read via
 		// visibilityCondition(); managers always bypass it. Reset to 'everyone' on owner change.
@@ -206,11 +230,36 @@ export const crmLeads = pgTable(
 		index('crm_leads_normalized_handle_idx').on(t.normalizedHandle),
 		index('crm_leads_stage_idx').on(t.stage),
 		index('crm_leads_owner_idx').on(t.ownerId),
+		index('crm_leads_organizer_idx').on(t.organizerId),
 		index('crm_leads_last_activity_idx').on(t.lastActivityAt),
 		index('crm_leads_country_idx').on(t.country),
 		uniqueIndex('crm_leads_source_ref_uq')
 			.on(t.sourceRef)
 			.where(sql`source_ref IS NOT NULL AND deleted_at IS NULL`)
+	]
+);
+
+// ---------------------------------------------------------------------------
+// crm_notes — freeform note attached to exactly one lead OR one organizer (GitHub #191)
+// XOR check constraint: exactly one of lead_id / organizer_id is non-null.
+// ---------------------------------------------------------------------------
+export const crmNotes = pgTable(
+	'crm_notes',
+	{
+		id: uuid('id').primaryKey().defaultRandom(),
+		content: text('content').notNull(),
+		authorId: uuid('author_id')
+			.notNull()
+			.references(() => crmUsers.id),
+		leadId: uuid('lead_id').references(() => crmLeads.id, { onDelete: 'cascade' }),
+		organizerId: uuid('organizer_id').references(() => crmOrganizers.id, { onDelete: 'cascade' }),
+		createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+		updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
+	},
+	(t) => [
+		check('crm_notes_target_ck', sql`("lead_id" IS NOT NULL) <> ("organizer_id" IS NOT NULL)`),
+		index('crm_notes_lead_idx').on(t.leadId),
+		index('crm_notes_organizer_idx').on(t.organizerId)
 	]
 );
 
@@ -356,7 +405,9 @@ export const crmMessageTemplates = pgTable(
 		// soft delete; no hard deletes
 		deletedAt: timestamp('deleted_at', { withTimezone: true }),
 		createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-		updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
+		updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+		// creator attribution (GitHub #199); nullable, set-null on user delete
+		createdBy: uuid('created_by').references(() => crmUsers.id, { onDelete: 'set null' })
 	},
 	(t) => [
 		uniqueIndex('crm_message_templates_title_active_uq')
@@ -425,7 +476,9 @@ export const baVerification = pgTable('verification', {
 });
 
 export type CrmUser = typeof crmUsers.$inferSelect;
+export type CrmOrganizer = typeof crmOrganizers.$inferSelect;
 export type CrmLead = typeof crmLeads.$inferSelect;
+export type CrmNote = typeof crmNotes.$inferSelect;
 export type CrmActivity = typeof crmActivities.$inferSelect;
 export type CrmLeadHistory = typeof crmLeadHistory.$inferSelect;
 export type CrmMeeting = typeof crmMeetings.$inferSelect;

@@ -1,6 +1,7 @@
 import type { PageServerLoad } from './$types';
 import { redirect } from '@sveltejs/kit';
 import { getTodayQueue } from '$lib/server/db/leads';
+import { env } from '$env/dynamic/private';
 import type { User } from '$lib/types';
 
 export const load: PageServerLoad = async ({ locals }) => {
@@ -16,5 +17,8 @@ export const load: PageServerLoad = async ({ locals }) => {
 		active: true
 	};
 
-	return { me, leads };
+	// Nudge (no outbound messaging integration yet) — visible outside production only.
+	const nudgeEnabled = env.ENVIRONMENT !== 'production';
+
+	return { me, leads, nudgeEnabled };
 };

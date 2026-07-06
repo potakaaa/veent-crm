@@ -22,6 +22,7 @@
 	import DiscardIssueModal from '$lib/components/leads/DiscardIssueModal.svelte';
 	import MeetingsPanel from '$lib/components/meetings/MeetingsPanel.svelte';
 	import { Tabs } from '$lib/components/ui/tabs';
+	import * as Popover from '$lib/components/ui/popover';
 	import { toasts } from '$lib/stores/toasts.svelte';
 	import { canEditLead, canReassign } from '$lib/utils/permissions';
 	import { riskMeta } from '$lib/utils/risk';
@@ -39,22 +40,46 @@
 	const ownerName = $derived(data.users.find((u) => u.id === lead.ownerId)?.name ?? null);
 	const risk = $derived(riskMeta(lead.urgency));
 
-	let activeTab = $state<'overview' | 'meetings' | 'onboarding'>(
-		lead.stage === 'won' ? 'onboarding' : 'overview'
+	// Most recent ownership change (LEAD-2). leadHistory is ascending by `at`, so reversing
+	// and taking the first `owner_id` row gives the latest reassignment. Pure client-side
+	// derivation from already-loaded data — no server query.
+	const lastReassignment = $derived(
+		[...data.leadHistory].reverse().find((h) => h.field === 'owner_id')
+	);
+	const nameOfOwner = (id: string | null) =>
+		id ? (data.users.find((u) => u.id === id)?.name ?? 'Unassigned') : 'Unassigned';
+	const reassignmentFromName = $derived(
+		lastReassignment ? nameOfOwner(lastReassignment.oldValue) : null
 	);
 
-	// Onboarding tab is only available for won leads. If the lead moves away from
-	// 'won' while the onboarding tab is active, fall back to Overview.
+	// Full chronological ownership chain (LEAD-3). owner_id rows are ascending by `at`.
+	// Chain = first row's oldValue, then each row's newValue, all resolved to names.
+	// Pure client-side derivation from already-loaded data — no server query.
+	const ownershipChain = $derived.by(() => {
+		const rows = data.leadHistory.filter((h) => h.field === 'owner_id');
+		if (rows.length === 0) return [ownerName ?? 'Unassigned'];
+		return [nameOfOwner(rows[0].oldValue), ...rows.map((r) => nameOfOwner(r.newValue))];
+	});
+
+	// Onboarding surfaces (tab + goLiveDate) are available for won AND live leads (GitHub #194).
+	const onboardingStage = (s: string) => s === 'won' || s === 'live';
+
+	let activeTab = $state<'overview' | 'meetings' | 'onboarding'>(
+		onboardingStage(lead.stage) ? 'onboarding' : 'overview'
+	);
+
+	// Onboarding tab is only available for won/live leads. If the lead moves away from
+	// those stages while the onboarding tab is active, fall back to Overview.
 	$effect(() => {
-		if (lead.stage !== 'won' && activeTab === 'onboarding') activeTab = 'overview';
+		if (!onboardingStage(lead.stage) && activeTab === 'onboarding') activeTab = 'overview';
 	});
 
 	// Tab strip definition (shared Tabs component, underline variant). Onboarding is
-	// only offered for won leads.
+	// only offered for won/live leads.
 	const detailTabs = $derived([
 		{ value: 'overview', label: 'Overview' },
 		{ value: 'meetings', label: 'Meetings' },
-		...(lead.stage === 'won' ? [{ value: 'onboarding', label: 'Onboarding' }] : [])
+		...(onboardingStage(lead.stage) ? [{ value: 'onboarding', label: 'Onboarding' }] : [])
 	]);
 
 	// Editable onboarding form fields — resynced whenever server truth changes.
@@ -506,14 +531,7 @@
 							<div class="mb-0.5 text-[11px] text-ink-300">Signed org</div>
 							<div class="font-mono text-[13px] text-ink">{lead.signedOrg ?? '—'}</div>
 						</div>
-						<div>
-							<div class="mb-0.5 text-[11px] text-ink-300">Deal value</div>
-							<div class="font-mono text-[13px] text-ink">
-								{lead.dealValue != null
-									? `${lead.currency ?? ''} ${lead.dealValue.toLocaleString()}`
-									: '—'}
-							</div>
-						</div>
+						<!-- TODO(LEAD-1): restore deal value display once un-hidden -->
 						<div>
 							<div class="mb-0.5 text-[11px] text-ink-300">Signed date</div>
 							<div class="font-mono text-[13px] text-ink">
@@ -831,7 +849,7 @@
 				<StageControl current={lead.stage} disabled={!canEdit || mutating} onSelect={selectStage} />
 
 				<div class="flex flex-col gap-2.5 rounded-control border border-hairline bg-panel p-4">
-					{#if lead.stage !== 'won'}
+					{#if lead.stage !== 'won' && lead.stage !== 'live'}
 						<Button
 							disabled={!canEdit || mutating}
 							onclick={() => (wonOpen = true)}
@@ -853,12 +871,58 @@
 				</div>
 
 				<div class="rounded-control border border-hairline bg-panel p-4">
-					<div class="mb-3 font-mono text-[11px] uppercase tracking-[0.5px] text-ink-300">
-						Owner
+					<div class="mb-3 flex items-center justify-between">
+						<span class="font-mono text-[11px] uppercase tracking-[0.5px] text-ink-300">Owner</span>
+						{#if ownershipChain.length > 1}
+							<Popover.Root>
+								<Popover.Trigger
+									class="flex h-[22px] items-center gap-1 rounded-[6px] border border-hairline bg-panel px-1.5 font-mono text-[10.5px] text-ink-400 hover:border-primary hover:text-primary"
+								>
+									History
+									<span aria-hidden="true" class="text-[9px] leading-none">▾</span>
+								</Popover.Trigger>
+								<Popover.Content align="end" class="w-64">
+									<div
+										class="mb-1.5 font-mono text-[10.5px] uppercase tracking-[0.4px] text-ink-300"
+									>
+										Ownership history
+									</div>
+									<div
+										class="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[12.5px] text-ink-600"
+									>
+										{#each ownershipChain as name, i (i)}
+											<span class={i === ownershipChain.length - 1 ? 'font-semibold text-ink' : ''}
+												>{name}</span
+											>
+											{#if i < ownershipChain.length - 1}
+												<span class="text-ink-200" aria-hidden="true">→</span>
+											{/if}
+										{/each}
+									</div>
+								</Popover.Content>
+							</Popover.Root>
+						{/if}
 					</div>
 					<div class="mb-3 flex items-center gap-2.5">
 						<Avatar name={ownerName} size="lg" />
-						<span class="text-[13px] font-semibold">{ownerName ?? 'Unassigned'}</span>
+						<div class="flex flex-col gap-0.5">
+							<span class="flex items-center gap-1.5 text-[13px] font-semibold">
+								{ownerName ?? 'Unassigned'}
+								{#if lastReassignment}
+									<span
+										class="rounded-[4px] bg-panel-sunken px-1.5 py-px font-mono text-[10.5px] font-medium uppercase tracking-[0.5px] text-ink-400"
+										title={`from ${reassignmentFromName} → ${ownerName ?? 'Unassigned'} · ${formatDate(lastReassignment.at)}`}
+									>
+										Reassigned
+									</span>
+								{/if}
+							</span>
+							{#if lastReassignment}
+								<span class="text-[11px] text-ink-300">
+									Reassigned from {reassignmentFromName}
+								</span>
+							{/if}
+						</div>
 					</div>
 					<Button
 						disabled={!canReassign(data.me) || mutating}

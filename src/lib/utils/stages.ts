@@ -6,10 +6,25 @@ import { STAGE_TOKENS, type StageKey } from '$lib/design/tokens';
 import type { Stage } from '$lib/types';
 
 /** Canonical funnel order. */
-export const STAGE_ORDER: Stage[] = ['new', 'contacted', 'replied', 'in_discussion', 'won', 'lost'];
+export const STAGE_ORDER: Stage[] = [
+	'new',
+	'contacted',
+	'replied',
+	'in_discussion',
+	'won',
+	'live',
+	'lost'
+];
 
 /** Stages shown on the pipeline board (lost is collapsed separately). */
-export const BOARD_STAGES: Stage[] = ['new', 'contacted', 'replied', 'in_discussion', 'won'];
+export const BOARD_STAGES: Stage[] = [
+	'new',
+	'contacted',
+	'replied',
+	'in_discussion',
+	'won',
+	'live'
+];
 
 const meta = (stage: Stage) => STAGE_TOKENS.find((s) => s.key === (stage as StageKey));
 

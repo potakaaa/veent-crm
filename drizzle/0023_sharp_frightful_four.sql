@@ -1,0 +1,2 @@
+ALTER TABLE "crm_message_templates" ADD COLUMN "created_by" uuid;--> statement-breakpoint
+ALTER TABLE "crm_message_templates" ADD CONSTRAINT "crm_message_templates_created_by_crm_users_id_fk" FOREIGN KEY ("created_by") REFERENCES "public"."crm_users"("id") ON DELETE set null ON UPDATE no action;

@@ -57,6 +57,11 @@ export interface Lead {
 	stage: Stage;
 	/** Owner user id, or null when the lead is unassigned ("up for grabs"). */
 	ownerId: string | null;
+	/**
+	 * Owner display name, populated by `enrichWithOwnerNames()` at the route-load layer
+	 * ("Unassigned" when `ownerId` is null). NOT a DB-native column — undefined until enriched.
+	 */
+	ownerName?: string;
 	/** Per-lead visibility scope (GitHub #87). Defaults to `everyone`. */
 	visibility: Visibility;
 	/** User ids explicitly granted access when `visibility === 'selected'`. */

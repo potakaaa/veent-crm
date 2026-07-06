@@ -110,14 +110,18 @@ export async function getTemplate(id: string): Promise<MessageTemplate | null> {
 // Mutations
 // ---------------------------------------------------------------------------
 
-export async function createTemplate(input: TemplateForm): Promise<MessageTemplate> {
+export async function createTemplate(
+	input: TemplateForm,
+	createdBy?: string
+): Promise<MessageTemplate> {
 	try {
 		const [row] = await db
 			.insert(crmMessageTemplates)
 			.values({
 				category: input.category,
 				title: input.title,
-				body: input.body
+				body: input.body,
+				createdBy: createdBy ?? null
 			})
 			.returning();
 		return dbRowToTemplate(row);

@@ -99,6 +99,8 @@
 		toasts.push(`Snoozed ${l.name} · follow-up in 3 days`);
 	}
 
+	// Nudge is hidden (LeadListRow's NUDGE_ENABLED flag) until outbound messaging exists —
+	// handler kept wired so re-enabling is a one-line flip.
 	const nudge = (l: Lead) =>
 		toasts.push(`Nudge: no outbound messaging integration yet (${l.name})`);
 </script>
@@ -146,7 +148,13 @@
 					<LeadRowSkeleton count={2} />
 				{:else}
 					{#each grp?.rows ?? [] as lead (lead.id)}
-						<LeadListRow {lead} onSnooze={snooze} onNudge={nudge} snoozing={snoozing[lead.id]} />
+						<LeadListRow
+							{lead}
+							onSnooze={snooze}
+							onNudge={nudge}
+							snoozing={snoozing[lead.id]}
+							nudgeEnabled={data.nudgeEnabled}
+						/>
 					{:else}
 						<div class="p-[22px] text-center text-[13px] text-ink-200">{g.empty}</div>
 					{/each}

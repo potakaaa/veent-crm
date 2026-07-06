@@ -16,11 +16,24 @@ import type { User } from '$lib/types';
 import { POST, PATCH, DELETE } from '../routes/api/templates/+server';
 
 // Mock the DB layer so page load tests never need a real database.
-vi.mock('$lib/server/db/templates', () => ({
-	listTemplates: vi.fn().mockResolvedValue([]),
-	listTemplatesPaginated: vi.fn().mockResolvedValue({ templates: [], total: 0 }),
-	TEMPLATES_PAGE_SIZE: 20
+// vi.hoisted so the mock fn exists when the hoisted vi.mock factory runs.
+const { createTemplateMock } = vi.hoisted(() => ({
+	createTemplateMock: vi
+		.fn()
+		.mockResolvedValue({ id: 't1', title: 't', category: 'Other', body: 'b', createdBy: 'r1' })
 }));
+vi.mock('$lib/server/db/templates', () => {
+	class TemplateTitleConflictError extends Error {}
+	return {
+		listTemplates: vi.fn().mockResolvedValue([]),
+		listTemplatesPaginated: vi.fn().mockResolvedValue({ templates: [], total: 0 }),
+		createTemplate: createTemplateMock,
+		updateTemplate: vi.fn().mockResolvedValue(null),
+		softDeleteTemplate: vi.fn().mockResolvedValue(false),
+		TemplateTitleConflictError,
+		TEMPLATES_PAGE_SIZE: 20
+	};
+});
 
 import { load } from '../routes/templates/+page.server';
 
@@ -69,9 +82,13 @@ describe('isManager predicate (AC-4)', () => {
 	});
 });
 
-describe('/api/templates per-verb manager guard rejects a rep with 403 (AC-4)', () => {
-	it('POST → 403', async () => {
-		await expect403(() => POST(repEvent('POST')));
+// GitHub #199 — POST is now open to any authenticated user; PATCH/DELETE stay manager-gated.
+describe('/api/templates edit/delete still reject a rep with 403 (AC-4); POST is open (GitHub #199)', () => {
+	it('POST → no longer 403 for a rep; reaches the DB and returns 201', async () => {
+		const res = await POST(repEvent('POST'));
+		expect(res.status).toBe(201);
+		// createdBy is sourced server-side from the session (rep id), never from the body.
+		expect(createTemplateMock).toHaveBeenCalledWith(expect.anything(), rep.id);
 	});
 	it('PATCH → 403', async () => {
 		await expect403(() => PATCH(repEvent('PATCH')));

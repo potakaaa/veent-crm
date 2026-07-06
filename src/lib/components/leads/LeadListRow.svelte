@@ -5,24 +5,38 @@
 	import FutureEventsBadge from '$lib/components/shared/FutureEventsBadge.svelte';
 	import Icon from '$lib/components/shared/Icon.svelte';
 	import { riskMeta } from '$lib/utils/risk';
+	import { formatDate } from '$lib/utils/dates';
 	import type { Lead } from '$lib/types';
 
 	let {
 		lead,
 		onSnooze,
 		onNudge,
-		snoozing = false
+		snoozing = false,
+		showFollowUpMeta = false,
+		// No outbound messaging integration yet — caller decides visibility (dev-only by default,
+		// wired from each route's server load via the ENVIRONMENT env var).
+		nudgeEnabled = false
 	}: {
 		lead: Lead;
 		onSnooze?: (l: Lead) => void;
 		onNudge?: (l: Lead) => void;
 		snoozing?: boolean;
+		/**
+		 * Opt-in (REM-1): render the follow-up due-date + owner-name line and the overdue flag.
+		 * Off by default so existing consumers (the Today page) are byte-for-byte unchanged.
+		 */
+		showFollowUpMeta?: boolean;
+		nudgeEnabled?: boolean;
 	} = $props();
 
 	const eventLine = $derived(
 		lead.eventDate ? `${lead.eventName ?? '—'} · ${lead.eventDate}` : (lead.eventName ?? '—')
 	);
 	const risk = $derived(riskMeta(lead.urgency));
+	const isOverdue = $derived(lead.urgency === 'overdue');
+	const dueLabel = $derived(lead.followUpAt ? formatDate(lead.followUpAt) : '—');
+	const ownerLabel = $derived(lead.ownerName ?? 'Unassigned');
 </script>
 
 <!-- Mobile card layout (<640px) -->
@@ -52,6 +66,19 @@
 			<div class="mt-1 line-clamp-3 font-mono text-[12px] leading-[1.5] text-ink-400">
 				{eventLine}
 			</div>
+			{#if showFollowUpMeta}
+				<div class="mt-1.5 flex flex-wrap items-center gap-1.5 font-mono text-[11px]">
+					{#if isOverdue}
+						<span
+							class="rounded-[4px] px-[5px] py-px font-semibold text-white"
+							style="background:{risk.color}">Overdue</span
+						>
+					{/if}
+					<span class="text-ink-400">Due {dueLabel}</span>
+					<span class="text-ink-200">·</span>
+					<span class="text-ink-400">{ownerLabel}</span>
+				</div>
+			{/if}
 		</a>
 	</div>
 	<div class="flex shrink-0 flex-col items-center gap-1 border-l border-hairline pl-3">
@@ -71,13 +98,15 @@
 			>
 				<Icon name="reminders" size={13} stroke={1.8} />
 			</button>
-			<button
-				onclick={() => onNudge?.(lead)}
-				aria-label="Nudge"
-				class="flex h-[26px] w-[26px] items-center justify-center rounded-[6px] border border-hairline bg-panel text-ink-600 transition-colors duration-200 hover:bg-panel-sunken"
-			>
-				<Icon name="bell" size={13} stroke={1.8} />
-			</button>
+			{#if nudgeEnabled}
+				<button
+					onclick={() => onNudge?.(lead)}
+					aria-label="Nudge"
+					class="flex h-[26px] w-[26px] items-center justify-center rounded-[6px] border border-hairline bg-panel text-ink-600 transition-colors duration-200 hover:bg-panel-sunken"
+				>
+					<Icon name="bell" size={13} stroke={1.8} />
+				</button>
+			{/if}
 		</div>
 	</div>
 </div>
@@ -107,10 +136,29 @@
 			<FutureEventsBadge />
 		{/if}
 	</div>
-	<div class="w-[150px] shrink-0 max-[1100px]:hidden">
-		<div class="font-mono text-[9px] uppercase tracking-[0.5px] text-ink-200">next</div>
-		<div class="text-[12px] font-semibold" style="color:{risk.color}">{risk.label}</div>
-	</div>
+	{#if showFollowUpMeta}
+		<div class="w-[160px] shrink-0 max-[1100px]:hidden">
+			<div class="flex items-center gap-1.5">
+				{#if isOverdue}
+					<span
+						class="rounded-[4px] px-[5px] py-px font-mono text-[9px] font-semibold uppercase tracking-[0.5px] text-white"
+						style="background:{risk.color}">Overdue</span
+					>
+				{:else}
+					<div class="font-mono text-[9px] uppercase tracking-[0.5px] text-ink-200">due</div>
+				{/if}
+			</div>
+			<div class="text-[12px] font-semibold" style={isOverdue ? `color:${risk.color}` : ''}>
+				{dueLabel}
+			</div>
+			<div class="mt-0.5 truncate font-mono text-[11px] text-ink-400">{ownerLabel}</div>
+		</div>
+	{:else}
+		<div class="w-[150px] shrink-0 max-[1100px]:hidden">
+			<div class="font-mono text-[9px] uppercase tracking-[0.5px] text-ink-200">next</div>
+			<div class="text-[12px] font-semibold" style="color:{risk.color}">{risk.label}</div>
+		</div>
+	{/if}
 	<div class="flex shrink-0 items-center gap-1.5">
 		<a
 			href="/leads/{lead.id}"
@@ -125,11 +173,13 @@
 		>
 			{snoozing ? 'Snoozing…' : 'Snooze'}
 		</button>
-		<button
-			onclick={() => onNudge?.(lead)}
-			class="h-[30px] rounded-[7px] border border-hairline bg-panel px-2.5 text-[12px] font-medium text-ink-600 hover:bg-panel-sunken"
-		>
-			Nudge
-		</button>
+		{#if nudgeEnabled}
+			<button
+				onclick={() => onNudge?.(lead)}
+				class="h-[30px] rounded-[7px] border border-hairline bg-panel px-2.5 text-[12px] font-medium text-ink-600 hover:bg-panel-sunken"
+			>
+				Nudge
+			</button>
+		{/if}
 	</div>
 </div>

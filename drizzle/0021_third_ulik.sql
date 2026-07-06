@@ -1,0 +1,1 @@
+ALTER TYPE "public"."crm_lead_stage" ADD VALUE 'live' BEFORE 'lost';

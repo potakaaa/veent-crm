@@ -29,6 +29,10 @@
 		me,
 		// Single-lead mode: leadId fixed (no lead column). Cross-lead mode: leadId omitted.
 		leadId = undefined,
+		// Single-lead mode only: the lead's linked recurring-organizer (crm_organizers,
+		// GitHub #188) — the CREATE-mode pre-fill source passed through to the meeting modal.
+		leadOrganizerId = undefined,
+		leadOrganizerName = undefined,
 		// Cross-lead mode only: server-resolved label for the currently-selected lead filter.
 		selectedLead = undefined,
 		// Cross-lead mode only: hydrates the filter/sort toolbar from the SSR loader.
@@ -39,6 +43,8 @@
 		users: User[];
 		me: User;
 		leadId?: string;
+		leadOrganizerId?: string | null;
+		leadOrganizerName?: string;
 		selectedLead?: { id: string; name: string } | null;
 		filters?: {
 			organizer: string;
@@ -192,6 +198,8 @@
 							// Empty string means "unassign" — send explicit null so JSON.stringify
 							// keeps the key (undefined would be dropped, leaving organizer unchanged).
 							organizerId: payload.organizerId ? payload.organizerId : null,
+							// Explicit null (from the modal) clears the linked organizer on edit.
+							leadOrganizerId: payload.leadOrganizerId ?? null,
 							meetingUrl: payload.meetingUrl ?? '',
 							notes: payload.notes ?? '',
 							outcome: payload.outcome ?? '',
@@ -495,6 +503,8 @@
 	open={modalOpen}
 	{users}
 	{leadId}
+	{leadOrganizerId}
+	{leadOrganizerName}
 	meeting={editing}
 	{saving}
 	onclose={() => {

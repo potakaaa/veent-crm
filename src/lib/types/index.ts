@@ -78,6 +78,17 @@ export interface Lead {
 	pageUrl?: string;
 	socialFacebook?: string;
 	socialInstagram?: string;
+	/**
+	 * The lead's linked recurring-organizer entity id (crm_organizers, GitHub #188),
+	 * or null when the lead is not tagged to an organizer. Maps directly from the
+	 * `crm_leads.organizer_id` column.
+	 */
+	organizerId?: string | null;
+	/**
+	 * Linked organizer display name — populated by a `crm_organizers` join/lookup at the
+	 * detail-load layer (undefined until enriched, and when `organizerId` is null).
+	 */
+	organizerName?: string;
 	/** Count of sibling leads that share the same page (advisory dedup only). */
 	siblings?: number;
 	source: LeadSource;
@@ -140,6 +151,14 @@ export interface Meeting {
 	leadName?: string;
 	organizerId: string | null;
 	organizerName?: string;
+	/**
+	 * The lead's linked recurring-organizer entity (crm_organizers, GitHub #188) — DISTINCT
+	 * from `organizerId` (internal crm_users organizer). Pre-filled from the lead on create,
+	 * overridable/clearable. Null when unset.
+	 */
+	leadOrganizerId?: string | null;
+	/** Linked organizer display name for the saved `leadOrganizerId` (join-populated). */
+	leadOrganizerName?: string;
 	/** ISO datetime the meeting starts. */
 	startAt: string;
 	meetingUrl?: string;

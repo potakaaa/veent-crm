@@ -3,6 +3,8 @@ import {
 	leadFormSchema,
 	leadUpdateSchema,
 	ingestBatchSchema,
+	meetingFormSchema,
+	meetingUpdateSchema,
 	LEAD_STAGES,
 	USER_ROLES
 } from '$lib/zod/schemas';
@@ -127,5 +129,63 @@ describe('leadFormSchema — visibility (GitHub #87)', () => {
 			selectedUserIds: ['11111111-1111-1111-1111-111111111111']
 		});
 		expect(r.success).toBe(true);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// meeting schemas — leadOrganizerId (crm_organizers pre-fill link, GitHub #188)
+// ---------------------------------------------------------------------------
+
+describe('meetingFormSchema leadOrganizerId (create)', () => {
+	const base = {
+		leadId: '11111111-1111-4111-8111-111111111111',
+		startAt: '2026-07-06T10:00:00.000Z'
+	};
+
+	it('accepts a valid leadOrganizerId uuid', () => {
+		const r = meetingFormSchema.safeParse({
+			...base,
+			leadOrganizerId: '22222222-2222-4222-8222-222222222222'
+		});
+		expect(r.success).toBe(true);
+	});
+
+	it('accepts null leadOrganizerId (no linked organizer)', () => {
+		const r = meetingFormSchema.safeParse({ ...base, leadOrganizerId: null });
+		expect(r.success).toBe(true);
+	});
+
+	it('accepts an omitted leadOrganizerId (optional)', () => {
+		const r = meetingFormSchema.safeParse(base);
+		expect(r.success).toBe(true);
+	});
+
+	it('rejects a malformed leadOrganizerId', () => {
+		const r = meetingFormSchema.safeParse({ ...base, leadOrganizerId: 'not-a-uuid' });
+		expect(r.success).toBe(false);
+	});
+});
+
+describe('meetingUpdateSchema leadOrganizerId (edit)', () => {
+	it('accepts a valid leadOrganizerId uuid', () => {
+		const r = meetingUpdateSchema.safeParse({
+			leadOrganizerId: '22222222-2222-4222-8222-222222222222'
+		});
+		expect(r.success).toBe(true);
+	});
+
+	it('accepts null leadOrganizerId (explicit clear on edit)', () => {
+		const r = meetingUpdateSchema.safeParse({ leadOrganizerId: null });
+		expect(r.success).toBe(true);
+	});
+
+	it('accepts an omitted leadOrganizerId (field untouched)', () => {
+		const r = meetingUpdateSchema.safeParse({});
+		expect(r.success).toBe(true);
+	});
+
+	it('rejects a malformed leadOrganizerId', () => {
+		const r = meetingUpdateSchema.safeParse({ leadOrganizerId: 'nope' });
+		expect(r.success).toBe(false);
 	});
 });

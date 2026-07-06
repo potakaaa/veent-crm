@@ -15,9 +15,11 @@ function requireManager(locals: App.Locals): void {
 	}
 }
 
-// POST — create a template. 201 + row / 400 invalid / 403 non-manager.
+// POST — create a template. 201 + row / 400 invalid / 401 unauthed.
+// GitHub #199: any authenticated user (reps included) may create; edit/delete stay manager-only.
+// `createdBy` is sourced server-side from the session, never from the request body.
 export const POST: RequestHandler = async ({ request, locals }) => {
-	requireManager(locals);
+	if (!locals.user) throw error(401, 'Unauthorized');
 
 	const parsed = templateFormSchema.safeParse(await request.json().catch(() => null));
 	if (!parsed.success) {
@@ -25,7 +27,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	}
 
 	try {
-		const row = await createTemplate(parsed.data);
+		const row = await createTemplate(parsed.data, locals.user.id);
 		return json(row, { status: 201 });
 	} catch (err) {
 		if (err instanceof TemplateTitleConflictError) throw error(409, err.message);

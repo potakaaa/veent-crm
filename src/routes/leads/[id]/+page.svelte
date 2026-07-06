@@ -39,22 +39,25 @@
 	const ownerName = $derived(data.users.find((u) => u.id === lead.ownerId)?.name ?? null);
 	const risk = $derived(riskMeta(lead.urgency));
 
+	// Onboarding surfaces (tab + goLiveDate) are available for won AND live leads (GitHub #194).
+	const onboardingStage = (s: string) => s === 'won' || s === 'live';
+
 	let activeTab = $state<'overview' | 'meetings' | 'onboarding'>(
-		lead.stage === 'won' ? 'onboarding' : 'overview'
+		onboardingStage(lead.stage) ? 'onboarding' : 'overview'
 	);
 
-	// Onboarding tab is only available for won leads. If the lead moves away from
-	// 'won' while the onboarding tab is active, fall back to Overview.
+	// Onboarding tab is only available for won/live leads. If the lead moves away from
+	// those stages while the onboarding tab is active, fall back to Overview.
 	$effect(() => {
-		if (lead.stage !== 'won' && activeTab === 'onboarding') activeTab = 'overview';
+		if (!onboardingStage(lead.stage) && activeTab === 'onboarding') activeTab = 'overview';
 	});
 
 	// Tab strip definition (shared Tabs component, underline variant). Onboarding is
-	// only offered for won leads.
+	// only offered for won/live leads.
 	const detailTabs = $derived([
 		{ value: 'overview', label: 'Overview' },
 		{ value: 'meetings', label: 'Meetings' },
-		...(lead.stage === 'won' ? [{ value: 'onboarding', label: 'Onboarding' }] : [])
+		...(onboardingStage(lead.stage) ? [{ value: 'onboarding', label: 'Onboarding' }] : [])
 	]);
 
 	// Editable onboarding form fields — resynced whenever server truth changes.
@@ -831,7 +834,7 @@
 				<StageControl current={lead.stage} disabled={!canEdit || mutating} onSelect={selectStage} />
 
 				<div class="flex flex-col gap-2.5 rounded-control border border-hairline bg-panel p-4">
-					{#if lead.stage !== 'won'}
+					{#if lead.stage !== 'won' && lead.stage !== 'live'}
 						<Button
 							disabled={!canEdit || mutating}
 							onclick={() => (wonOpen = true)}

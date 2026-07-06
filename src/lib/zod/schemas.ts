@@ -3,7 +3,15 @@
 
 import { z } from 'zod';
 
-export const LEAD_STAGES = ['new', 'contacted', 'replied', 'in_discussion', 'won', 'lost'] as const;
+export const LEAD_STAGES = [
+	'new',
+	'contacted',
+	'replied',
+	'in_discussion',
+	'won',
+	'live',
+	'lost'
+] as const;
 
 export const LEAD_PLATFORMS = ['Facebook', 'Instagram', 'Twitter/X', 'TikTok', 'Other'] as const;
 
@@ -262,6 +270,10 @@ export const moveStageSchema = z.discriminatedUnion('stage', [
 			.optional()
 	}),
 	z.object({
+		// GitHub #194 — a won lead can advance to `live` (no extra capture required).
+		stage: z.literal('live')
+	}),
+	z.object({
 		stage: z.literal('lost'),
 		lostReason: z.enum(LOST_REASONS)
 	})
@@ -278,6 +290,13 @@ export const ownerUpdateSchema = z.object({
 	ownerId: z.string().regex(UUID_RE, 'Invalid owner ID')
 });
 export type OwnerUpdate = z.infer<typeof ownerUpdateSchema>;
+
+// --- Tag / untag a lead to a recurring organizer (GitHub #188) ----------------
+// null clears the tag. Shape-only UUID matcher (see ownerUpdateSchema note).
+export const organizerTagSchema = z.object({
+	organizerId: z.string().regex(UUID_RE, 'Invalid organizer ID').nullable()
+});
+export type OrganizerTag = z.infer<typeof organizerTagSchema>;
 
 // --- Log a touch (API endpoint: POST /api/leads/[id]/touch) ---------------------
 const dateString = z

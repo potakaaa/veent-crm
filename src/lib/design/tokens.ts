@@ -21,6 +21,7 @@ export const STAGE_TOKENS = [
 		hex: '#d97706'
 	},
 	{ key: 'won', label: 'Won', color: 'var(--color-stage-won)', hex: '#059669' },
+	{ key: 'live', label: 'Live', color: 'var(--color-stage-live)', hex: '#16a34a' },
 	{ key: 'lost', label: 'Lost', color: 'var(--color-stage-lost)', hex: '#9ca3af' }
 ] as const;
 

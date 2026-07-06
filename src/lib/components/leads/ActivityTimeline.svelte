@@ -39,7 +39,19 @@
 		custom: 'Custom range'
 	};
 
+	const QUICK_PRESETS: Exclude<FilterPreset, 'custom'>[] = ['all', '1d', '3d', '7d'];
+
 	const entryIso = (e: Entry) => (e.kind === 'activity' ? e.data.createdAt : e.data.at);
+
+	// Local (not UTC) calendar day for the entry's timestamp, to match <input type="date">'s
+	// local-date semantics — avoids misclassifying events near a day boundary.
+	const localDay = (iso: string): string => {
+		const d = new Date(iso);
+		const y = d.getFullYear();
+		const m = String(d.getMonth() + 1).padStart(2, '0');
+		const day = String(d.getDate()).padStart(2, '0');
+		return `${y}-${m}-${day}`;
+	};
 
 	// Choose a quick preset: reset any stale custom-range values and close the dropdown.
 	function choosePreset(next: Exclude<FilterPreset, 'custom'>) {
@@ -75,7 +87,7 @@
 		if (preset === 'custom') {
 			if (customFrom === '' && customTo === '') return allEntries;
 			return allEntries.filter((e) => {
-				const day = entryIso(e).slice(0, 10);
+				const day = localDay(entryIso(e));
 				if (customFrom !== '' && day < customFrom) return false;
 				if (customTo !== '' && day > customTo) return false;
 				return true;
@@ -121,17 +133,17 @@
 				</Popover.Trigger>
 				<Popover.Content align="end" class="w-52">
 					<ul class="flex flex-col">
-						{#each [['all', 'All time'], ['1d', 'Last 1 day'], ['3d', 'Last 3 days'], ['7d', 'Last 7 days']] as [value, optLabel] (value)}
+						{#each QUICK_PRESETS as value (value)}
 							<li>
 								<button
 									type="button"
-									onclick={() => choosePreset(value as Exclude<FilterPreset, 'custom'>)}
+									onclick={() => choosePreset(value)}
 									class="flex w-full items-center justify-between rounded-[6px] px-1.5 py-[5px] text-left text-[12.5px] text-ink-600 hover:bg-[#fcfbfd] {preset ===
 									value
 										? 'font-semibold text-primary'
 										: ''}"
 								>
-									<span>{optLabel}</span>
+									<span>{PRESET_LABEL[value]}</span>
 									{#if preset === value}<span aria-hidden="true">✓</span>{/if}
 								</button>
 							</li>

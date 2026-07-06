@@ -1,6 +1,6 @@
 import type { PageServerLoad } from './$types';
 import { error } from '@sveltejs/kit';
-import { getFollowUpsInRange, isWithinRange } from '$lib/server/db/leads';
+import { getFollowUpsInRange, getGoLiveDatesInRange, isWithinRange } from '$lib/server/db/leads';
 import { listAllMeetings } from '$lib/server/db/meetings';
 import { computeRange, parseDateParam, toDateParam, type CalendarView } from '$lib/utils/calendar';
 import type { CalendarEntry } from '$lib/types';
@@ -20,9 +20,10 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 	// the merged meetings module untouched (zero regression surface for /meetings), is backward
 	// compatible, and is adequate for v0's small dataset. Server-side param filtering remains a
 	// future optimization if the meeting volume grows.
-	const [followUps, meetings] = await Promise.all([
+	const [followUps, meetings, goLives] = await Promise.all([
 		getFollowUpsInRange(locals.user.id, start, end),
-		listAllMeetings()
+		listAllMeetings(),
+		getGoLiveDatesInRange(start, end, locals.user.id, locals.user.role)
 	]);
 
 	const meetingEntries: CalendarEntry[] = meetings
@@ -47,7 +48,15 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 			href: `/leads/${l.id}`
 		}));
 
-	const entries = [...meetingEntries, ...followUpEntries].sort(
+	const goLiveEntries: CalendarEntry[] = goLives.map((l) => ({
+		id: `golive-${l.id}`,
+		type: 'golive',
+		startAt: l.goLiveIso,
+		title: l.name,
+		href: `/leads/${l.id}`
+	}));
+
+	const entries = [...meetingEntries, ...followUpEntries, ...goLiveEntries].sort(
 		(a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime()
 	);
 

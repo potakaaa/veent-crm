@@ -54,7 +54,7 @@ Files changed (exactly 4) + 1 test extension:
 2. `src/lib/server/db/leads.ts` — add two pure exported helpers + one async query:
    - `buildGoLiveRangeConditions(): SQL[]` — `isNull(deletedAt)`, `eq(stage, 'live')`, `isNotNull(goLiveDate)` (pure, `.toSQL()`-testable, mirrors `buildFollowUpsRangeLeadConditions`).
    - `normalizeGoLiveDate(dateStr: string): string` — appends `T00:00:00` to a `'YYYY-MM-DD'` string → local-midnight ISO (pure, unit-testable).
-   - `getGoLiveDatesInRange(rangeStart: Date, rangeEnd: Date, userId: string, role: string): Promise<LiveLeadSummary[]>` — selects `{ id, name, goLiveDate }` for live, non-deleted, non-null-goLiveDate leads that pass `visibilityCondition(userId, role)`; maps each to `{ id, name, goLiveIso }` via `normalizeGoLiveDate`; post-filters with `isWithinRange(goLiveIso, rangeStart, rangeEnd)`. Team-wide but visibility-scoped (concern C2). Selects only `name` for the calendar title, avoiding the derived `handle` field (concern C1).
+   - `getGoLiveDatesInRange(rangeStart: Date, rangeEnd: Date, userId: string, role: Role): Promise<LiveLeadSummary[]>` — selects `{ id, name, goLiveDate }` for live, non-deleted, non-null-goLiveDate leads that pass `visibilityCondition(userId, role)`; maps each to `{ id, name, goLiveIso }` via `normalizeGoLiveDate`; post-filters with `isWithinRange(goLiveIso, rangeStart, rangeEnd)`. Team-wide but visibility-scoped (concern C2). Selects only `name` for the calendar title, avoiding the derived `handle` field (concern C1).
    - `LiveLeadSummary` type: `{ id: string; name: string; goLiveIso: string }` (define adjacent to the query, or inline).
 
    Files read for context: existing `getFollowUpsInRange` / `isWithinRange` / `buildFollowUpsRangeLeadConditions` / `visibilityCondition` patterns (lines 192–1384); Drizzle imports (`eq`, `isNull`, `isNotNull`, `and`) already imported in the module.
@@ -82,7 +82,7 @@ Files changed (exactly 4) + 1 test extension:
 3. `src/lib/server/db/leads.ts`: add pure `normalizeGoLiveDate(dateStr: string): string` — returns `dateStr + 'T00:00:00'` (guard: if already contains `T`, return as-is).
 4. `src/lib/server/db/leads.ts`: add pure `buildGoLiveRangeConditions(): SQL[]` returning `[isNull(deletedAt), eq(stage, 'live'), isNotNull(goLiveDate)]`.
 5. `src/lib/server/db/leads.ts`: add async `getGoLiveDatesInRange(rangeStart, rangeEnd, userId, role)` — `db.select({ id: crmLeads.id, name: crmLeads.name, goLiveDate: crmLeads.goLiveDate }).from(crmLeads).where(and(...buildGoLiveRangeConditions(), visibilityCondition(userId, role)))`; map each row to `LiveLeadSummary` using `row.name` as the display name (do NOT read/derive `handle`), `goLiveIso` via `normalizeGoLiveDate(row.goLiveDate!)`; post-filter with `isWithinRange(goLiveIso, rangeStart, rangeEnd)`; return array. (C1 + C2 resolved.)
-5a. `src/lib/server/db/leads.ts` (visibility — concern C2): confirm `getGoLiveDatesInRange` accepts `userId: string` and `role: string` and applies `visibilityCondition(userId, role)` inside the `and(...)` WHERE clause — same pattern as `getFollowUpsInRange` / `listPipelineStage` (leads.ts:192,204). This is the trust-boundary guard: restricted (`only_me` / `selected`) live leads must not appear on other users' calendars. If a `LiveLeadSummary` local type is declared in `src/lib/types/index.ts`, keep it in sync (it carries no `userId`/`role` — those are query params, not summary fields).
+5a. `src/lib/server/db/leads.ts` (visibility — concern C2): confirm `getGoLiveDatesInRange` accepts `userId: string` and `role: Role` (`locals.user.role`) and applies `visibilityCondition(userId, role)` inside the `and(...)` WHERE clause — same pattern as `getFollowUpsInRange` / `listPipelineStage` (leads.ts:192,204). This is the trust-boundary guard: restricted (`only_me` / `selected`) live leads must not appear on other users' calendars. If a `LiveLeadSummary` local type is declared in `src/lib/types/index.ts`, keep it in sync (it carries no `userId`/`role` — those are query params, not summary fields).
 6. `src/routes/calendar/+page.server.ts`: add `getGoLiveDatesInRange` to the import from `$lib/server/db/leads`.
 7. `src/routes/calendar/+page.server.ts`: add `getGoLiveDatesInRange(start, end, locals.user.id, locals.user.role)` as a third promise in the existing `Promise.all` (destructure `goLives`). Pass `locals.user.id` and the user's role (concern C2); confirm `locals.user` is non-null on this protected route (it is — `/calendar` is behind the session gate).
 8. `src/routes/calendar/+page.server.ts`: build `goLiveEntries: CalendarEntry[]` mapping each `goLives` row → `{ id: golive-${l.id}, type: 'golive', startAt: l.goLiveIso, title: l.name, href: /leads/${l.id} }` (no `subtitle` — go-live chips show the lead name only).
@@ -168,14 +168,14 @@ Test gates (C3 5-column table — ADDITIVE; legacy line form retained below):
 gap-resolution legend: A — proven now; B — gate added by this plan's checklist; C — deferred to named later phase; D — backlog test-building stub (named residual; keep-active).
 
 Failing stub (AC4 — Fully-Automated):
-```
+```ts
 test("should normalize 'YYYY-MM-DD' to local-midnight ISO without day-shift", () => {
   throw new Error("NOT IMPLEMENTED — TDD stub: normalizeGoLiveDate('2026-07-15') === '2026-07-15T00:00:00'")
 })
 ```
 
 Failing stub (AC1 — Fully-Automated):
-```
+```ts
 test("should build WHERE with deleted_at is null, stage = 'live', go_live_date is not null", () => {
   throw new Error("NOT IMPLEMENTED — TDD stub: buildGoLiveRangeConditions().toSQL() WHERE clause")
 })
@@ -213,7 +213,7 @@ Accepted by: pending — supplement applied; re-run VALIDATE (V1→V7) to confir
 
 ## Autonomous Goal Block
 
-```
+```text
 SESSION GOAL: Calendar go-live events — render live-stage leads' goLiveDate as green "Go-live" milestone chips on /calendar, distinct from meetings (blue) and follow-ups (amber), click-through to /leads/[id].
 Charter + umbrella plan: N/A — single SIMPLE plan
 Autonomy: standard RIPER-5; feedback_autonomous_phase_execution rules — reversible edits auto-proceed, surface only hard stops.

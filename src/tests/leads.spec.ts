@@ -52,6 +52,7 @@ function makeRow(overrides: Partial<Parameters<typeof dbRowToLead>[0]> = {}) {
 		stage: 'new' as const,
 		lostReason: null,
 		ownerId: 'owner-uuid',
+		organizerId: null,
 		visibility: 'everyone' as const,
 		source: 'manual' as const,
 		lastActivityAt: now,

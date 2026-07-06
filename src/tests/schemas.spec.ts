@@ -25,9 +25,10 @@ describe('zod schemas (stub)', () => {
 		expect(r.success).toBe(true);
 	});
 
-	it('has the six pipeline stages', () => {
+	it('has the seven pipeline stages', () => {
 		expect(LEAD_STAGES).toContain('in_discussion');
-		expect(LEAD_STAGES.length).toBe(6);
+		expect(LEAD_STAGES).toContain('live');
+		expect(LEAD_STAGES.length).toBe(7);
 	});
 });
 

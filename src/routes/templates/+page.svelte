@@ -20,6 +20,8 @@
 
 	let { data } = $props();
 	const canManage = $derived(isManager(data.currentUser));
+	// GitHub #199 — any authenticated user may create a template; edit/delete stay manager-only.
+	const canCreate = $derived(!!data.currentUser);
 
 	// View toggle persists client-side only.
 	let viewMode = $state<'card' | 'list'>('card');
@@ -191,7 +193,7 @@
 		subtitle="Reusable outreach messages reps can insert from a lead. Managed by managers, organized by event category."
 	>
 		{#snippet actions()}
-			{#if canManage}
+			{#if canCreate}
 				<Button onclick={openCreate}>
 					<Icon name="plus" size={15} stroke={2.2} /> Add template
 				</Button>
@@ -203,7 +205,7 @@
 		<div
 			class="mb-4 rounded-control border border-border bg-panel-subtle px-4 py-2.5 text-[12.5px] text-ink-500"
 		>
-			Template management is manager-only.
+			You can create templates. Editing and deleting are manager-only.
 		</div>
 	{/if}
 

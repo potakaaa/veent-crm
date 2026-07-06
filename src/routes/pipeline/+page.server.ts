@@ -4,7 +4,7 @@ import { listPipelineStage, listUsers } from '$lib/server/db/leads';
 import { computeAppealScore, today } from '$lib/appeal-score';
 import type { Stage } from '$lib/types';
 
-const BOARD_STAGES: Stage[] = ['new', 'contacted', 'replied', 'in_discussion', 'won'];
+const BOARD_STAGES: Stage[] = ['new', 'contacted', 'replied', 'in_discussion', 'won', 'live'];
 const PAGE_LIMIT = 10;
 
 export const load: PageServerLoad = async ({ locals }) => {

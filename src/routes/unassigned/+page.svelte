@@ -96,11 +96,24 @@
 		navigate({ [key]: values.join(',') || undefined, page: undefined });
 	}
 	function clearAllFilters() {
-		navigate({ country: undefined, category: undefined, page: undefined });
+		navigate({ country: undefined, category: undefined, q: undefined, page: undefined });
 	}
 	const hasActiveFilters = $derived(
-		data.filters.country.length > 0 || data.filters.category.length > 0
+		data.filters.country.length > 0 ||
+			data.filters.category.length > 0 ||
+			data.filters.search.trim().length > 0
 	);
+
+	let searchInput = $derived(data.filters.search ?? '');
+	let searchTimer: ReturnType<typeof setTimeout> | null = null;
+	function onSearchInput(e: Event & { currentTarget: HTMLInputElement }) {
+		const raw = e.currentTarget.value;
+		searchInput = raw;
+		if (searchTimer) clearTimeout(searchTimer);
+		searchTimer = setTimeout(() => {
+			navigate({ q: raw.trim() || undefined, page: undefined });
+		}, 1300);
+	}
 
 	const WEEKS_PRESETS = [4, 8, 12] as const;
 	let weeksInput = $derived(
@@ -289,7 +302,7 @@
 <div class="px-7 pb-16 pt-6">
 	<PageHeader
 		title="Up for grabs"
-		subtitle={`${data.pagination.total} leads with no active owner — former-rep leads and never-assigned pages. Claim one to start working it.`}
+		subtitle={`${data.pagination.total} leads with no active owner. Claim one to start working it.`}
 	>
 		{#snippet actions()}
 			{#if selectedIds.length}
@@ -315,6 +328,14 @@
 	</PageHeader>
 
 	<div class="mb-3.5 flex flex-wrap items-center gap-2">
+		<input
+			type="text"
+			value={searchInput}
+			oninput={onSearchInput}
+			placeholder="Search name, event, or handle"
+			aria-label="Search Up for Grabs leads"
+			class="h-[34px] w-56 rounded-control border border-ink-200 bg-white px-2.5 text-[12.5px] text-ink-700 placeholder:text-ink-400 focus:border-primary focus:outline-none"
+		/>
 		<MultiSelectFilter
 			label="Country"
 			options={data.countryOptions}
@@ -367,7 +388,13 @@
 		</div>
 	</div>
 
-	<DataGridShell {cols} loading={navLoading} skeletonCells={10} isEmpty={shadowLeads.length === 0}>
+	<DataGridShell
+		{cols}
+		loading={navLoading}
+		skeletonCells={10}
+		isEmpty={shadowLeads.length === 0}
+		mobileBare
+	>
 		{#snippet header()}
 			{#each table.getHeaderGroups()[0].headers as header (header.id)}
 				<div
@@ -403,12 +430,12 @@
 		{#snippet rows(rowClass)}
 			{#each shadowLeads as l (l.id)}
 				<div
-					class="{rowClass} min-h-11 items-center border-b border-panel-sunken px-4 last:border-b-0 hover:bg-[#fcfbfd]"
+					class="{rowClass} relative mb-3 min-h-11 items-center rounded-[11px] border border-hairline-strong bg-panel px-4 py-3.5 shadow-frame hover:bg-[#fcfbfd] [&:nth-child(2)]:mt-3 lg:mb-0 lg:rounded-none lg:border-l-0 lg:border-r-0 lg:border-t-0 lg:border-b lg:border-panel-sunken lg:bg-transparent lg:py-0 lg:shadow-none lg:last:border-b-0 lg:[&:nth-child(2)]:mt-0"
 				>
 					<button
 						onclick={() => toggle(l.id)}
 						aria-label="Select {l.name}"
-						class="flex h-[18px] w-[18px] items-center justify-center rounded-[5px] border-[1.5px] {selected[
+						class="absolute right-3.5 top-3.5 z-[1] flex h-[18px] w-[18px] items-center justify-center rounded-[5px] border-[1.5px] lg:static lg:right-auto lg:top-auto {selected[
 							l.id
 						]
 							? 'border-primary bg-primary'
@@ -426,13 +453,15 @@
 							{#snippet child({ props })}
 								<div
 									{...props}
-									class="min-w-0"
+									class="min-w-0 pr-7 lg:pr-0"
 									onmouseenter={() => hover.open(l.id)}
 									onmouseleave={hover.scheduleClose}
 									onkeydown={hover.handleEscape}
 								>
 									<a href="/leads/{l.id}" class="min-w-0 block">
-										<div class="flex min-w-0 items-center gap-1.5 text-[13px] font-semibold">
+										<div
+											class="flex min-w-0 items-center gap-1.5 text-[13.5px] font-semibold lg:text-[13px]"
+										>
 											<span class="truncate">{l.name}</span>
 											{#if l.siblings}<span
 													class="shrink-0 rounded-[4px] bg-[rgba(194,113,12,0.1)] px-[5px] py-px font-mono text-[9.5px] text-stale"
@@ -456,7 +485,9 @@
 					</Popover.Root>
 					<div class="min-w-0">
 						<div class="flex items-center gap-1.5">
-							<span class="truncate text-[12.5px] text-ink-600">{l.eventName ?? '—'}</span>
+							<span class="truncate text-[13px] text-ink-700 lg:text-[12.5px] lg:text-ink-600"
+								>{l.eventName ?? '—'}</span
+							>
 							<EventBadge date={l.eventDate} />
 						</div>
 						{#if l.eventDate}
@@ -469,19 +500,13 @@
 							</div>
 						{/if}
 					</div>
-					<div><StageChip stage={l.stage} /></div>
-					<div>
-						<span
-							class="rounded-[5px] px-[6px] py-[2px] font-mono text-[10.5px] font-medium {sourceLabel(
-								l.source
-							).class}">{sourceLabel(l.source).label}</span
-						>
+					<div
+						class="order-2 truncate font-mono text-[12px] text-ink-600 lg:order-4 lg:text-ink-400"
+					>
+						{l.category}
 					</div>
-					<div class="truncate font-mono text-[12px] text-ink-400">{l.country}</div>
-					<div class="truncate font-mono text-[12px] text-ink-400">{l.category}</div>
-					<div class="font-mono text-[12px] text-ink-400">{formerOwner(l.formerOwnerId)}</div>
-					<div><AppealScoreBadge score={l.appealScore} /></div>
-					<div class="flex items-center gap-1.5">
+					<div class="order-1 lg:order-6"><AppealScoreBadge score={l.appealScore} /></div>
+					<div class="order-3 lg:order-7 flex items-center gap-1.5">
 						<button
 							onclick={() => (editTarget = l)}
 							disabled={claiming[l.id] || editSaving}
@@ -513,6 +538,22 @@
 						>
 							{claiming[l.id] ? 'Claiming…' : 'Claim'}
 						</button>
+					</div>
+					<div
+						class="order-4 mt-1.5 grid grid-cols-2 gap-x-3 gap-y-1.5 border-t border-panel-sunken pt-2.5 lg:contents"
+					>
+						<div class="lg:order-1"><StageChip stage={l.stage} /></div>
+						<div class="opacity-70 lg:order-2">
+							<span
+								class="rounded-[5px] px-[6px] py-[2px] font-mono text-[10.5px] font-medium {sourceLabel(
+									l.source
+								).class}">{sourceLabel(l.source).label}</span
+							>
+						</div>
+						<div class="truncate font-mono text-[11px] text-ink-300 lg:order-3">{l.country}</div>
+						<div class="font-mono text-[11px] text-ink-300 lg:order-5">
+							{formerOwner(l.formerOwnerId)}
+						</div>
 					</div>
 				</div>
 			{/each}

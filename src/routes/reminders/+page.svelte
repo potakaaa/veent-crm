@@ -139,11 +139,13 @@
 		{#each groups as g (g.key)}
 			{#if g.rows.length}
 				<div class="mb-5">
-					<div class="mb-2.5 flex items-center gap-2.5">
-						<span class="h-2 w-2 rounded-full" style="background:{g.color}"></span>
-						<h2 class="font-serif text-[15px] font-semibold text-ink">{g.title}</h2>
+					<div class="mb-2.5 flex flex-wrap items-center gap-x-2.5 gap-y-1">
+						<span class="h-2 w-2 shrink-0 rounded-full" style="background:{g.color}"></span>
+						<h2 class="whitespace-nowrap font-serif text-[15px] font-semibold text-ink">
+							{g.title}
+						</h2>
 						<span
-							class="rounded-[5px] bg-panel-sunken px-[7px] py-0.5 font-mono text-[11px] text-ink-300"
+							class="shrink-0 rounded-[5px] bg-panel-sunken px-[7px] py-0.5 font-mono text-[11px] text-ink-300"
 							>{g.rows.length}</span
 						>
 						<span class="text-[12px] text-ink-200">{g.hint}</span>

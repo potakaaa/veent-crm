@@ -33,8 +33,8 @@
 
 <div class="flex h-screen bg-ink text-white">
 	<!-- left: form -->
-	<div class="flex flex-1 items-center justify-center p-10">
-		<div class="w-[360px] max-w-full">
+	<div class="flex flex-1 items-center justify-center p-6 sm:p-10">
+		<div class="w-full max-w-[360px]">
 			<div class="mb-9 flex items-center gap-2.5">
 				<div
 					class="flex h-[34px] w-[34px] items-center justify-center rounded-control bg-primary text-[17px] font-bold"
@@ -62,11 +62,6 @@
 					>
 						Use a different email
 					</button>
-					<a
-						href="/"
-						class="focus-ring mt-4 block rounded-[4px] text-[12px] text-nav-faint hover:text-white"
-						>→ Continue to the console (demo)</a
-					>
 				</div>
 			{:else}
 				<div class="mb-1.5 text-[22px] font-bold tracking-[-0.4px]">Sign in</div>
@@ -120,17 +115,8 @@
 				Search a page before reaching out.
 			</div>
 			<div class="mt-4 text-[14px] leading-relaxed text-[#a98e8c]">
-				2,000 leads, five reps, one shared inbox. Dedup is baked into the chrome so two reps never
-				DM the same organizer twice.
-			</div>
-			<div class="mt-7 flex flex-wrap gap-2">
-				{#each ['dedup on', 'Asia/Manila', 'keyboard-first'] as tag (tag)}
-					<div
-						class="rounded-[6px] border border-[#312c37] bg-white/5 px-[9px] py-[5px] font-mono text-[11px] text-nav-muted"
-					>
-						{tag}
-					</div>
-				{/each}
+				One shared inbox, zero crossed wires. The system tracks who's already working a lead so two
+				reps never reach out to the same organizer twice.
 			</div>
 		</div>
 	</div>

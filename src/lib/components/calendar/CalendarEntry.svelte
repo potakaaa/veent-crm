@@ -8,9 +8,14 @@
 	// distinct border/background classes, plus a machine-readable data-entry-type attribute.
 	const isMeeting = $derived(entry.type === 'meeting');
 	const isGoLive = $derived(entry.type === 'golive');
-	// B3: text label for the meeting/follow-up/go-live type indicator (previously colour+icon only).
-	const typeLabel = $derived(isMeeting ? 'Meeting' : isGoLive ? 'Go-live' : 'Follow-up');
-	const iconName = $derived(isMeeting ? 'calendar' : isGoLive ? 'check' : 'reminders');
+	const isEventStart = $derived(entry.type === 'eventstart');
+	// B3: text label for the meeting/follow-up/go-live/event-start type indicator (previously colour+icon only).
+	const typeLabel = $derived(
+		isMeeting ? 'Meeting' : isGoLive ? 'Go-live' : isEventStart ? 'Event Start' : 'Follow-up'
+	);
+	const iconName = $derived(
+		isMeeting ? 'calendar' : isGoLive ? 'check' : isEventStart ? 'calendarDays' : 'reminders'
+	);
 	const timeLabel = $derived(
 		new Date(entry.startAt).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' })
 	);
@@ -25,7 +30,9 @@
 		? 'border-l-blue-500 bg-blue-50 text-blue-700 hover:bg-blue-100'
 		: isGoLive
 			? 'border-l-green-500 bg-green-50 text-green-700 hover:bg-green-100'
-			: 'border-l-amber-500 bg-amber-50 text-amber-700 hover:bg-amber-100'} {detailed
+			: isEventStart
+				? 'border-l-purple-500 bg-purple-50 text-purple-700 hover:bg-purple-100'
+				: 'border-l-amber-500 bg-amber-50 text-amber-700 hover:bg-amber-100'} {detailed
 		? 'flex flex-col gap-0.5 px-1.5 py-1'
 		: 'flex items-center gap-1 truncate px-1.5 py-0.5'}"
 >
@@ -37,9 +44,11 @@
 					? 'bg-blue-100 text-blue-700'
 					: isGoLive
 						? 'bg-green-100 text-green-700'
-						: 'bg-amber-100 text-amber-700'}">{typeLabel}</span
+						: isEventStart
+							? 'bg-purple-100 text-purple-700'
+							: 'bg-amber-100 text-amber-700'}">{typeLabel}</span
 			>
-			{#if !isGoLive}
+			{#if !isGoLive && !isEventStart}
 				<span class="font-mono text-[10px] tabular-nums opacity-80">{timeLabel}</span>
 			{/if}
 		</div>

@@ -1450,6 +1450,72 @@ export async function getGoLiveDatesInRange(
 }
 
 // ---------------------------------------------------------------------------
+// Calendar event-start milestones — live-stage leads shown on their eventDate
+// ---------------------------------------------------------------------------
+
+/**
+ * Calendar-facing summary of a live-stage lead's event-start milestone. Carries only
+ * the lead name (used directly as the calendar title — no derived `handle`) and a
+ * local-midnight ISO string for day-safe grid bucketing.
+ */
+export type EventStartSummary = { id: string; name: string; eventStartIso: string };
+
+/**
+ * Normalize a Postgres DATE (`'YYYY-MM-DD'` string from Drizzle) to a local-midnight
+ * ISO string by appending `T00:00:00`. Passing the bare `'YYYY-MM-DD'` to `new Date()`
+ * parses as UTC-midnight, which shifts to the previous day in negative-offset zones and
+ * mis-buckets the event-start milestone. Idempotent: input already containing `T` is
+ * returned as-is. Kept separate from normalizeGoLiveDate for independent unit-testability.
+ */
+export function normalizeEventDate(dateStr: string): string {
+	return dateStr.includes('T') ? dateStr : `${dateStr}T00:00:00`;
+}
+
+/**
+ * Lead-level predicates for the calendar event-start query. Isolated as a pure, DB-free
+ * helper so the AC1 selection guard can assert the WHERE clause via `.toSQL()` without
+ * a live DB connection (mirrors buildGoLiveRangeConditions).
+ */
+export function buildEventStartRangeConditions(): SQL[] {
+	return [
+		isNull(crmLeads.deletedAt) as SQL,
+		eq(crmLeads.stage, 'live'),
+		isNotNull(crmLeads.eventDate) as SQL
+	];
+}
+
+/**
+ * Returns live-stage leads whose `eventDate` falls within [rangeStart, rangeEnd] —
+ * the read model for event-start milestone entries on the calendar. Team-wide, BUT the
+ * enforced `visibilityCondition(userId, role)` predicate is applied so restricted
+ * (`only_me` / `selected`) live leads never leak onto other users' calendars (AC7).
+ * Selects only `name` for the calendar title — never the derived `handle`.
+ */
+export async function getEventDatesInRange(
+	rangeStart: Date,
+	rangeEnd: Date,
+	userId: string,
+	role: Role
+): Promise<EventStartSummary[]> {
+	const rows = await db
+		.select({
+			id: crmLeads.id,
+			name: crmLeads.name,
+			eventDate: crmLeads.eventDate
+		})
+		.from(crmLeads)
+		.where(and(...buildEventStartRangeConditions(), visibilityCondition(userId, role)));
+
+	return rows
+		.map((row) => ({
+			id: row.id,
+			name: row.name,
+			eventStartIso: normalizeEventDate(row.eventDate!)
+		}))
+		.filter((summary) => isWithinRange(summary.eventStartIso, rangeStart, rangeEnd));
+}
+
+// ---------------------------------------------------------------------------
 // Log touch — persist a real outreach activity
 // ---------------------------------------------------------------------------
 

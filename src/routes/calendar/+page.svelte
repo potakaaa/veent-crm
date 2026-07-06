@@ -172,6 +172,17 @@
 		</div>
 	</div>
 
+	<div class="mb-3 flex items-center gap-2.5" aria-label="Calendar legend">
+		{#each [{ label: 'Meeting', bg: 'bg-blue-50', text: 'text-blue-700', dot: 'bg-blue-400' }, { label: 'Follow-up', bg: 'bg-amber-50', text: 'text-amber-700', dot: 'bg-amber-400' }, { label: 'Sale Opens', bg: 'bg-green-50', text: 'text-green-700', dot: 'bg-green-500' }, { label: 'Event Start', bg: 'bg-purple-50', text: 'text-purple-700', dot: 'bg-purple-500' }] as item}
+			<span
+				class="flex items-center gap-1 rounded-[4px] px-1.5 py-0.5 text-[11px] font-medium {item.bg} {item.text}"
+			>
+				<span class="h-1.5 w-1.5 rounded-full {item.dot}"></span>
+				{item.label}
+			</span>
+		{/each}
+	</div>
+
 	<div class={navLoading ? 'opacity-60 transition-opacity' : 'transition-opacity'}>
 		<CalendarGrid {view} entries={data.entries} visibleDate={anchor} />
 		{#if data.entries.length === 0}

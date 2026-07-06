@@ -1,13 +1,26 @@
 /**
- * Server-side DB access for organizers (GitHub #189, #190).
+ * Server-side DB access for organizers (GitHub #188, #189, #190).
  * Mirrors the leads.ts/meetings.ts convention: all reads are live-DB, visibility-scoped
  * where the SPEC requires it. Reuses leads.ts helpers (visibilityCondition, dbRowToLead,
- * enrichWithOwnerNames) rather than duplicating query logic.
+ * enrichWithOwnerNames) rather than duplicating query logic. Also includes a read-only
+ * name-search lookup used by the meeting-create organizer pre-fill combobox.
  */
 import { db } from './index';
 import { crmOrganizers, crmLeads } from './schema';
 import type { CrmOrganizer } from './schema';
-import { eq, and, or, isNull, isNotNull, ilike, count, asc, desc, sql } from 'drizzle-orm';
+import {
+	eq,
+	and,
+	or,
+	isNull,
+	isNotNull,
+	ilike,
+	count,
+	asc,
+	desc,
+	sql,
+	type SQL
+} from 'drizzle-orm';
 import { visibilityCondition, dbRowToLead, enrichWithOwnerNames } from './leads';
 import { normalizeCountry, parseCountryFromLocation } from '$lib/server/import-utils';
 import type { Lead, Role } from '$lib/types';
@@ -253,4 +266,26 @@ export async function listLinkedLeadsForOrganizer(
 	const start = (page - 1) * pageSize;
 	const leads = filtered.slice(start, start + pageSize);
 	return { leads, total, countries, owners };
+}
+
+/**
+ * Case-insensitive name search over crm_organizers. Empty/blank query returns the first
+ * `limit` organizers alphabetically. Escapes LIKE metacharacters so literal input never
+ * acts as a wildcard. Returns the minimal `{ id, name }` shape the combobox needs.
+ * Read-only lookup used by the meeting-create organizer pre-fill combobox.
+ */
+export async function searchOrganizers(
+	q: string | null | undefined,
+	limit = 20
+): Promise<{ id: string; name: string }[]> {
+	const term = (q ?? '').trim();
+	const where: SQL | undefined = term
+		? ilike(crmOrganizers.name, `%${term.replace(/[\\%_]/g, '\\$&')}%`)
+		: undefined;
+	return db
+		.select({ id: crmOrganizers.id, name: crmOrganizers.name })
+		.from(crmOrganizers)
+		.where(where)
+		.orderBy(asc(crmOrganizers.name))
+		.limit(limit);
 }

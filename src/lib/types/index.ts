@@ -62,7 +62,10 @@ export interface Lead {
 	 * ("Unassigned" when `ownerId` is null). NOT a DB-native column — undefined until enriched.
 	 */
 	ownerName?: string;
-	/** Tagged organizer id, or null when the lead is not tagged to any organizer. */
+	/**
+	 * Tagged organizer id (crm_organizers, GitHub #188), or null when the lead is not
+	 * tagged to any organizer. Maps directly from the `crm_leads.organizer_id` column.
+	 */
 	organizerId: string | null;
 	/**
 	 * Organizer display name, resolved at the route-load layer via `getOrganizer()`.
@@ -147,6 +150,14 @@ export interface Meeting {
 	leadName?: string;
 	organizerId: string | null;
 	organizerName?: string;
+	/**
+	 * The lead's linked recurring-organizer entity (crm_organizers, GitHub #188) — DISTINCT
+	 * from `organizerId` (internal crm_users organizer). Pre-filled from the lead on create,
+	 * overridable/clearable. Null when unset.
+	 */
+	leadOrganizerId?: string | null;
+	/** Linked organizer display name for the saved `leadOrganizerId` (join-populated). */
+	leadOrganizerName?: string;
 	/** ISO datetime the meeting starts. */
 	startAt: string;
 	meetingUrl?: string;
@@ -159,11 +170,12 @@ export interface Meeting {
 /**
  * Unified calendar entry — the common shape both meetings and follow-up reminders
  * map into before reaching the calendar grid. `type` drives visual distinction (AC4)
- * and `href` drives click-through (AC5 meeting → /meetings/[id], AC6 followup → /leads/[id]).
+ * and `href` drives click-through (AC5 meeting → /meetings/[id], AC6 followup → /leads/[id],
+ * golive → /leads/[id]).
  */
 export interface CalendarEntry {
 	id: string;
-	type: 'meeting' | 'followup';
+	type: 'meeting' | 'followup' | 'golive';
 	/** ISO datetime the entry falls on (meeting start, or follow-up due date). */
 	startAt: string;
 	title: string;

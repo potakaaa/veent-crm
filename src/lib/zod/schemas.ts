@@ -109,7 +109,8 @@ export const leadUpdateSchema = z
 		eventDate: z
 			.string()
 			.regex(/^\d{4}-\d{2}-\d{2}$/, 'eventDate must be YYYY-MM-DD')
-			.optional(),
+			.optional()
+			.or(z.literal('')),
 		eventDateRaw: z.string().optional(),
 		eventLink: z.string().url().optional().or(z.literal('')),
 		firstAnnouncedDate: z
@@ -167,6 +168,11 @@ export const onboardingUpdateSchema = z.object({
 		.regex(/^\d{4}-\d{2}-\d{2}$/)
 		.optional()
 		.or(z.literal('')),
+	eventDate: z
+		.string()
+		.regex(/^\d{4}-\d{2}-\d{2}$/)
+		.optional()
+		.or(z.literal('')),
 	// Agreements fields
 	feeStructure: z.enum(['legacy', 'new']).optional(),
 	transactionFeePct: z.number().min(0).max(100).optional(),
@@ -194,6 +200,10 @@ export const meetingFormSchema = z.object({
 	leadId: z.string().uuid(),
 	startAt: z.string().datetime(), // ISO datetime
 	organizerId: z.string().uuid().optional(),
+	// Lead's linked recurring-organizer entity (crm_organizers, GitHub #188). Distinct from
+	// organizerId (internal crm_users). Optional + nullable so create-without-organizer and
+	// explicit-clear both validate.
+	leadOrganizerId: z.string().uuid().optional().nullable(),
 	meetingUrl: z.string().url().optional().or(z.literal('')),
 	notes: z.string().optional(),
 	outcome: z.string().optional(),
@@ -208,6 +218,9 @@ export const meetingUpdateSchema = z.object({
 	startAt: z.string().datetime().optional(),
 	// Accept null so the unassign path (organizer cleared on edit) reaches the DB layer.
 	organizerId: z.string().uuid().nullable().optional(),
+	// Lead's linked recurring-organizer entity (crm_organizers). Nullable-optional mirrors
+	// organizerId: null clears the saved link on edit, undefined leaves it untouched.
+	leadOrganizerId: z.string().uuid().nullable().optional(),
 	meetingUrl: z.string().url().optional().or(z.literal('')),
 	notes: z.string().optional(),
 	outcome: z.string().optional(),

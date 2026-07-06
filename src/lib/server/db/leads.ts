@@ -8,7 +8,8 @@ import {
 	crmUsers,
 	crmActivities,
 	crmLeadHistory,
-	crmLeadVisibilityGrants
+	crmLeadVisibilityGrants,
+	crmOrganizers
 } from './schema';
 import {
 	eq,
@@ -49,7 +50,11 @@ type DbActivity = typeof crmActivities.$inferSelect;
 // Pure mappers (exported for unit tests)
 // ---------------------------------------------------------------------------
 
-export function dbRowToLead(row: DbLead, followUpAt?: string | Date | null): Lead {
+export function dbRowToLead(
+	row: DbLead,
+	followUpAt?: string | Date | null,
+	organizerName?: string | null
+): Lead {
 	const createdAt = row.createdAt.toISOString();
 	const lastActivityAt = row.lastActivityAt?.toISOString() ?? createdAt;
 
@@ -90,7 +95,6 @@ export function dbRowToLead(row: DbLead, followUpAt?: string | Date | null): Lea
 		platform: (row.platform ?? 'Other') as Lead['platform'],
 		stage: row.stage as Stage,
 		ownerId: row.ownerId,
-		organizerId: row.organizerId,
 		visibility: row.visibility as Visibility,
 		eventName: row.eventName ?? undefined,
 		eventDate: row.eventDate ?? undefined,
@@ -102,6 +106,11 @@ export function dbRowToLead(row: DbLead, followUpAt?: string | Date | null): Lea
 		pageUrl: row.pageUrl ?? undefined,
 		socialFacebook: row.socialFacebook ?? undefined,
 		socialInstagram: row.socialInstagram ?? undefined,
+		// Lead's linked recurring-organizer entity (crm_organizers, GitHub #188). `organizerId`
+		// maps straight from the row column (always available); `organizerName` requires a
+		// crm_organizers lookup and is only passed by detail-load paths (undefined otherwise).
+		organizerId: row.organizerId ?? null,
+		organizerName: organizerName ?? undefined,
 		source: row.source as Lead['source'],
 		notes: row.notes ?? undefined,
 		signedOrg: row.wonOrgName ?? undefined,
@@ -479,12 +488,16 @@ export async function listLeadsFiltered(
  * returns `null` — the caller renders a 404, never a redacted view or a 403 (AC#8).
  */
 export async function getLead(id: string, userId: string, role: Role): Promise<Lead | null> {
+	// Left-join crm_organizers so the lead's linked organizer NAME is available for the
+	// meeting-create pre-fill (GitHub #188). Selecting {lead, organizerName} keeps the
+	// existing full-row shape intact for dbRowToLead; organizerName is passed separately.
 	const [row] = await db
-		.select()
+		.select({ lead: crmLeads, organizerName: crmOrganizers.name })
 		.from(crmLeads)
+		.leftJoin(crmOrganizers, eq(crmLeads.organizerId, crmOrganizers.id))
 		.where(and(eq(crmLeads.id, id), isNull(crmLeads.deletedAt), visibilityCondition(userId, role)))
 		.limit(1);
-	return row ? dbRowToLead(row) : null;
+	return row ? dbRowToLead(row.lead, undefined, row.organizerName) : null;
 }
 
 const UNASSIGNED_SORT_COLS = ['name', 'event', 'stage', 'source', 'appeal'] as const;
@@ -1384,6 +1397,72 @@ export async function getFollowUpsInRange(
 	return rows
 		.filter((row) => isWithinRange(followUpMap.get(row.id) ?? null, rangeStart, rangeEnd))
 		.map((row) => dbRowToLead(row, followUpMap.get(row.id) ?? undefined));
+}
+
+// ---------------------------------------------------------------------------
+// Calendar go-live milestones — live-stage leads shown on their goLiveDate
+// ---------------------------------------------------------------------------
+
+/**
+ * Calendar-facing summary of a live-stage lead's go-live milestone. Carries only
+ * the lead name (used directly as the calendar title — no derived `handle`) and a
+ * local-midnight ISO string for day-safe grid bucketing.
+ */
+export type LiveLeadSummary = { id: string; name: string; goLiveIso: string };
+
+/**
+ * Normalize a Postgres DATE (`'YYYY-MM-DD'` string from Drizzle) to a local-midnight
+ * ISO string by appending `T00:00:00`. Passing the bare `'YYYY-MM-DD'` to `new Date()`
+ * parses as UTC-midnight, which shifts to the previous day in negative-offset zones and
+ * mis-buckets the go-live milestone. Idempotent: input already containing `T` is returned
+ * as-is.
+ */
+export function normalizeGoLiveDate(dateStr: string): string {
+	return dateStr.includes('T') ? dateStr : `${dateStr}T00:00:00`;
+}
+
+/**
+ * Lead-level predicates for the calendar go-live query. Isolated as a pure, DB-free
+ * helper so the AC1 selection guard can assert the WHERE clause via `.toSQL()` without
+ * a live DB connection (mirrors buildFollowUpsRangeLeadConditions).
+ */
+export function buildGoLiveRangeConditions(): SQL[] {
+	return [
+		isNull(crmLeads.deletedAt) as SQL,
+		eq(crmLeads.stage, 'live'),
+		isNotNull(crmLeads.goLiveDate) as SQL
+	];
+}
+
+/**
+ * Returns live-stage leads whose `goLiveDate` falls within [rangeStart, rangeEnd] —
+ * the read model for go-live milestone entries on the calendar. Team-wide, BUT the
+ * enforced `visibilityCondition(userId, role)` predicate is applied so restricted
+ * (`only_me` / `selected`) live leads never leak onto other users' calendars (concern C2).
+ * Selects only `name` for the calendar title — never the derived `handle` (concern C1).
+ */
+export async function getGoLiveDatesInRange(
+	rangeStart: Date,
+	rangeEnd: Date,
+	userId: string,
+	role: Role
+): Promise<LiveLeadSummary[]> {
+	const rows = await db
+		.select({
+			id: crmLeads.id,
+			name: crmLeads.name,
+			goLiveDate: crmLeads.goLiveDate
+		})
+		.from(crmLeads)
+		.where(and(...buildGoLiveRangeConditions(), visibilityCondition(userId, role)));
+
+	return rows
+		.map((row) => ({
+			id: row.id,
+			name: row.name,
+			goLiveIso: normalizeGoLiveDate(row.goLiveDate!)
+		}))
+		.filter((summary) => isWithinRange(summary.goLiveIso, rangeStart, rangeEnd));
 }
 
 // ---------------------------------------------------------------------------

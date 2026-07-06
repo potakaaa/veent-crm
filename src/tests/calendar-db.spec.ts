@@ -10,7 +10,12 @@
  *   - calendar-followups-owner-scoped-visibility (unit half) — AC3 regression guard
  */
 import { describe, it, expect } from 'vitest';
-import { buildFollowUpsRangeLeadConditions, isWithinRange } from '$lib/server/db/leads';
+import {
+	buildFollowUpsRangeLeadConditions,
+	buildGoLiveRangeConditions,
+	isWithinRange,
+	normalizeGoLiveDate
+} from '$lib/server/db/leads';
 import { db } from '$lib/server/db/index';
 import { crmLeads } from '$lib/server/db/schema';
 import { and } from 'drizzle-orm';
@@ -73,5 +78,34 @@ describe('isWithinRange — follow-up range filter behavior (DB-free)', () => {
 		expect(isWithinRange(null, start, end)).toBe(false);
 		expect(isWithinRange(undefined, start, end)).toBe(false);
 		expect(isWithinRange('not-a-date', start, end)).toBe(false);
+	});
+});
+
+describe('normalizeGoLiveDate — day-shift-safe DATE normalization (AC4, DB-free)', () => {
+	it("normalizes a 'YYYY-MM-DD' string to local-midnight ISO without day-shift", () => {
+		expect(normalizeGoLiveDate('2026-07-15')).toBe('2026-07-15T00:00:00');
+	});
+
+	it('is idempotent on input that already contains a time component', () => {
+		expect(normalizeGoLiveDate('2026-07-15T00:00:00')).toBe('2026-07-15T00:00:00');
+		expect(normalizeGoLiveDate('2026-07-15T09:30:00.000Z')).toBe('2026-07-15T09:30:00.000Z');
+	});
+});
+
+describe('buildGoLiveRangeConditions — live-lead selection guard (AC1, DB-free)', () => {
+	it("builds WHERE with deleted_at is null, stage = 'live', go_live_date is not null", () => {
+		const conditions = buildGoLiveRangeConditions();
+		const { sql: sqlStr, params } = db
+			.select()
+			.from(crmLeads)
+			.where(and(...conditions))
+			.toSQL();
+
+		expect(sqlStr).toContain('deleted_at');
+		expect(sqlStr).toContain('is null');
+		expect(sqlStr).toContain('stage');
+		expect(sqlStr).toContain('go_live_date');
+		expect(sqlStr).toContain('is not null');
+		expect(params).toContain('live');
 	});
 });

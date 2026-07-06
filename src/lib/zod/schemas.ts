@@ -106,7 +106,8 @@ export const leadUpdateSchema = z
 		eventDate: z
 			.string()
 			.regex(/^\d{4}-\d{2}-\d{2}$/, 'eventDate must be YYYY-MM-DD')
-			.optional(),
+			.optional()
+			.or(z.literal('')),
 		eventDateRaw: z.string().optional(),
 		eventLink: z.string().url().optional().or(z.literal('')),
 		firstAnnouncedDate: z
@@ -160,6 +161,11 @@ export const onboardingUpdateSchema = z.object({
 		.optional()
 		.or(z.literal('')),
 	goLiveDate: z
+		.string()
+		.regex(/^\d{4}-\d{2}-\d{2}$/)
+		.optional()
+		.or(z.literal('')),
+	eventDate: z
 		.string()
 		.regex(/^\d{4}-\d{2}-\d{2}$/)
 		.optional()

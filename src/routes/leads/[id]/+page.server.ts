@@ -13,21 +13,21 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		getLead(params.id, locals.user.id, locals.user.role),
 		listUsers(),
 		listTemplates(),
-		listOrganizersWithLeadCount()
+		listOrganizersWithLeadCount(locals.user.id, locals.user.role)
 	]);
 
 	if (!lead) throw error(404, 'Lead not found');
 
 	// [P1] organizer-name resolution depends on lead.organizerId, so it must run AFTER the
-	// Promise.all resolves and after the not-found guard — not as an entry in that array.
-	const organizer = lead.organizerId ? await getOrganizer(lead.organizerId) : null;
-	lead.organizerName = organizer?.name;
-
-	const [activities, meetings, leadHistory] = await Promise.all([
+	// first Promise.all resolves and after the not-found guard — but it doesn't depend on
+	// activities/meetings/leadHistory, so it runs concurrently with them, not sequentially.
+	const [organizer, activities, meetings, leadHistory] = await Promise.all([
+		lead.organizerId ? getOrganizer(lead.organizerId) : Promise.resolve(null),
 		listActivities(lead.id),
 		listMeetingsForLead(lead.id),
 		getLeadHistory(lead.id)
 	]);
+	lead.organizerName = organizer?.name;
 
 	const me: User = {
 		id: locals.user.id,

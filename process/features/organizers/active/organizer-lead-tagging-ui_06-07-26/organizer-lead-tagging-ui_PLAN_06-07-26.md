@@ -17,9 +17,9 @@ Source SPEC: `process/features/organizers/active/organizer-lead-tagging-ui_06-07
 
 Read the actual code (`src/lib/server/db/leads.ts`, `src/routes/leads/[id]/+page.server.ts`):
 
-- `dbRowToLead` (leads.ts:52-128) does **NOT** map `organizerId` or resolve `organizerName` today — despite the `Lead` type (`src/lib/types/index.ts:141-142`) already declaring both fields. `enrichWithOwnerNames` (leads.ts:1558-1580) only resolves owner names, not organizer names.
+- `dbRowToLead` (leads.ts:52-128) does **NOT** map `organizerId` or resolve `organizerName` today. **Correction (post-EXECUTE):** the `Lead` type (`src/lib/types/index.ts`) did NOT already declare these fields as originally assumed here — `organizerId`/`organizerName` at the referenced line numbers were actually `Meeting` interface fields, not `Lead` fields. This was caught and fixed as a documented EXECUTE-time deviation (see the plan's Deviations section / EXECUTE report): `organizerId: string | null` and `organizerName?: string` were added additively to the `Lead` interface in `src/lib/types/index.ts`. `enrichWithOwnerNames` (leads.ts:1558-1580) only resolves owner names, not organizer names.
 - `+page.server.ts` load function currently loads zero organizer data (no organizer list, no organizer name resolution).
-- **Resolution:** this work must (a) add `organizerId: row.organizerId` to `dbRowToLead`, and (b) resolve `organizerName` for the single lead being loaded via a direct `getOrganizer(lead.organizerId)` call in `+page.server.ts` (not a new `enrichWithOrganizerNames` batch helper — this page loads exactly one lead, so batch enrichment is unnecessary complexity per YAGNI), and (c) load the full organizer list via `listOrganizersWithLeadCount()` for the picker.
+- **Resolution:** this work must (a) add `organizerId: string | null` + `organizerName?: string` to the `Lead` interface in `src/lib/types/index.ts`, (b) add `organizerId: row.organizerId` to `dbRowToLead`, (c) resolve `organizerName` for the single lead being loaded via a direct `getOrganizer(lead.organizerId)` call in `+page.server.ts` (not a new `enrichWithOrganizerNames` batch helper — this page loads exactly one lead, so batch enrichment is unnecessary complexity per YAGNI), and (d) load the full organizer list via `listOrganizersWithLeadCount()` for the picker.
 
 ## Overview
 
@@ -52,19 +52,21 @@ Mirrors SPEC's 8 acceptance criteria verbatim (all testable outcomes; see Verifi
 
 ## Implementation Checklist
 
-1. **`src/lib/server/db/leads.ts`** — In `dbRowToLead` (after line 92, alongside `ownerId: row.ownerId`), add:
+1. **`src/lib/types/index.ts`** — Add `organizerId: string | null` and `organizerName?: string` to the `Lead` interface. (This step was missing from the original checklist, which incorrectly assumed these fields already existed on `Lead` — see the corrected PLAN-Time Verification note above. Additive only; no other interface changes.)
+
+2. **`src/lib/server/db/leads.ts`** — In `dbRowToLead` (after line 92, alongside `ownerId: row.ownerId`), add:
    ```
    organizerId: row.organizerId,
    ```
-   (Field already exists on `DbLead`/`crmLeads` schema per `schema.ts:182`; `Lead` type already declares `organizerId: string | null` at `src/lib/types/index.ts:141`.) No other change to this function. **Confirmed at VALIDATE:** line 92 is exactly `ownerId: row.ownerId,` — anchor is precise.
+   (Field already exists on `DbLead`/`crmLeads` schema per `schema.ts:182`; `Lead` type now declares `organizerId: string | null` per checklist item 1 above.) No other change to this function. **Confirmed at VALIDATE:** line 92 is exactly `ownerId: row.ownerId,` — anchor is precise.
 
-2. **`src/routes/leads/[id]/+page.server.ts`** — Add two imports and two load additions:
+3. **`src/routes/leads/[id]/+page.server.ts`** — Add two imports and two load additions:
    - Import `getOrganizer` from `$lib/server/db/organizers` and `listOrganizersWithLeadCount` from the same module.
    - Add `listOrganizersWithLeadCount()` as a 4th entry to the EXISTING first `Promise.all` (the one that currently loads `lead, users, templates`): `const [lead, users, templates, organizers] = await Promise.all([getLead(...), listUsers(), listTemplates(), listOrganizersWithLeadCount()]);` — this call has no dependency on `lead`, so it is safe to run concurrently.
    - **[VALIDATE fix — P1]** The organizer-name resolution CANNOT be an entry inside that same `Promise.all` (it depends on `lead.organizerId`, which is only known after the array resolves). Place it AFTER the existing `if (!lead) throw error(404, 'Lead not found');` guard: `const organizer = lead.organizerId ? await getOrganizer(lead.organizerId) : null; lead.organizerName = organizer?.name;` (direct mutation of the returned `Lead` object before it is returned from `load` — there is no existing precedent for this exact pattern in this file, but it is type-safe since `organizerName` is declared optional on `Lead`).
    - Return `organizers` alongside the existing return fields (`{ lead, activities, meetings, leadHistory, me, users, templates, organizers }`).
 
-3. **New file: `src/lib/components/leads/organizer-tag.ts`** — **[VALIDATE fix — P2]** Small pure helper extracted so the tag/retag/clear decision logic is unit-testable without a component-render harness (this repo has none — see Verification Evidence). Exports:
+4. **New file: `src/lib/components/leads/organizer-tag.ts`** — **[VALIDATE fix — P2]** Small pure helper extracted so the tag/retag/clear decision logic is unit-testable without a component-render harness (this repo has none — see Verification Evidence). Exports:
    ```ts
    import type { OrganizerWithCount } from '$lib/server/db/organizers';
 
@@ -84,7 +86,7 @@ Mirrors SPEC's 8 acceptance criteria verbatim (all testable outcomes; see Verifi
    ```
    This does NOT change the async fetch/rollback/toast wiring pattern mirrored from `confirmReassign` — only the "what to send + what to optimistically show" decision is extracted into a plain function so it can be unit-tested (see AC1/AC2/AC3 Vitest rows in Verification Evidence).
 
-4. **New file: `src/lib/components/leads/OrganizerTagModal.svelte`** — New sibling component to `ReassignModal.svelte`, same structure:
+5. **New file: `src/lib/components/leads/OrganizerTagModal.svelte`** — New sibling component to `ReassignModal.svelte`, same structure:
    - Props: `{ open: boolean; organizers: OrganizerWithCount[]; currentOrganizerId?: string | null; onclose: () => void; onconfirm: (organizerId: string | null) => void }` (note the `string | null` param — `ReassignModal`'s `onconfirm` only takes `string` since owner can't be cleared; this component's `onconfirm` must accept `null` for the "Clear tag" case).
    - `$state` `selected` synced from `currentOrganizerId` via `$effect` on `open`, exactly like `ReassignModal.svelte:21-27`.
    - Body: `Modal` wrapper (same `width={420}` convention), plain `<div class="flex flex-col gap-1.5">` of `<Button variant="outline">` rows — one per organizer in the `organizers` prop, each showing `org.name` (mirror `ReassignModal.svelte:41-53` layout minus the `Avatar`/role column — organizers have no avatar/role concept; show `org.location` as the trailing meta text instead of `role`, or omit the trailing span if `location` is null).
@@ -94,7 +96,7 @@ Mirrors SPEC's 8 acceptance criteria verbatim (all testable outcomes; see Verifi
    - No search/filter input anywhere in the component (locks SPEC AC5).
    - No "create new organizer" affordance anywhere in the component (locks SPEC AC4).
 
-5. **`src/routes/leads/[id]/+page.svelte`** — Additions mirroring the Reassign pattern exactly:
+6. **`src/routes/leads/[id]/+page.svelte`** — Additions mirroring the Reassign pattern exactly:
    - Import `OrganizerTagModal` from `$lib/components/leads/OrganizerTagModal.svelte`.
    - Import `buildOrganizerTagPatch` from `$lib/components/leads/organizer-tag.ts`. **[VALIDATE fix — P2]**
    - Add `let organizerTagOpen = $state(false);` near `let reassignOpen = $state(false);` (line ~155).
@@ -159,7 +161,7 @@ Mirrors SPEC's 8 acceptance criteria verbatim (all testable outcomes; see Verifi
      {/if}
      ```
 
-6. **`src/lib/utils/optimistic.ts`** — Read `patchRecord`'s signature before wiring step 5; **confirmed at VALIDATE**: `patchRecord<T>(record: T, patch: Partial<T>): T` is already fully generic — no change needed.
+7. **`src/lib/utils/optimistic.ts`** — Read `patchRecord`'s signature before wiring step 6; **confirmed at VALIDATE**: `patchRecord<T>(record: T, patch: Partial<T>): T` is already fully generic — no change needed.
 
 ## Phase Completion Rules
 
@@ -271,7 +273,7 @@ test("should map organizerId from a DbLead row in dbRowToLead", () => {
 2. **Last completed phase or step:** VALIDATE — plan validated, validate-contract written below (Gate: CONDITIONAL — see backlog note for the one accepted residual)
 3. **Validate-contract status:** written (06-07-26), `generated-by: outer-pvl`
 4. **Supporting context files loaded:** SPEC (this task folder), `process/context/all-context.md`, `process/context/tests/all-tests.md`, `src/routes/leads/[id]/+page.svelte`, `src/routes/leads/[id]/+page.server.ts`, `src/lib/server/db/leads.ts`, `src/lib/server/db/organizers.ts`, `src/lib/components/leads/ReassignModal.svelte`, `src/routes/api/leads/[id]/organizer/+server.ts`, `src/lib/zod/schemas.ts`, `src/lib/types/index.ts`, `src/lib/server/db/schema.ts`, `src/lib/utils/optimistic.ts`, `src/tests/optimistic.spec.ts`, `src/tests/leads.spec.ts`, `package.json`
-5. **Next step for a fresh agent:** Run EXECUTE (`ENTER EXECUTE MODE`) against this plan. Follow Implementation Checklist items 1-6 in order (item 3, the new `organizer-tag.ts` helper, must exist before item 5 wires `+page.svelte` to it). Confirm the two accepted Known-Gaps (Playwright e2e, AC6 rollback-wiring test) are recorded in the phase report, not silently dropped.
+5. **Next step for a fresh agent:** Run EXECUTE (`ENTER EXECUTE MODE`) against this plan. Follow Implementation Checklist items 1-7 in order (item 4, the new `organizer-tag.ts` helper, must exist before item 6 wires `+page.svelte` to it). Confirm the two accepted Known-Gaps (Playwright e2e, AC6 rollback-wiring test) are recorded in the phase report, not silently dropped.
 
 ## Validate Contract
 

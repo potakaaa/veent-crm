@@ -175,7 +175,7 @@ created for the same handle.
 **AC3 — Duplicate-lead path is unaffected.**
 When an incoming lead is recognized as a duplicate of an existing lead (today's dedup check),
 no organizer lookup/creation happens and today's skip/patch behavior is unchanged.
-- proven by: existing `src/tests/leads-ingest-db.spec.ts` regression suite (unchanged assertions continue to pass) + new case confirming no organizer side-effect occurs on the duplicate path
+- proven by: `src/tests/leads-ingest-organizer-db.spec.ts` — no pre-existing `leads-ingest-*` regression suite existed before this plan (see the PLAN's "no pre-existing ingest regression suite" Deviation Note); the duplicate-path case lives in this new file alongside AC1/AC2, confirming no organizer side-effect occurs on the duplicate path
 - strategy: Hybrid
 
 **AC4 — Ingest response shape and scraper-facing contract are unchanged.**
@@ -188,36 +188,36 @@ unchanged by this work — scraper operators need no changes on their end.
 Running the backfill script against the current `crm_leads` table sets `organizerId` on every
 non-deleted lead that previously had none, using the same find-or-create-by-handle logic as
 live ingest.
-- proven by: new backfill script test (Hybrid, `SKIP_DB`-gated), mirroring `scripts/backfill-event-dates.ts`/`scripts/backfill-reps.ts` test conventions — case "backfill links all organizer-less leads"
-- strategy: Hybrid
+- proven by: manual `bun run scripts/backfill-organizers.ts --dry-run` then `--load` against a local Postgres — no automated test exists for this script, matching the repo-wide convention that `backfill-event-dates.ts`/`backfill-reps.ts` also have zero automated coverage (see PLAN's Known Gap note)
+- strategy: Known-gap / manual
 
 **AC6 — Backfill is idempotent (safe to re-run).**
 Running the backfill script a second time makes no further changes: no new organizers are
 created, and no lead's `organizerId` is altered, because every eligible lead was already linked
 by the first run.
-- proven by: backfill script test — case "second run is a no-op: organizer count and lead links unchanged"
-- strategy: Hybrid
+- proven by: manual — run `--load` twice against a local Postgres and confirm the second run's summary reports 0 linked/0 created
+- strategy: Known-gap / manual
 
 **AC7 — Backfill does not touch leads that already have an organizer.**
 Leads with a non-null `organizerId` before the backfill runs are left exactly as they were
 (their `organizerId` value is not reassigned, even if the computed handle would technically
 match a different organizer record).
-- proven by: backfill script test — case "lead with existing organizerId is skipped, unchanged"
-- strategy: Hybrid
+- proven by: manual — the backfill's `WHERE organizer_id IS NULL` selection is a code-read guarantee (query never selects already-linked leads); confirmed by inspection, not an automated test
+- strategy: Known-gap / manual
 
 **AC8 — Backfill handles leads with no usable handle gracefully.**
 A lead whose name/handle/socials/website cannot produce any normalized handle is skipped (not
 linked, not errored) and counted in the backfill's "skipped" summary, so the operator sees an
 accurate run report.
-- proven by: backfill script test — case "lead with no derivable handle is skipped and counted"
-- strategy: Hybrid
+- proven by: manual `--dry-run`/`--load` run — confirm the printed "skipped" count matches the number of organizer-less leads with no derivable handle
+- strategy: Known-gap / manual
 
 **AC9 — Dev-seed produces sample organizer data.**
-Running `bun run db:seed` creates a handful of sample `crm_organizers` rows and links a subset
-of the seeded sample leads to them, so a fresh local dev environment shows populated data on the
-`/organizers` list and detail pages.
-- proven by: `src/tests/seed-organizers.spec.ts` (Hybrid, `SKIP_DB`-gated) — asserts organizer rows exist after seed run and at least one seeded lead has a non-null `organizerId` pointing at a seeded organizer
-- strategy: Hybrid
+Running `bun run scripts/seed.ts` creates a handful of sample `crm_organizers` rows and links a
+subset of the seeded sample leads to them, so a fresh local dev environment shows populated data
+on the `/organizers` list and detail pages.
+- proven by: manual — run `bun run db:seed` against a local Postgres and confirm via `/organizers` that sample organizer rows exist with non-zero linked-lead counts; no automated test exists for this (see PLAN's "AC9 proving mechanism differs from SPEC" Deviation Note — no pure logic to extract from the seed addition, unlike the `seed-templates.spec.ts` precedent)
+- strategy: Known-gap / manual
 
 **AC10 — Organizers page shows real data after backfill/seed, unaffected by manual tagging.**
 After running the backfill (or the dev seed), the existing `/organizers` list and detail pages

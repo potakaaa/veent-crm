@@ -874,13 +874,15 @@
 								<span class="font-mono text-[13px] text-ink"
 									>{lead.organizerName ?? 'Not tagged'}</span
 								>
-								<button
-									type="button"
-									class="font-mono text-[11px] text-blue-600 underline hover:text-blue-800"
-									onclick={() => (organizerTagOpen = true)}
-								>
-									{lead.organizerId ? 'Change' : 'Tag'}
-								</button>
+								{#if canEdit}
+									<button
+										type="button"
+										class="font-mono text-[11px] text-blue-600 underline hover:text-blue-800"
+										onclick={() => (organizerTagOpen = true)}
+									>
+										{lead.organizerId ? 'Change' : 'Tag'}
+									</button>
+								{/if}
 							</div>
 						</div>
 					</div>

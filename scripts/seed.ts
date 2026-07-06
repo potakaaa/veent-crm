@@ -15,6 +15,7 @@
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import { inArray, sql } from 'drizzle-orm';
+import * as schema from '../src/lib/server/db/schema.ts';
 import { crmUsers, crmLeads, crmActivities, crmLeadHistory } from '../src/lib/server/db/schema.ts';
 import { findOrCreateOrganizer } from '../src/lib/server/db/organizer-find-or-create.ts';
 import { normalizeHandle } from '../src/lib/server/import-utils.ts';
@@ -35,7 +36,7 @@ if (isProd && !hasForce) {
 // ---------------------------------------------------------------------------
 const url = process.env.DATABASE_URL ?? 'postgres://crm:crm@127.0.0.1:5432/veent_crm';
 const client = postgres(url, { max: 1 });
-const db = drizzle(client);
+const db = drizzle(client, { schema });
 
 // ---------------------------------------------------------------------------
 // User IDs (match existing user seed namespace)

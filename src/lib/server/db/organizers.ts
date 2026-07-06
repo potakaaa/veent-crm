@@ -34,12 +34,18 @@ export interface OrganizerWithCount {
 }
 
 /**
- * Every organizer with its count of non-deleted linked leads. Plain unpaginated list
- * (SPEC: no pagination/search/sort), ordered by name. LEFT JOIN so zero-lead organizers
- * still appear with leadCount 0. GROUP BY the organizer PK — Postgres resolves the other
- * selected organizer columns via functional dependency on the primary key.
+ * Every organizer with its count of non-deleted, visibility-scoped linked leads (reuses the
+ * shared visibilityCondition() so a rep never sees a lead count that includes leads they
+ * couldn't otherwise open — same scoping listLinkedLeadsForOrganizer already applies).
+ * Plain unpaginated list (SPEC: no pagination/search/sort), ordered by name. LEFT JOIN so
+ * zero-lead (or zero-visible-lead) organizers still appear with leadCount 0. GROUP BY the
+ * organizer PK — Postgres resolves the other selected organizer columns via functional
+ * dependency on the primary key.
  */
-export async function listOrganizersWithLeadCount(): Promise<OrganizerWithCount[]> {
+export async function listOrganizersWithLeadCount(
+	userId: string,
+	role: Role
+): Promise<OrganizerWithCount[]> {
 	return db
 		.select({
 			id: crmOrganizers.id,
@@ -49,7 +55,14 @@ export async function listOrganizersWithLeadCount(): Promise<OrganizerWithCount[
 			leadCount: count(crmLeads.id)
 		})
 		.from(crmOrganizers)
-		.leftJoin(crmLeads, and(eq(crmLeads.organizerId, crmOrganizers.id), isNull(crmLeads.deletedAt)))
+		.leftJoin(
+			crmLeads,
+			and(
+				eq(crmLeads.organizerId, crmOrganizers.id),
+				isNull(crmLeads.deletedAt),
+				visibilityCondition(userId, role)
+			)
+		)
 		.groupBy(crmOrganizers.id)
 		.orderBy(asc(crmOrganizers.name));
 }
@@ -91,14 +104,18 @@ export async function getOrganizerCountries(): Promise<string[]> {
  * location) and final pagination run in JS AFTER the SQL-filtered/sorted set is fetched,
  * so `total` reflects the post-country-filter count — not the raw SQL row count.
  */
-export async function listOrganizersFiltered(params: {
-	search?: string;
-	country?: string;
-	sort?: string;
-	dir?: 'asc' | 'desc';
-	page?: number;
-	pageSize?: number;
-}): Promise<{ organizers: OrganizerWithCount[]; total: number }> {
+export async function listOrganizersFiltered(
+	userId: string,
+	role: Role,
+	params: {
+		search?: string;
+		country?: string;
+		sort?: string;
+		dir?: 'asc' | 'desc';
+		page?: number;
+		pageSize?: number;
+	}
+): Promise<{ organizers: OrganizerWithCount[]; total: number }> {
 	const { search, country, sort, dir = 'asc', page = 1, pageSize = 10 } = params;
 
 	const conditions = [];
@@ -122,6 +139,9 @@ export async function listOrganizersFiltered(params: {
 				? asc(crmOrganizers.name)
 				: desc(crmOrganizers.name);
 
+	// leadCount only counts non-deleted, visibility-scoped leads (same rule as
+	// listOrganizersWithLeadCount) so a rep never sees a count that includes leads they
+	// couldn't otherwise open.
 	const rows = await db
 		.select({
 			id: crmOrganizers.id,
@@ -131,7 +151,14 @@ export async function listOrganizersFiltered(params: {
 			leadCount: count(crmLeads.id)
 		})
 		.from(crmOrganizers)
-		.leftJoin(crmLeads, and(eq(crmLeads.organizerId, crmOrganizers.id), isNull(crmLeads.deletedAt)))
+		.leftJoin(
+			crmLeads,
+			and(
+				eq(crmLeads.organizerId, crmOrganizers.id),
+				isNull(crmLeads.deletedAt),
+				visibilityCondition(userId, role)
+			)
+		)
 		.where(conditions.length ? and(...conditions) : undefined)
 		.groupBy(crmOrganizers.id)
 		.orderBy(orderBy);

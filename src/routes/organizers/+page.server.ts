@@ -21,7 +21,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	const page = Math.max(1, parseInt(url.searchParams.get('page') ?? '1', 10) || 1);
 
 	const [result, countries] = await Promise.all([
-		listOrganizersFiltered({
+		listOrganizersFiltered(locals.user.id, locals.user.role, {
 			search: search || undefined,
 			country: country || undefined,
 			sort,

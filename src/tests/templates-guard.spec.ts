@@ -31,7 +31,7 @@ vi.mock('$lib/server/db/templates', () => {
 		updateTemplate: vi.fn().mockResolvedValue(null),
 		softDeleteTemplate: vi.fn().mockResolvedValue(false),
 		TemplateTitleConflictError,
-		TEMPLATES_PAGE_SIZE: 20
+		TEMPLATES_PAGE_SIZE: 25
 	};
 });
 

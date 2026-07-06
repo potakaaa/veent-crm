@@ -174,5 +174,6 @@ export function normalizeCountry(raw?: string | null): string | null {
 export function parseCountryFromLocation(location?: string | null): string | null {
 	if (!location) return null;
 	const parts = location.split(',');
-	return parts.length > 1 ? parts[parts.length - 1].trim() : location.trim();
+	const derived = parts.length > 1 ? parts[parts.length - 1].trim() : location.trim();
+	return derived || null;
 }

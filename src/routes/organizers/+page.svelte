@@ -160,7 +160,7 @@
 					{#each data.organizers as org (org.id)}
 						<TableRow
 							class="cursor-pointer hover:bg-panel"
-							onclick={() => (window.location.href = `/organizers/${org.id}`)}
+							onclick={() => goto(`/organizers/${org.id}`)}
 						>
 							<TableCell class="max-w-[260px] truncate">
 								<a

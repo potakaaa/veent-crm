@@ -74,7 +74,7 @@ describe.skipIf(SKIP_DB)('listOrganizersWithLeadCount (DB)', () => {
 		await makeLead(withLeads, 'new');
 		await makeLead(withLeads, 'won');
 
-		const rows = await listOrganizersWithLeadCount();
+		const rows = await listOrganizersWithLeadCount(MANAGER_UUID, 'manager');
 		const withLeadsRow = rows.find((r) => r.id === withLeads);
 		const emptyRow = rows.find((r) => r.id === empty);
 
@@ -88,7 +88,7 @@ describe.skipIf(SKIP_DB)('listOrganizersWithLeadCount (DB)', () => {
 		const deletedId = await makeLead(org, 'new');
 		await db.update(crmLeads).set({ deletedAt: new Date() }).where(eq(crmLeads.id, deletedId));
 
-		const rows = await listOrganizersWithLeadCount();
+		const rows = await listOrganizersWithLeadCount(MANAGER_UUID, 'manager');
 		expect(rows.find((r) => r.id === org)?.leadCount).toBe(1);
 	});
 });
@@ -229,11 +229,19 @@ describe.skipIf(SKIP_DB)('listOrganizersFiltered (DB)', () => {
 		for (let i = 0; i < 12; i++) {
 			await makeOrganizerFull(`${token} ${String(i).padStart(2, '0')}`);
 		}
-		const p1 = await listOrganizersFiltered({ search: token, page: 1, pageSize: 10 });
+		const p1 = await listOrganizersFiltered(MANAGER_UUID, 'manager', {
+			search: token,
+			page: 1,
+			pageSize: 10
+		});
 		expect(p1.total).toBe(12);
 		expect(p1.organizers.length).toBe(10);
 
-		const p2 = await listOrganizersFiltered({ search: token, page: 2, pageSize: 10 });
+		const p2 = await listOrganizersFiltered(MANAGER_UUID, 'manager', {
+			search: token,
+			page: 2,
+			pageSize: 10
+		});
 		expect(p2.total).toBe(12);
 		expect(p2.organizers.length).toBe(2);
 	});
@@ -244,11 +252,19 @@ describe.skipIf(SKIP_DB)('listOrganizersFiltered (DB)', () => {
 		await makeOrganizerFull(`${token} Alpha`);
 		await makeOrganizerFull(`${token} Bravo`);
 
-		const asc = await listOrganizersFiltered({ search: token, sort: 'name', dir: 'asc' });
+		const asc = await listOrganizersFiltered(MANAGER_UUID, 'manager', {
+			search: token,
+			sort: 'name',
+			dir: 'asc'
+		});
 		const ascNames = asc.organizers.map((o) => o.name);
 		expect(ascNames).toEqual([...ascNames].sort());
 
-		const desc = await listOrganizersFiltered({ search: token, sort: 'name', dir: 'desc' });
+		const desc = await listOrganizersFiltered(MANAGER_UUID, 'manager', {
+			search: token,
+			sort: 'name',
+			dir: 'desc'
+		});
 		const descNames = desc.organizers.map((o) => o.name);
 		expect(descNames).toEqual([...ascNames].reverse());
 	});
@@ -262,9 +278,17 @@ describe.skipIf(SKIP_DB)('listOrganizersFiltered (DB)', () => {
 		await makeLeadFull(many, { stage: 'won' });
 		await makeLeadFull(many, { stage: 'lost' });
 
-		const desc = await listOrganizersFiltered({ search: token, sort: 'leads', dir: 'desc' });
+		const desc = await listOrganizersFiltered(MANAGER_UUID, 'manager', {
+			search: token,
+			sort: 'leads',
+			dir: 'desc'
+		});
 		expect(desc.organizers[0].id).toBe(many);
-		const asc = await listOrganizersFiltered({ search: token, sort: 'leads', dir: 'asc' });
+		const asc = await listOrganizersFiltered(MANAGER_UUID, 'manager', {
+			search: token,
+			sort: 'leads',
+			dir: 'asc'
+		});
 		expect(asc.organizers[0].id).toBe(few);
 	});
 
@@ -275,10 +299,14 @@ describe.skipIf(SKIP_DB)('listOrganizersFiltered (DB)', () => {
 			handle: `zebrahandle${stamp}`
 		});
 
-		const nameHit = await listOrganizersFiltered({ search: `zebraname${stamp}` });
+		const nameHit = await listOrganizersFiltered(MANAGER_UUID, 'manager', {
+			search: `zebraname${stamp}`
+		});
 		expect(nameHit.organizers.some((o) => o.id === byName)).toBe(true);
 
-		const handleHit = await listOrganizersFiltered({ search: `ZEBRAHANDLE${stamp}` });
+		const handleHit = await listOrganizersFiltered(MANAGER_UUID, 'manager', {
+			search: `ZEBRAHANDLE${stamp}`
+		});
 		expect(handleHit.organizers.some((o) => o.id === byHandle)).toBe(true);
 	});
 
@@ -287,13 +315,19 @@ describe.skipIf(SKIP_DB)('listOrganizersFiltered (DB)', () => {
 		const ph = await makeOrganizerFull(`${token} PH`, { location: 'Makati, Philippines' });
 		const sg = await makeOrganizerFull(`${token} SG`, { location: 'Singapore' });
 
-		const all = await listOrganizersFiltered({ search: token });
+		const all = await listOrganizersFiltered(MANAGER_UUID, 'manager', { search: token });
 		expect(all.total).toBe(2);
 
-		const phOnly = await listOrganizersFiltered({ search: token, country: 'Philippines' });
+		const phOnly = await listOrganizersFiltered(MANAGER_UUID, 'manager', {
+			search: token,
+			country: 'Philippines'
+		});
 		expect(phOnly.organizers.map((o) => o.id)).toEqual([ph]);
 
-		const sgOnly = await listOrganizersFiltered({ search: token, country: 'Singapore' });
+		const sgOnly = await listOrganizersFiltered(MANAGER_UUID, 'manager', {
+			search: token,
+			country: 'Singapore'
+		});
 		expect(sgOnly.organizers.map((o) => o.id)).toEqual([sg]);
 	});
 
@@ -305,7 +339,7 @@ describe.skipIf(SKIP_DB)('listOrganizersFiltered (DB)', () => {
 			});
 		}
 		// Country filter shrinks the set below one page → total is the filtered count, not 12.
-		const phP1 = await listOrganizersFiltered({
+		const phP1 = await listOrganizersFiltered(MANAGER_UUID, 'manager', {
 			search: token,
 			country: 'Philippines',
 			page: 1,
@@ -323,7 +357,10 @@ describe.skipIf(SKIP_DB)('listOrganizersFiltered (DB)', () => {
 		const deleted = await makeLeadFull(org, { stage: 'new' });
 		await db.update(crmLeads).set({ deletedAt: new Date() }).where(eq(crmLeads.id, deleted));
 
-		const filtered = await listOrganizersFiltered({ search: token, country: 'Philippines' });
+		const filtered = await listOrganizersFiltered(MANAGER_UUID, 'manager', {
+			search: token,
+			country: 'Philippines'
+		});
 		const row = filtered.organizers.find((o) => o.id === org);
 		expect(row?.leadCount).toBe(2); // non-deleted only, unchanged by the country filter
 	});

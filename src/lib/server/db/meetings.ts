@@ -7,7 +7,7 @@
  */
 import { db } from './index';
 import { crmMeetings, crmMeetingAttendees, crmUsers, crmLeads, crmOrganizers } from './schema';
-import { eq, and, isNull, desc, asc, inArray, count, sql } from 'drizzle-orm';
+import { eq, and, isNull, desc, asc, inArray, count, sql, ilike } from 'drizzle-orm';
 import type { SQL } from 'drizzle-orm';
 import type { Meeting, MeetingAttendee } from '$lib/types';
 
@@ -25,6 +25,7 @@ export interface MeetingListFilters {
 	dateFrom?: string;
 	dateTo?: string;
 	sortDir?: 'asc' | 'desc';
+	outcome?: string;
 }
 
 /**
@@ -48,6 +49,7 @@ export function parseMeetingFilterParams(
 	dateFrom?: string;
 	dateTo?: string;
 	sortDir: 'asc' | 'desc';
+	outcome?: string;
 } {
 	const rawOrganizer = searchParams.get('organizer');
 	const organizerId =
@@ -70,7 +72,11 @@ export function parseMeetingFilterParams(
 
 	const sortDir: 'asc' | 'desc' = searchParams.get('sortDir') === 'asc' ? 'asc' : 'desc';
 
-	return { organizerId, leadId, dateFrom, dateTo, sortDir };
+	// Free-text outcome filter: trim and coerce empty → undefined (mirrors dateFrom/dateTo).
+	const rawOutcome = searchParams.get('outcome')?.trim();
+	const outcome = rawOutcome ? rawOutcome : undefined;
+
+	return { organizerId, leadId, dateFrom, dateTo, sortDir, outcome };
 }
 
 // ---------------------------------------------------------------------------
@@ -235,6 +241,10 @@ export async function listMeetingsPaginated(
 		conditions.push(
 			sql`${crmMeetings.startAt} < ((${filters.dateTo}::date + INTERVAL '1 day') AT TIME ZONE 'UTC')`
 		);
+	// Case-insensitive substring match on outcome. `ilike` is parameterized (no
+	// injection risk). Rows with NULL outcome are excluded naturally — ILIKE against
+	// NULL evaluates to NULL (falsy) in Postgres, so no explicit isNotNull guard needed.
+	if (filters.outcome) conditions.push(ilike(crmMeetings.outcome, `%${filters.outcome}%`) as SQL);
 	// Single shared `where` applied to BOTH the page query and the count() query so
 	// `total` (and therefore hasMore) reflects the filtered set.
 	const where = and(...conditions);

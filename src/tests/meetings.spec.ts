@@ -212,4 +212,13 @@ describe('parseMeetingFilterParams', () => {
 		expect(parse('dateTo=notadate').dateTo).toBeUndefined();
 		expect(parse('').dateFrom).toBeUndefined();
 	});
+
+	// --- outcome free-text filter ---
+	it('trims outcome and treats empty/whitespace-only as undefined', () => {
+		expect(parse('outcome=won%20deal').outcome).toBe('won deal');
+		expect(parse('outcome=%20%20trimmed%20%20').outcome).toBe('trimmed');
+		expect(parse('outcome=').outcome).toBeUndefined();
+		expect(parse('outcome=%20%20%20').outcome).toBeUndefined();
+		expect(parse('').outcome).toBeUndefined();
+	});
 });

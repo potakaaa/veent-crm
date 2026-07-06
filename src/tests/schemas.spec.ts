@@ -65,6 +65,16 @@ describe('leadUpdateSchema hasFutureEvents flag (#94)', () => {
 });
 
 // ---------------------------------------------------------------------------
+// leadUpdateSchema — eventDate empty-string clear path (GitHub #195)
+// ---------------------------------------------------------------------------
+describe('leadUpdateSchema eventDate clear path (#195)', () => {
+	it('accepts an empty-string eventDate (cleared/unset)', () => {
+		const r = leadUpdateSchema.safeParse({ name: 'X', category: 'Concert', eventDate: '' });
+		expect(r.success).toBe(true);
+	});
+});
+
+// ---------------------------------------------------------------------------
 // super_manager role (GitHub #73)
 // ---------------------------------------------------------------------------
 describe('super_manager role (GitHub #73)', () => {

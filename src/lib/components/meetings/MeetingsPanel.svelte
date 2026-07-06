@@ -52,6 +52,7 @@
 			dateFrom: string;
 			dateTo: string;
 			sortDir: 'asc' | 'desc';
+			outcome: string;
 		};
 	} = $props();
 
@@ -398,6 +399,26 @@
 				{#if navLoading && pendingAction === 'sortDir'}{@render spinner(12)}{/if}
 				{filters.sortDir === 'asc' ? 'Oldest first' : 'Newest first'}
 			</Button>
+
+			<div class="relative flex items-center">
+				<input
+					type="text"
+					value={filters.outcome}
+					disabled={navLoading}
+					onchange={(e) => {
+						pendingAction = 'outcome';
+						setFilter('outcome', e.currentTarget.value);
+					}}
+					aria-label="Filter by outcome"
+					placeholder="Search outcome…"
+					class="h-8 rounded-control border border-hairline bg-panel px-2 text-[12.5px] text-ink focus:outline-none focus:ring-1 focus:ring-primary disabled:cursor-wait disabled:opacity-60"
+				/>
+				{#if navLoading && pendingAction === 'outcome'}
+					<span class="pointer-events-none absolute right-2 text-ink-400"
+						>{@render spinner(12)}</span
+					>
+				{/if}
+			</div>
 		</div>
 	{/if}
 
@@ -431,7 +452,14 @@
 						<div class="min-w-0">
 							<div class="text-[13px] font-semibold text-ink">{formatStart(m.startAt)}</div>
 							{#if crossLead && m.leadName}
-								<div class="mt-0.5 text-[12px] text-ink-500">{m.leadName}</div>
+								<a
+									href={`/leads/${m.leadId}`}
+									onclick={(e) => e.stopPropagation()}
+									onkeydown={(e) => e.stopPropagation()}
+									class="mt-0.5 inline-block text-[12px] font-medium text-primary hover:underline"
+								>
+									{m.leadName}
+								</a>
 							{/if}
 							<div class="mt-0.5 text-[12px] text-ink-400">
 								Organizer: {m.organizerName ?? 'Unassigned'}

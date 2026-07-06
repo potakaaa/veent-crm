@@ -21,8 +21,8 @@ const meetingIds: string[] = [];
 const leadIds: string[] = [];
 const userIds: string[] = [];
 
-async function mkMeeting(leadId: string, organizerId: string, startAt: string) {
-	const m = await createMeeting({ leadId, startAt: new Date(startAt), organizerId });
+async function mkMeeting(leadId: string, organizerId: string, startAt: string, outcome?: string) {
+	const m = await createMeeting({ leadId, startAt: new Date(startAt), organizerId, outcome });
 	meetingIds.push(m.id);
 	return m;
 }
@@ -52,6 +52,10 @@ describe.skipIf(SKIP_DB)('listMeetingsPaginated — filter/sort (DB)', () => {
 		await mkMeeting(leadA, ORG_A, '2026-08-01T10:00:00.000Z'); // A / leadA / early
 		await mkMeeting(leadA, ORG_A, '2026-08-15T10:00:00.000Z'); // A / leadA / mid
 		await mkMeeting(leadB, ORG_B, '2026-08-31T23:00:00.000Z'); // B / leadB / late (same day boundary)
+		// Distinctive outcome for the substring-filter test. Seeded under ORG_B + leadA
+		// with an out-of-range (Sep) startAt so it doesn't disturb the organizer-count
+		// (ORG_A=2), lead-count (leadB=1), or date-range assertions above.
+		await mkMeeting(leadA, ORG_B, '2026-09-05T10:00:00.000Z', `${SEED} — Won Deal`);
 	});
 
 	afterAll(async () => {
@@ -109,6 +113,14 @@ describe.skipIf(SKIP_DB)('listMeetingsPaginated — filter/sort (DB)', () => {
 		expect(new Date(seededDesc[0].startAt).getTime()).toBeGreaterThan(
 			new Date(seededDesc[1].startAt).getTime()
 		);
+	});
+
+	it('outcome filter returns only meetings whose outcome contains the substring (case-insensitive)', async () => {
+		// Mixed-case, partial substring of the seeded `${SEED} — Won Deal` outcome.
+		const { meetings } = await listMeetingsPaginated(1, 50, { outcome: 'won deal' });
+		const seeded = meetings.filter((m) => meetingIds.includes(m.id));
+		expect(seeded.length).toBe(1);
+		expect(seeded[0].outcome).toBe(`${SEED} — Won Deal`);
 	});
 
 	it('total reflects the filtered set, not all meetings', async () => {

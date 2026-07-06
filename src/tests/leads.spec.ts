@@ -289,6 +289,30 @@ describe('dbRowToLead mapper', () => {
 		const lead = dbRowToLead(makeRow({ hasFutureEvents: null as unknown as boolean }));
 		expect(lead.hasFutureEvents).toBe(false);
 	});
+
+	// #188 — linked recurring-organizer (crm_organizers) pre-fill source
+	it('populates organizerId and organizerName when a crm_organizers row is present', () => {
+		const lead = dbRowToLead(
+			makeRow({ organizerId: '00000000-0000-0000-0000-0000000000aa' }),
+			undefined,
+			'Acme Organizers'
+		);
+		expect(lead.organizerId).toBe('00000000-0000-0000-0000-0000000000aa');
+		expect(lead.organizerName).toBe('Acme Organizers');
+	});
+
+	it('leaves organizerId null and organizerName undefined when the lead has no organizer', () => {
+		const lead = dbRowToLead(makeRow({ organizerId: null }));
+		expect(lead.organizerId).toBeNull();
+		expect(lead.organizerName).toBeUndefined();
+	});
+
+	it('populates organizerId from the row even when organizerName is not looked up', () => {
+		// List paths pass no organizerName; the id must still map from the row column.
+		const lead = dbRowToLead(makeRow({ organizerId: '00000000-0000-0000-0000-0000000000bb' }));
+		expect(lead.organizerId).toBe('00000000-0000-0000-0000-0000000000bb');
+		expect(lead.organizerName).toBeUndefined();
+	});
 });
 
 // ---------------------------------------------------------------------------

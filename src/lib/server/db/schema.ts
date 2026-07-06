@@ -342,6 +342,12 @@ export const crmMeetings = pgTable(
 			.references(() => crmLeads.id, { onDelete: 'cascade' }),
 		// distinct FK (not just an attendee flag); null if the organizing user leaves
 		organizerId: uuid('organizer_id').references(() => crmUsers.id, { onDelete: 'set null' }),
+		// The lead's linked recurring-organizer entity (crm_organizers, GitHub #188).
+		// DISTINCT from organizerId above (which is the INTERNAL crm_users organizer).
+		// Pre-filled from the lead on meeting creation; nullable + overridable.
+		leadOrganizerId: uuid('lead_organizer_id').references(() => crmOrganizers.id, {
+			onDelete: 'set null'
+		}),
 		startAt: timestamp('start_at', { withTimezone: true }).notNull(),
 		meetingUrl: text('meeting_url'),
 		notes: text('notes'),

@@ -519,7 +519,14 @@
 		</div>
 
 		{#if activeTab === 'meetings'}
-			<MeetingsPanel meetings={data.meetings} users={data.users} me={data.me} leadId={lead.id} />
+			<MeetingsPanel
+				meetings={data.meetings}
+				users={data.users}
+				me={data.me}
+				leadId={lead.id}
+				leadOrganizerId={lead.organizerId}
+				leadOrganizerName={lead.organizerName}
+			/>
 		{/if}
 
 		{#if activeTab === 'onboarding'}

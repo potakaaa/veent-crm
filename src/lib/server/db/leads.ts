@@ -8,7 +8,8 @@ import {
 	crmUsers,
 	crmActivities,
 	crmLeadHistory,
-	crmLeadVisibilityGrants
+	crmLeadVisibilityGrants,
+	crmOrganizers
 } from './schema';
 import {
 	eq,
@@ -49,7 +50,11 @@ type DbActivity = typeof crmActivities.$inferSelect;
 // Pure mappers (exported for unit tests)
 // ---------------------------------------------------------------------------
 
-export function dbRowToLead(row: DbLead, followUpAt?: string | Date | null): Lead {
+export function dbRowToLead(
+	row: DbLead,
+	followUpAt?: string | Date | null,
+	organizerName?: string | null
+): Lead {
 	const createdAt = row.createdAt.toISOString();
 	const lastActivityAt = row.lastActivityAt?.toISOString() ?? createdAt;
 
@@ -101,6 +106,11 @@ export function dbRowToLead(row: DbLead, followUpAt?: string | Date | null): Lea
 		pageUrl: row.pageUrl ?? undefined,
 		socialFacebook: row.socialFacebook ?? undefined,
 		socialInstagram: row.socialInstagram ?? undefined,
+		// Lead's linked recurring-organizer entity (crm_organizers, GitHub #188). `organizerId`
+		// maps straight from the row column (always available); `organizerName` requires a
+		// crm_organizers lookup and is only passed by detail-load paths (undefined otherwise).
+		organizerId: row.organizerId ?? null,
+		organizerName: organizerName ?? undefined,
 		source: row.source as Lead['source'],
 		notes: row.notes ?? undefined,
 		signedOrg: row.wonOrgName ?? undefined,
@@ -478,12 +488,16 @@ export async function listLeadsFiltered(
  * returns `null` — the caller renders a 404, never a redacted view or a 403 (AC#8).
  */
 export async function getLead(id: string, userId: string, role: Role): Promise<Lead | null> {
+	// Left-join crm_organizers so the lead's linked organizer NAME is available for the
+	// meeting-create pre-fill (GitHub #188). Selecting {lead, organizerName} keeps the
+	// existing full-row shape intact for dbRowToLead; organizerName is passed separately.
 	const [row] = await db
-		.select()
+		.select({ lead: crmLeads, organizerName: crmOrganizers.name })
 		.from(crmLeads)
+		.leftJoin(crmOrganizers, eq(crmLeads.organizerId, crmOrganizers.id))
 		.where(and(eq(crmLeads.id, id), isNull(crmLeads.deletedAt), visibilityCondition(userId, role)))
 		.limit(1);
-	return row ? dbRowToLead(row) : null;
+	return row ? dbRowToLead(row.lead, undefined, row.organizerName) : null;
 }
 
 const UNASSIGNED_SORT_COLS = ['name', 'event', 'stage', 'source', 'appeal'] as const;

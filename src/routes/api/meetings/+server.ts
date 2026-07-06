@@ -38,6 +38,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		startAt: new Date(data.startAt),
 		// Any authenticated user may create; organizer defaults to the creator.
 		organizerId: data.organizerId ?? locals.user.id,
+		// Lead's linked recurring-organizer (crm_organizers) — pre-filled from the lead, nullable.
+		leadOrganizerId: data.leadOrganizerId ?? null,
 		meetingUrl: data.meetingUrl || undefined,
 		notes: data.notes || undefined,
 		outcome: data.outcome || undefined,

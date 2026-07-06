@@ -6,7 +6,7 @@
  * `inArray` query for attendees, grouped in memory.
  */
 import { db } from './index';
-import { crmMeetings, crmMeetingAttendees, crmUsers, crmLeads } from './schema';
+import { crmMeetings, crmMeetingAttendees, crmUsers, crmLeads, crmOrganizers } from './schema';
 import { eq, and, isNull, desc, asc, inArray, count, sql, ilike } from 'drizzle-orm';
 import type { SQL } from 'drizzle-orm';
 import type { Meeting, MeetingAttendee } from '$lib/types';
@@ -87,7 +87,8 @@ export function dbRowToMeeting(
 	row: DbMeeting,
 	attendees: MeetingAttendee[],
 	organizerName?: string | null,
-	leadName?: string | null
+	leadName?: string | null,
+	leadOrganizerName?: string | null
 ): Meeting {
 	return {
 		id: row.id,
@@ -95,6 +96,8 @@ export function dbRowToMeeting(
 		leadName: leadName ?? undefined,
 		organizerId: row.organizerId,
 		organizerName: organizerName ?? undefined,
+		leadOrganizerId: row.leadOrganizerId ?? null,
+		leadOrganizerName: leadOrganizerName ?? undefined,
 		startAt: row.startAt.toISOString(),
 		meetingUrl: row.meetingUrl ?? undefined,
 		notes: row.notes ?? undefined,
@@ -141,16 +144,28 @@ async function attendeesByMeeting(meetingIds: string[]): Promise<Map<string, Mee
  */
 export async function getMeetingDetail(id: string): Promise<Meeting | null> {
 	const [row] = await db
-		.select({ meeting: crmMeetings, organizerName: crmUsers.name, leadName: crmLeads.name })
+		.select({
+			meeting: crmMeetings,
+			organizerName: crmUsers.name,
+			leadName: crmLeads.name,
+			leadOrganizerName: crmOrganizers.name
+		})
 		.from(crmMeetings)
 		.leftJoin(crmUsers, eq(crmMeetings.organizerId, crmUsers.id))
 		.innerJoin(crmLeads, eq(crmMeetings.leadId, crmLeads.id))
+		.leftJoin(crmOrganizers, eq(crmMeetings.leadOrganizerId, crmOrganizers.id))
 		.where(and(eq(crmMeetings.id, id), isNull(crmMeetings.deletedAt)))
 		.limit(1);
 
 	if (!row) return null;
 	const attMap = await attendeesByMeeting([id]);
-	return dbRowToMeeting(row.meeting, attMap.get(id) ?? [], row.organizerName, row.leadName);
+	return dbRowToMeeting(
+		row.meeting,
+		attMap.get(id) ?? [],
+		row.organizerName,
+		row.leadName,
+		row.leadOrganizerName
+	);
 }
 
 // ---------------------------------------------------------------------------
@@ -159,15 +174,26 @@ export async function getMeetingDetail(id: string): Promise<Meeting | null> {
 
 export async function listMeetingsForLead(leadId: string): Promise<Meeting[]> {
 	const rows = await db
-		.select({ meeting: crmMeetings, organizerName: crmUsers.name })
+		.select({
+			meeting: crmMeetings,
+			organizerName: crmUsers.name,
+			leadOrganizerName: crmOrganizers.name
+		})
 		.from(crmMeetings)
 		.leftJoin(crmUsers, eq(crmMeetings.organizerId, crmUsers.id))
+		.leftJoin(crmOrganizers, eq(crmMeetings.leadOrganizerId, crmOrganizers.id))
 		.where(and(eq(crmMeetings.leadId, leadId), isNull(crmMeetings.deletedAt)))
 		.orderBy(desc(crmMeetings.startAt));
 
 	const attMap = await attendeesByMeeting(rows.map((r) => r.meeting.id));
 	return rows.map((r) =>
-		dbRowToMeeting(r.meeting, attMap.get(r.meeting.id) ?? [], r.organizerName)
+		dbRowToMeeting(
+			r.meeting,
+			attMap.get(r.meeting.id) ?? [],
+			r.organizerName,
+			null,
+			r.leadOrganizerName
+		)
 	);
 }
 
@@ -226,10 +252,16 @@ export async function listMeetingsPaginated(
 	const offset = (Math.max(1, page) - 1) * limit;
 	const [rows, [{ total }]] = await Promise.all([
 		db
-			.select({ meeting: crmMeetings, organizerName: crmUsers.name, leadName: crmLeads.name })
+			.select({
+				meeting: crmMeetings,
+				organizerName: crmUsers.name,
+				leadName: crmLeads.name,
+				leadOrganizerName: crmOrganizers.name
+			})
 			.from(crmMeetings)
 			.leftJoin(crmUsers, eq(crmMeetings.organizerId, crmUsers.id))
 			.innerJoin(crmLeads, eq(crmMeetings.leadId, crmLeads.id))
+			.leftJoin(crmOrganizers, eq(crmMeetings.leadOrganizerId, crmOrganizers.id))
 			.where(where)
 			// asc(id) tiebreaker ALWAYS present (both directions) so pages never dup/skip.
 			.orderBy(sortFn(crmMeetings.startAt), asc(crmMeetings.id))
@@ -240,7 +272,13 @@ export async function listMeetingsPaginated(
 
 	const attMap = await attendeesByMeeting(rows.map((r) => r.meeting.id));
 	const meetings = rows.map((r) =>
-		dbRowToMeeting(r.meeting, attMap.get(r.meeting.id) ?? [], r.organizerName, r.leadName)
+		dbRowToMeeting(
+			r.meeting,
+			attMap.get(r.meeting.id) ?? [],
+			r.organizerName,
+			r.leadName,
+			r.leadOrganizerName
+		)
 	);
 	return { meetings, total };
 }
@@ -268,6 +306,7 @@ export async function createMeeting(input: {
 	leadId: string;
 	startAt: Date;
 	organizerId?: string | null;
+	leadOrganizerId?: string | null;
 	meetingUrl?: string | null;
 	notes?: string | null;
 	outcome?: string | null;
@@ -280,6 +319,7 @@ export async function createMeeting(input: {
 				leadId: input.leadId,
 				startAt: input.startAt,
 				organizerId: input.organizerId ?? null,
+				leadOrganizerId: input.leadOrganizerId ?? null,
 				meetingUrl: input.meetingUrl ?? null,
 				notes: input.notes ?? null,
 				outcome: input.outcome ?? null
@@ -308,6 +348,7 @@ export async function updateMeeting(
 	patch: {
 		startAt?: Date;
 		organizerId?: string | null;
+		leadOrganizerId?: string | null;
 		meetingUrl?: string | null;
 		notes?: string | null;
 		outcome?: string | null;
@@ -318,6 +359,8 @@ export async function updateMeeting(
 		const set: Partial<typeof crmMeetings.$inferInsert> = { updatedAt: new Date() };
 		if (patch.startAt !== undefined) set.startAt = patch.startAt;
 		if (patch.organizerId !== undefined) set.organizerId = patch.organizerId;
+		// undefined leaves the saved link untouched; explicit null clears it (mirrors organizerId).
+		if (patch.leadOrganizerId !== undefined) set.leadOrganizerId = patch.leadOrganizerId;
 		if (patch.meetingUrl !== undefined) set.meetingUrl = patch.meetingUrl;
 		if (patch.notes !== undefined) set.notes = patch.notes;
 		if (patch.outcome !== undefined) set.outcome = patch.outcome;

@@ -78,6 +78,7 @@
 			placeholder="Add a note…"
 			class="min-h-40 resize-y"
 			disabled={submitting}
+			maxlength={5000}
 		/>
 	{:else if note}
 		<p class="whitespace-pre-wrap text-[13.5px] leading-relaxed text-ink-600">{note.content}</p>

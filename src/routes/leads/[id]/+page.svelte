@@ -29,6 +29,7 @@
 	import { toasts } from '$lib/stores/toasts.svelte';
 	import { canEditLead, canReassign } from '$lib/utils/permissions';
 	import { riskMeta } from '$lib/utils/risk';
+	import { createNoteHandlers } from '$lib/utils/note-actions';
 	import { formatDate, followUpDate } from '$lib/utils/dates';
 	import { stageColor, stageLabel } from '$lib/utils/stages';
 	import type { AddActivityInput, LostReason, MoveStagePayload, Stage } from '$lib/types';
@@ -241,43 +242,9 @@
 		toasts.success('Touch logged · follow-up booked');
 	}
 
-	async function addNote(content: string) {
-		let res: Response;
-		try {
-			res = await fetch(`/api/leads/${lead.id}/notes`, {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ content })
-			});
-		} catch {
-			toasts.push('Note failed — server error');
-			throw new Error('network');
-		}
-		if (!res.ok) {
-			toasts.push('Note failed — please try again');
-			throw new Error('http');
-		}
-		await invalidateAll();
-	}
-
-	async function editNote(noteId: string, content: string) {
-		let res: Response;
-		try {
-			res = await fetch(`/api/notes/${noteId}`, {
-				method: 'PATCH',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ content })
-			});
-		} catch {
-			toasts.push('Note update failed — server error');
-			throw new Error('network');
-		}
-		if (!res.ok) {
-			toasts.push('Note update failed — please try again');
-			throw new Error('http');
-		}
-		await invalidateAll();
-	}
+	// $derived (not a one-time call) so the create URL follows `lead.id` across
+	// id → id navigations within this same page instance.
+	const noteHandlers = $derived(createNoteHandlers(`/api/leads/${lead.id}/notes`));
 
 	async function selectStage(stage: Stage) {
 		if (stage === lead.stage) return;
@@ -1053,8 +1020,8 @@
 				<NotesPanel
 					notes={data.notes}
 					currentUserId={data.me.id}
-					onSubmit={addNote}
-					onEdit={editNote}
+					onSubmit={noteHandlers.addNote}
+					onEdit={noteHandlers.editNote}
 				/>
 			</div>
 		</div>

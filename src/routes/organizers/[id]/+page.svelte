@@ -1,12 +1,12 @@
 <script lang="ts">
-	import { goto, invalidateAll } from '$app/navigation';
+	import { goto } from '$app/navigation';
 	import { page as pageState, navigating } from '$app/state';
 	import { SvelteURLSearchParams } from 'svelte/reactivity';
 	import PageHeader from '$lib/components/shared/PageHeader.svelte';
 	import StageChip from '$lib/components/shared/StageChip.svelte';
 	import Icon from '$lib/components/shared/Icon.svelte';
 	import NotesPanel from '$lib/components/shared/NotesPanel.svelte';
-	import { toasts } from '$lib/stores/toasts.svelte';
+	import { createNoteHandlers } from '$lib/utils/note-actions';
 	import { Card } from '$lib/components/ui/card';
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
@@ -27,43 +27,9 @@
 	let { data } = $props();
 	const org = $derived(data.organizer);
 
-	async function addNote(content: string) {
-		let res: Response;
-		try {
-			res = await fetch(`/api/organizers/${org.id}/notes`, {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ content })
-			});
-		} catch {
-			toasts.push('Note failed — server error');
-			throw new Error('network');
-		}
-		if (!res.ok) {
-			toasts.push('Note failed — please try again');
-			throw new Error('http');
-		}
-		await invalidateAll();
-	}
-
-	async function editNote(noteId: string, content: string) {
-		let res: Response;
-		try {
-			res = await fetch(`/api/notes/${noteId}`, {
-				method: 'PATCH',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ content })
-			});
-		} catch {
-			toasts.push('Note update failed — server error');
-			throw new Error('network');
-		}
-		if (!res.ok) {
-			toasts.push('Note update failed — please try again');
-			throw new Error('http');
-		}
-		await invalidateAll();
-	}
+	// $derived (not a one-time call) so the create URL follows `org.id` if this
+	// page instance is ever reused across id → id navigations.
+	const noteHandlers = $derived(createNoteHandlers(`/api/organizers/${org.id}/notes`));
 
 	let paging = $state(false);
 	const navLoading = $derived(paging || !!navigating.to);
@@ -305,8 +271,8 @@
 			<NotesPanel
 				notes={data.notes}
 				currentUserId={data.currentUserId}
-				onSubmit={addNote}
-				onEdit={editNote}
+				onSubmit={noteHandlers.addNote}
+				onEdit={noteHandlers.editNote}
 			/>
 		</div>
 	</div>

@@ -61,67 +61,64 @@ export async function listNotesForOrganizer(organizerId: string): Promise<Note[]
 	return rows.map(dbRowToNote);
 }
 
-/** Add a note to a lead. Returns the created note with the author name resolved. */
-export async function addNoteToLead(
-	leadId: string,
+/**
+ * Shared insert path for addNoteToLead/addNoteToOrganizer — only the target column
+ * differs between them. `authorName` comes from the caller's already-loaded session
+ * (`locals.user.name`, itself resolved from crm_users at login) rather than a fresh
+ * lookup here, since it's always the acting user's own name.
+ */
+async function insertNote(
+	target: { leadId: string; organizerId?: never } | { organizerId: string; leadId?: never },
 	authorId: string,
+	authorName: string,
 	content: string
 ): Promise<Note> {
 	const [inserted] = await db
 		.insert(crmNotes)
-		.values({ leadId, authorId, content })
+		.values({ ...target, authorId, content })
 		.returning({ id: crmNotes.id, createdAt: crmNotes.createdAt });
-	const [author] = await db
-		.select({ name: crmUsers.name })
-		.from(crmUsers)
-		.where(eq(crmUsers.id, authorId))
-		.limit(1);
 	return {
 		id: inserted.id,
 		content,
 		authorId,
-		authorName: author?.name ?? 'Unknown',
-		leadId,
-		organizerId: null,
+		authorName,
+		leadId: target.leadId ?? null,
+		organizerId: target.organizerId ?? null,
 		createdAt: inserted.createdAt.toISOString()
 	};
 }
 
-/** Add a note to an organizer. Returns the created note with the author name resolved. */
+/** Add a note to a lead. Returns the created note with the given author name. */
+export async function addNoteToLead(
+	leadId: string,
+	authorId: string,
+	authorName: string,
+	content: string
+): Promise<Note> {
+	return insertNote({ leadId }, authorId, authorName, content);
+}
+
+/** Add a note to an organizer. Returns the created note with the given author name. */
 export async function addNoteToOrganizer(
 	organizerId: string,
 	authorId: string,
+	authorName: string,
 	content: string
 ): Promise<Note> {
-	const [inserted] = await db
-		.insert(crmNotes)
-		.values({ organizerId, authorId, content })
-		.returning({ id: crmNotes.id, createdAt: crmNotes.createdAt });
-	const [author] = await db
-		.select({ name: crmUsers.name })
-		.from(crmUsers)
-		.where(eq(crmUsers.id, authorId))
-		.limit(1);
-	return {
-		id: inserted.id,
-		content,
-		authorId,
-		authorName: author?.name ?? 'Unknown',
-		leadId: null,
-		organizerId,
-		createdAt: inserted.createdAt.toISOString()
-	};
+	return insertNote({ organizerId }, authorId, authorName, content);
 }
 
 /**
  * Edit a note's content. Only the original author may edit — the WHERE clause scopes
  * the update to `id AND author_id`, so a non-owner's attempt matches zero rows and this
- * returns `null` (treated as 403 by the caller) rather than silently editing someone
- * else's note.
+ * returns `null` (treated as 404 by the caller) rather than silently editing someone
+ * else's note. `authorName` is the caller's own session name (see insertNote above) —
+ * an update can never change ownership, so there's no need to re-resolve it from the DB.
  */
 export async function updateNote(
 	noteId: string,
 	authorId: string,
+	authorName: string,
 	content: string
 ): Promise<Note | null> {
 	const [updated] = await db
@@ -131,16 +128,11 @@ export async function updateNote(
 		.returning();
 	if (!updated) return null;
 
-	const [author] = await db
-		.select({ name: crmUsers.name })
-		.from(crmUsers)
-		.where(eq(crmUsers.id, authorId))
-		.limit(1);
 	return {
 		id: updated.id,
 		content: updated.content,
 		authorId: updated.authorId,
-		authorName: author?.name ?? 'Unknown',
+		authorName,
 		leadId: updated.leadId,
 		organizerId: updated.organizerId,
 		createdAt: updated.createdAt.toISOString()

@@ -25,6 +25,11 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 		throw error(400, msg);
 	}
 
-	const note = await addNoteToOrganizer(params.id, locals.user.id, parsed.data.content);
+	const note = await addNoteToOrganizer(
+		params.id,
+		locals.user.id,
+		locals.user.name,
+		parsed.data.content
+	);
 	return json(note);
 };

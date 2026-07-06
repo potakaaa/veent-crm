@@ -22,7 +22,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 		throw error(400, msg);
 	}
 
-	const note = await updateNote(params.id, locals.user.id, parsed.data.content);
+	const note = await updateNote(params.id, locals.user.id, locals.user.name, parsed.data.content);
 	if (!note) throw error(404, 'Note not found');
 	return json(note);
 };

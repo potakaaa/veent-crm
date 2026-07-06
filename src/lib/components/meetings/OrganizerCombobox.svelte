@@ -36,10 +36,15 @@
 	// Latest-wins race guard: stale responses drop.
 	let requestGen = 0;
 	let searchTimer: ReturnType<typeof setTimeout> | undefined;
-	// Locally-chosen label overrides the server-seeded `selectedLabel` after a pick.
+	// Locally-chosen label overrides the server-seeded `selectedLabel`, but only while
+	// `value` still equals the id it was chosen for — once `value` changes to any other
+	// id (a different record, or externally reset), the override no longer applies.
 	let chosenLabel = $state<string | undefined>(undefined);
+	let chosenFor = $state<string | undefined>(undefined);
 
-	const triggerLabel = $derived(chosenLabel ?? selectedLabel ?? 'None');
+	const triggerLabel = $derived(
+		chosenFor === value ? (chosenLabel ?? 'None') : (selectedLabel ?? 'None')
+	);
 
 	async function fetchOrganizers(q: string) {
 		const gen = ++requestGen;
@@ -50,11 +55,16 @@
 			const data = (await res.json()) as { organizers: Organizer[] };
 			if (gen !== requestGen) return;
 			results = data.organizers;
-			hasFetched = true;
 		} catch {
 			// silent — user can retry by typing
 		} finally {
-			if (gen === requestGen) loading = false;
+			// Mark the attempt complete on success AND failure, so a rejected/errored
+			// initial fetch doesn't leave hasFetched false — that would re-trigger the
+			// seed effect below on every render while the popover stays open.
+			if (gen === requestGen) {
+				loading = false;
+				hasFetched = true;
+			}
 		}
 	}
 
@@ -71,20 +81,17 @@
 
 	function pick(org: Organizer) {
 		chosenLabel = org.name;
+		chosenFor = org.id;
 		value = org.id;
 		open = false;
 	}
 
 	function clearSelection() {
 		chosenLabel = undefined;
+		chosenFor = undefined;
 		value = undefined;
 		open = false;
 	}
-
-	// When `value` is cleared externally (e.g. the modal re-seeds on open), drop the stale label.
-	$effect(() => {
-		if (!value) chosenLabel = undefined;
-	});
 </script>
 
 <div class="flex items-center gap-2">

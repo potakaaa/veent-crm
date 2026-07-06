@@ -242,10 +242,16 @@ export async function listMeetingsPaginated(
 	const offset = (Math.max(1, page) - 1) * limit;
 	const [rows, [{ total }]] = await Promise.all([
 		db
-			.select({ meeting: crmMeetings, organizerName: crmUsers.name, leadName: crmLeads.name })
+			.select({
+				meeting: crmMeetings,
+				organizerName: crmUsers.name,
+				leadName: crmLeads.name,
+				leadOrganizerName: crmOrganizers.name
+			})
 			.from(crmMeetings)
 			.leftJoin(crmUsers, eq(crmMeetings.organizerId, crmUsers.id))
 			.innerJoin(crmLeads, eq(crmMeetings.leadId, crmLeads.id))
+			.leftJoin(crmOrganizers, eq(crmMeetings.leadOrganizerId, crmOrganizers.id))
 			.where(where)
 			// asc(id) tiebreaker ALWAYS present (both directions) so pages never dup/skip.
 			.orderBy(sortFn(crmMeetings.startAt), asc(crmMeetings.id))
@@ -256,7 +262,13 @@ export async function listMeetingsPaginated(
 
 	const attMap = await attendeesByMeeting(rows.map((r) => r.meeting.id));
 	const meetings = rows.map((r) =>
-		dbRowToMeeting(r.meeting, attMap.get(r.meeting.id) ?? [], r.organizerName, r.leadName)
+		dbRowToMeeting(
+			r.meeting,
+			attMap.get(r.meeting.id) ?? [],
+			r.organizerName,
+			r.leadName,
+			r.leadOrganizerName
+		)
 	);
 	return { meetings, total };
 }

@@ -335,6 +335,13 @@ export const snoozeSchema = z.object({
 });
 export type SnoozeInput = z.infer<typeof snoozeSchema>;
 
+// --- Add a note (GitHub #191/#192/#193): POST /api/leads/[id]/notes,
+// POST /api/organizers/[id]/notes ------------------------------------------------
+export const addNoteSchema = z.object({
+	content: z.string().trim().min(1, 'Note cannot be empty').max(5000, 'Note is too long')
+});
+export type AddNoteInput = z.infer<typeof addNoteSchema>;
+
 // --- Scraper ingest contract (future; reused as the /api/leads/ingest validator) ---
 export const ingestLeadSchema = z.object({
 	pageName: z.string().min(1),

@@ -4,6 +4,7 @@ import { getLead, listUsers, listActivities, getLeadHistory } from '$lib/server/
 import { listMeetingsForLead } from '$lib/server/db/meetings';
 import { listTemplates } from '$lib/server/db/templates';
 import { getOrganizer, listOrganizersWithLeadCount } from '$lib/server/db/organizers';
+import { listNotesForLead } from '$lib/server/db/notes';
 import type { User } from '$lib/types';
 
 export const load: PageServerLoad = async ({ params, locals }) => {
@@ -21,11 +22,12 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 	// [P1] organizer-name resolution depends on lead.organizerId, so it must run AFTER the
 	// first Promise.all resolves and after the not-found guard — but it doesn't depend on
 	// activities/meetings/leadHistory, so it runs concurrently with them, not sequentially.
-	const [organizer, activities, meetings, leadHistory] = await Promise.all([
+	const [organizer, activities, meetings, leadHistory, notes] = await Promise.all([
 		lead.organizerId ? getOrganizer(lead.organizerId) : Promise.resolve(null),
 		listActivities(lead.id),
 		listMeetingsForLead(lead.id),
-		getLeadHistory(lead.id)
+		getLeadHistory(lead.id),
+		listNotesForLead(lead.id)
 	]);
 	lead.organizerName = organizer?.name;
 
@@ -37,5 +39,5 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		active: true
 	};
 
-	return { lead, activities, meetings, leadHistory, me, users, templates, organizers };
+	return { lead, activities, meetings, leadHistory, notes, me, users, templates, organizers };
 };

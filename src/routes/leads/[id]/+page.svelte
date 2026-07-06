@@ -15,6 +15,7 @@
 	import DedupBanner from '$lib/components/leads/DedupBanner.svelte';
 	import ActivityTimeline from '$lib/components/leads/ActivityTimeline.svelte';
 	import LogTouchForm from '$lib/components/leads/LogTouchForm.svelte';
+	import NotesPanel from '$lib/components/shared/NotesPanel.svelte';
 	import StageControl from '$lib/components/leads/StageControl.svelte';
 	import WonCaptureModal from '$lib/components/leads/WonCaptureModal.svelte';
 	import LostReasonModal from '$lib/components/leads/LostReasonModal.svelte';
@@ -238,6 +239,44 @@
 
 		await invalidateAll();
 		toasts.success('Touch logged · follow-up booked');
+	}
+
+	async function addNote(content: string) {
+		let res: Response;
+		try {
+			res = await fetch(`/api/leads/${lead.id}/notes`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ content })
+			});
+		} catch {
+			toasts.push('Note failed — server error');
+			throw new Error('network');
+		}
+		if (!res.ok) {
+			toasts.push('Note failed — please try again');
+			throw new Error('http');
+		}
+		await invalidateAll();
+	}
+
+	async function editNote(noteId: string, content: string) {
+		let res: Response;
+		try {
+			res = await fetch(`/api/notes/${noteId}`, {
+				method: 'PATCH',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ content })
+			});
+		} catch {
+			toasts.push('Note update failed — server error');
+			throw new Error('network');
+		}
+		if (!res.ok) {
+			toasts.push('Note update failed — please try again');
+			throw new Error('http');
+		}
+		await invalidateAll();
 	}
 
 	async function selectStage(stage: Stage) {
@@ -888,15 +927,6 @@
 					</div>
 				</div>
 
-				{#if lead.notes}
-					<div class="mb-4 rounded-control border border-hairline bg-panel p-4">
-						<div class="mb-2 font-mono text-[11px] uppercase tracking-[0.5px] text-ink-300">
-							Notes
-						</div>
-						<p class="whitespace-pre-wrap text-[13px] leading-relaxed text-ink-600">{lead.notes}</p>
-					</div>
-				{/if}
-
 				<div class="mb-4">
 					<ActivityTimeline
 						activities={data.activities}
@@ -1019,6 +1049,13 @@
 						</div>
 					</div>
 				</div>
+
+				<NotesPanel
+					notes={data.notes}
+					currentUserId={data.me.id}
+					onSubmit={addNote}
+					onEdit={editNote}
+				/>
 			</div>
 		</div>
 	</div>

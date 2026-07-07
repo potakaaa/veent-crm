@@ -309,6 +309,31 @@ export const crmLeadHistory = pgTable(
 );
 
 // ---------------------------------------------------------------------------
+// crm_notifications — in-app notification to a user (v1: lead-assignment only)
+// A single `read_at` column doubles as both read AND dismissed state — marking
+// read and dismissing are the same user action. `lead_id` is nullable/forward-
+// looking; v1 only ever writes type='lead_assigned'.
+// ---------------------------------------------------------------------------
+export const crmNotifications = pgTable(
+	'crm_notifications',
+	{
+		id: uuid('id').primaryKey().defaultRandom(),
+		userId: uuid('user_id')
+			.notNull()
+			.references(() => crmUsers.id, { onDelete: 'cascade' }),
+		leadId: uuid('lead_id').references(() => crmLeads.id, { onDelete: 'cascade' }),
+		type: text('type').notNull(),
+		message: text('message').notNull(),
+		readAt: timestamp('read_at', { withTimezone: true }),
+		createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow()
+	},
+	(t) => [
+		index('crm_notifications_user_idx').on(t.userId),
+		index('crm_notifications_user_unread_idx').on(t.userId, t.readAt)
+	]
+);
+
+// ---------------------------------------------------------------------------
 // crm_meetings — scheduled/logged meetings with a lead (organizer + attendees)
 // ---------------------------------------------------------------------------
 export const crmMeetings = pgTable(
@@ -518,3 +543,4 @@ export type CrmMeeting = typeof crmMeetings.$inferSelect;
 export type CrmMeetingAttendee = typeof crmMeetingAttendees.$inferSelect;
 export type CrmLeadVisibilityGrant = typeof crmLeadVisibilityGrants.$inferSelect;
 export type CrmMessageTemplate = typeof crmMessageTemplates.$inferSelect;
+export type CrmNotification = typeof crmNotifications.$inferSelect;

@@ -148,6 +148,21 @@ export interface Note {
 	createdAt: string;
 }
 
+/**
+ * An in-app notification to a user (v1: manager lead-assignment only). `readAt`
+ * doubles as read AND dismissed state. `leadName` is join-populated at the DB layer.
+ */
+export interface Notification {
+	id: string;
+	userId: string;
+	leadId: string | null;
+	leadName: string | null;
+	type: string;
+	message: string;
+	readAt: string | null;
+	createdAt: string;
+}
+
 export interface MeetingAttendee {
 	userId: string;
 	name: string;

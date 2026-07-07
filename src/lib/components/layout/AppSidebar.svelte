@@ -22,7 +22,7 @@
 		mobileOpen = $bindable(false)
 	}: {
 		user: User | null;
-		counts: { overdue: number; unassigned: number };
+		counts: { overdue: number; unassigned: number; unread: number };
 		mobileOpen?: boolean;
 	} = $props();
 
@@ -52,6 +52,12 @@
 		{ href: '/pipeline', label: 'Pipeline', icon: 'pipeline' },
 		{ href: '/organizers', label: 'Organizers', icon: 'organizers' },
 		{ href: '/reminders', label: 'Reminders', icon: 'reminders' },
+		{
+			href: '/notifications',
+			label: 'Notifications',
+			icon: 'bell',
+			badge: counts.unread || undefined
+		},
 		{ href: '/calendar', label: 'Calendar', icon: 'calendarDays' },
 		{ href: '/meetings', label: 'Meetings', icon: 'calendar' },
 		{ href: '/templates', label: 'Templates', icon: 'reply' }

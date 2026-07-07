@@ -4,7 +4,7 @@ export const load: LayoutLoad = async ({ url, data }) => {
 	if (url.pathname === '/login') {
 		return {
 			currentUser: null,
-			counts: { overdue: 0, unassigned: 0 },
+			counts: { overdue: 0, unassigned: 0, unread: 0 },
 			sidebarOpen: data.sidebarOpen
 		};
 	}

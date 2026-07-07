@@ -67,11 +67,10 @@
 	let selectedDate = $state<DateValue | undefined>(undefined);
 	let announcedDate = $state<DateValue | undefined>(undefined);
 	let reachedOutDate = $state<DateValue | undefined>(undefined);
-	// Per-field validation errors, keyed by field name (matches leadFormSchema keys +
-	// the manual `eventDateRaw` required check). Populated from
-	// `parsed.error.flatten().fieldErrors` so each field surfaces its own message with
-	// aria-invalid/aria-describedby (Phase 4). `submitError` holds transport/server-level
-	// failures that are not tied to a single field.
+	// Per-field validation errors, keyed by field name (matches leadFormSchema keys).
+	// Populated from `parsed.error.flatten().fieldErrors` so each field surfaces its own
+	// message with aria-invalid/aria-describedby (Phase 4). `submitError` holds
+	// transport/server-level failures that are not tied to a single field.
 	let fieldErrors = $state<Record<string, string[] | undefined>>({});
 	let submitError = $state('');
 	let saving = $state(false);
@@ -90,11 +89,6 @@
 
 	async function create() {
 		if (saving) return; // duplicate-submit guard
-		if (!selectedDate) {
-			fieldErrors = { eventDateRaw: ['Event date is required.'] };
-			submitError = '';
-			return;
-		}
 		const parsed = leadFormSchema.safeParse({
 			name,
 			platform: platform || undefined,
@@ -281,7 +275,6 @@
 				label="Event date"
 				title="Select event date"
 				bind:value={selectedDate}
-				required
 				fullWidth
 				errors={fieldErrors.eventDateRaw}
 			/>

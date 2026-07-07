@@ -225,6 +225,13 @@
       "when": 1783405500000,
       "tag": "0031_nav2_competitor_fields",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1783403762805,
+      "tag": "0032_thick_jamie_braddock",
+      "breakpoints": true
     }
   ]
 }

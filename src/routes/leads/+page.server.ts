@@ -33,6 +33,14 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		const d = new Date(rawDate + 'T00:00:00Z');
 		return isNaN(d.getTime()) || d.toISOString().slice(0, 10) !== rawDate ? '' : rawDate;
 	})();
+	const rawCreatedFrom = url.searchParams.get('createdFrom') ?? '';
+	const createdFrom = (() => {
+		if (!/^\d{4}-\d{2}-\d{2}$/.test(rawCreatedFrom)) return '';
+		const d = new Date(rawCreatedFrom + 'T00:00:00Z');
+		return isNaN(d.getTime()) || d.toISOString().slice(0, 10) !== rawCreatedFrom
+			? ''
+			: rawCreatedFrom;
+	})();
 	const rawDateField = url.searchParams.get('dateField') ?? '';
 	const dateField: 'event_date' | 'created_at' =
 		rawDateField === 'created_at' ? 'created_at' : 'event_date';
@@ -87,6 +95,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 			search: search || undefined,
 			date: date || undefined,
 			dateField: date ? dateField : undefined,
+			createdFrom: createdFrom || undefined,
 			page,
 			pageSize: PAGE_SIZE,
 			sort,
@@ -129,6 +138,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 			search,
 			date,
 			dateField,
+			createdFrom,
 			weeksAhead
 		},
 		sort: sort ?? 'event',

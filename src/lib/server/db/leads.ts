@@ -331,6 +331,7 @@ export interface ListLeadsParams {
 	search?: string;
 	date?: string;
 	dateField?: 'event_date' | 'created_at';
+	createdFrom?: string;
 	page?: number;
 	pageSize?: number;
 	sort?: string;
@@ -359,6 +360,7 @@ export async function listLeadsFiltered(
 		search,
 		date,
 		dateField,
+		createdFrom,
 		page = 1,
 		pageSize = 25,
 		sort,
@@ -435,6 +437,12 @@ export async function listLeadsFiltered(
 		} else {
 			conditions.push(sql`${crmLeads.eventDate} = ${date}::date`);
 		}
+	}
+
+	// "Added since" filter (from dashboard drill-through) — independent of the exact-date
+	// filter above; always scoped to created_at, lower-bound inclusive.
+	if (createdFrom && /^\d{4}-\d{2}-\d{2}$/.test(createdFrom)) {
+		conditions.push(sql`DATE(${crmLeads.createdAt}) >= ${createdFrom}::date`);
 	}
 
 	const where = and(...conditions);

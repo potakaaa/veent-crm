@@ -7,10 +7,10 @@ pre-commit:
   piped: true
   commands:
     lint:
-      run: bun run lint
+      run: npm run lint
     check:
-      run: bun run check
+      run: npm run check
     test:
-      run: bun run test:unit:ci
+      run: npm run test:unit:ci
     build:
-      run: bun run build
+      run: npm run build

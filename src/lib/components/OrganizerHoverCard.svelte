@@ -9,7 +9,7 @@
 	const handle = $derived(lead.handle.startsWith('@') ? lead.handle : `@${lead.handle}`);
 	const email = $derived(lead.email ?? '—');
 	const phone = $derived(lead.phone ?? '—');
-	const categoryLocation = $derived(`${lead.category} · ${lead.location || '—'}`);
+	const locationLabel = $derived(lead.location || '—');
 	const eventName = $derived(lead.eventName ?? '—');
 	const eventDate = $derived(lead.eventDate ? formatDate(lead.eventDate) : '—');
 	const owner = $derived(ownerName ?? 'Unassigned');
@@ -31,8 +31,8 @@
 		<dt class="text-ink-400">Phone</dt>
 		<dd class="text-ink">{phone}</dd>
 
-		<dt class="text-ink-400">Category</dt>
-		<dd class="text-ink">{categoryLocation}</dd>
+		<dt class="text-ink-400">Location</dt>
+		<dd class="text-ink">{locationLabel}</dd>
 
 		<dt class="text-ink-400">Event</dt>
 		<dd class="text-ink">{eventName} · {eventDate}</dd>

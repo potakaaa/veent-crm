@@ -14,12 +14,7 @@
 	import { Textarea } from '$lib/components/ui/textarea';
 	import { toasts } from '$lib/stores/toasts.svelte';
 	import { formatEventDate } from '$lib/utils/dates';
-	import {
-		leadUpdateSchema,
-		LEAD_CATEGORIES,
-		LEAD_PLATFORMS,
-		LEAD_VISIBILITIES
-	} from '$lib/zod/schemas';
+	import { leadUpdateSchema, LEAD_PLATFORMS, LEAD_VISIBILITIES } from '$lib/zod/schemas';
 	import { parseDate, type DateValue } from '@internationalized/date';
 	import { untrack } from 'svelte';
 
@@ -27,7 +22,6 @@
 	const lead = untrack(() => data.lead);
 
 	let name = $state(lead.name);
-	let category = $state<string>(lead.category);
 	let platform = $state<string>(lead.platform ?? '');
 	let location = $state(lead.location === '—' ? '' : (lead.location ?? ''));
 	let pageUrl = $state(lead.pageUrl ?? '');
@@ -89,7 +83,6 @@
 	async function save() {
 		const parsed = leadUpdateSchema.safeParse({
 			name,
-			category,
 			platform: platform || undefined,
 			location: location || undefined,
 			pageUrl: pageUrl || '',
@@ -155,15 +148,6 @@
 					search={fetchOrganizerNames}
 					placeholder="e.g. Christian Concerts PH"
 				/>
-			</div>
-			<div class="grid gap-1.5">
-				<Label for="category">Category <span class="text-ink-400">(optional)</span></Label>
-				<Select type="single" bind:value={category}>
-					<SelectTrigger id="category" class="w-full">{category}</SelectTrigger>
-					<SelectContent>
-						{#each LEAD_CATEGORIES as c (c)}<SelectItem value={c} label={c}>{c}</SelectItem>{/each}
-					</SelectContent>
-				</Select>
 			</div>
 			<div class="grid gap-1.5">
 				<Label for="platform">Platform <span class="text-ink-400">(optional)</span></Label>

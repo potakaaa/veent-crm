@@ -22,7 +22,7 @@
 	import { createHoverPopover } from '$lib/utils/hover-popover.svelte';
 	import { ownerNameFor } from '$lib/utils/owner';
 	import { formatEventDate } from '$lib/utils/dates';
-	import { leadFormSchema, LEAD_CATEGORIES, LEAD_PLATFORMS, LOOSE_UUID_RE } from '$lib/zod/schemas';
+	import { leadFormSchema, LEAD_PLATFORMS, LOOSE_UUID_RE } from '$lib/zod/schemas';
 	import type { DateValue } from '@internationalized/date';
 
 	let { data } = $props();
@@ -38,7 +38,6 @@
 	// Add Event pre-fill (GitHub #190): seed the organizer name from `?name=` when present.
 	// URLSearchParams.get() already decodes; a missing/empty param falls back to '' (no error UI).
 	let name = $state(page.url.searchParams.get('name') ?? '');
-	let category = $state<string>('Other');
 	let platform = $state<string>('');
 	let location = $state('');
 	let pageUrl = $state('');
@@ -96,7 +95,6 @@
 		}
 		const parsed = leadFormSchema.safeParse({
 			name,
-			category,
 			platform: platform || undefined,
 			location: location || undefined,
 			pageUrl: pageUrl || '',
@@ -213,15 +211,6 @@
 					{...fieldErrorAttrs('name', fieldErrors.name)}
 				/>
 				<FieldError id="name" errors={fieldErrors.name} />
-			</div>
-			<div class="grid gap-1.5">
-				<Label for="category">Category <span class="text-ink-400">(optional)</span></Label>
-				<Select type="single" bind:value={category}>
-					<SelectTrigger id="category" class="w-full">{category}</SelectTrigger>
-					<SelectContent>
-						{#each LEAD_CATEGORIES as c (c)}<SelectItem value={c} label={c}>{c}</SelectItem>{/each}
-					</SelectContent>
-				</Select>
 			</div>
 			<div class="grid gap-1.5">
 				<Label for="platform">Platform <span class="text-ink-400">(optional)</span></Label>

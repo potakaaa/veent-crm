@@ -65,8 +65,8 @@ export const OUTCOME_TOKENS: Record<string, { label: string; hex: string }> = {
 };
 
 /**
- * Message-template / lead category accents — one curated hue per `LEAD_CATEGORIES`
- * entry (see `src/lib/zod/schemas.ts`). Desaturated "-600" tones spread across the
+ * Message-template / lead category accents — one curated hue per `TEMPLATE_CATEGORIES`
+ * entry (see `src/lib/data/template-categories.ts`). Desaturated "-600" tones spread across the
  * hue wheel, matching the weight of `STAGE_TOKENS` above. Pure red is intentionally
  * excluded (reserved for `--color-primary` / `--color-overdue`) so a category chip
  * is never mistaken for a signal/brand color.

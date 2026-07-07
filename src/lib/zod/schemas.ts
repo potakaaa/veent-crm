@@ -15,29 +15,6 @@ export const LEAD_STAGES = [
 
 export const LEAD_PLATFORMS = ['Facebook', 'Instagram', 'Twitter/X', 'TikTok', 'Other'] as const;
 
-export const LEAD_CATEGORIES = [
-	'Sports',
-	'Workshop',
-	'Church',
-	'Theater',
-	'Bar/DJ',
-	'Conference',
-	'Music Fest',
-	'Fan Fair',
-	'School',
-	'Concert',
-	'Live Band',
-	'Expo',
-	'Screening',
-	'Camp',
-	'Competition',
-	'Convention',
-	'Film',
-	'Modelling',
-	'Resort',
-	'Other'
-] as const;
-
 export const ACTIVITY_CHANNELS = [
 	'fb_dm',
 	'fb_comment',
@@ -70,7 +47,6 @@ export const LOOSE_UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[
 export const leadFormSchema = z
 	.object({
 		name: z.string().trim().min(1, 'Page / organizer name is required'),
-		category: z.enum(LEAD_CATEGORIES).default('Other'),
 		platform: z.enum(LEAD_PLATFORMS).optional(),
 		location: z.string().optional(),
 		pageUrl: z.string().url().optional().or(z.literal('')),
@@ -97,7 +73,6 @@ export type LeadForm = z.infer<typeof leadFormSchema>;
 export const leadUpdateSchema = z
 	.object({
 		name: z.string().trim().min(1, 'Page / organizer name is required'),
-		category: z.enum(LEAD_CATEGORIES),
 		platform: z.enum(LEAD_PLATFORMS).optional(),
 		location: z.string().optional(),
 		pageUrl: z.string().url().optional().or(z.literal('')),
@@ -273,7 +248,9 @@ export type UserNameEditForm = z.infer<typeof userNameEditSchema>;
 // --- Add / edit an outreach message template (Superforms) ------------------
 export const templateFormSchema = z.object({
 	title: z.string().min(1, 'Title is required'),
-	category: z.enum(LEAD_CATEGORIES),
+	// Template category vocabulary is the frozen TEMPLATE_CATEGORIES list (CAT-1), not the
+	// editable crm_categories table — validated as a non-empty string on the wire.
+	category: z.string().min(1, 'Category is required'),
 	body: z.string().min(1, 'Message body is required')
 });
 export type TemplateForm = z.infer<typeof templateFormSchema>;
@@ -358,7 +335,7 @@ export const ingestLeadSchema = z.object({
 	facebookUrl: z.string().url().optional(),
 	instagramUrl: z.string().url().optional(),
 	platform: z.enum(LEAD_PLATFORMS).optional(),
-	category: z.enum(LEAD_CATEGORIES).optional(),
+	category: z.string().min(1).optional(),
 	location: z.string().optional(),
 	eventName: z.string().optional(),
 	eventDate: dateString.optional(),
@@ -415,3 +392,32 @@ export const tsvRowSchema = z.object({
 	venue_longitude: z.string()
 });
 export type TsvRow = z.infer<typeof tsvRowSchema>;
+
+// --- Custom lead categories (CAT-1, GitHub #248) --------------------------------
+// Create/rename an editable category; `color` is an optional 6-digit hex (e.g. #1a2b3c).
+export const categoryCreateSchema = z.object({
+	// trim BEFORE length checks so a blank/whitespace-only name is rejected (not coerced to '').
+	name: z.string().trim().min(1).max(50),
+	color: z
+		.string()
+		.regex(/^#[0-9a-fA-F]{6}$/)
+		.optional()
+		.nullable()
+});
+export type CategoryCreate = z.infer<typeof categoryCreateSchema>;
+
+export const categoryRenameSchema = z.object({
+	name: z.string().trim().min(1).max(50),
+	color: z
+		.string()
+		.regex(/^#[0-9a-fA-F]{6}$/)
+		.optional()
+		.nullable()
+});
+export type CategoryRename = z.infer<typeof categoryRenameSchema>;
+
+// Assign/remove a single category to/from a lead.
+export const assignCategoriesSchema = z.object({
+	categoryId: z.string().uuid()
+});
+export type AssignCategories = z.infer<typeof assignCategoriesSchema>;

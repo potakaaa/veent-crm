@@ -38,10 +38,7 @@ afterAll(async () => {
 });
 
 async function makeTestLead(name: string, stage: 'new' | 'contacted' | 'replied' = 'contacted') {
-	const lead = await createLead(
-		{ name: `${TEST_PREFIX} ${name}`, category: 'Sports' },
-		MANAGER_UUID
-	);
+	const lead = await createLead({ name: `${TEST_PREFIX} ${name}` }, MANAGER_UUID);
 	createdLeadIds.push(lead.id);
 	if (stage !== 'new') {
 		await db.update(crmLeads).set({ stage }).where(eq(crmLeads.id, lead.id));
@@ -50,10 +47,7 @@ async function makeTestLead(name: string, stage: 'new' | 'contacted' | 'replied'
 }
 
 async function makeOwnedLead(name: string, ownerId: string, visibility: Visibility = 'everyone') {
-	const lead = await createLead(
-		{ name: `${TEST_PREFIX} ${name}`, category: 'Sports', visibility },
-		ownerId
-	);
+	const lead = await createLead({ name: `${TEST_PREFIX} ${name}`, visibility }, ownerId);
 	createdLeadIds.push(lead.id);
 	return lead;
 }

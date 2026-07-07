@@ -59,7 +59,6 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	const lead = await createLead(
 		{
 			name: data.name,
-			category: data.category,
 			platform: data.platform,
 			location: data.location || undefined,
 			pageUrl: data.pageUrl || undefined,

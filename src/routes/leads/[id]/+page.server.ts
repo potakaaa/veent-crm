@@ -5,6 +5,8 @@ import { listMeetingsForLead } from '$lib/server/db/meetings';
 import { listTemplates } from '$lib/server/db/templates';
 import { getOrganizer, listOrganizersWithLeadCount } from '$lib/server/db/organizers';
 import { listNotesForLead } from '$lib/server/db/notes';
+import { getActiveCategories, getCategoriesForLead } from '$lib/server/db/categories';
+import { isManagerRole } from '$lib/utils/permissions';
 import type { User } from '$lib/types';
 
 export const load: PageServerLoad = async ({ params, locals }) => {
@@ -22,13 +24,16 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 	// [P1] organizer-name resolution depends on lead.organizerId, so it must run AFTER the
 	// first Promise.all resolves and after the not-found guard — but it doesn't depend on
 	// activities/meetings/leadHistory, so it runs concurrently with them, not sequentially.
-	const [organizer, activities, meetings, leadHistory, notes] = await Promise.all([
-		lead.organizerId ? getOrganizer(lead.organizerId) : Promise.resolve(null),
-		listActivities(lead.id),
-		listMeetingsForLead(lead.id),
-		getLeadHistory(lead.id),
-		listNotesForLead(lead.id)
-	]);
+	const [organizer, activities, meetings, leadHistory, notes, assignedCategories, allCategories] =
+		await Promise.all([
+			lead.organizerId ? getOrganizer(lead.organizerId) : Promise.resolve(null),
+			listActivities(lead.id),
+			listMeetingsForLead(lead.id),
+			getLeadHistory(lead.id),
+			listNotesForLead(lead.id),
+			getCategoriesForLead(lead.id),
+			getActiveCategories()
+		]);
 	lead.organizerName = organizer?.name;
 
 	const me: User = {
@@ -39,5 +44,18 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		active: true
 	};
 
-	return { lead, activities, meetings, leadHistory, notes, me, users, templates, organizers };
+	return {
+		lead,
+		activities,
+		meetings,
+		leadHistory,
+		notes,
+		me,
+		users,
+		templates,
+		organizers,
+		assignedCategories,
+		allCategories,
+		isManager: isManagerRole(locals.user.role)
+	};
 };

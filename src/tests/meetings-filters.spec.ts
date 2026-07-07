@@ -42,8 +42,8 @@ describe.skipIf(SKIP_DB)('listMeetingsPaginated — filter/sort (DB)', () => {
 			.onConflictDoNothing();
 		userIds.push(ORG_A, ORG_B);
 
-		const la = await createLead({ name: `${SEED} LeadA`, category: 'Sports' }, ORG_A);
-		const lb = await createLead({ name: `${SEED} LeadB`, category: 'Sports' }, ORG_A);
+		const la = await createLead({ name: `${SEED} LeadA` }, ORG_A);
+		const lb = await createLead({ name: `${SEED} LeadB` }, ORG_A);
 		leadA = la.id;
 		leadB = lb.id;
 		leadIds.push(la.id, lb.id);

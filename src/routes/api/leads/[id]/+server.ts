@@ -37,7 +37,6 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 		params.id,
 		{
 			name: data.name,
-			category: data.category,
 			platform: data.platform,
 			location: data.location || undefined,
 			pageUrl: data.pageUrl || undefined,

@@ -50,7 +50,7 @@ async function makeLead(
 		deletedAt?: Date;
 	} = {}
 ): Promise<string> {
-	const lead = await createLead({ name: `${TEST_PREFIX} ${name}`, category: 'Sports' }, ownerId);
+	const lead = await createLead({ name: `${TEST_PREFIX} ${name}` }, ownerId);
 	createdLeadIds.push(lead.id);
 	const patch: Record<string, unknown> = {};
 	if (opts.stage) patch.stage = opts.stage;

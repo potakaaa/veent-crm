@@ -24,6 +24,9 @@
 	import { buildOrganizerTagPatch } from '$lib/components/leads/organizer-tag';
 	import DiscardIssueModal from '$lib/components/leads/DiscardIssueModal.svelte';
 	import MeetingsPanel from '$lib/components/meetings/MeetingsPanel.svelte';
+	import CategoryChip from '$lib/components/categories/CategoryChip.svelte';
+	import CategoryAssignPanel from '$lib/components/categories/CategoryAssignPanel.svelte';
+	import CategoryManager from '$lib/components/categories/CategoryManager.svelte';
 	import { Tabs } from '$lib/components/ui/tabs';
 	import * as Popover from '$lib/components/ui/popover';
 	import { toasts } from '$lib/stores/toasts.svelte';
@@ -127,7 +130,6 @@
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
 					name: lead.name,
-					category: lead.category,
 					onboardingNotes,
 					contractUrl,
 					onboardingStartDate,
@@ -162,15 +164,41 @@
 	let reassignOpen = $state(false);
 	let organizerTagOpen = $state(false);
 	let discardOpen = $state(false);
+	let categoryManagerOpen = $state(false);
 
 	// Single shared mutation guard — prevents any two actions from running concurrently.
 	let mutating = $state(false);
+
+	// Remove a category assignment from this lead (CAT-1). invalidateAll() refreshes
+	// data.assignedCategories so the chip disappears.
+	async function removeCategory(categoryId: string) {
+		if (mutating) return;
+		mutating = true;
+		try {
+			const res = await fetch(`/api/leads/${lead.id}/categories`, {
+				method: 'DELETE',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ categoryId })
+			});
+			if (!res.ok) {
+				const msg = await res.text().catch(() => 'Server error');
+				toasts.push(`Remove failed: ${msg}`);
+				return;
+			}
+		} catch {
+			toasts.push('Remove failed — server error');
+			return;
+		} finally {
+			mutating = false;
+		}
+		await invalidateAll();
+		toasts.success('Category removed');
+	}
 
 	// DetailSkeleton while navigating to any lead-detail route (incl. id → id switches).
 	const navLoading = $derived(navigating.to?.route?.id === '/leads/[id]');
 
 	const fields = $derived([
-		{ label: 'Category', value: lead.category },
 		{ label: 'Location', value: lead.location },
 		{ label: 'Platform', value: lead.platform },
 		{
@@ -464,7 +492,7 @@
 							/>
 						</div>
 						<div class="mt-[5px] font-mono text-[12px] text-ink-300">
-							{lead.category} · {lead.location}
+							{lead.location}
 						</div>
 					</div>
 				</div>
@@ -855,6 +883,45 @@
 		>
 			<!-- LEFT -->
 			<div>
+				<!-- Categories (CAT-1) -->
+				<div class="mb-4 rounded-control border border-hairline bg-panel p-4">
+					<div class="mb-3 flex items-center justify-between">
+						<div class="font-mono text-[11px] uppercase tracking-[0.5px] text-ink-300">
+							Categories
+						</div>
+						{#if data.isManager}
+							<button
+								type="button"
+								class="font-mono text-[11px] text-blue-600 underline hover:text-blue-800"
+								onclick={() => (categoryManagerOpen = true)}
+							>
+								Manage categories
+							</button>
+						{/if}
+					</div>
+					{#if data.assignedCategories.length > 0}
+						<div class="mb-3 flex flex-wrap gap-1.5">
+							{#each data.assignedCategories as c (c.id)}
+								<CategoryChip
+									category={c}
+									removable={canEdit}
+									onRemove={() => removeCategory(c.id)}
+								/>
+							{/each}
+						</div>
+					{:else}
+						<div class="mb-3 text-[12px] text-ink-300">No categories assigned.</div>
+					{/if}
+					{#if canEdit}
+						<CategoryAssignPanel
+							leadId={lead.id}
+							allCategories={data.allCategories}
+							assignedCategories={data.assignedCategories}
+							onUpdate={() => {}}
+						/>
+					{/if}
+				</div>
+
 				<div class="mb-4 rounded-control border border-hairline bg-panel p-4">
 					<div class="mb-3 font-mono text-[11px] uppercase tracking-[0.5px] text-ink-300">
 						Lead &amp; event
@@ -1073,5 +1140,13 @@
 		saving={mutating}
 		onclose={() => (discardOpen = false)}
 		onconfirm={confirmDiscard}
+	/>
+{/if}
+{#if categoryManagerOpen}
+	<CategoryManager
+		open={true}
+		categories={data.allCategories}
+		onClose={() => (categoryManagerOpen = false)}
+		onUpdate={() => {}}
 	/>
 {/if}

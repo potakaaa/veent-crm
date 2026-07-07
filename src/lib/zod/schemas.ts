@@ -180,6 +180,8 @@ export const meetingFormSchema = z.object({
 	// explicit-clear both validate.
 	leadOrganizerId: z.string().uuid().optional().nullable(),
 	meetingUrl: z.string().url().optional().or(z.literal('')),
+	// Free-text meeting venue (GitHub #250) — no format/enum/length constraint.
+	venue: z.string().optional(),
 	notes: z.string().optional(),
 	outcome: z.string().optional(),
 	attendeeIds: z.array(z.string().uuid()).default([])
@@ -197,6 +199,8 @@ export const meetingUpdateSchema = z.object({
 	// organizerId: null clears the saved link on edit, undefined leaves it untouched.
 	leadOrganizerId: z.string().uuid().nullable().optional(),
 	meetingUrl: z.string().url().optional().or(z.literal('')),
+	// Free-text meeting venue (GitHub #250) — no format/enum/length constraint.
+	venue: z.string().optional(),
 	notes: z.string().optional(),
 	outcome: z.string().optional(),
 	attendeeIds: z.array(z.string().uuid()).optional()

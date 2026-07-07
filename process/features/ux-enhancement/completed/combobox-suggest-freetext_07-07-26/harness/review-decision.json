@@ -1,0 +1,11 @@
+{
+	"task": "GitHub #250 — combobox-freetext PLAN: add nullable `venue` text column to crm_meetings",
+	"reviewer": "orchestrator (Claude Code main session), under user's standing execution authorization",
+	"decision": "approved",
+	"blockingFindings": [],
+	"nonBlockingFindings": [
+		"No Svelte component-test harness exists in this repo (vitest excludes *.svelte.{test,spec}) — inherited test-infra known-gap from VALIDATE, unrelated to the schema-migration risk class itself, tracked separately in the plan's Test Infra Improvement Notes."
+	],
+	"notes": "The schema/migration risk class is triggered by an additive-only change: one new nullable `venue text` column on `crm_meetings`, no existing column altered, no backfill, no destructive write, no NOT NULL constraint. Migration-journal drift pre-flight is clean (idx 25 matches highest .sql file, no stray/duplicate-prefix files) so migration 0026 is safe to author as the next sequential file. Both call sites needing the new field (2 API routes' auto-spread + 2 hand-built PATCH bodies) are explicitly checklisted in the PLAN and independently re-verified at VALIDATE. Rollback risk is low: reverting the migration would only need to drop a nullable column with no dependents. Approved to proceed to EXECUTE. Scoped to the schema/migration surface only — the shared-component and wiring work carry no elevated risk class and are covered by the normal VALIDATE gate (CONDITIONAL, 0 FAILs) already recorded in the plan file.",
+	"timestamp": "2026-07-07T00:00:00Z"
+}

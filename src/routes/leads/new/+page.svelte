@@ -12,6 +12,8 @@
 	import { Button } from '$lib/components/ui/button';
 	import { Select, SelectTrigger, SelectContent, SelectItem } from '$lib/components/ui/select';
 	import { FieldError, fieldErrorAttrs } from '$lib/components/ui/field-error';
+	import { ComboboxFreetext } from '$lib/components/ui/combobox-freetext';
+	import { fetchOrganizerNames } from '$lib/utils/organizer-suggest';
 	import * as Popover from '$lib/components/ui/popover';
 	import OrganizerHoverCard from '$lib/components/OrganizerHoverCard.svelte';
 	import DatePickerField from '$lib/components/leads/DatePickerField.svelte';
@@ -201,9 +203,10 @@
 		<CardContent class="grid grid-cols-1 gap-4 sm:grid-cols-2">
 			<div class="grid gap-1.5 sm:col-span-2">
 				<Label for="name">Page / organizer name</Label>
-				<Input
+				<ComboboxFreetext
 					id="name"
 					bind:value={name}
+					search={fetchOrganizerNames}
 					placeholder="e.g. Christian Concerts PH"
 					{...fieldErrorAttrs('name', fieldErrors.name)}
 				/>

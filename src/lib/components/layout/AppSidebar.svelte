@@ -36,6 +36,12 @@
 
 	const work: NavItem[] = $derived([
 		{
+			href: '/unassigned',
+			label: 'Unassigned Leads',
+			icon: 'unassigned',
+			badge: counts.unassigned || undefined
+		},
+		{
 			href: '/',
 			label: 'Today',
 			icon: 'today',
@@ -45,12 +51,6 @@
 		{ href: '/leads', label: 'My Leads', icon: 'leads' },
 		{ href: '/pipeline', label: 'Pipeline', icon: 'pipeline' },
 		{ href: '/organizers', label: 'Organizers', icon: 'organizers' },
-		{
-			href: '/unassigned',
-			label: 'Up for grabs',
-			icon: 'unassigned',
-			badge: counts.unassigned || undefined
-		},
 		{ href: '/reminders', label: 'Reminders', icon: 'reminders' },
 		{ href: '/calendar', label: 'Calendar', icon: 'calendarDays' },
 		{ href: '/meetings', label: 'Meetings', icon: 'calendar' },

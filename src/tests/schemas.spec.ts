@@ -244,6 +244,79 @@ describe('meetingUpdateSchema leadOrganizerId (edit)', () => {
 });
 
 // ---------------------------------------------------------------------------
+// Meeting Venue free-text field (GitHub #250, AC1)
+// ---------------------------------------------------------------------------
+describe('meetingFormSchema venue (#250 AC1)', () => {
+	const base = {
+		leadId: '11111111-1111-4111-8111-111111111111',
+		startAt: '2026-07-06T10:00:00.000Z'
+	};
+
+	it('accepts an arbitrary free-text venue string', () => {
+		const r = meetingFormSchema.safeParse({ ...base, venue: 'Ayala Center Cebu, 3rd Floor' });
+		expect(r.success).toBe(true);
+		if (r.success) expect(r.data.venue).toBe('Ayala Center Cebu, 3rd Floor');
+	});
+
+	it('accepts an omitted venue (optional)', () => {
+		const r = meetingFormSchema.safeParse(base);
+		expect(r.success).toBe(true);
+		if (r.success) expect(r.data.venue).toBeUndefined();
+	});
+
+	it('accepts an empty-string venue (no min-length constraint)', () => {
+		const r = meetingFormSchema.safeParse({ ...base, venue: '' });
+		expect(r.success).toBe(true);
+	});
+
+	it('imposes no format constraint (URLs, punctuation, emoji all valid)', () => {
+		const r = meetingFormSchema.safeParse({ ...base, venue: 'https://maps.app/x — Room #2 🎪' });
+		expect(r.success).toBe(true);
+	});
+});
+
+describe('meetingUpdateSchema venue (#250 AC1)', () => {
+	it('accepts an arbitrary free-text venue string on edit', () => {
+		const r = meetingUpdateSchema.safeParse({ venue: 'SM Seaside' });
+		expect(r.success).toBe(true);
+		if (r.success) expect(r.data.venue).toBe('SM Seaside');
+	});
+
+	it('accepts an omitted venue (field untouched)', () => {
+		const r = meetingUpdateSchema.safeParse({});
+		expect(r.success).toBe(true);
+		if (r.success) expect(r.data.venue).toBeUndefined();
+	});
+
+	it('accepts an empty-string venue (cleared)', () => {
+		const r = meetingUpdateSchema.safeParse({ venue: '' });
+		expect(r.success).toBe(true);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Organizer Name stays free-text — no enum / must-match constraint (GitHub #250, AC3)
+// ---------------------------------------------------------------------------
+describe('lead name field is free-text (#250 AC3)', () => {
+	it('leadFormSchema accepts a brand-new organizer name with no matching suggestion', () => {
+		const r = leadFormSchema.safeParse({ name: 'Totally New Organizer 12345 !@#' });
+		expect(r.success).toBe(true);
+		if (r.success) expect(r.data.name).toBe('Totally New Organizer 12345 !@#');
+	});
+
+	it('leadUpdateSchema accepts a brand-new organizer name (no enum/refine block)', () => {
+		const r = leadUpdateSchema.safeParse({ name: 'Some Unlisted Venue Org', category: 'Other' });
+		expect(r.success).toBe(true);
+		if (r.success) expect(r.data.name).toBe('Some Unlisted Venue Org');
+	});
+
+	it('trims and requires non-empty (the ONLY constraint — no membership check)', () => {
+		expect(leadFormSchema.safeParse({ name: '   ' }).success).toBe(false);
+		expect(leadFormSchema.safeParse({ name: 'A' }).success).toBe(true);
+	});
+});
+
+// ---------------------------------------------------------------------------
 // Custom lead categories (CAT-1, GitHub #248) — create / rename / assign schemas
 // ---------------------------------------------------------------------------
 describe('categoryCreateSchema (CAT-1 AC-1 / AC-10)', () => {

@@ -5,6 +5,7 @@
 import { describe, it, expect } from 'vitest';
 import { moveStageSchema, ownerUpdateSchema } from '$lib/zod/schemas';
 import { BOARD_STAGES } from '$lib/utils/stages';
+import { resolvePipelineRepFilter } from '$lib/server/db/leads';
 
 // ---------------------------------------------------------------------------
 // moveStageSchema — server-side validation for PATCH /api/leads/[id]/stage
@@ -113,5 +114,41 @@ describe('moveStageSchema — live stage (GitHub #194)', () => {
 	it('accepts the live stage', () => {
 		const r = moveStageSchema.safeParse({ stage: 'live' });
 		expect(r.success).toBe(true);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// resolvePipelineRepFilter — manager-only AE-filter trust-boundary DECISION (PIPE-4, AC1/AC4)
+// Pure function: which owner id (if any) the `?rep=` param resolves to per role/input.
+// ---------------------------------------------------------------------------
+
+describe('resolvePipelineRepFilter', () => {
+	const REP_ID = '00000000-0000-0000-0000-0000000000aa';
+	const OTHER_REP_ID = '00000000-0000-0000-0000-0000000000bb';
+	const MANAGER_ID = '00000000-0000-0000-0000-0000000000cc';
+
+	it('(a) manager + valid UUID → that UUID', () => {
+		expect(resolvePipelineRepFilter('manager', REP_ID)).toBe(REP_ID);
+	});
+
+	it('(b) manager + own UUID → own UUID ("Mine")', () => {
+		expect(resolvePipelineRepFilter('manager', MANAGER_ID)).toBe(MANAGER_ID);
+	});
+
+	it('(c) manager + malformed string → undefined', () => {
+		expect(resolvePipelineRepFilter('manager', 'not-a-uuid')).toBeUndefined();
+	});
+
+	it('(d) rep + valid UUID → undefined (trust boundary — a rep can never filter)', () => {
+		expect(resolvePipelineRepFilter('rep', OTHER_REP_ID)).toBeUndefined();
+	});
+
+	it('(e) no param → undefined', () => {
+		expect(resolvePipelineRepFilter('manager', null)).toBeUndefined();
+		expect(resolvePipelineRepFilter('manager', undefined)).toBeUndefined();
+	});
+
+	it('(f) super_manager + valid UUID → that UUID', () => {
+		expect(resolvePipelineRepFilter('super_manager', REP_ID)).toBe(REP_ID);
 	});
 });

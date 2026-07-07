@@ -1,10 +1,10 @@
 import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { listPipelineStage } from '$lib/server/db/leads';
+import { listPipelineStage, resolvePipelineRepFilter } from '$lib/server/db/leads';
 import { computeAppealScore, today } from '$lib/appeal-score';
 import type { Stage } from '$lib/types';
 
-const BOARD_STAGES = ['new', 'contacted', 'replied', 'in_discussion', 'won'] as const;
+const BOARD_STAGES = ['new', 'contacted', 'replied', 'in_discussion', 'won', 'live'] as const;
 type BoardStage = (typeof BOARD_STAGES)[number];
 
 export const GET: RequestHandler = async ({ url, locals }) => {
@@ -18,12 +18,25 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		50,
 		Math.max(1, parseInt(url.searchParams.get('limit') ?? '10', 10) || 10)
 	);
+	// Manager-only AE filter — MUST mirror the loader (E2). Read `?rep=` only for
+	// managers/super_managers and re-guard through resolvePipelineRepFilter so lazy-loaded
+	// pages stay consistent with the filtered initial load and never leak to a rep.
+	const isManager = locals.user.role === 'manager' || locals.user.role === 'super_manager';
+	const filterRepId = resolvePipelineRepFilter(
+		locals.user.role,
+		isManager ? url.searchParams.get('rep') : null
+	);
+	// Server-side search (`?q=`) — reaches leads on unloaded lazy pages. Threaded into the same
+	// where-clause builder as the SSR loader; absent `q` = unchanged behavior.
+	const search = url.searchParams.get('q') ?? undefined;
 	const result = await listPipelineStage(
 		stage as BoardStage as Stage,
 		page,
 		limit,
 		locals.user.id,
-		locals.user.role
+		locals.user.role,
+		filterRepId,
+		search
 	);
 	// Badge-only: attach derived Lead Appeal Score per card (never persisted), matching the
 	// pipeline loader so lazy-loaded cards score identically to the initial server load.

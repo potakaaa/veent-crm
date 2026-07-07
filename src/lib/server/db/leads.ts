@@ -11,6 +11,7 @@ import {
 	crmLeadVisibilityGrants,
 	crmOrganizers
 } from './schema';
+import { createLeadAssignedNotification, getUnreadNotificationCount } from './notifications';
 import {
 	eq,
 	isNull,
@@ -1322,7 +1323,7 @@ export async function reassignLead(
 	actorId: string
 ): Promise<Lead | null> {
 	const [existing] = await db
-		.select({ ownerId: crmLeads.ownerId })
+		.select({ ownerId: crmLeads.ownerId, name: crmLeads.name })
 		.from(crmLeads)
 		.where(and(eq(crmLeads.id, id), isNull(crmLeads.deletedAt)))
 		.limit(1);
@@ -1350,6 +1351,13 @@ export async function reassignLead(
 			oldValue: existing.ownerId,
 			newValue: ownerId
 		});
+
+		// Notify the new owner (E1: LAST statement in this transaction — after the
+		// visibility-reset, grant-delete, and history-insert above; do not reorder).
+		// Shares the reassignment's all-or-nothing semantics: if this insert fails the
+		// whole PATCH rolls back (a reassignment without a notification is a worse
+		// silent partial-success than failing outright).
+		await createLeadAssignedNotification(tx, ownerId, id, existing.name);
 
 		return rows[0];
 	});
@@ -1750,11 +1758,12 @@ export async function logLeadTouch(
 export async function getNavCounts(
 	userId: string,
 	role: Role = 'rep'
-): Promise<{ overdue: number; unassigned: number }> {
+): Promise<{ overdue: number; unassigned: number; unread: number }> {
 	// Overdue count flows through getTodayQueue (owner-scoped + visibility-guarded). The
 	// unassigned sub-count is visibility-EXEMPT (unowned leads always visible — SPEC), so
-	// visibilityCondition is intentionally NOT applied to it (E3).
-	const [todayLeads, [unassignedRow]] = await Promise.all([
+	// visibilityCondition is intentionally NOT applied to it (E3). The unread sub-count is
+	// user-scoped to `userId` only (a user only ever sees their own notifications).
+	const [todayLeads, [unassignedRow], unread] = await Promise.all([
 		getTodayQueue(userId, role),
 		db
 			.select({ count: sql<number>`COUNT(*)` })
@@ -1766,12 +1775,14 @@ export async function getNavCounts(
 					ne(crmLeads.stage, 'won'),
 					ne(crmLeads.stage, 'lost')
 				)
-			)
+			),
+		getUnreadNotificationCount(userId)
 	]);
 
 	return {
 		overdue: todayLeads.filter((l) => l.urgency === 'overdue').length,
-		unassigned: Number(unassignedRow?.count ?? 0)
+		unassigned: Number(unassignedRow?.count ?? 0),
+		unread
 	};
 }
 

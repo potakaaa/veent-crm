@@ -1,0 +1,52 @@
+{
+  "phase": "EVL",
+  "plan": "process/features/calendar/completed/cal-3-owner-filter_06-07-26/cal-3-owner-filter_PLAN_06-07-26.md",
+  "branch": "feat/208-cal-3-calendar-owner-filter",
+  "date": "2026-07-07",
+  "risk_class": "low",
+  "gates": [
+    {
+      "gate": "bun run check",
+      "purpose": "TypeScript + svelte-check (AC10)",
+      "exit_code": 0,
+      "result": "PASS",
+      "notes": "0 errors, 1 pre-existing warning in leads/[id]/+page.svelte (state_referenced_locally) — unrelated to CAL-3"
+    },
+    {
+      "gate": "bun run lint",
+      "purpose": "Prettier + ESLint (AC10)",
+      "exit_code": 0,
+      "result": "PASS",
+      "notes": "0 errors, 1 warning svelte/require-each-key at calendar/+page.svelte:264 (non-blocking; CAL-3-touched file)"
+    },
+    {
+      "gate": "bun run test:unit:ci",
+      "purpose": "Vitest — CAL3-AC1/AC3/AC5/AC8 DB-free assertions",
+      "exit_code": 0,
+      "result": "PASS",
+      "notes": "28 files passed, 8 skipped; 383 tests passed, 148 skipped. CAL3-AC1/AC3/AC5 are synchronous .toSQL() tests; CAL3-AC8 is the source/arity guard and route-source check — all ran and passed (not among skipped)."
+    }
+  ],
+  "structural_verifications": [
+    {
+      "check": "CAL3-AC1/AC3/AC5/AC8 test blocks present in src/tests/calendar-db.spec.ts",
+      "result": "PASS",
+      "evidence": "describe blocks at lines 185, 210, 238, 263"
+    },
+    {
+      "check": "listAllMeetings() called with no arguments in calendar/+page.server.ts",
+      "result": "PASS",
+      "evidence": "line 41: listAllMeetings() argument-free"
+    },
+    {
+      "check": "filterRepId gated by isManager in calendar/+page.server.ts",
+      "result": "PASS",
+      "evidence": "line 28: const filterRepId = isManager ? (url.searchParams.get('repId') ?? undefined) : undefined;"
+    }
+  ],
+  "overall": "DONE",
+  "known_gaps": [
+    "AC2/AC4/AC6/AC7/AC9/AC11 — Agent-Probe render/interaction, blocked by shared Playwright auth fixture (pre-accepted, documented)",
+    "AC8 data-level meeting-count-under-filter — auth-fixture-blocked Agent-Probe (structural + route-source guard are compensating controls)"
+  ]
+}

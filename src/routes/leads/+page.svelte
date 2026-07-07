@@ -11,8 +11,10 @@
 	import { Tabs } from '$lib/components/ui/tabs';
 	import { Badge } from '$lib/components/ui/badge';
 	import * as Popover from '$lib/components/ui/popover';
+	import RepFilterCombobox from '$lib/components/ui/rep-filter-combobox/RepFilterCombobox.svelte';
 	import { LEAD_STAGES, LEAD_PLATFORMS } from '$lib/zod/schemas';
 	import { stageLabel } from '$lib/utils/stages';
+	import { isManagerRole } from '$lib/utils/permissions';
 	import type { LeadSegment } from '$lib/types';
 
 	let { data } = $props();
@@ -65,6 +67,23 @@
 
 	function setFilter(key: string, value: string | boolean | number | undefined) {
 		navigate({ [key]: value, page: undefined }); // reset page (delete param = default 1)
+	}
+
+	// Owner combobox reconciliation (GitHub #226): the server ANDs the `segment==='mine'`
+	// condition (scoped to the current session user) with the explicit `ownerId` param, so a
+	// specific-owner selection under the default `segment=mine` would contradict and return
+	// nothing. Change owner + segment together so the two never fight.
+	function setOwnerFilter(id: string) {
+		if (id === '' /* "All owners" */) {
+			// Show every owner's leads: clear owner, widen segment to `all`.
+			navigate({ owner: undefined, segment: 'all', page: undefined });
+		} else if (id === data.me.id /* "Mine" quick filter */) {
+			// Back to the manager's own leads: drop owner, reset segment to default `mine`.
+			navigate({ owner: undefined, segment: undefined, page: undefined });
+		} else {
+			// A specific other owner: widen segment to `all` so only the explicit owner filter applies.
+			navigate({ owner: id, segment: 'all', page: undefined });
+		}
 	}
 
 	async function setSegment(seg: LeadSegment) {
@@ -188,6 +207,17 @@
 				options={data.countries}
 				selected={data.filters.country ?? ''}
 				onchange={(v) => setFilter('country', (v as string) || undefined)}
+			/>
+		{/if}
+
+		{#if isManagerRole(data.me.role)}
+			<RepFilterCombobox
+				users={data.users}
+				selectedId={data.filters.owner || (data.filters.segment === 'mine' ? data.me.id : '')}
+				currentUserId={data.me.id}
+				allLabel="All owners"
+				placeholder="Search owners..."
+				onSelect={setOwnerFilter}
 			/>
 		{/if}
 

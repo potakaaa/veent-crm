@@ -324,6 +324,7 @@ export interface ListLeadsParams {
 	stage?: string;
 	platform?: string;
 	country?: string;
+	ownerId?: string;
 	staleOnly?: boolean;
 	hasFutureEvents?: boolean;
 	weeksAhead?: number | null;
@@ -351,6 +352,7 @@ export async function listLeadsFiltered(
 		stage,
 		platform,
 		country,
+		ownerId,
 		staleOnly = false,
 		hasFutureEvents = false,
 		weeksAhead = 8,
@@ -383,6 +385,9 @@ export async function listLeadsFiltered(
 
 	// Country filter (normalized country column)
 	if (country) conditions.push(eq(crmLeads.country, country));
+
+	// Owner filter (GitHub #226) — manager/super_manager only; validated caller-side.
+	if (ownerId) conditions.push(eq(crmLeads.ownerId, ownerId));
 
 	// Stale only: no activity for > 30 days
 	if (staleOnly) {
@@ -1330,19 +1335,33 @@ export async function getTodayQueue(userId: string, role: Role = 'rep'): Promise
 
 /**
  * Lead-level predicate for the calendar follow-up query. Isolated as a pure,
- * DB-free helper so the AC3 regression guard can assert the `ownerId` scoping
- * predicate is present WITHOUT a live DB connection (see Validate Contract E1).
+ * DB-free helper so the owner-scope guards can assert the predicate via `.toSQL()`
+ * WITHOUT a live DB connection (see Validate Contract).
  *
- * MUST keep `eq(crmLeads.ownerId, userId)` — dropping it would leak other reps'
- * follow-ups onto the signed-in user's calendar (the single flagged regression risk).
+ * Owner-scope rule (CAL-3, GitHub #208) — three cases:
+ *   - `role === 'rep'`                         → `eq(ownerId, userId)` (strict; always own)
+ *   - manager/super_manager, no `filterRepId`  → no owner predicate (team-wide)
+ *   - manager/super_manager, `filterRepId` set → `eq(ownerId, filterRepId)`
+ *
+ * `filterRepId` may legitimately equal the manager's own UUID (the "Mine" view) — it is
+ * any user UUID, not necessarily a rep's. Reps NEVER honor `filterRepId` (defense in depth:
+ * the route also drops a rep's `?repId`). Dropping the rep owner predicate would leak other
+ * reps' follow-ups onto the signed-in rep's calendar (the single flagged regression risk).
+ * `role` defaults to `'rep'` so existing callers stay strict-owner (backward compatible).
  */
-export function buildFollowUpsRangeLeadConditions(userId: string): SQL[] {
-	return [
+export function buildFollowUpsRangeLeadConditions(
+	userId: string,
+	role: Role = 'rep',
+	filterRepId?: string
+): SQL[] {
+	const conditions: SQL[] = [
 		isNull(crmLeads.deletedAt) as SQL,
-		eq(crmLeads.ownerId, userId),
 		ne(crmLeads.stage, 'won'),
 		ne(crmLeads.stage, 'lost')
 	];
+	if (role === 'rep') conditions.push(eq(crmLeads.ownerId, userId));
+	else if (filterRepId) conditions.push(eq(crmLeads.ownerId, filterRepId));
+	return conditions;
 }
 
 /**
@@ -1367,17 +1386,19 @@ export function isWithinRange(
  * Adapts getTodayQueue's DISTINCT ON "current follow-up per lead" pattern: the
  * latest touch's follow-up wins per lead, then leads are filtered to those whose
  * current follow-up lands in the visible window. Owner scoping is preserved via
- * buildFollowUpsRangeLeadConditions (AC3). Does NOT modify getTodayQueue/getRemindersQueue.
+ * buildFollowUpsRangeLeadConditions (CAL-3). Does NOT modify getTodayQueue/getRemindersQueue.
  */
 export async function getFollowUpsInRange(
 	userId: string,
 	rangeStart: Date,
-	rangeEnd: Date
+	rangeEnd: Date,
+	role: Role = 'rep',
+	filterRepId?: string
 ): Promise<Lead[]> {
 	const rows = await db
 		.select()
 		.from(crmLeads)
-		.where(and(...buildFollowUpsRangeLeadConditions(userId)))
+		.where(and(...buildFollowUpsRangeLeadConditions(userId, role, filterRepId)))
 		.orderBy(desc(sql`coalesce(${crmLeads.lastActivityAt}, ${crmLeads.createdAt})`));
 
 	if (rows.length === 0) return [];
@@ -1435,17 +1456,37 @@ export function buildGoLiveRangeConditions(): SQL[] {
 }
 
 /**
+ * Shared WHERE composition for the go-live calendar query. Exported so tests can assert
+ * the exact SQL `getGoLiveDatesInRange` produces without a live DB. Composes the base
+ * range conditions + the `visibilityCondition` leak guard + the CAL-3 owner-narrow term:
+ *   - `role === 'rep'`                         → `eq(ownerId, userId)` (strict; AC1)
+ *   - manager/super_manager, no `filterRepId`  → no owner-narrow (team-wide; AC3)
+ *   - manager/super_manager, `filterRepId` set → `eq(ownerId, filterRepId)` (AC5)
+ * For a rep, `visibilityCondition` already contains `owner=me`, so the extra owner-narrow
+ * simply tightens to strict-owner without weakening the restricted-lead leak guard.
+ * `filterRepId` may equal the manager's own UUID ("Mine" view); reps never honor it.
+ */
+export function buildGoLiveWhereClause(userId: string, role: Role, filterRepId?: string) {
+	const conditions: SQL[] = [...buildGoLiveRangeConditions(), visibilityCondition(userId, role)];
+	if (role === 'rep') conditions.push(eq(crmLeads.ownerId, userId));
+	else if (filterRepId) conditions.push(eq(crmLeads.ownerId, filterRepId));
+	return and(...conditions);
+}
+
+/**
  * Returns live-stage leads whose `goLiveDate` falls within [rangeStart, rangeEnd] —
- * the read model for go-live milestone entries on the calendar. Team-wide, BUT the
- * enforced `visibilityCondition(userId, role)` predicate is applied so restricted
- * (`only_me` / `selected`) live leads never leak onto other users' calendars (concern C2).
+ * the read model for go-live milestone entries on the calendar. Owner-scoped per CAL-3
+ * (rep → own only; manager → team-wide or narrowed to `filterRepId`), with the enforced
+ * `visibilityCondition(userId, role)` predicate applied so restricted (`only_me` /
+ * `selected`) live leads never leak onto other users' calendars (concern C2).
  * Selects only `name` for the calendar title — never the derived `handle` (concern C1).
  */
 export async function getGoLiveDatesInRange(
 	rangeStart: Date,
 	rangeEnd: Date,
 	userId: string,
-	role: Role
+	role: Role,
+	filterRepId?: string
 ): Promise<LiveLeadSummary[]> {
 	const rows = await db
 		.select({
@@ -1454,7 +1495,7 @@ export async function getGoLiveDatesInRange(
 			goLiveDate: crmLeads.goLiveDate
 		})
 		.from(crmLeads)
-		.where(and(...buildGoLiveRangeConditions(), visibilityCondition(userId, role)));
+		.where(buildGoLiveWhereClause(userId, role, filterRepId));
 
 	return rows
 		.map((row) => ({
@@ -1502,16 +1543,29 @@ export function buildEventStartRangeConditions(): SQL[] {
 
 /**
  * Shared WHERE composition for the event-start calendar query. Exported so tests
- * can assert the exact SQL `getEventDatesInRange` produces without a live DB.
+ * can assert the exact SQL `getEventDatesInRange` produces without a live DB. Composes
+ * the base range conditions + the `visibilityCondition` leak guard + the CAL-3
+ * owner-narrow term:
+ *   - `role === 'rep'`                         → `eq(ownerId, userId)` (strict; AC1)
+ *   - manager/super_manager, no `filterRepId`  → no owner-narrow (team-wide; AC3)
+ *   - manager/super_manager, `filterRepId` set → `eq(ownerId, filterRepId)` (AC5)
+ * `filterRepId` may equal the manager's own UUID ("Mine" view); reps never honor it.
  */
-export function buildEventStartWhereClause(userId: string, role: Role) {
-	return and(...buildEventStartRangeConditions(), visibilityCondition(userId, role));
+export function buildEventStartWhereClause(userId: string, role: Role, filterRepId?: string) {
+	const conditions: SQL[] = [
+		...buildEventStartRangeConditions(),
+		visibilityCondition(userId, role)
+	];
+	if (role === 'rep') conditions.push(eq(crmLeads.ownerId, userId));
+	else if (filterRepId) conditions.push(eq(crmLeads.ownerId, filterRepId));
+	return and(...conditions);
 }
 
 /**
  * Returns live-stage leads whose `eventDate` falls within [rangeStart, rangeEnd] —
- * the read model for event-start milestone entries on the calendar. Team-wide, BUT the
- * enforced `visibilityCondition(userId, role)` predicate is applied so restricted
+ * the read model for event-start milestone entries on the calendar. Owner-scoped per
+ * CAL-3 (rep → own only; manager → team-wide or narrowed to `filterRepId`), with the
+ * enforced `visibilityCondition(userId, role)` predicate applied so restricted
  * (`only_me` / `selected`) live leads never leak onto other users' calendars (AC7).
  * Selects only `name` for the calendar title — never the derived `handle`.
  */
@@ -1519,7 +1573,8 @@ export async function getEventDatesInRange(
 	rangeStart: Date,
 	rangeEnd: Date,
 	userId: string,
-	role: Role
+	role: Role,
+	filterRepId?: string
 ): Promise<EventStartSummary[]> {
 	const rows = await db
 		.select({
@@ -1528,7 +1583,7 @@ export async function getEventDatesInRange(
 			eventDate: crmLeads.eventDate
 		})
 		.from(crmLeads)
-		.where(buildEventStartWhereClause(userId, role));
+		.where(buildEventStartWhereClause(userId, role, filterRepId));
 
 	return rows
 		.map((row) => ({

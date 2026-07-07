@@ -204,7 +204,7 @@
 		<div class="flex min-h-0 flex-1 gap-3.5 overflow-x-auto pb-2" data-testid="pipeline-skeleton">
 			{#each Array(5) as _, i (i)}
 				<div
-					class="flex min-w-[260px] flex-1 flex-col gap-2 rounded-frame border border-hairline bg-panel-subtle p-2"
+					class="flex w-[380px] shrink-0 flex-col gap-2 rounded-frame border border-hairline bg-panel-subtle p-2"
 				>
 					<CardSkeleton />
 					<CardSkeleton />

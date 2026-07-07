@@ -195,7 +195,7 @@ Rename and delete controls for categories are only visible to users with `role =
 - `strategy:` Hybrid
 
 **AC-9 — Seeded default categories present after migration**
-After running the migration, all 20 previously hardcoded enum values exist as active rows in `crm_categories` (deletedAt IS NULL, names match the enum values verbatim). Each lead that previously had a `category` value has exactly one matching join row in `crm_lead_categories`.
+After running the migration, all 20 previously hardcoded enum values exist as active rows in `crm_categories` (deletedAt IS NULL, names match the enum values verbatim). Each non-deleted lead that previously had a `category` value has exactly one matching join row in `crm_lead_categories`.
 - `proven by:` Vitest unit test: seed list completeness (assert the 20 names appear in the seed array in application code). Hybrid (manual: run migration on dev DB, query `SELECT COUNT(*) FROM crm_categories` = 20 and spot-check a few leads).
 - `strategy:` Hybrid
 

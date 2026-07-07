@@ -172,6 +172,8 @@
 	// Remove a category assignment from this lead (CAT-1). invalidateAll() refreshes
 	// data.assignedCategories so the chip disappears.
 	async function removeCategory(categoryId: string) {
+		if (mutating) return;
+		mutating = true;
 		try {
 			const res = await fetch(`/api/leads/${lead.id}/categories`, {
 				method: 'DELETE',
@@ -186,6 +188,8 @@
 		} catch {
 			toasts.push('Remove failed — server error');
 			return;
+		} finally {
+			mutating = false;
 		}
 		await invalidateAll();
 		toasts.success('Category removed');

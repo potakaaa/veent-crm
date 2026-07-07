@@ -28,7 +28,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 	}
 
 	try {
-		const category = await renameCategory(params.id, parsed.data.name);
+		const category = await renameCategory(params.id, parsed.data.name, parsed.data.color);
 		if (!category) throw error(404, 'Category not found');
 		return json({ category });
 	} catch (e) {

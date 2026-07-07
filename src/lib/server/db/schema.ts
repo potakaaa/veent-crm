@@ -17,7 +17,7 @@ import {
 	index,
 	check
 } from 'drizzle-orm/pg-core';
-import { sql } from 'drizzle-orm';
+import { sql, isNull } from 'drizzle-orm';
 
 // ---------------------------------------------------------------------------
 // Enums
@@ -415,7 +415,9 @@ export const crmCategories = pgTable(
 		updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull()
 	},
 	(t) => [
-		uniqueIndex('crm_categories_name_lower_idx').on(sql`LOWER(${t.name})`),
+		uniqueIndex('crm_categories_name_lower_idx')
+			.on(sql`LOWER(${t.name})`)
+			.where(isNull(t.deletedAt)),
 		index('crm_categories_deleted_at_idx').on(t.deletedAt)
 	]
 );

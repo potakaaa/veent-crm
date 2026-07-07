@@ -25,13 +25,15 @@
 	// opens or the server list changes.
 	let names = $state<Record<string, string>>({});
 	let busyId = $state<string | null>(null);
+	let wasOpen = false;
 
 	$effect(() => {
-		if (open) {
+		if (open && !wasOpen) {
 			const next: Record<string, string> = {};
 			for (const c of categories) next[c.id] = c.name;
 			names = next;
 		}
+		wasOpen = open;
 	});
 
 	async function handleRename(id: string) {

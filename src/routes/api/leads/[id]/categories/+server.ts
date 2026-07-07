@@ -2,7 +2,12 @@ import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { assignCategoriesSchema } from '$lib/zod/schemas';
 import { getLead } from '$lib/server/db/leads';
-import { getCategoriesForLead, assignCategory, removeAssignment } from '$lib/server/db/categories';
+import {
+	getCategoriesForLead,
+	assignCategory,
+	removeAssignment,
+	CATEGORY_NOT_FOUND_ERROR
+} from '$lib/server/db/categories';
 
 // GET — categories assigned to this lead. Any authed user who can view the lead.
 export const GET: RequestHandler = async ({ params, locals }) => {
@@ -36,7 +41,14 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 		throw error(400, msg);
 	}
 
-	await assignCategory(params.id, parsed.data.categoryId);
+	try {
+		await assignCategory(params.id, parsed.data.categoryId);
+	} catch (err) {
+		if (err instanceof Error && err.message === CATEGORY_NOT_FOUND_ERROR) {
+			throw error(404, 'Category not found');
+		}
+		throw err;
+	}
 	return json({ success: true });
 };
 

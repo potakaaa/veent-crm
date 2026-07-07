@@ -10,6 +10,8 @@
  *   bun run scripts/repair-migration-tracking.ts --dry-run # inspect only, no writes
  */
 
+import { createHash } from 'crypto';
+import { readFileSync } from 'fs';
 import postgres from 'postgres';
 
 // All migrations from journal (idx 0–28)
@@ -55,58 +57,64 @@ if (!DATABASE_URL) {
 const dryRun = process.argv.includes('--dry-run');
 if (dryRun) console.log('DRY RUN — no writes will be made\n');
 
-const sql = postgres(DATABASE_URL, { max: 1 });
+async function main() {
+	const sql = postgres(DATABASE_URL!, { max: 1 });
 
-try {
-	// Ensure schema and table exist (drizzle-kit creates these; they should already exist)
-	if (!dryRun) {
-		await sql`CREATE SCHEMA IF NOT EXISTS drizzle`;
-		await sql`
-      CREATE TABLE IF NOT EXISTS drizzle.__drizzle_migrations (
-        id SERIAL PRIMARY KEY,
-        hash text NOT NULL,
-        created_at bigint
-      )
-    `;
-	}
-
-	// Check what's already tracked
-	const existing = await sql`SELECT hash FROM drizzle.__drizzle_migrations`;
-	const existingHashes = new Set(existing.map((r: { hash: string }) => r.hash));
-	console.log(`Already tracked: ${existingHashes.size} / ${ALL_MIGRATIONS.length} migrations`);
-
-	const missing: typeof ALL_MIGRATIONS = [];
-	for (const m of ALL_MIGRATIONS) {
-		if (!existingHashes.has(m.tag)) {
-			console.log(`  - MISSING  ${m.tag}`);
-			missing.push(m);
-		} else {
-			console.log(`  ✓ tracked  ${m.tag}`);
+	try {
+		// Ensure schema and table exist (drizzle-kit creates these; they should already exist)
+		if (!dryRun) {
+			await sql`CREATE SCHEMA IF NOT EXISTS drizzle`;
+			await sql`
+        CREATE TABLE IF NOT EXISTS drizzle.__drizzle_migrations (
+          id SERIAL PRIMARY KEY,
+          hash text NOT NULL,
+          created_at bigint
+        )
+      `;
 		}
+
+		// Check what's already tracked
+		const existing = await sql`SELECT hash FROM drizzle.__drizzle_migrations`;
+		const existingHashes = new Set(existing.map((r: { hash: string }) => r.hash));
+		console.log(`Already tracked: ${existingHashes.size} / ${ALL_MIGRATIONS.length} migrations`);
+
+		const missing: Array<(typeof ALL_MIGRATIONS)[number] & { hash: string }> = [];
+		for (const m of ALL_MIGRATIONS) {
+			const sqlContent = readFileSync(`drizzle/${m.tag}.sql`).toString();
+			const hash = createHash('sha256').update(sqlContent).digest('hex');
+			if (!existingHashes.has(hash)) {
+				console.log(`  - MISSING  ${m.tag}`);
+				missing.push({ ...m, hash });
+			} else {
+				console.log(`  ✓ tracked  ${m.tag}`);
+			}
+		}
+
+		if (missing.length === 0) {
+			console.log('\nAll migrations already tracked. Nothing to do.');
+			return;
+		}
+
+		console.log(`\n${missing.length} migration(s) need to be tracked.`);
+
+		if (dryRun) {
+			console.log('\nDry run complete — re-run without --dry-run to apply.');
+			return;
+		}
+
+		for (const m of missing) {
+			await sql`
+        INSERT INTO drizzle.__drizzle_migrations (hash, created_at)
+        VALUES (${m.hash}, ${m.when})
+      `;
+			console.log(`  + inserted ${m.tag}`);
+		}
+
+		console.log(`\nDone. Inserted ${missing.length} missing migration records.`);
+		console.log('Now run: bun run db:migrate');
+	} finally {
+		await sql.end();
 	}
-
-	if (missing.length === 0) {
-		console.log('\nAll migrations already tracked. Nothing to do.');
-		return;
-	}
-
-	console.log(`\n${missing.length} migration(s) need to be tracked.`);
-
-	if (dryRun) {
-		console.log('\nDry run complete — re-run without --dry-run to apply.');
-		return;
-	}
-
-	for (const m of missing) {
-		await sql`
-      INSERT INTO drizzle.__drizzle_migrations (hash, created_at)
-      VALUES (${m.tag}, ${m.when})
-    `;
-		console.log(`  + inserted ${m.tag}`);
-	}
-
-	console.log(`\nDone. Inserted ${missing.length} missing migration records.`);
-	console.log('Now run: bun run db:migrate');
-} finally {
-	await sql.end();
 }
+
+main();

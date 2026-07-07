@@ -6,6 +6,7 @@ import {
 	createCategory,
 	DUPLICATE_NAME_ERROR
 } from '$lib/server/db/categories';
+import { isManagerRole } from '$lib/utils/permissions';
 
 // GET — list all active (non-deleted) categories, alphabetically. Any authed user.
 export const GET: RequestHandler = async ({ locals }) => {
@@ -14,10 +15,11 @@ export const GET: RequestHandler = async ({ locals }) => {
 	return json({ categories });
 };
 
-// POST — create a new category. Any authed user. 400 on validation fail, 409 on
-// case-insensitive duplicate name, 201 with the created category on success.
+// POST — create a new category. Manager-only (403 for reps). 400 on validation fail,
+// 409 on case-insensitive duplicate name, 201 with the created category on success.
 export const POST: RequestHandler = async ({ request, locals }) => {
 	if (!locals.user) throw error(401, 'Unauthorized');
+	if (!isManagerRole(locals.user.role)) throw error(403, 'Forbidden');
 
 	let body: unknown;
 	try {

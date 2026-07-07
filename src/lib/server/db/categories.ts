@@ -12,6 +12,7 @@ import { crmCategories, crmLeadCategories } from './schema';
 import { eq, isNull, asc, and, inArray, sql, type InferSelectModel } from 'drizzle-orm';
 
 export const DUPLICATE_NAME_ERROR = 'DUPLICATE_NAME';
+export const CATEGORY_NOT_FOUND_ERROR = 'CATEGORY_NOT_FOUND';
 
 export type Category = InferSelectModel<typeof crmCategories>;
 
@@ -77,15 +78,31 @@ export async function createCategory(
 		.limit(1);
 	if (existing) throw new Error(DUPLICATE_NAME_ERROR);
 
-	const [row] = await db
-		.insert(crmCategories)
-		.values({ name, color, createdBy: createdById })
-		.returning();
-	return row;
+	try {
+		const [row] = await db
+			.insert(crmCategories)
+			.values({ name, color, createdBy: createdById })
+			.returning();
+		return row;
+	} catch (err) {
+		if (err && typeof err === 'object' && 'code' in err && err.code === '23505') {
+			throw new Error(DUPLICATE_NAME_ERROR, { cause: err });
+		}
+		throw err;
+	}
 }
 
-/** Assign a category to a lead. Idempotent — ON CONFLICT (lead_id, category_id) DO NOTHING. */
+/**
+ * Assign a category to a lead. Idempotent — ON CONFLICT (lead_id, category_id) DO NOTHING.
+ * Throws `Error(CATEGORY_NOT_FOUND_ERROR)` when the category does not exist or is soft-deleted.
+ */
 export async function assignCategory(leadId: string, categoryId: string): Promise<void> {
+	const [cat] = await db
+		.select({ id: crmCategories.id })
+		.from(crmCategories)
+		.where(and(eq(crmCategories.id, categoryId), isNull(crmCategories.deletedAt)))
+		.limit(1);
+	if (!cat) throw new Error(CATEGORY_NOT_FOUND_ERROR);
 	await db.insert(crmLeadCategories).values({ leadId, categoryId }).onConflictDoNothing();
 }
 
@@ -97,11 +114,15 @@ export async function removeAssignment(leadId: string, categoryId: string): Prom
 }
 
 /**
- * Rename a category. Throws `Error(DUPLICATE_NAME_ERROR)` when another non-deleted
- * category already uses the target name (case-insensitive). Returns the updated row,
- * or `null` when no active category with `id` exists.
+ * Rename a category (and optionally update its color). Throws `Error(DUPLICATE_NAME_ERROR)`
+ * when another non-deleted category already uses the target name (case-insensitive).
+ * Returns the updated row, or `null` when no active category with `id` exists.
  */
-export async function renameCategory(id: string, name: string): Promise<Category | null> {
+export async function renameCategory(
+	id: string,
+	name: string,
+	color?: string | null
+): Promise<Category | null> {
 	const [dup] = await db
 		.select({ id: crmCategories.id })
 		.from(crmCategories)
@@ -115,12 +136,19 @@ export async function renameCategory(id: string, name: string): Promise<Category
 		.limit(1);
 	if (dup) throw new Error(DUPLICATE_NAME_ERROR);
 
-	const [row] = await db
-		.update(crmCategories)
-		.set({ name, updatedAt: new Date() })
-		.where(and(eq(crmCategories.id, id), isNull(crmCategories.deletedAt)))
-		.returning();
-	return row ?? null;
+	try {
+		const [row] = await db
+			.update(crmCategories)
+			.set({ name, ...(color !== undefined ? { color } : {}), updatedAt: new Date() })
+			.where(and(eq(crmCategories.id, id), isNull(crmCategories.deletedAt)))
+			.returning();
+		return row ?? null;
+	} catch (err) {
+		if (err && typeof err === 'object' && 'code' in err && err.code === '23505') {
+			throw new Error(DUPLICATE_NAME_ERROR, { cause: err });
+		}
+		throw err;
+	}
 }
 
 /**

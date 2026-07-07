@@ -204,6 +204,13 @@
       "when": 1783308743036,
       "tag": "0028_cat1_drop_enum_column",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1783308744036,
+      "tag": "0029_cat1_partial_name_idx",
+      "breakpoints": true
     }
   ]
 }

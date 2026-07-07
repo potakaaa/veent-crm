@@ -7,7 +7,9 @@
 	import StageChip from '$lib/components/shared/StageChip.svelte';
 	import ReassignModal from '$lib/components/leads/ReassignModal.svelte';
 	import LeadEditModal from '$lib/components/leads/LeadEditModal.svelte';
-	import MultiSelectFilter from '$lib/components/leads/MultiSelectFilter.svelte';
+	import { FilterDropdown } from '$lib/components/ui/filter-dropdown';
+	import { SearchInput } from '$lib/components/ui/search-input';
+	import { WeekRangeControl } from '$lib/components/ui/week-range-control';
 	import DataGridShell from '$lib/components/leads/DataGridShell.svelte';
 	import EventBadge from '$lib/components/shared/EventBadge.svelte';
 	import AppealScoreBadge from '$lib/components/AppealScoreBadge.svelte';
@@ -104,18 +106,11 @@
 			data.filters.search.trim().length > 0
 	);
 
-	let searchInput = $derived(data.filters.search ?? '');
-	let searchTimer: ReturnType<typeof setTimeout> | null = null;
-	function onSearchInput(e: Event & { currentTarget: HTMLInputElement }) {
-		const raw = e.currentTarget.value;
-		searchInput = raw;
-		if (searchTimer) clearTimeout(searchTimer);
-		searchTimer = setTimeout(() => {
-			navigate({ q: raw.trim() || undefined, page: undefined });
-		}, 1300);
+	// Search debounce is owned by SearchInput (canonical 300ms) — page only navigates.
+	function onSearch(value: string) {
+		navigate({ q: value.trim() || undefined, page: undefined });
 	}
 
-	const WEEKS_PRESETS = [4, 8, 12] as const;
 	let weeksInput = $derived(
 		data.filters.weeksAhead === null ? '' : String(data.filters.weeksAhead ?? 8)
 	);
@@ -123,8 +118,7 @@
 	function setWeeks(w: number | 'all') {
 		navigate({ weeksAhead: w === 'all' ? 'all' : w, page: undefined });
 	}
-	function onWeeksInput(e: Event & { currentTarget: HTMLInputElement }) {
-		const raw = e.currentTarget.value;
+	function onWeeksInput(raw: string) {
 		weeksInput = raw;
 		if (weeksTimer) clearTimeout(weeksTimer);
 		const n = parseInt(raw, 10);
@@ -328,25 +322,25 @@
 	</PageHeader>
 
 	<div class="mb-3.5 flex flex-wrap items-center gap-2">
-		<input
-			type="text"
-			value={searchInput}
-			oninput={onSearchInput}
+		<SearchInput
+			value={data.filters.search ?? ''}
+			oninput={onSearch}
 			placeholder="Search name, event, or handle"
-			aria-label="Search Up for Grabs leads"
-			class="h-[34px] w-56 rounded-control border border-ink-200 bg-white px-2.5 text-[12.5px] text-ink-700 placeholder:text-ink-400 focus:border-primary focus:outline-none"
+			ariaLabel="Search Up for Grabs leads"
 		/>
-		<MultiSelectFilter
+		<FilterDropdown
 			label="Country"
+			multiple={true}
 			options={data.countryOptions}
 			selected={data.filters.country}
-			onchange={(values) => setFilter('country', values)}
+			onchange={(values) => setFilter('country', values as string[])}
 		/>
-		<MultiSelectFilter
+		<FilterDropdown
 			label="Category"
+			multiple={true}
 			options={data.categoryOptions}
 			selected={data.filters.category}
-			onchange={(values) => setFilter('category', values)}
+			onchange={(values) => setFilter('category', values as string[])}
 		/>
 		{#if hasActiveFilters}
 			<button
@@ -356,35 +350,16 @@
 				Clear all filters
 			</button>
 		{/if}
-		<div class="ml-auto flex items-center gap-1.5">
-			<span class="text-[12px] text-ink-400">Beyond</span>
-			{#each WEEKS_PRESETS as w (w)}
-				<button
-					onclick={() => setWeeks(w)}
-					aria-pressed={data.filters.weeksAhead !== null && (data.filters.weeksAhead ?? 8) === w}
-					class="h-7 rounded-[5px] border px-2 font-mono text-[11.5px] transition-colors {data
-						.filters.weeksAhead !== null && (data.filters.weeksAhead ?? 8) === w
-						? 'border-indigo-400 bg-indigo-50 font-semibold text-indigo-700'
-						: 'border-hairline bg-panel text-ink-500 hover:bg-panel-sunken'}">{w}w</button
-				>
-			{/each}
-			<input
-				type="number"
-				min="1"
-				value={weeksInput}
-				oninput={onWeeksInput}
-				placeholder="—"
-				aria-label="Minimum weeks until event"
-				class="h-7 w-12 rounded-[5px] border border-hairline bg-panel px-2 font-mono text-[11.5px] text-ink focus:outline-none focus:ring-1 focus:ring-primary"
+		<div class="ml-auto">
+			<WeekRangeControl
+				label="Minimum weeks until event"
+				leadingLabel="Beyond"
+				presets={[4, 8, 12]}
+				value={data.filters.weeksAhead}
+				onchange={setWeeks}
+				overrideValue={weeksInput}
+				onOverrideInput={onWeeksInput}
 			/>
-			<button
-				onclick={() => setWeeks('all')}
-				aria-pressed={data.filters.weeksAhead === null}
-				class="h-7 rounded-[5px] border px-2 font-mono text-[11.5px] transition-colors {data.filters
-					.weeksAhead === null
-					? 'border-ink-300 bg-panel-sunken font-semibold text-ink'
-					: 'border-hairline bg-panel text-ink-400 hover:bg-panel-sunken'}">All</button
-			>
 		</div>
 	</div>
 

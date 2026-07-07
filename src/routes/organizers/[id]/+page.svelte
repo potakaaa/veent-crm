@@ -5,6 +5,8 @@
 	import PageHeader from '$lib/components/shared/PageHeader.svelte';
 	import StageChip from '$lib/components/shared/StageChip.svelte';
 	import Icon from '$lib/components/shared/Icon.svelte';
+	import NotesPanel from '$lib/components/shared/NotesPanel.svelte';
+	import { createNoteHandlers } from '$lib/utils/note-actions';
 	import { Card } from '$lib/components/ui/card';
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
@@ -24,6 +26,10 @@
 
 	let { data } = $props();
 	const org = $derived(data.organizer);
+
+	// $derived (not a one-time call) so the create URL follows `org.id` if this
+	// page instance is ever reused across id → id navigations.
+	const noteHandlers = $derived(createNoteHandlers(`/api/organizers/${org.id}/notes`));
 
 	let paging = $state(false);
 	const navLoading = $derived(paging || !!navigating.to);
@@ -100,156 +106,174 @@
 		{/snippet}
 	</PageHeader>
 
-	<!-- toolbar -->
-	<div class="mb-3.5 flex flex-wrap items-center gap-2.5">
-		<Input value={searchInput} oninput={onSearchInput} placeholder="Search…" class="h-8 w-44" />
+	<div class="grid grid-cols-1 items-start gap-[18px] lg:grid-cols-[1fr_320px]">
+		<!-- LEFT -->
+		<div>
+			<!-- toolbar -->
+			<div class="mb-3.5 flex flex-wrap items-center gap-2.5">
+				<Input value={searchInput} oninput={onSearchInput} placeholder="Search…" class="h-8 w-44" />
 
-		{#if data.countries.length > 0}
-			<Select
-				type="single"
-				value={data.filters.country}
-				onValueChange={(v: string) => setFilter('country', v)}
-			>
-				<SelectTrigger
-					size="sm"
-					class={data.filters.country ? 'border-primary text-primary-strong bg-selected' : ''}
-					>{data.filters.country || 'Country'}</SelectTrigger
-				>
-				<SelectContent>
-					<SelectItem value="" label="All countries">All countries</SelectItem>
-					{#each data.countries as c (c)}<SelectItem value={c} label={c}>{c}</SelectItem>{/each}
-				</SelectContent>
-			</Select>
-		{/if}
-
-		{#if data.owners.length > 0}
-			<Select
-				type="single"
-				value={data.filters.owner}
-				onValueChange={(v: string) => setFilter('owner', v)}
-			>
-				<SelectTrigger
-					size="sm"
-					class={data.filters.owner ? 'border-primary text-primary-strong bg-selected' : ''}
-					>{data.owners.find((o) => o.id === data.filters.owner)?.name || 'Owner'}</SelectTrigger
-				>
-				<SelectContent>
-					<SelectItem value="" label="All owners">All owners</SelectItem>
-					{#each data.owners as o (o.id)}<SelectItem value={o.id} label={o.name}
-							>{o.name}</SelectItem
-						>{/each}
-				</SelectContent>
-			</Select>
-		{/if}
-
-		<Select
-			type="single"
-			value={data.filters.stage}
-			onValueChange={(v: string) => setFilter('stage', v)}
-		>
-			<SelectTrigger
-				size="sm"
-				class={data.filters.stage ? 'border-primary text-primary-strong bg-selected' : ''}
-				>{data.filters.stage ? stageLabel(data.filters.stage as Stage) : 'Stage'}</SelectTrigger
-			>
-			<SelectContent>
-				<SelectItem value="" label="All stages">All stages</SelectItem>
-				{#each data.stages as s (s)}<SelectItem value={s} label={stageLabel(s)}
-						>{stageLabel(s)}</SelectItem
-					>{/each}
-			</SelectContent>
-		</Select>
-	</div>
-
-	<Card class="gap-0 overflow-hidden rounded-control py-0">
-		<Table>
-			<TableHeader>
-				<TableRow class="bg-[#faf9fb] hover:bg-[#faf9fb]">
-					{#each headers as header (header.id)}
-						{@const sorted = header.column.getIsSorted()}
-						<TableHead aria-sort={ariaSort(sorted)}>
-							<button
-								type="button"
-								class="inline-flex items-center gap-1 hover:text-ink"
-								onclick={header.column.getToggleSortingHandler()}
-							>
-								{header.column.columnDef.header}
-								<span class="font-mono text-[10px] text-ink-300">
-									{sorted === 'asc' ? '↑' : sorted === 'desc' ? '↓' : ''}
-								</span>
-							</button>
-						</TableHead>
-					{/each}
-					<TableHead class="normal-case">Stage</TableHead>
-					<TableHead class="normal-case">Owner</TableHead>
-				</TableRow>
-			</TableHeader>
-			<TableBody>
-				{#if navLoading}
-					{#each Array(6) as _, i (i)}
-						<TableRow>
-							{#each Array(4) as _, c (c)}
-								<TableCell><span class="text-ink-200">—</span></TableCell>
-							{/each}
-						</TableRow>
-					{/each}
-				{:else if data.leads.length === 0}
-					<TableRow>
-						<TableCell colspan={4} class="py-10 text-center text-[13px] text-ink-300">
-							No events match.
-						</TableCell>
-					</TableRow>
-				{:else}
-					{#each data.leads as lead (lead.id)}
-						<TableRow>
-							<TableCell>
-								<a
-									href={`/leads/${lead.id}`}
-									class="text-[13px] font-semibold text-ink-700 hover:text-primary hover:underline"
-								>
-									{lead.eventName ?? lead.name}
-								</a>
-							</TableCell>
-							<TableCell class="text-[13px] text-ink-600">{formatDate(lead.eventDate)}</TableCell>
-							<TableCell><StageChip stage={lead.stage} /></TableCell>
-							<TableCell class="text-[13px] text-ink-600"
-								>{lead.ownerName ?? 'Unassigned'}</TableCell
-							>
-						</TableRow>
-					{/each}
+				{#if data.countries.length > 0}
+					<Select
+						type="single"
+						value={data.filters.country}
+						onValueChange={(v: string) => setFilter('country', v)}
+					>
+						<SelectTrigger
+							size="sm"
+							class={data.filters.country ? 'border-primary text-primary-strong bg-selected' : ''}
+							>{data.filters.country || 'Country'}</SelectTrigger
+						>
+						<SelectContent>
+							<SelectItem value="" label="All countries">All countries</SelectItem>
+							{#each data.countries as c (c)}<SelectItem value={c} label={c}>{c}</SelectItem>{/each}
+						</SelectContent>
+					</Select>
 				{/if}
-			</TableBody>
-		</Table>
-	</Card>
 
-	<!-- pagination -->
-	{#if data.pagination.totalPages > 1}
-		{@const { page: pg, pageSize, total, totalPages } = data.pagination}
-		{@const start = (pg - 1) * pageSize + 1}
-		{@const end = Math.min(pg * pageSize, total)}
-		<div class="mt-5 flex items-center justify-between text-[13px] text-ink-300">
-			<span class="font-mono">{start}–{end} of {total}</span>
-			<div class="flex items-center gap-2">
-				<Button
-					variant="outline"
-					size="sm"
-					disabled={pg <= 1 || paging}
-					onclick={() => {
-						paging = true;
-						navigate({ page: pg - 1 });
-					}}>← Prev</Button
+				{#if data.owners.length > 0}
+					<Select
+						type="single"
+						value={data.filters.owner}
+						onValueChange={(v: string) => setFilter('owner', v)}
+					>
+						<SelectTrigger
+							size="sm"
+							class={data.filters.owner ? 'border-primary text-primary-strong bg-selected' : ''}
+							>{data.owners.find((o) => o.id === data.filters.owner)?.name ||
+								'Owner'}</SelectTrigger
+						>
+						<SelectContent>
+							<SelectItem value="" label="All owners">All owners</SelectItem>
+							{#each data.owners as o (o.id)}<SelectItem value={o.id} label={o.name}
+									>{o.name}</SelectItem
+								>{/each}
+						</SelectContent>
+					</Select>
+				{/if}
+
+				<Select
+					type="single"
+					value={data.filters.stage}
+					onValueChange={(v: string) => setFilter('stage', v)}
 				>
-				<span class="font-mono">Page {pg} of {totalPages}</span>
-				<Button
-					variant="outline"
-					size="sm"
-					disabled={pg >= totalPages || paging}
-					onclick={() => {
-						paging = true;
-						navigate({ page: pg + 1 });
-					}}>Next →</Button
-				>
+					<SelectTrigger
+						size="sm"
+						class={data.filters.stage ? 'border-primary text-primary-strong bg-selected' : ''}
+						>{data.filters.stage ? stageLabel(data.filters.stage as Stage) : 'Stage'}</SelectTrigger
+					>
+					<SelectContent>
+						<SelectItem value="" label="All stages">All stages</SelectItem>
+						{#each data.stages as s (s)}<SelectItem value={s} label={stageLabel(s)}
+								>{stageLabel(s)}</SelectItem
+							>{/each}
+					</SelectContent>
+				</Select>
 			</div>
+
+			<Card class="gap-0 overflow-hidden rounded-control py-0">
+				<Table>
+					<TableHeader>
+						<TableRow class="bg-[#faf9fb] hover:bg-[#faf9fb]">
+							{#each headers as header (header.id)}
+								{@const sorted = header.column.getIsSorted()}
+								<TableHead aria-sort={ariaSort(sorted)}>
+									<button
+										type="button"
+										class="inline-flex items-center gap-1 hover:text-ink"
+										onclick={header.column.getToggleSortingHandler()}
+									>
+										{header.column.columnDef.header}
+										<span class="font-mono text-[10px] text-ink-300">
+											{sorted === 'asc' ? '↑' : sorted === 'desc' ? '↓' : ''}
+										</span>
+									</button>
+								</TableHead>
+							{/each}
+							<TableHead class="normal-case">Stage</TableHead>
+							<TableHead class="normal-case">Owner</TableHead>
+						</TableRow>
+					</TableHeader>
+					<TableBody>
+						{#if navLoading}
+							{#each Array(6) as _, i (i)}
+								<TableRow>
+									{#each Array(4) as _, c (c)}
+										<TableCell><span class="text-ink-200">—</span></TableCell>
+									{/each}
+								</TableRow>
+							{/each}
+						{:else if data.leads.length === 0}
+							<TableRow>
+								<TableCell colspan={4} class="py-10 text-center text-[13px] text-ink-300">
+									No events match.
+								</TableCell>
+							</TableRow>
+						{:else}
+							{#each data.leads as lead (lead.id)}
+								<TableRow>
+									<TableCell>
+										<a
+											href={`/leads/${lead.id}`}
+											class="text-[13px] font-semibold text-ink-700 hover:text-primary hover:underline"
+										>
+											{lead.eventName ?? lead.name}
+										</a>
+									</TableCell>
+									<TableCell class="text-[13px] text-ink-600"
+										>{formatDate(lead.eventDate)}</TableCell
+									>
+									<TableCell><StageChip stage={lead.stage} /></TableCell>
+									<TableCell class="text-[13px] text-ink-600"
+										>{lead.ownerName ?? 'Unassigned'}</TableCell
+									>
+								</TableRow>
+							{/each}
+						{/if}
+					</TableBody>
+				</Table>
+			</Card>
+
+			<!-- pagination -->
+			{#if data.pagination.totalPages > 1}
+				{@const { page: pg, pageSize, total, totalPages } = data.pagination}
+				{@const start = (pg - 1) * pageSize + 1}
+				{@const end = Math.min(pg * pageSize, total)}
+				<div class="mt-5 flex items-center justify-between text-[13px] text-ink-300">
+					<span class="font-mono">{start}–{end} of {total}</span>
+					<div class="flex items-center gap-2">
+						<Button
+							variant="outline"
+							size="sm"
+							disabled={pg <= 1 || paging}
+							onclick={() => {
+								paging = true;
+								navigate({ page: pg - 1 });
+							}}>← Prev</Button
+						>
+						<span class="font-mono">Page {pg} of {totalPages}</span>
+						<Button
+							variant="outline"
+							size="sm"
+							disabled={pg >= totalPages || paging}
+							onclick={() => {
+								paging = true;
+								navigate({ page: pg + 1 });
+							}}>Next →</Button
+						>
+					</div>
+				</div>
+			{/if}
 		</div>
-	{/if}
+
+		<!-- RIGHT RAIL -->
+		<div>
+			<NotesPanel
+				notes={data.notes}
+				currentUserId={data.currentUserId}
+				onSubmit={noteHandlers.addNote}
+				onEdit={noteHandlers.editNote}
+			/>
+		</div>
+	</div>
 </div>

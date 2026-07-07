@@ -138,6 +138,17 @@ export interface Activity {
 	followUpAt?: string;
 }
 
+/** A freeform note attached to exactly one lead OR one organizer (GitHub #191). */
+export interface Note {
+	id: string;
+	content: string;
+	authorId: string;
+	authorName: string;
+	leadId: string | null;
+	organizerId: string | null;
+	createdAt: string;
+}
+
 export interface MeetingAttendee {
 	userId: string;
 	name: string;

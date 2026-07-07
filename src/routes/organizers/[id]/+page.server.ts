@@ -5,6 +5,7 @@ import {
 	listLinkedLeadsForOrganizer,
 	DETAIL_SORT_COLS
 } from '$lib/server/db/organizers';
+import { listNotesForOrganizer } from '$lib/server/db/notes';
 import { LEAD_STAGES } from '$lib/zod/schemas';
 
 const PAGE_SIZE = 25;
@@ -31,19 +32,24 @@ export const load: PageServerLoad = async ({ params, locals, url }) => {
 		rawDir === 'asc' ? ('asc' as const) : rawDir === 'desc' ? ('desc' as const) : ('desc' as const);
 	const page = Math.max(1, parseInt(url.searchParams.get('page') ?? '1', 10) || 1);
 
-	const result = await listLinkedLeadsForOrganizer(organizer.id, locals.user.id, locals.user.role, {
-		search: search || undefined,
-		country: country || undefined,
-		owner: owner || undefined,
-		stage: stage || undefined,
-		sort: effectiveSort,
-		dir,
-		page,
-		pageSize: PAGE_SIZE
-	});
+	const [result, notes] = await Promise.all([
+		listLinkedLeadsForOrganizer(organizer.id, locals.user.id, locals.user.role, {
+			search: search || undefined,
+			country: country || undefined,
+			owner: owner || undefined,
+			stage: stage || undefined,
+			sort: effectiveSort,
+			dir,
+			page,
+			pageSize: PAGE_SIZE
+		}),
+		listNotesForOrganizer(organizer.id)
+	]);
 
 	return {
 		organizer,
+		notes,
+		currentUserId: locals.user.id,
 		leads: result.leads,
 		countries: result.countries,
 		owners: result.owners,

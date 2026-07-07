@@ -4,6 +4,7 @@ import { listLeadsFiltered, listUsers, getLeadCountries } from '$lib/server/db/l
 import { computeAppealScore, today } from '$lib/appeal-score';
 import { LEAD_STAGES, LEAD_PLATFORMS } from '$lib/zod/schemas';
 import type { LeadSegment, User } from '$lib/types';
+import { isManagerRole } from '$lib/utils/permissions';
 
 const PAGE_SIZE = 25;
 const VALID_SEGMENTS = new Set(['mine', 'all', 'unassigned', 'lost']);
@@ -22,6 +23,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	const rawPlatform = url.searchParams.get('platform') ?? '';
 	const platform = VALID_PLATFORMS.has(rawPlatform) ? rawPlatform : '';
 	const country = url.searchParams.get('country') ?? '';
+	const rawOwner = url.searchParams.get('owner') ?? '';
 	const staleOnly = url.searchParams.get('staleOnly') === '1';
 	const hasFutureEvents = url.searchParams.get('hasFutureEvents') === '1';
 	const search = url.searchParams.get('q') ?? '';
@@ -65,7 +67,13 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 				? 8
 				: Math.max(1, parseInt(rawWeeksAhead, 10) || 8);
 
-	const [result, users, countries] = await Promise.all([
+	// Owner filter (GitHub #226): manager/super_manager only, whitelisted against real user ids.
+	// Reps already see only their own leads via segment scoping, so the control is a no-op for them.
+	const users = await listUsers();
+	const owner =
+		isManagerRole(locals.user.role) && users.some((u) => u.id === rawOwner) ? rawOwner : '';
+
+	const [result, countries] = await Promise.all([
 		listLeadsFiltered({
 			userId: locals.user.id,
 			role: locals.user.role,
@@ -73,6 +81,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 			stage: stage || undefined,
 			platform: platform || undefined,
 			country: country || undefined,
+			ownerId: owner || undefined,
 			staleOnly,
 			hasFutureEvents,
 			search: search || undefined,
@@ -84,7 +93,6 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 			dir,
 			weeksAhead
 		}),
-		listUsers(),
 		getLeadCountries()
 	]);
 
@@ -115,6 +123,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 			stage,
 			platform,
 			country,
+			owner,
 			staleOnly,
 			hasFutureEvents,
 			search,

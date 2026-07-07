@@ -75,6 +75,7 @@
 	let name = $state('');
 	let email = $state('');
 	let role = $state<string>('rep');
+	const addLabel = $derived(role === 'manager' ? 'Add a manager' : 'Add a rep');
 	let formError = $state('');
 	// Per-field validation errors for the add-a-rep form, keyed by userFormSchema
 	// field name (Phase 4 — shared field-error component).
@@ -422,7 +423,7 @@
 
 <Modal
 	open={addOpen}
-	title="Add a rep"
+	title={addLabel}
 	subtitle="They'll receive a welcome email with a sign-in link."
 	width={420}
 	onclose={() => (addOpen = false)}
@@ -465,7 +466,9 @@
 	</div>
 	{#snippet footer()}
 		<Button variant="outline" class="flex-1" onclick={() => (addOpen = false)}>Cancel</Button>
-		<Button class="flex-[2]" onclick={addRep}>Add rep</Button>
+		<Button class="flex-[2]" onclick={addRep}
+			>{role === 'manager' ? 'Add manager' : 'Add rep'}</Button
+		>
 	{/snippet}
 </Modal>
 

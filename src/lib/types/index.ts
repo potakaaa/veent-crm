@@ -9,7 +9,6 @@
 import type {
 	LEAD_STAGES,
 	LEAD_PLATFORMS,
-	LEAD_CATEGORIES,
 	ACTIVITY_CHANNELS,
 	ACTIVITY_OUTCOMES,
 	LOST_REASONS,
@@ -20,7 +19,6 @@ import type {
 
 export type Stage = (typeof LEAD_STAGES)[number];
 export type Platform = (typeof LEAD_PLATFORMS)[number];
-export type Category = (typeof LEAD_CATEGORIES)[number];
 export type ActivityChannel = (typeof ACTIVITY_CHANNELS)[number];
 export type ActivityOutcome = (typeof ACTIVITY_OUTCOMES)[number];
 export type LostReason = (typeof LOST_REASONS)[number];
@@ -50,7 +48,6 @@ export interface Lead {
 	id: string;
 	name: string;
 	handle: string;
-	category: Category;
 	location: string;
 	country: string;
 	platform: Platform;
@@ -92,6 +89,8 @@ export interface Lead {
 	siblings?: number;
 	source: LeadSource;
 	notes?: string;
+	currentPlatform?: string | null;
+	competitorNotes?: string | null;
 
 	// Won capture (manually entered — never read from external systems)
 	signedOrg?: string;
@@ -187,6 +186,8 @@ export interface Meeting {
 	/** ISO datetime the meeting starts. */
 	startAt: string;
 	meetingUrl?: string;
+	/** Free-text meeting venue (GitHub #250). Undefined when unset (DB null). */
+	venue?: string;
 	notes?: string;
 	outcome?: string;
 	attendees: MeetingAttendee[];
@@ -216,22 +217,12 @@ export interface CalendarEntry {
  */
 export interface MessageTemplate {
 	id: string;
-	category: Category;
+	/** Frozen TEMPLATE_CATEGORIES vocabulary (CAT-1) — plain string, not the crm_categories table. */
+	category: string;
 	title: string;
 	body: string;
 	createdAt: string;
 	updatedAt: string;
-}
-
-/** A row from the sheet import that needs a human before it joins the pool. */
-export interface ReviewItem {
-	id: string;
-	issue: string;
-	raw: string;
-	rowNo: number;
-	name: string;
-	category: Category | 'Uncategorized';
-	platform: Platform;
 }
 
 // --- Filters & query shapes -------------------------------------------------
@@ -242,7 +233,6 @@ export interface LeadFilters {
 	segment?: LeadSegment;
 	stage?: Stage;
 	platform?: Platform;
-	category?: Category;
 	staleOnly?: boolean;
 	hasFutureEvents?: boolean;
 	search?: string;
@@ -307,7 +297,6 @@ export interface ReportData {
 
 export interface CreateLeadInput {
 	name: string;
-	category: Category;
 	platform?: Platform;
 	location?: string;
 	pageUrl?: string;
@@ -318,6 +307,8 @@ export interface CreateLeadInput {
 	source?: LeadSource;
 	visibility?: Visibility;
 	selectedUserIds?: string[];
+	currentPlatform?: string;
+	competitorNotes?: string;
 }
 
 export type UpdateLeadInput = Partial<

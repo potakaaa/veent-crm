@@ -17,35 +17,12 @@ import {
 	index,
 	check
 } from 'drizzle-orm/pg-core';
-import { sql } from 'drizzle-orm';
+import { sql, isNull } from 'drizzle-orm';
 
 // ---------------------------------------------------------------------------
 // Enums
 // ---------------------------------------------------------------------------
 export const userRole = pgEnum('crm_user_role', ['rep', 'manager', 'super_manager']);
-
-export const leadCategory = pgEnum('crm_lead_category', [
-	'Sports',
-	'Workshop',
-	'Church',
-	'Theater',
-	'Bar/DJ',
-	'Conference',
-	'Music Fest',
-	'Fan Fair',
-	'School',
-	'Concert',
-	'Live Band',
-	'Expo',
-	'Screening',
-	'Camp',
-	'Competition',
-	'Convention',
-	'Film',
-	'Modelling',
-	'Resort',
-	'Other'
-]);
 
 export const leadPlatform = pgEnum('crm_lead_platform', [
 	'Facebook',
@@ -147,7 +124,6 @@ export const crmLeads = pgTable(
 	{
 		id: uuid('id').primaryKey().defaultRandom(),
 		name: text('name').notNull(), // page / organizer name
-		category: leadCategory('category').notNull().default('Other'),
 		location: text('location'),
 		country: text('country'),
 		platform: leadPlatform('platform'),
@@ -223,6 +199,8 @@ export const crmLeads = pgTable(
 		scraperOrgId: integer('scraper_org_id'),
 
 		notes: text('notes'),
+		currentPlatform: text('current_platform'),
+		competitorNotes: text('competitor_notes'),
 		createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 		updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
 	},
@@ -375,6 +353,8 @@ export const crmMeetings = pgTable(
 		}),
 		startAt: timestamp('start_at', { withTimezone: true }).notNull(),
 		meetingUrl: text('meeting_url'),
+		// Free-text meeting venue (GitHub #250). Nullable, no default, no backfill.
+		venue: text('venue'),
 		notes: text('notes'),
 		outcome: text('outcome'),
 		// soft delete; no hard deletes
@@ -429,8 +409,9 @@ export const crmMessageTemplates = pgTable(
 	'crm_message_templates',
 	{
 		id: uuid('id').primaryKey().defaultRandom(),
-		// reuse the existing 20-value event-category enum — no parallel taxonomy
-		category: leadCategory('category').notNull().default('Other'),
+		// Frozen TEMPLATE_CATEGORIES vocabulary (CAT-1) — plain text after the leadCategory enum
+		// was dropped in migration 0028. Values are unchanged; grouping still operates on strings.
+		category: text('category').notNull().default('Other'),
 		title: text('title').notNull(),
 		body: text('body').notNull(),
 		// soft delete; no hard deletes
@@ -446,6 +427,52 @@ export const crmMessageTemplates = pgTable(
 			.where(sql`deleted_at is null`)
 	]
 );
+
+// ---------------------------------------------------------------------------
+// crm_categories — editable lead categories (CAT-1, GitHub #248)
+// Replaces the hardcoded leadCategory enum with a user-editable table.
+// ---------------------------------------------------------------------------
+export const crmCategories = pgTable(
+	'crm_categories',
+	{
+		id: uuid('id').primaryKey().defaultRandom(),
+		name: text('name').notNull(),
+		color: text('color'),
+		createdBy: uuid('created_by').references(() => crmUsers.id, { onDelete: 'set null' }),
+		deletedAt: timestamp('deleted_at', { withTimezone: true }),
+		createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+		updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull()
+	},
+	(t) => [
+		uniqueIndex('crm_categories_name_lower_idx')
+			.on(sql`LOWER(${t.name})`)
+			.where(isNull(t.deletedAt)),
+		index('crm_categories_deleted_at_idx').on(t.deletedAt)
+	]
+);
+
+export type CrmCategory = typeof crmCategories.$inferSelect;
+export type NewCrmCategory = typeof crmCategories.$inferInsert;
+
+// ---------------------------------------------------------------------------
+// crm_lead_categories — many-to-many join of leads to categories (CAT-1)
+// ---------------------------------------------------------------------------
+export const crmLeadCategories = pgTable(
+	'crm_lead_categories',
+	{
+		id: uuid('id').primaryKey().defaultRandom(),
+		leadId: uuid('lead_id')
+			.notNull()
+			.references(() => crmLeads.id, { onDelete: 'cascade' }),
+		categoryId: uuid('category_id')
+			.notNull()
+			.references(() => crmCategories.id, { onDelete: 'cascade' }),
+		createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull()
+	},
+	(t) => [uniqueIndex('crm_lead_categories_pair_idx').on(t.leadId, t.categoryId)]
+);
+
+export type CrmLeadCategory = typeof crmLeadCategories.$inferSelect;
 
 // ---------------------------------------------------------------------------
 // Better Auth tables (managed by drizzle-kit)

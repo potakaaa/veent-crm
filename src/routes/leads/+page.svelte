@@ -96,6 +96,12 @@
 		}
 	}
 
+	// Category filter (CAT-1, GitHub #248): multi-select → comma-joined `categoryIds` param.
+	const categoryOptions = $derived(data.allCategories.map((c) => ({ value: c.id, label: c.name })));
+	function setCategoryFilter(ids: string[]) {
+		navigate({ categoryIds: ids.length ? ids.join(',') : undefined, page: undefined });
+	}
+
 	// Search debounce is owned by SearchInput (canonical 300ms) — page only navigates.
 	function onSearch(value: string) {
 		navigate({ q: value || undefined, page: undefined });
@@ -210,6 +216,16 @@
 			/>
 		{/if}
 
+		{#if categoryOptions.length > 0}
+			<FilterDropdown
+				label="Category"
+				multiple={true}
+				options={categoryOptions}
+				selected={data.filters.categoryIds ?? []}
+				onchange={(v) => setCategoryFilter(v as string[])}
+			/>
+		{/if}
+
 		{#if isManagerRole(data.me.role)}
 			<RepFilterCombobox
 				users={data.users}
@@ -310,6 +326,22 @@
 			>
 				Clear
 			</a>
+		</div>
+	{/if}
+
+	{#if data.filters.createdFrom}
+		<div
+			class="mb-3 flex items-center gap-2 rounded-control border border-hairline bg-panel-sunken px-3 py-2 text-[12.5px]"
+		>
+			<span class="text-ink-500">Showing leads added since:</span>
+			<span class="font-mono font-semibold text-ink">{data.filters.createdFrom}</span>
+			<button
+				type="button"
+				onclick={() => navigate({ createdFrom: undefined, page: undefined })}
+				class="ml-auto font-mono text-[11.5px] text-primary hover:underline"
+			>
+				Clear
+			</button>
 		</div>
 	{/if}
 

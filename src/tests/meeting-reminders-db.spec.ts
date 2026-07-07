@@ -41,7 +41,7 @@ afterAll(async () => {
 async function makeLead(name: string): Promise<string> {
 	const [lead] = await db
 		.insert(crmLeads)
-		.values({ name: `${TEST_PREFIX} ${name}`, category: 'Sports' })
+		.values({ name: `${TEST_PREFIX} ${name}` })
 		.returning({ id: crmLeads.id });
 	createdLeadIds.push(lead.id);
 	return lead.id;

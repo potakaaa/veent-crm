@@ -9,7 +9,8 @@ import {
 	crmActivities,
 	crmLeadHistory,
 	crmLeadVisibilityGrants,
-	crmOrganizers
+	crmOrganizers,
+	crmLeadCategories
 } from './schema';
 import { createLeadAssignedNotification, getUnreadNotificationCount } from './notifications';
 import {
@@ -90,7 +91,6 @@ export function dbRowToLead(
 		id: row.id,
 		name: row.name,
 		handle,
-		category: row.category as Lead['category'],
 		location: row.location ?? '—',
 		country: row.country ?? '—',
 		platform: (row.platform ?? 'Other') as Lead['platform'],
@@ -114,6 +114,8 @@ export function dbRowToLead(
 		organizerName: organizerName ?? undefined,
 		source: row.source as Lead['source'],
 		notes: row.notes ?? undefined,
+		currentPlatform: row.currentPlatform ?? undefined,
+		competitorNotes: row.competitorNotes ?? undefined,
 		signedOrg: row.wonOrgName ?? undefined,
 		dealValue: row.dealValueCents != null ? row.dealValueCents / 100 : undefined,
 		currency: ((row.currency as Lead['currency']) ?? 'PHP') || 'PHP',
@@ -193,6 +195,28 @@ export function resolveFollowUpAt(
 		return new Date(occurredAt.getTime() + followUpInDays * 86_400_000);
 	}
 	return null;
+}
+
+/**
+ * Category filter predicate for the leads list (CAT-1, GitHub #248). Pure SQL
+ * construction — DB-free and `.toSQL()`-testable. Returns an EXISTS subquery
+ * matching leads that carry AT LEAST ONE of the given category assignments;
+ * an empty array yields `undefined` (no restriction). OR-within-filter semantics
+ * mirror the other multi-select list filters.
+ */
+export function buildCategoryFilterConditions(categoryIds: string[]): SQL | undefined {
+	if (!categoryIds.length) return undefined;
+	return exists(
+		db
+			.select({ one: sql`1` })
+			.from(crmLeadCategories)
+			.where(
+				and(
+					eq(crmLeadCategories.leadId, crmLeads.id),
+					inArray(crmLeadCategories.categoryId, categoryIds)
+				)
+			)
+	) as SQL;
 }
 
 // ---------------------------------------------------------------------------
@@ -326,12 +350,14 @@ export interface ListLeadsParams {
 	platform?: string;
 	country?: string;
 	ownerId?: string;
+	categoryIds?: string[];
 	staleOnly?: boolean;
 	hasFutureEvents?: boolean;
 	weeksAhead?: number | null;
 	search?: string;
 	date?: string;
 	dateField?: 'event_date' | 'created_at';
+	createdFrom?: string;
 	page?: number;
 	pageSize?: number;
 	sort?: string;
@@ -354,12 +380,14 @@ export async function listLeadsFiltered(
 		platform,
 		country,
 		ownerId,
+		categoryIds,
 		staleOnly = false,
 		hasFutureEvents = false,
 		weeksAhead = 8,
 		search,
 		date,
 		dateField,
+		createdFrom,
 		page = 1,
 		pageSize = 25,
 		sort,
@@ -389,6 +417,10 @@ export async function listLeadsFiltered(
 
 	// Owner filter (GitHub #226) — manager/super_manager only; validated caller-side.
 	if (ownerId) conditions.push(eq(crmLeads.ownerId, ownerId));
+
+	// Category filter (CAT-1, GitHub #248) — OR-within-filter EXISTS subquery; empty → no-op.
+	const categoryCondition = buildCategoryFilterConditions(categoryIds ?? []);
+	if (categoryCondition) conditions.push(categoryCondition);
 
 	// Stale only: no activity for > 30 days
 	if (staleOnly) {
@@ -436,6 +468,12 @@ export async function listLeadsFiltered(
 		} else {
 			conditions.push(sql`${crmLeads.eventDate} = ${date}::date`);
 		}
+	}
+
+	// "Added since" filter (from dashboard drill-through) — independent of the exact-date
+	// filter above; always scoped to created_at, lower-bound inclusive.
+	if (createdFrom && /^\d{4}-\d{2}-\d{2}$/.test(createdFrom)) {
+		conditions.push(sql`DATE(${crmLeads.createdAt}) >= ${createdFrom}::date`);
 	}
 
 	const where = and(...conditions);
@@ -551,7 +589,12 @@ export async function listUnassignedLeads(
 	pageSize = 25,
 	sort?: string,
 	dir?: 'asc' | 'desc',
-	filters?: { country?: string[]; category?: string[]; weeksAhead?: number | null; search?: string }
+	filters?: {
+		country?: string[];
+		categoryIds?: string[];
+		weeksAhead?: number | null;
+		search?: string;
+	}
 ): Promise<{ leads: Lead[]; total: number }> {
 	const conditions = unassignedBaseConditions();
 
@@ -560,9 +603,8 @@ export async function listUnassignedLeads(
 	if (filters?.country && filters.country.length > 0) {
 		conditions.push(inArray(crmLeads.country, filters.country));
 	}
-	if (filters?.category && filters.category.length > 0) {
-		conditions.push(inArray(crmLeads.category, filters.category as DbLead['category'][]));
-	}
+	const categoryCondition = buildCategoryFilterConditions(filters?.categoryIds ?? []);
+	if (categoryCondition) conditions.push(categoryCondition);
 
 	// Weeks-ahead minimum: show only leads with events at least N weeks out.
 	// undefined → default 8; null → no limit (All).
@@ -861,7 +903,6 @@ export async function listPipelineStage(
 export async function createLead(
 	input: {
 		name: string;
-		category: DbLead['category'];
 		platform?: DbLead['platform'];
 		location?: string;
 		pageUrl?: string;
@@ -875,6 +916,8 @@ export async function createLead(
 		visibility?: Visibility;
 		selectedUserIds?: string[];
 		organizerId?: string;
+		currentPlatform?: string;
+		competitorNotes?: string;
 	},
 	ownerId: string
 ): Promise<Lead> {
@@ -894,7 +937,6 @@ export async function createLead(
 			.insert(crmLeads)
 			.values({
 				name: input.name,
-				category: input.category,
 				platform: input.platform ?? null,
 				location: input.location ?? null,
 				pageUrl: input.pageUrl ?? null,
@@ -905,6 +947,8 @@ export async function createLead(
 				firstAnnouncedDate: input.firstAnnouncedDate ?? null,
 				firstReachedOutDate: input.firstReachedOutDate ?? null,
 				notes: input.notes ?? null,
+				currentPlatform: input.currentPlatform ?? null,
+				competitorNotes: input.competitorNotes ?? null,
 				normalizedHandle,
 				organizerId: input.organizerId ?? null,
 				ownerId,
@@ -929,7 +973,6 @@ export async function updateLead(
 	id: string,
 	input: {
 		name: string;
-		category: DbLead['category'];
 		platform?: DbLead['platform'];
 		location?: string;
 		pageUrl?: string;
@@ -957,6 +1000,8 @@ export async function updateLead(
 		serviceFeePerTicketPesos?: number;
 		bankChargesAbsorbed?: boolean;
 		hasFutureEvents?: boolean;
+		currentPlatform?: string | null;
+		competitorNotes?: string | null;
 	},
 	actorId: string
 ): Promise<Lead | null> {
@@ -983,7 +1028,6 @@ export async function updateLead(
 			.set({
 				name: input.name,
 				normalizedHandle,
-				category: input.category,
 				platform: input.platform ?? null,
 				location: input.location ?? null,
 				pageUrl: input.pageUrl ?? null,
@@ -1024,6 +1068,12 @@ export async function updateLead(
 					? { bankChargesAbsorbed: input.bankChargesAbsorbed }
 					: {}),
 				...(input.hasFutureEvents !== undefined ? { hasFutureEvents: input.hasFutureEvents } : {}),
+				...(input.currentPlatform !== undefined
+					? { currentPlatform: input.currentPlatform || null }
+					: {}),
+				...(input.competitorNotes !== undefined
+					? { competitorNotes: input.competitorNotes || null }
+					: {}),
 				updatedAt: now
 			})
 			.where(and(eq(crmLeads.id, id), isNull(crmLeads.deletedAt)))
@@ -1034,7 +1084,6 @@ export async function updateLead(
 		// Write history rows for changed scalar fields.
 		const tracked: Array<[string, string | null, string | null]> = [
 			['name', existing.name, updated.name],
-			['category', existing.category, updated.category],
 			['platform', existing.platform ?? null, updated.platform ?? null],
 			['location', existing.location ?? null, updated.location ?? null],
 			['contact_email', existing.contactEmail ?? null, updated.contactEmail ?? null],
@@ -1097,7 +1146,9 @@ export async function updateLead(
 				'has_future_events',
 				existing.hasFutureEvents != null ? String(existing.hasFutureEvents) : null,
 				updated.hasFutureEvents != null ? String(updated.hasFutureEvents) : null
-			]
+			],
+			['current_platform', existing.currentPlatform ?? null, updated.currentPlatform ?? null],
+			['competitor_notes', existing.competitorNotes ?? null, updated.competitorNotes ?? null]
 		];
 
 		const changed = tracked.filter(([, oldVal, newVal]) => oldVal !== newVal);

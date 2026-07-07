@@ -24,6 +24,9 @@
 	import { buildOrganizerTagPatch } from '$lib/components/leads/organizer-tag';
 	import DiscardIssueModal from '$lib/components/leads/DiscardIssueModal.svelte';
 	import MeetingsPanel from '$lib/components/meetings/MeetingsPanel.svelte';
+	import CategoryChip from '$lib/components/categories/CategoryChip.svelte';
+	import CategoryAssignPanel from '$lib/components/categories/CategoryAssignPanel.svelte';
+	import CategoryManager from '$lib/components/categories/CategoryManager.svelte';
 	import { Tabs } from '$lib/components/ui/tabs';
 	import * as Popover from '$lib/components/ui/popover';
 	import { toasts } from '$lib/stores/toasts.svelte';
@@ -31,8 +34,10 @@
 	import { riskMeta } from '$lib/utils/risk';
 	import { createNoteHandlers } from '$lib/utils/note-actions';
 	import { formatDate, followUpDate } from '$lib/utils/dates';
-	import { stageColor, stageLabel } from '$lib/utils/stages';
+	import { stageColor, stageLabel, isClosed } from '$lib/utils/stages';
 	import type { AddActivityInput, LostReason, MoveStagePayload, Stage } from '$lib/types';
+	import { FieldError, fieldErrorAttrs } from '$lib/components/ui/field-error';
+	import { leadUpdateSchema } from '$lib/zod/schemas';
 
 	let { data } = $props();
 
@@ -102,6 +107,9 @@
 	let serviceFeePerTicketPesos = $state(20);
 	let bankChargesAbsorbed = $state<boolean | null>(null);
 	let hasFutureEvents = $state(false);
+	let competitorNotesDraft = $state('');
+	let savingCompetitorNotes = $state(false);
+	let competitorNotesErrors = $state<string[]>([]);
 
 	$effect(() => {
 		onboardingNotes = lead.onboardingNotes ?? '';
@@ -116,7 +124,43 @@
 		serviceFeePerTicketPesos = lead.serviceFeePerTicketPesos ?? 20;
 		bankChargesAbsorbed = lead.bankChargesAbsorbed ?? null;
 		hasFutureEvents = lead.hasFutureEvents ?? false;
+		competitorNotesDraft = lead.competitorNotes ?? '';
 	});
+
+	async function saveCompetitorNotes() {
+		if (savingCompetitorNotes) return;
+		competitorNotesErrors = [];
+		const parsed = leadUpdateSchema.safeParse({
+			name: lead.name,
+			competitorNotes: competitorNotesDraft
+		});
+		if (!parsed.success) {
+			competitorNotesErrors = parsed.error.issues.map((e) => e.message);
+			return;
+		}
+		savingCompetitorNotes = true;
+		try {
+			const res = await fetch(`/api/leads/${lead.id}`, {
+				method: 'PATCH',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(parsed.data)
+			});
+			if (!res.ok) {
+				const msg = await res
+					.json()
+					.then((b) => b?.message ?? 'Server error')
+					.catch(() => 'Server error');
+				competitorNotesErrors = [msg];
+				return;
+			}
+			await invalidateAll();
+			toasts.success('Competitor notes saved');
+		} catch {
+			competitorNotesErrors = ['Could not save — please try again'];
+		} finally {
+			savingCompetitorNotes = false;
+		}
+	}
 
 	async function saveOnboarding() {
 		if (savingOnboarding) return;
@@ -127,7 +171,6 @@
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
 					name: lead.name,
-					category: lead.category,
 					onboardingNotes,
 					contractUrl,
 					onboardingStartDate,
@@ -162,15 +205,41 @@
 	let reassignOpen = $state(false);
 	let organizerTagOpen = $state(false);
 	let discardOpen = $state(false);
+	let categoryManagerOpen = $state(false);
 
 	// Single shared mutation guard — prevents any two actions from running concurrently.
 	let mutating = $state(false);
+
+	// Remove a category assignment from this lead (CAT-1). invalidateAll() refreshes
+	// data.assignedCategories so the chip disappears.
+	async function removeCategory(categoryId: string) {
+		if (mutating) return;
+		mutating = true;
+		try {
+			const res = await fetch(`/api/leads/${lead.id}/categories`, {
+				method: 'DELETE',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ categoryId })
+			});
+			if (!res.ok) {
+				const msg = await res.text().catch(() => 'Server error');
+				toasts.push(`Remove failed: ${msg}`);
+				return;
+			}
+		} catch {
+			toasts.push('Remove failed — server error');
+			return;
+		} finally {
+			mutating = false;
+		}
+		await invalidateAll();
+		toasts.success('Category removed');
+	}
 
 	// DetailSkeleton while navigating to any lead-detail route (incl. id → id switches).
 	const navLoading = $derived(navigating.to?.route?.id === '/leads/[id]');
 
 	const fields = $derived([
-		{ label: 'Category', value: lead.category },
 		{ label: 'Location', value: lead.location },
 		{ label: 'Platform', value: lead.platform },
 		{
@@ -448,9 +517,17 @@
 								{lead.name}
 							</h1>
 							<StageChip stage={lead.stage} />
-							<AgeBadge label={lead.age.label} type={lead.age.type} />
+							{#if !isClosed(lead.stage)}
+								<AgeBadge label={lead.age.label} type={lead.age.type} />
+							{/if}
 							{#if lead.hasFutureEvents}
 								<FutureEventsBadge />
+							{/if}
+							{#if lead.currentPlatform}
+								<span
+									class="rounded-[5px] bg-amber-100 px-[6px] py-[2px] font-mono text-[10.5px] font-medium text-amber-700"
+									>{lead.currentPlatform}</span
+								>
 							{/if}
 							<AppealScoreBadge
 								score={computeAppealScore(
@@ -462,7 +539,7 @@
 							/>
 						</div>
 						<div class="mt-[5px] font-mono text-[12px] text-ink-300">
-							{lead.category} · {lead.location}
+							{lead.location}
 						</div>
 					</div>
 				</div>
@@ -853,6 +930,45 @@
 		>
 			<!-- LEFT -->
 			<div>
+				<!-- Categories (CAT-1) -->
+				<div class="mb-4 rounded-control border border-hairline bg-panel p-4">
+					<div class="mb-3 flex items-center justify-between">
+						<div class="font-mono text-[11px] uppercase tracking-[0.5px] text-ink-300">
+							Categories
+						</div>
+						{#if data.isManager}
+							<button
+								type="button"
+								class="font-mono text-[11px] text-blue-600 underline hover:text-blue-800"
+								onclick={() => (categoryManagerOpen = true)}
+							>
+								Manage categories
+							</button>
+						{/if}
+					</div>
+					{#if data.assignedCategories.length > 0}
+						<div class="mb-3 flex flex-wrap gap-1.5">
+							{#each data.assignedCategories as c (c.id)}
+								<CategoryChip
+									category={c}
+									removable={canEdit}
+									onRemove={() => removeCategory(c.id)}
+								/>
+							{/each}
+						</div>
+					{:else}
+						<div class="mb-3 text-[12px] text-ink-300">No categories assigned.</div>
+					{/if}
+					{#if canEdit}
+						<CategoryAssignPanel
+							leadId={lead.id}
+							allCategories={data.allCategories}
+							assignedCategories={data.assignedCategories}
+							onUpdate={() => {}}
+						/>
+					{/if}
+				</div>
+
 				<div class="mb-4 rounded-control border border-hairline bg-panel p-4">
 					<div class="mb-3 font-mono text-[11px] uppercase tracking-[0.5px] text-ink-300">
 						Lead &amp; event
@@ -892,6 +1008,44 @@
 							</div>
 						</div>
 					</div>
+				</div>
+
+				<!-- Competitor notes panel -->
+				<div class="mb-4 rounded-control border border-hairline bg-panel p-4">
+					<div class="mb-3 font-mono text-[11px] uppercase tracking-[0.5px] text-ink-300">
+						Competitor platform &amp; notes
+					</div>
+					{#if canEdit}
+						<div class="flex flex-col gap-2">
+							<div>
+								<label class="mb-1 block text-[11px] text-ink-300" for="competitor-notes"
+									>Notes</label
+								>
+								<textarea
+									id="competitor-notes"
+									bind:value={competitorNotesDraft}
+									rows={3}
+									placeholder="Notes about competitor platforms, pricing, objections…"
+									class="w-full rounded-[6px] border border-hairline bg-surface px-3 py-2 text-[13px] text-ink placeholder:text-ink-300 focus:border-primary focus:outline-none"
+									{...fieldErrorAttrs('competitor-notes', competitorNotesErrors)}></textarea>
+								<FieldError id="competitor-notes" errors={competitorNotesErrors} />
+							</div>
+							<div class="flex justify-end">
+								<Button
+									onclick={saveCompetitorNotes}
+									disabled={savingCompetitorNotes}
+									variant="outline"
+									class="h-[30px] text-[12px]"
+								>
+									{savingCompetitorNotes ? 'Saving…' : 'Save'}
+								</Button>
+							</div>
+						</div>
+					{:else if lead.competitorNotes}
+						<p class="text-[13px] text-ink">{lead.competitorNotes}</p>
+					{:else}
+						<p class="text-[12px] text-ink-300">No competitor notes.</p>
+					{/if}
 				</div>
 
 				<div class="mb-4">
@@ -1071,5 +1225,13 @@
 		saving={mutating}
 		onclose={() => (discardOpen = false)}
 		onconfirm={confirmDiscard}
+	/>
+{/if}
+{#if categoryManagerOpen}
+	<CategoryManager
+		open={true}
+		categories={data.allCategories}
+		onClose={() => (categoryManagerOpen = false)}
+		onUpdate={() => {}}
 	/>
 {/if}

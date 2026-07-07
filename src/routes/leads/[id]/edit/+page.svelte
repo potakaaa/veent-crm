@@ -4,6 +4,8 @@
 	import Icon from '$lib/components/shared/Icon.svelte';
 	import { Card, CardContent } from '$lib/components/ui/card';
 	import { Input } from '$lib/components/ui/input';
+	import { ComboboxFreetext } from '$lib/components/ui/combobox-freetext';
+	import { fetchOrganizerNames } from '$lib/utils/organizer-suggest';
 	import { Label } from '$lib/components/ui/label';
 	import { Button } from '$lib/components/ui/button';
 	import { Select, SelectTrigger, SelectContent, SelectItem } from '$lib/components/ui/select';
@@ -12,12 +14,7 @@
 	import { Textarea } from '$lib/components/ui/textarea';
 	import { toasts } from '$lib/stores/toasts.svelte';
 	import { formatEventDate } from '$lib/utils/dates';
-	import {
-		leadUpdateSchema,
-		LEAD_CATEGORIES,
-		LEAD_PLATFORMS,
-		LEAD_VISIBILITIES
-	} from '$lib/zod/schemas';
+	import { leadUpdateSchema, LEAD_PLATFORMS, LEAD_VISIBILITIES } from '$lib/zod/schemas';
 	import { parseDate, type DateValue } from '@internationalized/date';
 	import { untrack } from 'svelte';
 
@@ -25,7 +22,6 @@
 	const lead = untrack(() => data.lead);
 
 	let name = $state(lead.name);
-	let category = $state<string>(lead.category);
 	let platform = $state<string>(lead.platform ?? '');
 	let location = $state(lead.location === '—' ? '' : (lead.location ?? ''));
 	let pageUrl = $state(lead.pageUrl ?? '');
@@ -87,7 +83,6 @@
 	async function save() {
 		const parsed = leadUpdateSchema.safeParse({
 			name,
-			category,
 			platform: platform || undefined,
 			location: location || undefined,
 			pageUrl: pageUrl || '',
@@ -147,16 +142,12 @@
 		<CardContent class="grid grid-cols-1 gap-4 sm:grid-cols-2">
 			<div class="grid gap-1.5 sm:col-span-2">
 				<Label for="name">Page / organizer name</Label>
-				<Input id="name" bind:value={name} placeholder="e.g. Christian Concerts PH" />
-			</div>
-			<div class="grid gap-1.5">
-				<Label for="category">Category <span class="text-ink-400">(optional)</span></Label>
-				<Select type="single" bind:value={category}>
-					<SelectTrigger id="category" class="w-full">{category}</SelectTrigger>
-					<SelectContent>
-						{#each LEAD_CATEGORIES as c (c)}<SelectItem value={c} label={c}>{c}</SelectItem>{/each}
-					</SelectContent>
-				</Select>
+				<ComboboxFreetext
+					id="name"
+					bind:value={name}
+					search={fetchOrganizerNames}
+					placeholder="e.g. Christian Concerts PH"
+				/>
 			</div>
 			<div class="grid gap-1.5">
 				<Label for="platform">Platform <span class="text-ink-400">(optional)</span></Label>

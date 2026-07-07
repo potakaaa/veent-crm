@@ -36,6 +36,12 @@
 
 	const work: NavItem[] = $derived([
 		{
+			href: '/unassigned',
+			label: 'Unassigned Leads',
+			icon: 'unassigned',
+			badge: counts.unassigned || undefined
+		},
+		{
 			href: '/',
 			label: 'Today',
 			icon: 'today',
@@ -45,12 +51,6 @@
 		{ href: '/leads', label: 'My Leads', icon: 'leads' },
 		{ href: '/pipeline', label: 'Pipeline', icon: 'pipeline' },
 		{ href: '/organizers', label: 'Organizers', icon: 'organizers' },
-		{
-			href: '/unassigned',
-			label: 'Up for grabs',
-			icon: 'unassigned',
-			badge: counts.unassigned || undefined
-		},
 		{ href: '/reminders', label: 'Reminders', icon: 'reminders' },
 		{
 			href: '/notifications',
@@ -63,6 +63,7 @@
 		{ href: '/templates', label: 'Templates', icon: 'reply' }
 	]);
 	const manager: NavItem[] = $derived([
+		{ href: '/dashboard', label: 'Dashboard', icon: 'reports' },
 		{ href: '/reports', label: 'Reports', icon: 'reports' },
 		{ href: '/team', label: 'Team', icon: 'team' }
 	]);

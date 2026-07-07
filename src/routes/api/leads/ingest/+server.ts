@@ -10,7 +10,8 @@ import {
 	normalizeHandle,
 	normalizePlatform,
 	normalizeCountry,
-	parseCountryFromLocation
+	parseCountryFromLocation,
+	inferCurrentPlatform
 } from '$lib/server/import-utils';
 
 // Scraper intake. Secret-authed (INGEST_SECRET); the scraper never gets DATABASE_URL. The CRM
@@ -99,7 +100,8 @@ export const POST: RequestHandler = async ({ request }) => {
 			organizerId,
 			sourceRef: lead.sourceRef ?? null,
 			scraperOrgId: lead.scraperOrgId ?? null,
-			category: lead.category ?? 'Other',
+			// NOTE(CAT-1): crm_leads.category column dropped in migration 0028. Ingested leads no
+			// longer set a category on insert; join-row backfill for ingest is deferred (SPEC Out of Scope).
 			platform:
 				lead.platform && lead.platform !== 'Other'
 					? lead.platform
@@ -117,6 +119,8 @@ export const POST: RequestHandler = async ({ request }) => {
 			eventDate: lead.eventDate ?? null,
 			eventLink: lead.eventLink ?? null,
 			firstAnnouncedDate: lead.firstAnnouncedDate ?? null,
+			currentPlatform:
+				lead.currentPlatform ?? inferCurrentPlatform(lead.url, lead.eventLink) ?? null,
 			source: 'scraper',
 			stage: 'new',
 			ownerId: null,

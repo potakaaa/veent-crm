@@ -32,6 +32,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 		organizerId: data.organizerId,
 		leadOrganizerId: data.leadOrganizerId,
 		meetingUrl: data.meetingUrl !== undefined ? data.meetingUrl || null : undefined,
+		venue: data.venue !== undefined ? data.venue || null : undefined,
 		notes: data.notes,
 		outcome: data.outcome,
 		attendeeIds: data.attendeeIds

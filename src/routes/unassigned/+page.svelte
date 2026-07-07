@@ -11,6 +11,7 @@
 	import { SearchInput } from '$lib/components/ui/search-input';
 	import { WeekRangeControl } from '$lib/components/ui/week-range-control';
 	import DataGridShell from '$lib/components/leads/DataGridShell.svelte';
+	import CategoryChip from '$lib/components/categories/CategoryChip.svelte';
 	import EventBadge from '$lib/components/shared/EventBadge.svelte';
 	import AppealScoreBadge from '$lib/components/AppealScoreBadge.svelte';
 	import Icon from '$lib/components/shared/Icon.svelte';
@@ -94,15 +95,15 @@
 
 	// Filters: comma-join the selection into the URL param (or drop it when empty), and always
 	// reset to page 1 so the filtered result starts at the beginning.
-	function setFilter(key: 'country' | 'category', values: string[]) {
+	function setFilter(key: 'country' | 'categoryIds', values: string[]) {
 		navigate({ [key]: values.join(',') || undefined, page: undefined });
 	}
 	function clearAllFilters() {
-		navigate({ country: undefined, category: undefined, q: undefined, page: undefined });
+		navigate({ country: undefined, categoryIds: undefined, q: undefined, page: undefined });
 	}
 	const hasActiveFilters = $derived(
 		data.filters.country.length > 0 ||
-			data.filters.category.length > 0 ||
+			(data.filters.categoryIds?.length ?? 0) > 0 ||
 			data.filters.search.trim().length > 0
 	);
 
@@ -138,7 +139,6 @@
 				{ id: 'stage', header: 'Stage' },
 				{ id: 'source', header: 'Source' },
 				{ id: 'country', header: 'Country', enableSorting: false },
-				{ id: 'category', header: 'Category', enableSorting: false },
 				{ id: '_lastOwner', header: 'Last owner', enableSorting: false },
 				{ id: 'appeal', header: 'Appeal', sortDescFirst: true },
 				{ id: '_actions', header: '', enableSorting: false }
@@ -284,18 +284,18 @@
 
 	// Desktop column template (10 cells). Below `lg` the DataGridShell collapses this
 	// into a stacked single-column card.
-	const cols = 'lg:grid-cols-[36px_2fr_1.6fr_1fr_90px_90px_90px_1fr_130px_150px]';
+	const cols = 'lg:grid-cols-[36px_2fr_1.6fr_1fr_90px_90px_90px_1fr_200px]';
 
 	// Shared hover/focus popover timer hook (200ms grace period) — consolidates the
 	// former local openHoverId/hoverCloseTimer state + handlers.
 	const hover = createHoverPopover();
 </script>
 
-<svelte:head><title>Up for grabs · Veent CRM</title></svelte:head>
+<svelte:head><title>Unassigned Leads · Veent CRM</title></svelte:head>
 
 <div class="px-7 pb-16 pt-6">
 	<PageHeader
-		title="Up for grabs"
+		title="Unassigned Leads"
 		subtitle={`${data.pagination.total} leads with no active owner. Claim one to start working it.`}
 	>
 		{#snippet actions()}
@@ -326,7 +326,7 @@
 			value={data.filters.search ?? ''}
 			oninput={onSearch}
 			placeholder="Search name, event, or handle"
-			ariaLabel="Search Up for Grabs leads"
+			ariaLabel="Search Unassigned Leads"
 		/>
 		<FilterDropdown
 			label="Country"
@@ -335,13 +335,15 @@
 			selected={data.filters.country}
 			onchange={(values) => setFilter('country', values as string[])}
 		/>
-		<FilterDropdown
-			label="Category"
-			multiple={true}
-			options={data.categoryOptions}
-			selected={data.filters.category}
-			onchange={(values) => setFilter('category', values as string[])}
-		/>
+		{#if data.allCategories.length > 0}
+			<FilterDropdown
+				label="Category"
+				multiple={true}
+				options={data.allCategories.map((c) => ({ value: c.id, label: c.name }))}
+				selected={data.filters.categoryIds ?? []}
+				onchange={(values) => setFilter('categoryIds', values as string[])}
+			/>
+		{/if}
 		{#if hasActiveFilters}
 			<button
 				onclick={clearAllFilters}
@@ -433,17 +435,33 @@
 									onmouseleave={hover.scheduleClose}
 									onkeydown={hover.handleEscape}
 								>
-									<a href="/leads/{l.id}" class="min-w-0 block">
-										<div
-											class="flex min-w-0 items-center gap-1.5 text-[13.5px] font-semibold lg:text-[13px]"
-										>
-											<span class="truncate">{l.name}</span>
-											{#if l.siblings}<span
-													class="shrink-0 rounded-[4px] bg-[rgba(194,113,12,0.1)] px-[5px] py-px font-mono text-[9.5px] text-stale"
-													>{l.siblings} events</span
-												>{/if}
-										</div>
-									</a>
+									<div class="flex min-w-0 flex-col gap-0.5">
+										<a href="/leads/{l.id}" class="min-w-0 block">
+											<div
+												class="flex min-w-0 items-center gap-1.5 text-[13.5px] font-semibold lg:text-[13px]"
+											>
+												<span class="truncate">{l.name}</span>
+												{#if l.siblings}<span
+														class="shrink-0 rounded-[4px] bg-[rgba(194,113,12,0.1)] px-[5px] py-px font-mono text-[9.5px] text-stale"
+														>{l.siblings} events</span
+													>{/if}
+											</div>
+										</a>
+										{#if l.categories && l.categories.length > 0}
+											<div class="flex flex-wrap items-center gap-1">
+												{#each l.categories.slice(0, 3) as cat (cat.id)}
+													<CategoryChip category={cat} />
+												{/each}
+												{#if l.categories.length > 3}
+													<span
+														class="shrink-0 rounded-[4px] bg-panel-sunken px-[5px] py-px font-mono text-[10px] text-ink-400"
+													>
+														+{l.categories.length - 3} more
+													</span>
+												{/if}
+											</div>
+										{/if}
+									</div>
 								</div>
 							{/snippet}
 						</Popover.Trigger>
@@ -474,11 +492,6 @@
 								})}
 							</div>
 						{/if}
-					</div>
-					<div
-						class="order-2 truncate font-mono text-[12px] text-ink-600 lg:order-4 lg:text-ink-400"
-					>
-						{l.category}
 					</div>
 					<div class="order-1 lg:order-6"><AppealScoreBadge score={l.appealScore} /></div>
 					<div class="order-3 lg:order-7 flex items-center gap-1.5">
@@ -518,12 +531,18 @@
 						class="order-4 mt-1.5 grid grid-cols-2 gap-x-3 gap-y-1.5 border-t border-panel-sunken pt-2.5 lg:contents"
 					>
 						<div class="lg:order-1"><StageChip stage={l.stage} /></div>
-						<div class="opacity-70 lg:order-2">
+						<div class="opacity-70 lg:order-2 flex min-w-0 flex-wrap items-center gap-1.5">
 							<span
 								class="rounded-[5px] px-[6px] py-[2px] font-mono text-[10.5px] font-medium {sourceLabel(
 									l.source
 								).class}">{sourceLabel(l.source).label}</span
 							>
+							{#if l.currentPlatform}
+								<span
+									class="rounded-[5px] bg-amber-100 px-[6px] py-[2px] font-mono text-[10.5px] font-medium text-amber-700"
+									>{l.currentPlatform}</span
+								>
+							{/if}
 						</div>
 						<div class="truncate font-mono text-[11px] text-ink-300 lg:order-3">{l.country}</div>
 						<div class="font-mono text-[11px] text-ink-300 lg:order-5">
@@ -539,7 +558,7 @@
 				{#if hasActiveFilters}
 					No leads match your filters.
 				{:else}
-					No leads up for grabs — queue clear.
+					No unassigned leads — queue clear.
 				{/if}
 			</div>
 		{/snippet}

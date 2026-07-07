@@ -5,6 +5,10 @@ import {
 	ingestBatchSchema,
 	meetingFormSchema,
 	meetingUpdateSchema,
+	categoryCreateSchema,
+	categoryRenameSchema,
+	assignCategoriesSchema,
+	userNameEditSchema,
 	LEAD_STAGES,
 	USER_ROLES
 } from '$lib/zod/schemas';
@@ -38,7 +42,7 @@ describe('zod schemas (stub)', () => {
 // leadUpdateSchema — hasFutureEvents flag (GitHub #94, AC1/AC2 schema layer)
 // ---------------------------------------------------------------------------
 describe('leadUpdateSchema hasFutureEvents flag (#94)', () => {
-	const base = { name: 'Recurring Org', category: 'Concert' } as const;
+	const base = { name: 'Recurring Org' } as const;
 
 	it('accepts hasFutureEvents: true', () => {
 		const r = leadUpdateSchema.safeParse({ ...base, hasFutureEvents: true });
@@ -93,7 +97,7 @@ describe('leadFormSchema organizerId (#190)', () => {
 // ---------------------------------------------------------------------------
 describe('leadUpdateSchema eventDate clear path (#195)', () => {
 	it('accepts an empty-string eventDate (cleared/unset)', () => {
-		const r = leadUpdateSchema.safeParse({ name: 'X', category: 'Concert', eventDate: '' });
+		const r = leadUpdateSchema.safeParse({ name: 'X', eventDate: '' });
 		expect(r.success).toBe(true);
 	});
 });
@@ -118,6 +122,21 @@ describe('super_manager role (GitHub #73)', () => {
 	it('labels the base roles', () => {
 		expect(roleLabel('rep')).toBe('Rep');
 		expect(roleLabel('manager')).toBe('Manager');
+	});
+});
+
+// ---------------------------------------------------------------------------
+// userNameEditSchema — name-only edit (team member profile edit)
+// ---------------------------------------------------------------------------
+describe('userNameEditSchema (name-only edit)', () => {
+	it('rejects an empty name', () => {
+		const r = userNameEditSchema.safeParse({ name: '' });
+		expect(r.success).toBe(false);
+	});
+
+	it('accepts a valid name', () => {
+		const r = userNameEditSchema.safeParse({ name: 'Marites' });
+		expect(r.success).toBe(true);
 	});
 });
 
@@ -221,5 +240,160 @@ describe('meetingUpdateSchema leadOrganizerId (edit)', () => {
 	it('rejects a malformed leadOrganizerId', () => {
 		const r = meetingUpdateSchema.safeParse({ leadOrganizerId: 'nope' });
 		expect(r.success).toBe(false);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Meeting Venue free-text field (GitHub #250, AC1)
+// ---------------------------------------------------------------------------
+describe('meetingFormSchema venue (#250 AC1)', () => {
+	const base = {
+		leadId: '11111111-1111-4111-8111-111111111111',
+		startAt: '2026-07-06T10:00:00.000Z'
+	};
+
+	it('accepts an arbitrary free-text venue string', () => {
+		const r = meetingFormSchema.safeParse({ ...base, venue: 'Ayala Center Cebu, 3rd Floor' });
+		expect(r.success).toBe(true);
+		if (r.success) expect(r.data.venue).toBe('Ayala Center Cebu, 3rd Floor');
+	});
+
+	it('accepts an omitted venue (optional)', () => {
+		const r = meetingFormSchema.safeParse(base);
+		expect(r.success).toBe(true);
+		if (r.success) expect(r.data.venue).toBeUndefined();
+	});
+
+	it('accepts an empty-string venue (no min-length constraint)', () => {
+		const r = meetingFormSchema.safeParse({ ...base, venue: '' });
+		expect(r.success).toBe(true);
+	});
+
+	it('imposes no format constraint (URLs, punctuation, emoji all valid)', () => {
+		const r = meetingFormSchema.safeParse({ ...base, venue: 'https://maps.app/x — Room #2 🎪' });
+		expect(r.success).toBe(true);
+	});
+});
+
+describe('meetingUpdateSchema venue (#250 AC1)', () => {
+	it('accepts an arbitrary free-text venue string on edit', () => {
+		const r = meetingUpdateSchema.safeParse({ venue: 'SM Seaside' });
+		expect(r.success).toBe(true);
+		if (r.success) expect(r.data.venue).toBe('SM Seaside');
+	});
+
+	it('accepts an omitted venue (field untouched)', () => {
+		const r = meetingUpdateSchema.safeParse({});
+		expect(r.success).toBe(true);
+		if (r.success) expect(r.data.venue).toBeUndefined();
+	});
+
+	it('accepts an empty-string venue (cleared)', () => {
+		const r = meetingUpdateSchema.safeParse({ venue: '' });
+		expect(r.success).toBe(true);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Organizer Name stays free-text — no enum / must-match constraint (GitHub #250, AC3)
+// ---------------------------------------------------------------------------
+describe('lead name field is free-text (#250 AC3)', () => {
+	it('leadFormSchema accepts a brand-new organizer name with no matching suggestion', () => {
+		const r = leadFormSchema.safeParse({ name: 'Totally New Organizer 12345 !@#' });
+		expect(r.success).toBe(true);
+		if (r.success) expect(r.data.name).toBe('Totally New Organizer 12345 !@#');
+	});
+
+	it('leadUpdateSchema accepts a brand-new organizer name (no enum/refine block)', () => {
+		const r = leadUpdateSchema.safeParse({ name: 'Some Unlisted Venue Org', category: 'Other' });
+		expect(r.success).toBe(true);
+		if (r.success) expect(r.data.name).toBe('Some Unlisted Venue Org');
+	});
+
+	it('trims and requires non-empty (the ONLY constraint — no membership check)', () => {
+		expect(leadFormSchema.safeParse({ name: '   ' }).success).toBe(false);
+		expect(leadFormSchema.safeParse({ name: 'A' }).success).toBe(true);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Custom lead categories (CAT-1, GitHub #248) — create / rename / assign schemas
+// ---------------------------------------------------------------------------
+describe('categoryCreateSchema (CAT-1 AC-1 / AC-10)', () => {
+	it('accepts a valid name with an optional hex color', () => {
+		const r = categoryCreateSchema.safeParse({ name: 'VIP Leads', color: '#1a2b3c' });
+		expect(r.success).toBe(true);
+	});
+
+	it('accepts a valid name with no color', () => {
+		const r = categoryCreateSchema.safeParse({ name: 'VIP Leads' });
+		expect(r.success).toBe(true);
+	});
+
+	it('trims surrounding whitespace on the name', () => {
+		const r = categoryCreateSchema.safeParse({ name: '  Spaced  ' });
+		expect(r.success).toBe(true);
+		if (r.success) expect(r.data.name).toBe('Spaced');
+	});
+
+	it('rejects a missing name', () => {
+		const r = categoryCreateSchema.safeParse({ color: '#1a2b3c' });
+		expect(r.success).toBe(false);
+	});
+
+	it('rejects an empty/blank name', () => {
+		expect(categoryCreateSchema.safeParse({ name: '' }).success).toBe(false);
+		expect(categoryCreateSchema.safeParse({ name: '   ' }).success).toBe(false);
+	});
+
+	it('rejects an invalid hex color', () => {
+		expect(categoryCreateSchema.safeParse({ name: 'X', color: 'red' }).success).toBe(false);
+		expect(categoryCreateSchema.safeParse({ name: 'X', color: '#12' }).success).toBe(false);
+		expect(categoryCreateSchema.safeParse({ name: 'X', color: '1a2b3c' }).success).toBe(false);
+	});
+
+	it('rejects a name that is too long (> 50 chars)', () => {
+		const r = categoryCreateSchema.safeParse({ name: 'a'.repeat(51) });
+		expect(r.success).toBe(false);
+	});
+});
+
+describe('categoryRenameSchema (CAT-1 AC-8)', () => {
+	it('accepts a valid rename', () => {
+		expect(categoryRenameSchema.safeParse({ name: 'Renamed' }).success).toBe(true);
+	});
+
+	it('rejects a missing name', () => {
+		expect(categoryRenameSchema.safeParse({}).success).toBe(false);
+	});
+
+	it('rejects an empty/blank name', () => {
+		expect(categoryRenameSchema.safeParse({ name: '' }).success).toBe(false);
+		expect(categoryRenameSchema.safeParse({ name: '   ' }).success).toBe(false);
+	});
+
+	it('rejects an invalid hex color', () => {
+		expect(categoryRenameSchema.safeParse({ name: 'X', color: 'nope' }).success).toBe(false);
+	});
+
+	it('rejects a name that is too long (> 50 chars)', () => {
+		expect(categoryRenameSchema.safeParse({ name: 'a'.repeat(51) }).success).toBe(false);
+	});
+});
+
+describe('assignCategoriesSchema (CAT-1 AC-2 / AC-6)', () => {
+	it('accepts a valid UUID categoryId', () => {
+		const r = assignCategoriesSchema.safeParse({
+			categoryId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
+		});
+		expect(r.success).toBe(true);
+	});
+
+	it('rejects a non-UUID categoryId', () => {
+		expect(assignCategoriesSchema.safeParse({ categoryId: 'not-a-uuid' }).success).toBe(false);
+	});
+
+	it('rejects a missing categoryId', () => {
+		expect(assignCategoriesSchema.safeParse({}).success).toBe(false);
 	});
 });

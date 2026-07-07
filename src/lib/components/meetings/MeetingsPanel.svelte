@@ -202,6 +202,7 @@
 							// Explicit null (from the modal) clears the linked organizer on edit.
 							leadOrganizerId: payload.leadOrganizerId ?? null,
 							meetingUrl: payload.meetingUrl ?? '',
+							venue: payload.venue ?? '',
 							notes: payload.notes ?? '',
 							outcome: payload.outcome ?? '',
 							attendeeIds: payload.attendeeIds

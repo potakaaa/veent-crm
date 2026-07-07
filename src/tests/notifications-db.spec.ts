@@ -51,10 +51,7 @@ describe('leadAssignedMessage (pure)', () => {
 // ---------------------------------------------------------------------------
 describe.skipIf(SKIP_DB)('reassignLead → notification (DB)', () => {
 	it('creates one lead_assigned notification for the new owner, null readAt', async () => {
-		const lead = await createLead(
-			{ name: `${TEST_PREFIX} Reassign Notify`, category: 'Other' },
-			REP_UUID
-		);
+		const lead = await createLead({ name: `${TEST_PREFIX} Reassign Notify` }, REP_UUID);
 		createdIds.push(lead.id);
 
 		const reassigned = await reassignLead(lead.id, REP2_UUID, MANAGER_UUID);
@@ -77,10 +74,7 @@ describe.skipIf(SKIP_DB)('reassignLead → notification (DB)', () => {
 // ---------------------------------------------------------------------------
 describe.skipIf(SKIP_DB)('self-claim paths create no notification (DB)', () => {
 	it('claimLead and unclaimLead never insert a crm_notifications row', async () => {
-		const lead = await createLead(
-			{ name: `${TEST_PREFIX} Self Claim`, category: 'Other' },
-			REP_UUID
-		);
+		const lead = await createLead({ name: `${TEST_PREFIX} Self Claim` }, REP_UUID);
 		createdIds.push(lead.id);
 
 		// Make it claimable (unowned), then claim + unclaim as the rep.
@@ -103,10 +97,7 @@ describe.skipIf(SKIP_DB)('self-claim paths create no notification (DB)', () => {
 // ---------------------------------------------------------------------------
 describe.skipIf(SKIP_DB)('markNotificationRead authorization (DB)', () => {
 	it('sets readAt for the owner and returns null for a non-owner', async () => {
-		const lead = await createLead(
-			{ name: `${TEST_PREFIX} Mark Read`, category: 'Other' },
-			REP_UUID
-		);
+		const lead = await createLead({ name: `${TEST_PREFIX} Mark Read` }, REP_UUID);
 		createdIds.push(lead.id);
 		await reassignLead(lead.id, REP2_UUID, MANAGER_UUID);
 
@@ -137,10 +128,7 @@ describe.skipIf(SKIP_DB)('markNotificationRead authorization (DB)', () => {
 // ---------------------------------------------------------------------------
 describe.skipIf(SKIP_DB)('getUnreadNotificationCount (DB)', () => {
 	it('decrements after a notification is marked read', async () => {
-		const lead = await createLead(
-			{ name: `${TEST_PREFIX} Unread Count`, category: 'Other' },
-			REP_UUID
-		);
+		const lead = await createLead({ name: `${TEST_PREFIX} Unread Count` }, REP_UUID);
 		createdIds.push(lead.id);
 		await reassignLead(lead.id, REP2_UUID, MANAGER_UUID);
 

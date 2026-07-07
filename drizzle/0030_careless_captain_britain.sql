@@ -1,0 +1,1 @@
+ALTER TABLE "crm_meetings" ADD COLUMN "venue" text;

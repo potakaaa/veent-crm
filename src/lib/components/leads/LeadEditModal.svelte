@@ -1,6 +1,8 @@
 <script lang="ts">
 	import Modal from '$lib/components/shared/Modal.svelte';
 	import { Input } from '$lib/components/ui/input';
+	import { ComboboxFreetext } from '$lib/components/ui/combobox-freetext';
+	import { fetchOrganizerNames } from '$lib/utils/organizer-suggest';
 	import { Label } from '$lib/components/ui/label';
 	import { Button } from '$lib/components/ui/button';
 	import { Select, SelectTrigger, SelectContent, SelectItem } from '$lib/components/ui/select';
@@ -8,7 +10,7 @@
 	import * as Dialog from '$lib/components/ui/dialog';
 	import { Textarea } from '$lib/components/ui/textarea';
 	import { formatEventDate } from '$lib/utils/dates';
-	import { leadUpdateSchema, LEAD_CATEGORIES, LEAD_PLATFORMS } from '$lib/zod/schemas';
+	import { leadUpdateSchema, LEAD_PLATFORMS } from '$lib/zod/schemas';
 	import { parseDate, type DateValue } from '@internationalized/date';
 	import type { Lead } from '$lib/types';
 
@@ -29,7 +31,6 @@
 	} = $props();
 
 	let name = $state('');
-	let category = $state('');
 	let platform = $state('');
 	let location = $state('');
 	let pageUrl = $state('');
@@ -40,6 +41,8 @@
 	let eventName = $state('');
 	let eventLink = $state('');
 	let notes = $state('');
+	let currentPlatform = $state('');
+	let competitorNotes = $state('');
 	let hasFutureEvents = $state(false);
 	let selectedDate = $state<DateValue | undefined>(undefined);
 	let dateOpen = $state(false);
@@ -50,7 +53,6 @@
 	$effect(() => {
 		if (open) {
 			name = lead.name;
-			category = lead.category;
 			platform = lead.platform ?? '';
 			location = lead.location === '—' ? '' : (lead.location ?? '');
 			pageUrl = lead.pageUrl ?? '';
@@ -61,6 +63,8 @@
 			eventName = lead.eventName ?? '';
 			eventLink = lead.eventLink ?? '';
 			notes = lead.notes ?? '';
+			currentPlatform = lead.currentPlatform ?? '';
+			competitorNotes = lead.competitorNotes ?? '';
 			hasFutureEvents = lead.hasFutureEvents ?? false;
 			selectedDate = lead.eventDate ? parseDate(lead.eventDate) : undefined;
 			formError = '';
@@ -76,7 +80,6 @@
 	function buildPayload() {
 		return leadUpdateSchema.safeParse({
 			name,
-			category,
 			platform: platform || undefined,
 			location: location || undefined,
 			pageUrl: pageUrl || '',
@@ -89,6 +92,8 @@
 			eventDateRaw: eventDateDisplay || undefined,
 			eventLink: eventLink || '',
 			notes: notes || undefined,
+			currentPlatform: currentPlatform || undefined,
+			competitorNotes: competitorNotes || undefined,
 			hasFutureEvents
 		});
 	}
@@ -119,16 +124,12 @@
 		<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
 			<div class="grid gap-1.5 sm:col-span-2">
 				<Label for="el-name">Page / organizer name</Label>
-				<Input id="el-name" bind:value={name} placeholder="e.g. Christian Concerts PH" />
-			</div>
-			<div class="grid gap-1.5">
-				<Label for="el-category">Category</Label>
-				<Select type="single" bind:value={category}>
-					<SelectTrigger id="el-category" class="w-full">{category}</SelectTrigger>
-					<SelectContent>
-						{#each LEAD_CATEGORIES as c (c)}<SelectItem value={c} label={c}>{c}</SelectItem>{/each}
-					</SelectContent>
-				</Select>
+				<ComboboxFreetext
+					id="el-name"
+					bind:value={name}
+					search={fetchOrganizerNames}
+					placeholder="e.g. Christian Concerts PH"
+				/>
 			</div>
 			<div class="grid gap-1.5">
 				<Label for="el-platform">Platform</Label>
@@ -217,6 +218,23 @@
 			<div class="grid gap-1.5 sm:col-span-2">
 				<Label for="el-notes">Notes</Label>
 				<Textarea id="el-notes" bind:value={notes} placeholder="Anything worth noting…" rows={3} />
+			</div>
+			<div class="grid gap-1.5">
+				<Label for="el-current-platform">Current platform (competitor)</Label>
+				<Input
+					id="el-current-platform"
+					bind:value={currentPlatform}
+					placeholder="e.g. Ticketbase, Eventbrite…"
+				/>
+			</div>
+			<div class="grid gap-1.5 sm:col-span-2">
+				<Label for="el-competitor-notes">Competitor notes</Label>
+				<Textarea
+					id="el-competitor-notes"
+					bind:value={competitorNotes}
+					placeholder="Pricing, objections, contract details…"
+					rows={3}
+				/>
 			</div>
 			<div class="sm:col-span-2">
 				<label class="flex items-center gap-2 text-[13px] font-medium text-ink">

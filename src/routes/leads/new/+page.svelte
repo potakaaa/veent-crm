@@ -12,6 +12,8 @@
 	import { Button } from '$lib/components/ui/button';
 	import { Select, SelectTrigger, SelectContent, SelectItem } from '$lib/components/ui/select';
 	import { FieldError, fieldErrorAttrs } from '$lib/components/ui/field-error';
+	import { ComboboxFreetext } from '$lib/components/ui/combobox-freetext';
+	import { fetchOrganizerNames } from '$lib/utils/organizer-suggest';
 	import * as Popover from '$lib/components/ui/popover';
 	import OrganizerHoverCard from '$lib/components/OrganizerHoverCard.svelte';
 	import DatePickerField from '$lib/components/leads/DatePickerField.svelte';
@@ -20,7 +22,7 @@
 	import { createHoverPopover } from '$lib/utils/hover-popover.svelte';
 	import { ownerNameFor } from '$lib/utils/owner';
 	import { formatEventDate } from '$lib/utils/dates';
-	import { leadFormSchema, LEAD_CATEGORIES, LEAD_PLATFORMS, LOOSE_UUID_RE } from '$lib/zod/schemas';
+	import { leadFormSchema, LEAD_PLATFORMS, LOOSE_UUID_RE } from '$lib/zod/schemas';
 	import type { DateValue } from '@internationalized/date';
 
 	let { data } = $props();
@@ -36,7 +38,6 @@
 	// Add Event pre-fill (GitHub #190): seed the organizer name from `?name=` when present.
 	// URLSearchParams.get() already decodes; a missing/empty param falls back to '' (no error UI).
 	let name = $state(page.url.searchParams.get('name') ?? '');
-	let category = $state<string>('Other');
 	let platform = $state<string>('');
 	let location = $state('');
 	let pageUrl = $state('');
@@ -44,6 +45,8 @@
 	let eventName = $state('');
 	let eventLink = $state('');
 	let notes = $state('');
+	let currentPlatform = $state('');
+	let competitorNotes = $state('');
 	let visibility = $state<'only_me' | 'everyone' | 'selected'>('everyone');
 	let selectedUserIds = $state<string[]>([]);
 
@@ -88,7 +91,6 @@
 		if (saving) return; // duplicate-submit guard
 		const parsed = leadFormSchema.safeParse({
 			name,
-			category,
 			platform: platform || undefined,
 			location: location || undefined,
 			pageUrl: pageUrl || '',
@@ -99,6 +101,8 @@
 			firstAnnouncedDate: announcedDate ? announcedDate.toString() : undefined,
 			firstReachedOutDate: reachedOutDate ? reachedOutDate.toString() : undefined,
 			notes: notes.trim() || undefined,
+			currentPlatform: currentPlatform.trim() || undefined,
+			competitorNotes: competitorNotes.trim() || undefined,
 			visibility,
 			selectedUserIds: visibility === 'selected' ? selectedUserIds : undefined,
 			organizerId: prefillOrganizerId
@@ -197,22 +201,14 @@
 		<CardContent class="grid grid-cols-1 gap-4 sm:grid-cols-2">
 			<div class="grid gap-1.5 sm:col-span-2">
 				<Label for="name">Page / organizer name</Label>
-				<Input
+				<ComboboxFreetext
 					id="name"
 					bind:value={name}
+					search={fetchOrganizerNames}
 					placeholder="e.g. Christian Concerts PH"
 					{...fieldErrorAttrs('name', fieldErrors.name)}
 				/>
 				<FieldError id="name" errors={fieldErrors.name} />
-			</div>
-			<div class="grid gap-1.5">
-				<Label for="category">Category <span class="text-ink-400">(optional)</span></Label>
-				<Select type="single" bind:value={category}>
-					<SelectTrigger id="category" class="w-full">{category}</SelectTrigger>
-					<SelectContent>
-						{#each LEAD_CATEGORIES as c (c)}<SelectItem value={c} label={c}>{c}</SelectItem>{/each}
-					</SelectContent>
-				</Select>
 			</div>
 			<div class="grid gap-1.5">
 				<Label for="platform">Platform <span class="text-ink-400">(optional)</span></Label>
@@ -340,6 +336,29 @@
 					id="notes"
 					bind:value={notes}
 					placeholder="Anything worth noting about this lead…"
+					class="min-h-[72px] resize-y"
+				/>
+			</div>
+
+			<div class="grid gap-1.5">
+				<Label for="current-platform"
+					>Current platform <span class="text-ink-400">(optional)</span></Label
+				>
+				<Input
+					id="current-platform"
+					bind:value={currentPlatform}
+					placeholder="e.g. Ticketbase, Eventbrite…"
+				/>
+			</div>
+
+			<div class="grid gap-1.5 sm:col-span-2">
+				<Label for="competitor-notes"
+					>Competitor notes <span class="text-ink-400">(optional)</span></Label
+				>
+				<Textarea
+					id="competitor-notes"
+					bind:value={competitorNotes}
+					placeholder="AE pitch notes, platform details…"
 					class="min-h-[72px] resize-y"
 				/>
 			</div>

@@ -34,7 +34,7 @@
 	import { riskMeta } from '$lib/utils/risk';
 	import { createNoteHandlers } from '$lib/utils/note-actions';
 	import { formatDate, followUpDate } from '$lib/utils/dates';
-	import { stageColor, stageLabel } from '$lib/utils/stages';
+	import { stageColor, stageLabel, isClosed } from '$lib/utils/stages';
 	import type { AddActivityInput, LostReason, MoveStagePayload, Stage } from '$lib/types';
 	import { FieldError, fieldErrorAttrs } from '$lib/components/ui/field-error';
 	import { leadUpdateSchema } from '$lib/zod/schemas';
@@ -517,7 +517,9 @@
 								{lead.name}
 							</h1>
 							<StageChip stage={lead.stage} />
-							<AgeBadge label={lead.age.label} type={lead.age.type} />
+							{#if !isClosed(lead.stage)}
+								<AgeBadge label={lead.age.label} type={lead.age.type} />
+							{/if}
 							{#if lead.hasFutureEvents}
 								<FutureEventsBadge />
 							{/if}

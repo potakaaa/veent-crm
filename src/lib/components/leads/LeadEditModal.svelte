@@ -1,6 +1,8 @@
 <script lang="ts">
 	import Modal from '$lib/components/shared/Modal.svelte';
 	import { Input } from '$lib/components/ui/input';
+	import { ComboboxFreetext } from '$lib/components/ui/combobox-freetext';
+	import { fetchOrganizerNames } from '$lib/utils/organizer-suggest';
 	import { Label } from '$lib/components/ui/label';
 	import { Button } from '$lib/components/ui/button';
 	import { Select, SelectTrigger, SelectContent, SelectItem } from '$lib/components/ui/select';
@@ -122,7 +124,12 @@
 		<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
 			<div class="grid gap-1.5 sm:col-span-2">
 				<Label for="el-name">Page / organizer name</Label>
-				<Input id="el-name" bind:value={name} placeholder="e.g. Christian Concerts PH" />
+				<ComboboxFreetext
+					id="el-name"
+					bind:value={name}
+					search={fetchOrganizerNames}
+					placeholder="e.g. Christian Concerts PH"
+				/>
 			</div>
 			<div class="grid gap-1.5">
 				<Label for="el-platform">Platform</Label>

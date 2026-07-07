@@ -182,7 +182,7 @@
 		{:else if total === 0}
 			<EmptyState
 				title="Nothing due or coming up soon"
-				hint="Every follow-up is scheduled and under control. Go prospect or check Up for grabs."
+				hint="Every follow-up is scheduled and under control. Go prospect or check Unassigned Leads."
 				tone="success"
 			/>
 		{:else}

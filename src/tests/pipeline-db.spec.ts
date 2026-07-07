@@ -10,10 +10,16 @@
  * To run locally: ensure DATABASE_URL is in .env, then: bun run test:unit -- --run
  */
 import { describe, it, expect, afterAll } from 'vitest';
-import { createLead, getLead, moveLeadStage, reassignLead } from '$lib/server/db/leads';
+import {
+	createLead,
+	getLead,
+	moveLeadStage,
+	reassignLead,
+	buildPipelineStageWhereClause
+} from '$lib/server/db/leads';
 import { db } from '$lib/server/db/index';
 import { crmLeads, crmLeadHistory } from '$lib/server/db/schema';
-import { eq } from 'drizzle-orm';
+import { eq, type SQL } from 'drizzle-orm';
 import type { Lead } from '$lib/types';
 
 // Skip when no DATABASE_URL is configured (no postgres service available).
@@ -254,5 +260,138 @@ describe.skipIf(SKIP_DB)('Phase 4 regression — reads unaffected', () => {
 		expect(fetched).not.toBeNull();
 		expect(fetched!.name).toBe(`${TEST_PREFIX} Regression P4`);
 		expect(fetched!.stage).toBe('new');
+	});
+});
+
+// ---------------------------------------------------------------------------
+// PIPE-4 — buildPipelineStageWhereClause owner-scoping guards (DB-free, .toSQL())
+//
+// These tests intentionally do NOT open a DB connection: drizzle `.toSQL()` renders the
+// WHERE clause + bound params synchronously, needing no live Postgres (proven by
+// calendar-db.spec.ts running the same pattern un-skipped in CI). This block is therefore
+// deliberately NOT wrapped in describe.skipIf(SKIP_DB) — the security-critical query
+// composition (a rep's own-leads restriction can never be widened by a stray filterRepId)
+// must be proven Fully-Automated in every CI run, live DB or not.
+// ---------------------------------------------------------------------------
+
+const REP_ID = '00000000-0000-0000-0000-0000000000aa';
+const OTHER_REP_ID = '00000000-0000-0000-0000-0000000000bb';
+const MGR_ID = '00000000-0000-0000-0000-0000000000cc';
+
+// Render a WHERE clause to its SQL string + bound params without a live DB.
+function whereSql(clause: SQL | undefined) {
+	return db.select().from(crmLeads).where(clause).toSQL();
+}
+
+// Isolate ONLY the WHERE-clause portion. `SELECT *` always lists the `owner_id` column, so a
+// raw `.toContain('owner_id')` is polluted by the projection — owner-scoping assertions must
+// look at the predicate portion only.
+function whereClauseOf(sqlStr: string): string {
+	const idx = sqlStr.indexOf(' where ');
+	return idx === -1 ? '' : sqlStr.slice(idx);
+}
+
+function ownerPredicateCount(where: string): number {
+	return where.match(/\bowner_id\b/g)?.length ?? 0;
+}
+
+describe('buildPipelineStageWhereClause — DB-free', () => {
+	it('(a) rep → own-scoped; a stray filterRepId never widens (filterRepId ignored)', () => {
+		const withStray = whereSql(buildPipelineStageWhereClause(REP_ID, 'rep', 'new', OTHER_REP_ID));
+		const withoutStray = whereSql(buildPipelineStageWhereClause(REP_ID, 'rep', 'new'));
+		// A stray filterRepId must produce the IDENTICAL WHERE as no filter — never widened,
+		// never narrowed to the OTHER rep's id.
+		expect(withStray.sql).toBe(withoutStray.sql);
+		expect(withStray.params).not.toContain(OTHER_REP_ID);
+		// visibilityCondition('rep') binds the signed-in user's own id (owner=me leak guard).
+		const where = whereClauseOf(withStray.sql);
+		expect(where).toContain('owner_id');
+		expect(withStray.params).toContain(REP_ID);
+	});
+
+	it('(b) manager + no filter → no owner-narrow predicate (team-wide)', () => {
+		const { sql: sqlStr, params } = whereSql(
+			buildPipelineStageWhereClause(MGR_ID, 'manager', 'new')
+		);
+		// visibilityCondition(manager) returns `true`, so no per-owner predicate binds.
+		expect(whereClauseOf(sqlStr)).not.toContain('owner_id');
+		expect(params).not.toContain(MGR_ID);
+	});
+
+	it('(c) manager + valid filterRepId → owner_id predicate bound to filterRepId, ANDed', () => {
+		const { sql: sqlStr, params } = whereSql(
+			buildPipelineStageWhereClause(MGR_ID, 'manager', 'new', REP_ID)
+		);
+		expect(whereClauseOf(sqlStr)).toContain('owner_id');
+		expect(params).toContain(REP_ID);
+		// The composition is a single AND of predicates — no OR that could widen the view.
+		expect(sqlStr).not.toContain(' or ');
+	});
+
+	it('(d) super_manager + valid filterRepId → scoped identically to manager', () => {
+		const { sql: sqlStr, params } = whereSql(
+			buildPipelineStageWhereClause(MGR_ID, 'super_manager', 'new', REP_ID)
+		);
+		expect(whereClauseOf(sqlStr)).toContain('owner_id');
+		expect(params).toContain(REP_ID);
+	});
+
+	it('(e) composition is AND, never OR — rep restriction cannot be widened by a stray filterRepId', () => {
+		// Rep path: exactly the visibilityCondition owner guard, never a second owner-narrow that
+		// a filterRepId might have introduced. And no top-level OR joining the manager filter.
+		const { sql: sqlStr } = whereSql(
+			buildPipelineStageWhereClause(REP_ID, 'rep', 'new', OTHER_REP_ID)
+		);
+		const where = whereClauseOf(sqlStr);
+		// visibilityCondition('rep') internally ORs owner/visibility/grant checks — that is the
+		// leak guard, expected. The point: the filterRepId branch added ZERO extra owner predicate
+		// for a rep, so owner_id count matches the no-filter rep clause exactly.
+		const noFilter = whereClauseOf(
+			whereSql(buildPipelineStageWhereClause(REP_ID, 'rep', 'new')).sql
+		);
+		expect(ownerPredicateCount(where)).toBe(ownerPredicateCount(noFilter));
+	});
+
+	// -------------------------------------------------------------------------
+	// pipeline-search-server-reach (PIPE-3 follow-up) — server-side search predicate.
+	// Proves the 3-field ILIKE renders, composes with the rep filter as an AND, and
+	// escapes LIKE metacharacters — all DB-free via drizzle .toSQL().
+	// -------------------------------------------------------------------------
+
+	it('(f) search term present → WHERE renders 3-field ILIKE over name, organizers.name, event_name', () => {
+		const { sql: sqlStr, params } = whereSql(
+			buildPipelineStageWhereClause(REP_ID, 'rep', 'new', undefined, 'acme')
+		);
+		const where = whereClauseOf(sqlStr);
+		expect(where).toContain('ilike');
+		// All three search fields are referenced in the predicate.
+		expect(where).toContain('name'); // crmLeads.name (+ organizers.name)
+		expect(where).toContain('organizers'); // COALESCE(organizers.name, '')
+		expect(where).toContain('event_name'); // COALESCE(crmLeads.eventName, '')
+		// Bound param is the wrapped like pattern for the search term.
+		expect(params).toContain('%acme%');
+	});
+
+	it('(g) search + valid manager filterRepId → owner_id predicate AND the three ILIKE fields (compose as AND)', () => {
+		const { sql: sqlStr, params } = whereSql(
+			buildPipelineStageWhereClause(MGR_ID, 'manager', 'new', REP_ID, 'acme')
+		);
+		const where = whereClauseOf(sqlStr);
+		// Rep-filter owner-narrow present…
+		expect(where).toContain('owner_id');
+		expect(params).toContain(REP_ID);
+		// …AND the search ILIKE fields present — both terms compose in the same conditions array.
+		expect(where).toContain('ilike');
+		expect(params).toContain('%acme%');
+	});
+
+	it('(h) search term with % _ \\ renders a backslash-escaped bound param (LIKE-metachar escaping)', () => {
+		const { params } = whereSql(
+			buildPipelineStageWhereClause(REP_ID, 'rep', 'new', undefined, 'a%b_c\\d')
+		);
+		// escapeLike replaces \, %, _ with a backslash-prefixed copy, then wraps in %…%.
+		// 'a%b_c\d' → 'a\%b\_c\\d' → '%a\%b\_c\\d%'
+		const expected = '%a\\%b\\_c\\\\d%';
+		expect(params).toContain(expected);
 	});
 });

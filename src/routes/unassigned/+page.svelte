@@ -291,11 +291,11 @@
 	const hover = createHoverPopover();
 </script>
 
-<svelte:head><title>Up for grabs · Veent CRM</title></svelte:head>
+<svelte:head><title>Unassigned Leads · Veent CRM</title></svelte:head>
 
 <div class="px-7 pb-16 pt-6">
 	<PageHeader
-		title="Up for grabs"
+		title="Unassigned Leads"
 		subtitle={`${data.pagination.total} leads with no active owner. Claim one to start working it.`}
 	>
 		{#snippet actions()}
@@ -326,7 +326,7 @@
 			value={data.filters.search ?? ''}
 			oninput={onSearch}
 			placeholder="Search name, event, or handle"
-			ariaLabel="Search Up for Grabs leads"
+			ariaLabel="Search Unassigned Leads"
 		/>
 		<FilterDropdown
 			label="Country"
@@ -558,7 +558,7 @@
 				{#if hasActiveFilters}
 					No leads match your filters.
 				{:else}
-					No leads up for grabs — queue clear.
+					No unassigned leads — queue clear.
 				{/if}
 			</div>
 		{/snippet}

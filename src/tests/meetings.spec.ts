@@ -95,6 +95,7 @@ describe('dbRowToMeeting', () => {
 			leadOrganizerId: null,
 			startAt: new Date('2026-07-10T14:00:00.000Z'),
 			meetingUrl: 'https://meet.example.com/abc',
+			venue: null,
 			notes: 'Kickoff',
 			outcome: 'positive',
 			deletedAt: null,

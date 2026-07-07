@@ -199,6 +199,8 @@ export const crmLeads = pgTable(
 		scraperOrgId: integer('scraper_org_id'),
 
 		notes: text('notes'),
+		currentPlatform: text('current_platform'),
+		competitorNotes: text('competitor_notes'),
 		createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 		updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
 	},

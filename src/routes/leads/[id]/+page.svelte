@@ -36,6 +36,8 @@
 	import { formatDate, followUpDate } from '$lib/utils/dates';
 	import { stageColor, stageLabel } from '$lib/utils/stages';
 	import type { AddActivityInput, LostReason, MoveStagePayload, Stage } from '$lib/types';
+	import { FieldError, fieldErrorAttrs } from '$lib/components/ui/field-error';
+	import { leadUpdateSchema } from '$lib/zod/schemas';
 
 	let { data } = $props();
 
@@ -105,6 +107,9 @@
 	let serviceFeePerTicketPesos = $state(20);
 	let bankChargesAbsorbed = $state<boolean | null>(null);
 	let hasFutureEvents = $state(false);
+	let competitorNotesDraft = $state('');
+	let savingCompetitorNotes = $state(false);
+	let competitorNotesErrors = $state<string[]>([]);
 
 	$effect(() => {
 		onboardingNotes = lead.onboardingNotes ?? '';
@@ -119,7 +124,43 @@
 		serviceFeePerTicketPesos = lead.serviceFeePerTicketPesos ?? 20;
 		bankChargesAbsorbed = lead.bankChargesAbsorbed ?? null;
 		hasFutureEvents = lead.hasFutureEvents ?? false;
+		competitorNotesDraft = lead.competitorNotes ?? '';
 	});
+
+	async function saveCompetitorNotes() {
+		if (savingCompetitorNotes) return;
+		competitorNotesErrors = [];
+		const parsed = leadUpdateSchema.safeParse({
+			name: lead.name,
+			competitorNotes: competitorNotesDraft
+		});
+		if (!parsed.success) {
+			competitorNotesErrors = parsed.error.issues.map((e) => e.message);
+			return;
+		}
+		savingCompetitorNotes = true;
+		try {
+			const res = await fetch(`/api/leads/${lead.id}`, {
+				method: 'PATCH',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ name: lead.name, competitorNotes: competitorNotesDraft })
+			});
+			if (!res.ok) {
+				const msg = await res
+					.json()
+					.then((b) => b?.message ?? 'Server error')
+					.catch(() => 'Server error');
+				competitorNotesErrors = [msg];
+				return;
+			}
+			await invalidateAll();
+			toasts.success('Competitor notes saved');
+		} catch {
+			competitorNotesErrors = ['Could not save — please try again'];
+		} finally {
+			savingCompetitorNotes = false;
+		}
+	}
 
 	async function saveOnboarding() {
 		if (savingOnboarding) return;
@@ -479,6 +520,12 @@
 							<AgeBadge label={lead.age.label} type={lead.age.type} />
 							{#if lead.hasFutureEvents}
 								<FutureEventsBadge />
+							{/if}
+							{#if lead.currentPlatform}
+								<span
+									class="rounded-[5px] bg-amber-100 px-[6px] py-[2px] font-mono text-[10.5px] font-medium text-amber-700"
+									>{lead.currentPlatform}</span
+								>
 							{/if}
 							<AppealScoreBadge
 								score={computeAppealScore(
@@ -959,6 +1006,44 @@
 							</div>
 						</div>
 					</div>
+				</div>
+
+				<!-- Competitor notes panel -->
+				<div class="mb-4 rounded-control border border-hairline bg-panel p-4">
+					<div class="mb-3 font-mono text-[11px] uppercase tracking-[0.5px] text-ink-300">
+						Competitor platform &amp; notes
+					</div>
+					{#if canEdit}
+						<div class="flex flex-col gap-2">
+							<div>
+								<label class="mb-1 block text-[11px] text-ink-300" for="competitor-notes"
+									>Notes</label
+								>
+								<textarea
+									id="competitor-notes"
+									bind:value={competitorNotesDraft}
+									rows={3}
+									placeholder="Notes about competitor platforms, pricing, objections…"
+									class="w-full rounded-[6px] border border-hairline bg-surface px-3 py-2 text-[13px] text-ink placeholder:text-ink-300 focus:border-primary focus:outline-none"
+									{...fieldErrorAttrs('competitor-notes', competitorNotesErrors)}></textarea>
+								<FieldError id="competitor-notes" errors={competitorNotesErrors} />
+							</div>
+							<div class="flex justify-end">
+								<Button
+									onclick={saveCompetitorNotes}
+									disabled={savingCompetitorNotes}
+									variant="outline"
+									class="h-[30px] text-[12px]"
+								>
+									{savingCompetitorNotes ? 'Saving…' : 'Save'}
+								</Button>
+							</div>
+						</div>
+					{:else if lead.competitorNotes}
+						<p class="text-[13px] text-ink">{lead.competitorNotes}</p>
+					{:else}
+						<p class="text-[12px] text-ink-300">No competitor notes.</p>
+					{/if}
 				</div>
 
 				<div class="mb-4">

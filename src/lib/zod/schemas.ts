@@ -57,6 +57,8 @@ export const leadFormSchema = z
 		firstAnnouncedDate: z.iso.date().or(z.literal('')).optional(),
 		firstReachedOutDate: z.iso.date().or(z.literal('')).optional(),
 		notes: z.string().optional(),
+		currentPlatform: z.string().optional(),
+		competitorNotes: z.string().optional(),
 		visibility: z.enum(LEAD_VISIBILITIES).default('everyone'),
 		selectedUserIds: z.array(z.string().regex(LOOSE_UUID_RE)).optional(),
 		// Recurring-organizer tag pre-fill (GitHub #190). Optional, shape-only UUID check;
@@ -121,7 +123,9 @@ export const leadUpdateSchema = z
 		serviceFeePerTicketPesos: z.number().min(0).optional(),
 		bankChargesAbsorbed: z.boolean().optional(),
 		// Recurring-organizer / future-events prospect flag (GitHub #94).
-		hasFutureEvents: z.boolean().optional()
+		hasFutureEvents: z.boolean().optional(),
+		currentPlatform: z.string().optional(),
+		competitorNotes: z.string().optional()
 	})
 	.refine((d) => d.visibility !== 'selected' || (d.selectedUserIds?.length ?? 0) > 0, {
 		message: 'Pick at least one teammate when visibility is "Selected people".',
@@ -340,7 +344,8 @@ export const ingestLeadSchema = z.object({
 	sourceRef: z.string().optional(),
 	scraperOrgId: z.number().int().positive().optional(),
 	email: z.string().email().optional(),
-	phone: z.string().optional()
+	phone: z.string().optional(),
+	currentPlatform: z.string().optional()
 });
 export const ingestBatchSchema = z.object({
 	leads: z.array(ingestLeadSchema).max(1000)

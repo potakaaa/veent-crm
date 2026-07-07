@@ -69,6 +69,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			firstAnnouncedDate: data.firstAnnouncedDate || undefined,
 			firstReachedOutDate: data.firstReachedOutDate || undefined,
 			notes: data.notes || undefined,
+			currentPlatform: data.currentPlatform || undefined,
 			visibility: data.visibility,
 			selectedUserIds: data.selectedUserIds,
 			organizerId

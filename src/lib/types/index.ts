@@ -89,6 +89,8 @@ export interface Lead {
 	siblings?: number;
 	source: LeadSource;
 	notes?: string;
+	currentPlatform?: string | null;
+	competitorNotes?: string | null;
 
 	// Won capture (manually entered — never read from external systems)
 	signedOrg?: string;
@@ -288,6 +290,8 @@ export interface CreateLeadInput {
 	source?: LeadSource;
 	visibility?: Visibility;
 	selectedUserIds?: string[];
+	currentPlatform?: string;
+	competitorNotes?: string;
 }
 
 export type UpdateLeadInput = Partial<

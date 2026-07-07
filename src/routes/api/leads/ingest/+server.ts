@@ -10,7 +10,8 @@ import {
 	normalizeHandle,
 	normalizePlatform,
 	normalizeCountry,
-	parseCountryFromLocation
+	parseCountryFromLocation,
+	inferCurrentPlatform
 } from '$lib/server/import-utils';
 
 // Scraper intake. Secret-authed (INGEST_SECRET); the scraper never gets DATABASE_URL. The CRM
@@ -118,6 +119,8 @@ export const POST: RequestHandler = async ({ request }) => {
 			eventDate: lead.eventDate ?? null,
 			eventLink: lead.eventLink ?? null,
 			firstAnnouncedDate: lead.firstAnnouncedDate ?? null,
+			currentPlatform:
+				lead.currentPlatform ?? inferCurrentPlatform(lead.url, lead.eventLink) ?? null,
 			source: 'scraper',
 			stage: 'new',
 			ownerId: null,

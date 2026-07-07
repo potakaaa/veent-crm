@@ -43,6 +43,7 @@
 	let eventName = $state('');
 	let eventLink = $state('');
 	let notes = $state('');
+	let currentPlatform = $state('');
 	let visibility = $state<'only_me' | 'everyone' | 'selected'>('everyone');
 	let selectedUserIds = $state<string[]>([]);
 
@@ -103,6 +104,7 @@
 			firstAnnouncedDate: announcedDate ? announcedDate.toString() : undefined,
 			firstReachedOutDate: reachedOutDate ? reachedOutDate.toString() : undefined,
 			notes: notes.trim() || undefined,
+			currentPlatform: currentPlatform.trim() || undefined,
 			visibility,
 			selectedUserIds: visibility === 'selected' ? selectedUserIds : undefined,
 			organizerId: prefillOrganizerId
@@ -337,6 +339,17 @@
 					bind:value={notes}
 					placeholder="Anything worth noting about this lead…"
 					class="min-h-[72px] resize-y"
+				/>
+			</div>
+
+			<div class="grid gap-1.5">
+				<Label for="current-platform"
+					>Current platform <span class="text-ink-400">(optional)</span></Label
+				>
+				<Input
+					id="current-platform"
+					bind:value={currentPlatform}
+					placeholder="e.g. Ticketbase, Eventbrite…"
 				/>
 			</div>
 

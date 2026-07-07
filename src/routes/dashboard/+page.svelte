@@ -6,6 +6,7 @@
 	import { SearchInput } from '$lib/components/ui/search-input';
 	import { Button } from '$lib/components/ui/button';
 	import PageHeader from '$lib/components/shared/PageHeader.svelte';
+	import DashboardCardGridSkeleton from '$lib/components/shared/skeletons/DashboardCardGridSkeleton.svelte';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -62,7 +63,7 @@
 	</PageHeader>
 
 	{#await data.dashboard}
-		<p class="text-[13px] text-ink-500">Loading dashboard…</p>
+		<DashboardCardGridSkeleton />
 	{:then result}
 		{@const rows = result.rows}
 		{@const total = result.total}

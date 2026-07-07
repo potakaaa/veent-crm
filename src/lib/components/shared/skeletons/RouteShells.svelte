@@ -6,6 +6,7 @@
 	import CardSkeleton from './CardSkeleton.svelte';
 	import DetailSkeleton from './DetailSkeleton.svelte';
 	import DashboardSectionSkeleton from './DashboardSectionSkeleton.svelte';
+	import DashboardCardGridSkeleton from './DashboardCardGridSkeleton.svelte';
 
 	let { pathname }: { pathname: string } = $props();
 
@@ -27,6 +28,7 @@
 	const isMeetingDetail = $derived(pathname.startsWith('/meetings/') && pathname !== '/meetings');
 	const isMeetings = $derived(pathname === '/meetings');
 	const isCalendar = $derived(pathname === '/calendar');
+	const isDashboard = $derived(pathname === '/dashboard');
 
 	// Today section groups — real titles/colors from src/routes/+page.svelte.
 	const todayGroups = [
@@ -94,7 +96,7 @@
 			<Skeleton class="ml-auto h-8 w-44 rounded-control" />
 		</div>
 
-		<TableSkeleton rows={8} cols={5} />
+		<TableSkeleton rows={8} cols={5} variant="stack" />
 	</div>
 {:else if isPipeline}
 	<div class="flex h-full flex-col px-7 pb-7 pt-6">
@@ -112,7 +114,7 @@
 {:else if isUnassigned}
 	<div class="px-7 pb-16 pt-6">
 		<PageHeader title="Unassigned Leads" subtitle="Unassigned leads — claim what you can work." />
-		<TableSkeleton rows={8} cols={6} />
+		<TableSkeleton rows={8} cols={6} variant="stack" />
 	</div>
 {:else if isReminders}
 	<div class="px-7 pb-16 pt-6">
@@ -152,7 +154,7 @@
 			title="Team management"
 			subtitle="This list is the magic-link allowlist. Add a rep here and they can sign in."
 		/>
-		<TableSkeleton rows={6} cols={5} />
+		<TableSkeleton rows={6} cols={5} variant="scroll" />
 	</div>
 {:else if isTemplates}
 	<div class="px-7 pb-16 pt-6">
@@ -250,28 +252,40 @@
 			<Skeleton class="ml-1 h-4 w-40" />
 		</div>
 
-		<div class="overflow-hidden rounded-control border border-hairline bg-panel">
-			<!-- weekday header: real static labels (mirrors CalendarGrid) -->
-			<div class="grid grid-cols-7 border-b border-hairline bg-panel-sunken">
-				{#each ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as label (label)}
-					<div
-						class="px-2 py-1.5 text-center font-mono text-[10px] uppercase tracking-[1px] text-ink-400"
-					>
-						{label}
-					</div>
-				{/each}
-			</div>
-			<!-- day cells: day-number circle is dynamic (skeleton) -->
-			<div class="grid grid-cols-7">
-				{#each Array(42) as _, i (i)}
-					<div
-						class="flex min-h-[104px] flex-col gap-1 border-b border-r border-hairline bg-panel p-1.5"
-					>
-						<Skeleton class="h-5 w-5 rounded-full" />
-					</div>
-				{/each}
+		<!-- below sm the 7-column grid would crush each day cell, so the wrapper scrolls
+		     horizontally and the bordered container keeps a usable min-width (mirrors
+		     CalendarGrid); min-w-0 at sm+ collapses back to today's exact layout. -->
+		<div class="overflow-x-auto">
+			<div
+				class="min-w-[640px] overflow-hidden rounded-control border border-hairline bg-panel sm:min-w-0"
+			>
+				<!-- weekday header: real static labels (mirrors CalendarGrid) -->
+				<div class="grid grid-cols-7 border-b border-hairline bg-panel-sunken">
+					{#each ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as label (label)}
+						<div
+							class="px-2 py-1.5 text-center font-mono text-[10px] uppercase tracking-[1px] text-ink-400"
+						>
+							{label}
+						</div>
+					{/each}
+				</div>
+				<!-- day cells: day-number circle is dynamic (skeleton) -->
+				<div class="grid grid-cols-7">
+					{#each Array(42) as _, i (i)}
+						<div
+							class="flex min-h-[104px] flex-col gap-1 border-b border-r border-hairline bg-panel p-1.5"
+						>
+							<Skeleton class="h-5 w-5 rounded-full" />
+						</div>
+					{/each}
+				</div>
 			</div>
 		</div>
+	</div>
+{:else if isDashboard}
+	<div class="px-7 pb-16 pt-6">
+		<PageHeader title="Team dashboard" subtitle="Per-AE performance across the selected range." />
+		<DashboardCardGridSkeleton />
 	</div>
 {:else}
 	<div class="px-7 pb-16 pt-6">

@@ -426,6 +426,8 @@ function makeMapperRow(overrides: Partial<Parameters<typeof dbRowToLead>[0]> = {
 		bankChargesAbsorbed: null,
 		hasFutureEvents: false,
 		notes: null,
+		currentPlatform: null,
+		competitorNotes: null,
 		createdAt: now,
 		updatedAt: now,
 		...overrides

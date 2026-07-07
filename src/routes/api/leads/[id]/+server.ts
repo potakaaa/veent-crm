@@ -69,7 +69,10 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			serviceFeePct: data.serviceFeePct,
 			serviceFeePerTicketPesos: data.serviceFeePerTicketPesos,
 			bankChargesAbsorbed: data.bankChargesAbsorbed,
-			hasFutureEvents: data.hasFutureEvents
+			hasFutureEvents: data.hasFutureEvents,
+			currentPlatform:
+				data.currentPlatform === undefined ? undefined : data.currentPlatform || null,
+			competitorNotes: data.competitorNotes === undefined ? undefined : data.competitorNotes || null
 		},
 		locals.user.id
 	);

@@ -113,6 +113,8 @@ export function dbRowToLead(
 		organizerName: organizerName ?? undefined,
 		source: row.source as Lead['source'],
 		notes: row.notes ?? undefined,
+		currentPlatform: row.currentPlatform ?? undefined,
+		competitorNotes: row.competitorNotes ?? undefined,
 		signedOrg: row.wonOrgName ?? undefined,
 		dealValue: row.dealValueCents != null ? row.dealValueCents / 100 : undefined,
 		currency: ((row.currency as Lead['currency']) ?? 'PHP') || 'PHP',
@@ -913,6 +915,8 @@ export async function createLead(
 		visibility?: Visibility;
 		selectedUserIds?: string[];
 		organizerId?: string;
+		currentPlatform?: string;
+		competitorNotes?: string;
 	},
 	ownerId: string
 ): Promise<Lead> {
@@ -942,6 +946,8 @@ export async function createLead(
 				firstAnnouncedDate: input.firstAnnouncedDate ?? null,
 				firstReachedOutDate: input.firstReachedOutDate ?? null,
 				notes: input.notes ?? null,
+				currentPlatform: input.currentPlatform ?? null,
+				competitorNotes: input.competitorNotes ?? null,
 				normalizedHandle,
 				organizerId: input.organizerId ?? null,
 				ownerId,
@@ -993,6 +999,8 @@ export async function updateLead(
 		serviceFeePerTicketPesos?: number;
 		bankChargesAbsorbed?: boolean;
 		hasFutureEvents?: boolean;
+		currentPlatform?: string | null;
+		competitorNotes?: string | null;
 	},
 	actorId: string
 ): Promise<Lead | null> {
@@ -1059,6 +1067,12 @@ export async function updateLead(
 					? { bankChargesAbsorbed: input.bankChargesAbsorbed }
 					: {}),
 				...(input.hasFutureEvents !== undefined ? { hasFutureEvents: input.hasFutureEvents } : {}),
+				...(input.currentPlatform !== undefined
+					? { currentPlatform: input.currentPlatform || null }
+					: {}),
+				...(input.competitorNotes !== undefined
+					? { competitorNotes: input.competitorNotes || null }
+					: {}),
 				updatedAt: now
 			})
 			.where(and(eq(crmLeads.id, id), isNull(crmLeads.deletedAt)))
@@ -1131,7 +1145,9 @@ export async function updateLead(
 				'has_future_events',
 				existing.hasFutureEvents != null ? String(existing.hasFutureEvents) : null,
 				updated.hasFutureEvents != null ? String(updated.hasFutureEvents) : null
-			]
+			],
+			['current_platform', existing.currentPlatform ?? null, updated.currentPlatform ?? null],
+			['competitor_notes', existing.competitorNotes ?? null, updated.competitorNotes ?? null]
 		];
 
 		const changed = tracked.filter(([, oldVal, newVal]) => oldVal !== newVal);

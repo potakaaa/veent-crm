@@ -45,6 +45,8 @@
 	let eventName = $state('');
 	let eventLink = $state('');
 	let notes = $state('');
+	let currentPlatform = $state('');
+	let competitorNotes = $state('');
 	let visibility = $state<'only_me' | 'everyone' | 'selected'>('everyone');
 	let selectedUserIds = $state<string[]>([]);
 
@@ -105,6 +107,8 @@
 			firstAnnouncedDate: announcedDate ? announcedDate.toString() : undefined,
 			firstReachedOutDate: reachedOutDate ? reachedOutDate.toString() : undefined,
 			notes: notes.trim() || undefined,
+			currentPlatform: currentPlatform.trim() || undefined,
+			competitorNotes: competitorNotes.trim() || undefined,
 			visibility,
 			selectedUserIds: visibility === 'selected' ? selectedUserIds : undefined,
 			organizerId: prefillOrganizerId
@@ -339,6 +343,29 @@
 					id="notes"
 					bind:value={notes}
 					placeholder="Anything worth noting about this lead…"
+					class="min-h-[72px] resize-y"
+				/>
+			</div>
+
+			<div class="grid gap-1.5">
+				<Label for="current-platform"
+					>Current platform <span class="text-ink-400">(optional)</span></Label
+				>
+				<Input
+					id="current-platform"
+					bind:value={currentPlatform}
+					placeholder="e.g. Ticketbase, Eventbrite…"
+				/>
+			</div>
+
+			<div class="grid gap-1.5 sm:col-span-2">
+				<Label for="competitor-notes"
+					>Competitor notes <span class="text-ink-400">(optional)</span></Label
+				>
+				<Textarea
+					id="competitor-notes"
+					bind:value={competitorNotes}
+					placeholder="AE pitch notes, platform details…"
 					class="min-h-[72px] resize-y"
 				/>
 			</div>

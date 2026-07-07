@@ -172,6 +172,58 @@ export function normalizeCountry(raw?: string | null): string | null {
 	return COUNTRY_MAP[key] ?? null;
 }
 
+// Competitor platform inference: map a URL's hostname to the human-readable competitor
+// ticketing/event platform name. Used at ingest time (auto-fill) and in the backfill script.
+// Add entries here as new platforms are confirmed — keep keys lowercase, no leading 'www.'.
+const COMPETITOR_PLATFORM_MAP: Array<[string, string]> = [
+	// Social
+	['facebook.com', 'Facebook Events'],
+	['fb.com', 'Facebook Events'],
+	['instagram.com', 'Instagram'],
+	// Event discovery
+	['allevents.in', 'AllEvents.in'],
+	['happeningnext.com', 'HappeningNext'],
+	['meetup.com', 'Meetup'],
+	['lu.ma', 'Luma'],
+	['luma.com', 'Luma'],
+	['clickthecity.com', 'Click the City'],
+	// Ticketing
+	['eventbrite.com', 'Eventbrite'],
+	['ticket2me.ph', 'Ticket2Me'],
+	['ticketmelon.com', 'Ticketmelon'],
+	['eventbee.com', 'Eventbee'],
+	['ticketspice.com', 'TicketSpice'],
+	['sistic.com.sg', 'SISTIC'],
+	['tessera.ph', 'Tessera'],
+	['eventalways.com', 'EventAlways'],
+	// Event management / booking
+	['myruntime.com', 'MyRuntime'],
+	['planout.ph', 'Planout'],
+	['eventbookings.com', 'EventBookings'],
+	['eventsize.com', 'Eventsize'],
+	// Local / niche
+	['racemeister.com', 'Racemeister']
+];
+
+export function inferCurrentPlatform(
+	pageUrl?: string | null,
+	eventLink?: string | null
+): string | null {
+	for (const url of [eventLink, pageUrl]) {
+		if (!url) continue;
+		let hostname: string;
+		try {
+			hostname = new URL(url).hostname.toLowerCase().replace(/^www\./, '');
+		} catch {
+			continue;
+		}
+		for (const [domain, name] of COMPETITOR_PLATFORM_MAP) {
+			if (hostname === domain || hostname.endsWith('.' + domain)) return name;
+		}
+	}
+	return null;
+}
+
 // Derive a country segment from the free-text location field: take the last comma-separated
 // segment (e.g. "Makati, Philippines" → "Philippines"), or the whole string if no comma.
 export function parseCountryFromLocation(location?: string | null): string | null {

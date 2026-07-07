@@ -41,6 +41,8 @@
 	let eventName = $state('');
 	let eventLink = $state('');
 	let notes = $state('');
+	let currentPlatform = $state('');
+	let competitorNotes = $state('');
 	let hasFutureEvents = $state(false);
 	let selectedDate = $state<DateValue | undefined>(undefined);
 	let dateOpen = $state(false);
@@ -61,6 +63,8 @@
 			eventName = lead.eventName ?? '';
 			eventLink = lead.eventLink ?? '';
 			notes = lead.notes ?? '';
+			currentPlatform = lead.currentPlatform ?? '';
+			competitorNotes = lead.competitorNotes ?? '';
 			hasFutureEvents = lead.hasFutureEvents ?? false;
 			selectedDate = lead.eventDate ? parseDate(lead.eventDate) : undefined;
 			formError = '';
@@ -88,6 +92,8 @@
 			eventDateRaw: eventDateDisplay || undefined,
 			eventLink: eventLink || '',
 			notes: notes || undefined,
+			currentPlatform: currentPlatform || undefined,
+			competitorNotes: competitorNotes || undefined,
 			hasFutureEvents
 		});
 	}
@@ -212,6 +218,23 @@
 			<div class="grid gap-1.5 sm:col-span-2">
 				<Label for="el-notes">Notes</Label>
 				<Textarea id="el-notes" bind:value={notes} placeholder="Anything worth noting…" rows={3} />
+			</div>
+			<div class="grid gap-1.5">
+				<Label for="el-current-platform">Current platform (competitor)</Label>
+				<Input
+					id="el-current-platform"
+					bind:value={currentPlatform}
+					placeholder="e.g. Ticketbase, Eventbrite…"
+				/>
+			</div>
+			<div class="grid gap-1.5 sm:col-span-2">
+				<Label for="el-competitor-notes">Competitor notes</Label>
+				<Textarea
+					id="el-competitor-notes"
+					bind:value={competitorNotes}
+					placeholder="Pricing, objections, contract details…"
+					rows={3}
+				/>
 			</div>
 			<div class="sm:col-span-2">
 				<label class="flex items-center gap-2 text-[13px] font-medium text-ink">

@@ -531,12 +531,18 @@
 						class="order-4 mt-1.5 grid grid-cols-2 gap-x-3 gap-y-1.5 border-t border-panel-sunken pt-2.5 lg:contents"
 					>
 						<div class="lg:order-1"><StageChip stage={l.stage} /></div>
-						<div class="opacity-70 lg:order-2">
+						<div class="opacity-70 lg:order-2 flex min-w-0 flex-wrap items-center gap-1.5">
 							<span
 								class="rounded-[5px] px-[6px] py-[2px] font-mono text-[10.5px] font-medium {sourceLabel(
 									l.source
 								).class}">{sourceLabel(l.source).label}</span
 							>
+							{#if l.currentPlatform}
+								<span
+									class="rounded-[5px] bg-amber-100 px-[6px] py-[2px] font-mono text-[10.5px] font-medium text-amber-700"
+									>{l.currentPlatform}</span
+								>
+							{/if}
 						</div>
 						<div class="truncate font-mono text-[11px] text-ink-300 lg:order-3">{l.country}</div>
 						<div class="font-mono text-[11px] text-ink-300 lg:order-5">

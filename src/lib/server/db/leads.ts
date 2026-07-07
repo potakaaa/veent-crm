@@ -999,8 +999,8 @@ export async function updateLead(
 		serviceFeePerTicketPesos?: number;
 		bankChargesAbsorbed?: boolean;
 		hasFutureEvents?: boolean;
-		currentPlatform?: string;
-		competitorNotes?: string;
+		currentPlatform?: string | null;
+		competitorNotes?: string | null;
 	},
 	actorId: string
 ): Promise<Lead | null> {
@@ -1145,7 +1145,9 @@ export async function updateLead(
 				'has_future_events',
 				existing.hasFutureEvents != null ? String(existing.hasFutureEvents) : null,
 				updated.hasFutureEvents != null ? String(updated.hasFutureEvents) : null
-			]
+			],
+			['current_platform', existing.currentPlatform ?? null, updated.currentPlatform ?? null],
+			['competitor_notes', existing.competitorNotes ?? null, updated.competitorNotes ?? null]
 		];
 
 		const changed = tracked.filter(([, oldVal, newVal]) => oldVal !== newVal);

@@ -13,8 +13,8 @@ All 14 implementation steps completed:
 **A. DB / Schema**
 - Added `currentPlatform: text('current_platform')` and `competitorNotes: text('competitor_notes')` to `crmLeads` in `src/lib/server/db/schema.ts` (after `notes` column, both nullable)
 - Migration pre-flight confirmed: last idx=29 matches `0029_cat1_partial_name_idx.sql` (no drift)
-- Hand-wrote migration `drizzle/0030_nav2_competitor_fields.sql` (TTY non-interactive blocked `bun run db:generate`; hand-written per repo convention for similar past cases)
-- Registered migration in `drizzle/meta/_journal.json` (idx: 30)
+- Hand-wrote migration `drizzle/0031_nav2_competitor_fields.sql` (TTY non-interactive blocked `bun run db:generate`; hand-written per repo convention for similar past cases; renamed from 0030 → 0031 during merge to resolve idx collision with `0030_careless_captain_britain`)
+- Registered migration in `drizzle/meta/_journal.json` (idx: 31)
 - `db:migrate` not run — no DATABASE_URL in this environment (Hybrid known-gap, pre-accepted in Gate: CONDITIONAL)
 
 **B. Types**
@@ -65,7 +65,7 @@ All 14 implementation steps completed:
 
 **Within-blast-radius deviation — `bun run db:generate` blocked by non-TTY:**
 - What: `bun run db:generate` failed with "Interactive prompts require a TTY terminal" — Drizzle's prompt for column rename detection cannot run non-interactively.
-- Resolution: Hand-wrote `drizzle/0030_nav2_competitor_fields.sql` with two `ALTER TABLE ... ADD COLUMN` statements and registered in `_journal.json`. This matches exactly what the auto-generated SQL would produce for two new nullable text columns.
+- Resolution: Hand-wrote `drizzle/0031_nav2_competitor_fields.sql` with two `ALTER TABLE ... ADD COLUMN` statements and registered in `_journal.json`. This matches exactly what the auto-generated SQL would produce for two new nullable text columns.
 - Impact: None — the SQL content is identical to what `db:generate` would have produced; no functional difference.
 
 **Within-blast-radius deviation — `bun run api/leads/+server.ts` needed `currentPlatform` forward:**
@@ -90,7 +90,7 @@ All 14 implementation steps completed:
 
 **Blast Radius Changes:**
 - `src/lib/server/db/schema.ts` — 2 new columns on `crmLeads`
-- `drizzle/0030_nav2_competitor_fields.sql` — new migration
+- `drizzle/0031_nav2_competitor_fields.sql` — new migration
 - `drizzle/meta/_journal.json` — updated idx
 - `src/lib/types/index.ts` — Lead + CreateLeadInput extended
 - `src/lib/zod/schemas.ts` — leadFormSchema, leadUpdateSchema, ingestLeadSchema extended

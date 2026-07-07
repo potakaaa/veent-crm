@@ -8,6 +8,7 @@ import {
 	categoryCreateSchema,
 	categoryRenameSchema,
 	assignCategoriesSchema,
+	userNameEditSchema,
 	LEAD_STAGES,
 	USER_ROLES
 } from '$lib/zod/schemas';
@@ -121,6 +122,21 @@ describe('super_manager role (GitHub #73)', () => {
 	it('labels the base roles', () => {
 		expect(roleLabel('rep')).toBe('Rep');
 		expect(roleLabel('manager')).toBe('Manager');
+	});
+});
+
+// ---------------------------------------------------------------------------
+// userNameEditSchema — name-only edit (team member profile edit)
+// ---------------------------------------------------------------------------
+describe('userNameEditSchema (name-only edit)', () => {
+	it('rejects an empty name', () => {
+		const r = userNameEditSchema.safeParse({ name: '' });
+		expect(r.success).toBe(false);
+	});
+
+	it('accepts a valid name', () => {
+		const r = userNameEditSchema.safeParse({ name: 'Marites' });
+		expect(r.success).toBe(true);
 	});
 });
 

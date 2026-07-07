@@ -374,6 +374,34 @@ describe.skipIf(SKIP_DB)('listLeadsFiltered — hasFutureEvents (DB) — #94', (
 });
 
 // ---------------------------------------------------------------------------
+// listLeadsFiltered — createdFrom "added since" filter (dashboard drill-through)
+// ---------------------------------------------------------------------------
+describe.skipIf(SKIP_DB)('listLeadsFiltered — createdFrom (DB)', () => {
+	function toParam(d: Date): string {
+		const pad = (n: number) => String(n).padStart(2, '0');
+		return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+	}
+
+	it('excludes leads created before the boundary, includes those on/after', async () => {
+		const before = await mkLead('CreatedBefore');
+		const onAfter = await mkLead('CreatedOnAfter');
+		// Backdate `before` to yesterday; leave `onAfter` at its default (now).
+		const yesterday = new Date(Date.now() - 86_400_000);
+		await db.update(crmLeads).set({ createdAt: yesterday }).where(eq(crmLeads.id, before.id));
+
+		const boundary = toParam(new Date()); // today — excludes yesterday's lead
+		const { leads } = await listLeadsFiltered({
+			userId: MANAGER_UUID,
+			role: 'manager',
+			segment: 'all',
+			createdFrom: boundary
+		});
+		expect(leads.find((l) => l.id === before.id)).toBeUndefined();
+		expect(leads.find((l) => l.id === onAfter.id)).toBeDefined();
+	});
+});
+
+// ---------------------------------------------------------------------------
 // Lead visibility scoping (GitHub #87) — list enforcement.
 // Proves AC#5 (rep excluded), AC#9 (manager sees all), AC#11 (unassigned visible).
 // ---------------------------------------------------------------------------

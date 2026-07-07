@@ -313,6 +313,22 @@
 		</div>
 	{/if}
 
+	{#if data.filters.createdFrom}
+		<div
+			class="mb-3 flex items-center gap-2 rounded-control border border-hairline bg-panel-sunken px-3 py-2 text-[12.5px]"
+		>
+			<span class="text-ink-500">Showing leads added since:</span>
+			<span class="font-mono font-semibold text-ink">{data.filters.createdFrom}</span>
+			<button
+				type="button"
+				onclick={() => navigate({ createdFrom: undefined, page: undefined })}
+				class="ml-auto font-mono text-[11.5px] text-primary hover:underline"
+			>
+				Clear
+			</button>
+		</div>
+	{/if}
+
 	<LeadGrid
 		leads={data.leads}
 		users={data.users}

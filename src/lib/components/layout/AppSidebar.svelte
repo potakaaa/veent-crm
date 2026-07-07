@@ -57,6 +57,7 @@
 		{ href: '/templates', label: 'Templates', icon: 'reply' }
 	]);
 	const manager: NavItem[] = $derived([
+		{ href: '/dashboard', label: 'Dashboard', icon: 'reports' },
 		{ href: '/reports', label: 'Reports', icon: 'reports' },
 		{ href: '/team', label: 'Team', icon: 'team' }
 	]);

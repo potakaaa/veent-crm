@@ -11,6 +11,14 @@ const VALID_SEGMENTS = new Set(['mine', 'all', 'unassigned', 'lost']);
 const VALID_STAGES = new Set<string>(LEAD_STAGES);
 const VALID_PLATFORMS = new Set<string>(LEAD_PLATFORMS);
 
+// Validates a raw `YYYY-MM-DD` string via regex + Date round-trip (rejects invalid
+// calendar dates like Feb 30). Returns the validated string, or '' if invalid.
+function validateIsoDate(raw: string): string {
+	if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) return '';
+	const d = new Date(raw + 'T00:00:00Z');
+	return isNaN(d.getTime()) || d.toISOString().slice(0, 10) !== raw ? '' : raw;
+}
+
 export const load: PageServerLoad = async ({ locals, url }) => {
 	if (!locals.user) throw error(401, 'Unauthorized');
 
@@ -27,12 +35,8 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	const staleOnly = url.searchParams.get('staleOnly') === '1';
 	const hasFutureEvents = url.searchParams.get('hasFutureEvents') === '1';
 	const search = url.searchParams.get('q') ?? '';
-	const rawDate = url.searchParams.get('date') ?? '';
-	const date = (() => {
-		if (!/^\d{4}-\d{2}-\d{2}$/.test(rawDate)) return '';
-		const d = new Date(rawDate + 'T00:00:00Z');
-		return isNaN(d.getTime()) || d.toISOString().slice(0, 10) !== rawDate ? '' : rawDate;
-	})();
+	const date = validateIsoDate(url.searchParams.get('date') ?? '');
+	const createdFrom = validateIsoDate(url.searchParams.get('createdFrom') ?? '');
 	const rawDateField = url.searchParams.get('dateField') ?? '';
 	const dateField: 'event_date' | 'created_at' =
 		rawDateField === 'created_at' ? 'created_at' : 'event_date';
@@ -87,6 +91,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 			search: search || undefined,
 			date: date || undefined,
 			dateField: date ? dateField : undefined,
+			createdFrom: createdFrom || undefined,
 			page,
 			pageSize: PAGE_SIZE,
 			sort,
@@ -129,6 +134,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 			search,
 			date,
 			dateField,
+			createdFrom,
 			weeksAhead
 		},
 		sort: sort ?? 'event',

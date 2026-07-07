@@ -20,11 +20,11 @@
 </script>
 
 <!--
-	4-bucket segmented pill (this week / this month / this year / all time). role="radiogroup" with
+	4-bucket segmented pill (this week / this month / this year / all time). role="group" with
 	aria-pressed toggle buttons, mirroring WeekRangeControl.svelte's accessibility + token
 	pattern structurally (not a modification of it).
 -->
-<div role="radiogroup" aria-label={label} class="flex flex-wrap items-center gap-1.5">
+<div role="group" aria-label={label} class="flex flex-wrap items-center gap-1.5">
 	{#each OPTIONS as opt (opt.bucket)}
 		<button
 			type="button"

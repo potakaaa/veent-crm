@@ -90,11 +90,11 @@ without needing to run manual reports.
                           date-range filter       an AE row/card
                                    │                    │
                                    ▼                    ▼
-                       ┌───────────────────┐  ┌───────────────────────────┐
-                       │ Re-fetch + re-render│  │ Navigate to                │
-                       │ metrics for new range│  │ /leads?rep=<id>            │
-                       └───────────────────┘  │ (pre-filtered to that AE)   │
-                                              └───────────────────────────┘
+                       ┌───────────────────┐  ┌───────────────────────────────┐
+                       │ Re-fetch + re-render│  │ Navigate to                   │
+                       │ metrics for new range│  │ /leads?segment=all&owner=<id> │
+                       └───────────────────┘  │ (pre-filtered to that AE)     │
+                                              └───────────────────────────────┘
 ```
 
 ## Acceptance Criteria (Testable Outcomes)
@@ -125,7 +125,7 @@ without needing to run manual reports.
    strategy: Hybrid.
 
 5. **Clicking through from an AE's row/card lands on `/leads` pre-filtered to that AE's leads
-   (equivalent to `/leads?rep=<id>`), showing only that AE's owned leads.**
+   (equivalent to `/leads?segment=all&owner=<id>`), showing only that AE's owned leads.**
    proven by: Playwright e2e navigation spec (click-through + resulting filtered list assertion).
    strategy: Agent-Probe — currently blocked by the repo's pre-existing gap (no shared Playwright
    authenticated-session fixture; every protected-route e2e spec self-skips per

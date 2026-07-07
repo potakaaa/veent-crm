@@ -7,6 +7,15 @@
 	import Icon from '$lib/components/shared/Icon.svelte';
 	import PageHeader from '$lib/components/shared/PageHeader.svelte';
 	import {
+		Command,
+		CommandInput,
+		CommandList,
+		CommandGroup,
+		CommandItem,
+		CommandEmpty
+	} from '$lib/components/ui/command';
+	import { Popover, PopoverTrigger, PopoverContent } from '$lib/components/ui/popover';
+	import {
 		parseDateParam,
 		shiftDate,
 		toDateParam,
@@ -69,6 +78,21 @@
 	function goToday() {
 		pendingAction = 'today';
 		navigate({ date: undefined });
+	}
+
+	// CAL-3 manager rep-filter combobox: popover open state + client-side search over the roster.
+	let repOpen = $state(false);
+	let repQuery = $state('');
+	const filteredReps = $derived(
+		repQuery.trim()
+			? data.activeReps.filter((r) => r.name.toLowerCase().includes(repQuery.trim().toLowerCase()))
+			: data.activeReps
+	);
+
+	// Drive the existing navigate() patch so `view`/`date` params are preserved (AC9).
+	// Passing undefined clears `?repId` and returns to the full team view (AC7).
+	function navigateRepFilter(repId: string | undefined) {
+		navigate({ repId });
 	}
 </script>
 
@@ -171,6 +195,70 @@
 			{/if}
 		</div>
 	</div>
+
+	{#if data.isManager}
+		<div class="mb-3 flex flex-wrap items-center gap-2">
+			<span class="text-[12px] font-medium text-ink-500">Filter by rep</span>
+			<Popover bind:open={repOpen}>
+				<PopoverTrigger
+					class="flex h-8 items-center gap-1 rounded-control border border-hairline bg-panel px-2.5 text-[12.5px] text-ink hover:bg-panel-sunken"
+				>
+					{data.filterRepId == null
+						? 'All reps'
+						: data.filterRepId === data.meId
+							? 'Mine'
+							: (data.activeReps.find((r) => r.id === data.filterRepId)?.name ?? 'Rep')}
+				</PopoverTrigger>
+				<PopoverContent class="w-64 p-0" align="start">
+					<!-- shouldFilter disabled so the pinned Quick filters stay visible while typing;
+					     the reps list is filtered client-side via filteredReps. -->
+					<Command shouldFilter={false}>
+						<CommandInput
+							placeholder="Search reps…"
+							value={repQuery}
+							oninput={(e) => (repQuery = e.currentTarget.value)}
+						/>
+						<CommandList>
+							<CommandGroup heading="Quick filters">
+								<CommandItem
+									value="__mine__"
+									data-chosen={data.filterRepId === data.meId ? '' : undefined}
+									onSelect={() => {
+										navigateRepFilter(data.meId);
+										repOpen = false;
+									}}>Mine</CommandItem
+								>
+								<CommandItem
+									value="__all__"
+									data-chosen={data.filterRepId == null ? '' : undefined}
+									onSelect={() => {
+										navigateRepFilter(undefined);
+										repOpen = false;
+									}}>All reps</CommandItem
+								>
+							</CommandGroup>
+							<CommandGroup heading="Search reps">
+								{#if filteredReps.length === 0}
+									<CommandEmpty>No reps found.</CommandEmpty>
+								{:else}
+									{#each filteredReps as rep (rep.id)}
+										<CommandItem
+											value={rep.id}
+											data-chosen={data.filterRepId === rep.id ? '' : undefined}
+											onSelect={() => {
+												navigateRepFilter(rep.id);
+												repOpen = false;
+											}}>{rep.name}</CommandItem
+										>
+									{/each}
+								{/if}
+							</CommandGroup>
+						</CommandList>
+					</Command>
+				</PopoverContent>
+			</Popover>
+		</div>
+	{/if}
 
 	<div class="mb-3 flex items-center gap-2.5" aria-label="Calendar legend">
 		{#each [{ label: 'Meeting', bg: 'bg-blue-50', text: 'text-blue-700', dot: 'bg-blue-400' }, { label: 'Follow-up', bg: 'bg-amber-50', text: 'text-amber-700', dot: 'bg-amber-400' }, { label: 'Sale Opens', bg: 'bg-green-50', text: 'text-green-700', dot: 'bg-green-500' }, { label: 'Event Start', bg: 'bg-purple-50', text: 'text-purple-700', dot: 'bg-purple-500' }] as item}

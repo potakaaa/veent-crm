@@ -5,7 +5,9 @@
  * for migrations that were applied outside drizzle-kit's tracking. This script
  * inserts the missing records so `bun run db:migrate` only runs the truly new ones.
  *
- * Usage: bun run scripts/repair-migration-tracking.ts
+ * Usage:
+ *   bun run scripts/repair-migration-tracking.ts           # apply fixes
+ *   bun run scripts/repair-migration-tracking.ts --dry-run # inspect only, no writes
  */
 
 import postgres from 'postgres';
@@ -50,40 +52,60 @@ if (!DATABASE_URL) {
 	process.exit(1);
 }
 
+const dryRun = process.argv.includes('--dry-run');
+if (dryRun) console.log('DRY RUN — no writes will be made\n');
+
 const sql = postgres(DATABASE_URL, { max: 1 });
 
 try {
 	// Ensure schema and table exist (drizzle-kit creates these; they should already exist)
-	await sql`CREATE SCHEMA IF NOT EXISTS drizzle`;
-	await sql`
-    CREATE TABLE IF NOT EXISTS drizzle.__drizzle_migrations (
-      id SERIAL PRIMARY KEY,
-      hash text NOT NULL,
-      created_at bigint
-    )
-  `;
+	if (!dryRun) {
+		await sql`CREATE SCHEMA IF NOT EXISTS drizzle`;
+		await sql`
+      CREATE TABLE IF NOT EXISTS drizzle.__drizzle_migrations (
+        id SERIAL PRIMARY KEY,
+        hash text NOT NULL,
+        created_at bigint
+      )
+    `;
+	}
 
 	// Check what's already tracked
 	const existing = await sql`SELECT hash FROM drizzle.__drizzle_migrations`;
 	const existingHashes = new Set(existing.map((r: { hash: string }) => r.hash));
-	console.log(`Already tracked: ${existingHashes.size} migrations`);
-	console.log('Tracked hashes:', [...existingHashes]);
+	console.log(`Already tracked: ${existingHashes.size} / ${ALL_MIGRATIONS.length} migrations`);
 
-	let inserted = 0;
+	const missing: typeof ALL_MIGRATIONS = [];
 	for (const m of ALL_MIGRATIONS) {
 		if (!existingHashes.has(m.tag)) {
-			await sql`
-        INSERT INTO drizzle.__drizzle_migrations (hash, created_at)
-        VALUES (${m.tag}, ${m.when})
-      `;
-			console.log(`  + inserted ${m.tag}`);
-			inserted++;
+			console.log(`  - MISSING  ${m.tag}`);
+			missing.push(m);
 		} else {
-			console.log(`  ✓ already tracked: ${m.tag}`);
+			console.log(`  ✓ tracked  ${m.tag}`);
 		}
 	}
 
-	console.log(`\nDone. Inserted ${inserted} missing migration records.`);
+	if (missing.length === 0) {
+		console.log('\nAll migrations already tracked. Nothing to do.');
+		return;
+	}
+
+	console.log(`\n${missing.length} migration(s) need to be tracked.`);
+
+	if (dryRun) {
+		console.log('\nDry run complete — re-run without --dry-run to apply.');
+		return;
+	}
+
+	for (const m of missing) {
+		await sql`
+      INSERT INTO drizzle.__drizzle_migrations (hash, created_at)
+      VALUES (${m.tag}, ${m.when})
+    `;
+		console.log(`  + inserted ${m.tag}`);
+	}
+
+	console.log(`\nDone. Inserted ${missing.length} missing migration records.`);
 	console.log('Now run: bun run db:migrate');
 } finally {
 	await sql.end();

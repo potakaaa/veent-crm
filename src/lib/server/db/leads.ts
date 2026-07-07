@@ -324,6 +324,7 @@ export interface ListLeadsParams {
 	stage?: string;
 	platform?: string;
 	country?: string;
+	ownerId?: string;
 	staleOnly?: boolean;
 	hasFutureEvents?: boolean;
 	weeksAhead?: number | null;
@@ -351,6 +352,7 @@ export async function listLeadsFiltered(
 		stage,
 		platform,
 		country,
+		ownerId,
 		staleOnly = false,
 		hasFutureEvents = false,
 		weeksAhead = 8,
@@ -383,6 +385,9 @@ export async function listLeadsFiltered(
 
 	// Country filter (normalized country column)
 	if (country) conditions.push(eq(crmLeads.country, country));
+
+	// Owner filter (GitHub #226) — manager/super_manager only; validated caller-side.
+	if (ownerId) conditions.push(eq(crmLeads.ownerId, ownerId));
 
 	// Stale only: no activity for > 30 days
 	if (staleOnly) {

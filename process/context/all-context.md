@@ -88,7 +88,7 @@ For most substantial tasks:
 | import / ingest pipeline                | `process/features/import/_GUIDE.md`               |
 | reminders / n8n                         | `process/features/reminders/_GUIDE.md`            |
 | reports / layerchart charts              | `process/features/reports/_GUIDE.md`              |
-| calendar (meetings + follow-ups grid)   | `process/features/calendar/`                       |
+| calendar (meetings + follow-ups grid)   | `process/features/calendar/_GUIDE.md`              |
 
 ## Feature Folders
 
@@ -100,7 +100,7 @@ For most substantial tasks:
 | import    | `process/features/import/_GUIDE.md`    | not-started (stub pipeline)              |
 | reminders | `process/features/reminders/_GUIDE.md` | in-progress (code-complete, EVL green; /reminders now shows four sections: overdue, due today, upcoming 7 days, going cold — `getRemindersQueue` returns `{ overdue, due, upcoming, cold }` — EVL green 03-07-26; AC1–AC5 render/snooze verification pending manual gates) |
 | reports   | `process/features/reports/_GUIDE.md`   | in-progress (real-DB-backed via Drizzle `reports/+page.server.ts`; `layerchart` charts) |
-| calendar  | `process/features/calendar/completed/calendar_01-07-26/` | code-complete, EVL green; e2e written but self-skipping pending shared auth e2e harness (2 known-gaps, pre-accepted) |
+| calendar  | `process/features/calendar/_GUIDE.md`                    | code-complete (CAL-1 base grid + CAL-3 owner filter), EVL green; CAL-3: reps scoped to own leads, managers get `?repId` combobox — `getFollowUpsInRange`/`getGoLiveDatesInRange`/`getEventDatesInRange` now accept `role` + optional `filterRepId`; meetings always team-wide; e2e self-skipping pending shared auth fixture (known-gaps pre-accepted) |
 | ux-enhancement | `process/features/ux-enhancement/completed/sitewide-ux-refresh_02-07-26/` | code-complete, EVL-confirmed across all 5 phases (program COMPLETE 02-07-26) — mobile nav drawer + design tokens (`--color-nav-*`/`--color-focus-ring`/`--shadow-nav-*`), consolidated Leads/UFG grid + date-picker + hover-popover, keyboard-accessible pipeline stage change, responsive Pipeline/Calendar/Reports, shared per-field form-error component, shared `Tabs.svelte` + chip token contract, Reminders/Today snooze parity, program-wide ARIA sweep. Known-gaps: shared Playwright auth-fixture (pre-existing, blocks most e2e proof), `@axe-core/playwright` devDependency decision (open), nested-worktree Playwright env blocker (open) — see `sitewide-ux-refresh-program_CLOSEOUT_02-07-26.md` for full SPEC AC1-AC13 scoring and consolidated known-gaps list |
 
 ---

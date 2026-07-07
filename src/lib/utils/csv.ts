@@ -24,7 +24,6 @@ export const LEAD_CSV_COLUMNS: CsvColumn<Lead>[] = [
 	{ header: 'Name', value: (l) => l.name },
 	{ header: 'Handle', value: (l) => l.handle },
 	{ header: 'Platform', value: (l) => l.platform },
-	{ header: 'Category', value: (l) => l.category },
 	{ header: 'Location', value: (l) => l.location },
 	{ header: 'Stage', value: (l) => stageLabel(l.stage) },
 	{ header: 'Owner', value: (l) => l.ownerId ?? 'unassigned' },

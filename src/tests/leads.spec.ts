@@ -14,7 +14,6 @@ import {
 	parseFilterCsv,
 	visibilityCondition
 } from '$lib/server/db/leads';
-import { leadCategory } from '$lib/server/db/schema';
 import { canEditLead } from '$lib/utils/permissions';
 import { PgDialect } from 'drizzle-orm/pg-core';
 import type { SQL } from 'drizzle-orm';
@@ -29,7 +28,6 @@ function makeRow(overrides: Partial<Parameters<typeof dbRowToLead>[0]> = {}) {
 	return {
 		id: 'uuid-test-001',
 		name: 'Test Org',
-		category: 'Sports' as const,
 		location: 'Manila',
 		country: null,
 		platform: 'Facebook' as const,
@@ -109,7 +107,6 @@ describe('leadFormSchema (create-lead validation)', () => {
 	it('accepts a minimal payload with just a name', () => {
 		const r = leadFormSchema.safeParse({ name: 'USWAG Davao' });
 		expect(r.success).toBe(true);
-		if (r.success) expect(r.data.category).toBe('Other');
 	});
 
 	it('rejects an empty name', () => {
@@ -174,7 +171,6 @@ describe('dbRowToLead mapper', () => {
 		const lead = dbRowToLead(makeRow());
 		expect(lead.id).toBe('uuid-test-001');
 		expect(lead.name).toBe('Test Org');
-		expect(lead.category).toBe('Sports');
 		expect(lead.stage).toBe('new');
 		expect(lead.source).toBe('manual');
 		expect(lead.ownerId).toBe('owner-uuid');
@@ -445,21 +441,9 @@ describe('parseFilterCsv (Up for Grabs filter param parsing)', () => {
 	});
 });
 
-// ---------------------------------------------------------------------------
-// Category filter options — must equal leadCategory.enumValues exactly (AC#12)
-// Fully-Automated gate: enum-derived, never DB-queried.
-// ---------------------------------------------------------------------------
-
-describe('category filter options (AC#12 — enum-derived)', () => {
-	it('includes known categories from the enum and preserves order', () => {
-		const options = [...leadCategory.enumValues];
-		expect(options[0]).toBe('Sports');
-		expect(options).toContain('Concert');
-		expect(options).toContain('Other');
-		// No duplicates.
-		expect(new Set(options).size).toBe(options.length);
-	});
-});
+// NOTE(CAT-1): the AC#12 "category filter options == leadCategory.enumValues" test was retired.
+// Lead categories are now dynamic (crm_categories) — filter SQL is covered by
+// buildCategoryFilterConditions() tests in categories-db.spec.ts, not a static enum assertion.
 
 // 404 path covered by leads-db.spec.ts: "getLead returns null for a nonexistent UUID"
 

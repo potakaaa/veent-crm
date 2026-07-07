@@ -9,13 +9,19 @@
 	import AppealScoreBadge from '$lib/components/AppealScoreBadge.svelte';
 	import DataGridShell from '$lib/components/leads/DataGridShell.svelte';
 	import { Button } from '$lib/components/ui/button';
+	import CategoryChip from '$lib/components/categories/CategoryChip.svelte';
 	import { riskMeta } from '$lib/utils/risk';
 	import { ownerNameFor } from '$lib/utils/owner';
 	import type { Lead, User } from '$lib/types';
 
-	// Loader attaches derived `appealScore` to each lead at runtime (spread + extra field);
-	// widen the prop type to reflect it.
-	type LeadWithAppeal = Lead & { appealScore: number | null };
+	type LeadCategory = { id: string; name: string; color: string | null };
+
+	// Loader attaches derived `appealScore` + assigned `categories` to each lead at runtime
+	// (spread + extra fields); widen the prop type to reflect it.
+	type LeadWithAppeal = Lead & { appealScore: number | null; categories?: LeadCategory[] };
+
+	// List rows show at most this many category chips; the rest collapse into a "+N" pill.
+	const MAX_CHIPS = 3;
 
 	let {
 		leads,
@@ -96,14 +102,30 @@
 						title={riskMeta(l.urgency).label}
 					></span>
 					<div class="min-w-0 flex-1 lg:contents">
-						<div class="flex min-w-0 items-center gap-1.5 text-[13px] font-semibold">
-							<span class="truncate">{l.name}</span>
-							{#if l.siblings}
-								<span
-									class="shrink-0 rounded-[4px] bg-[rgba(194,113,12,0.1)] px-[5px] py-px font-mono text-[9.5px] text-stale"
-								>
-									{l.siblings} events
-								</span>
+						<div class="flex min-w-0 flex-col gap-0.5 text-[13px] font-semibold">
+							<div class="flex min-w-0 items-center gap-1.5">
+								<span class="truncate">{l.name}</span>
+								{#if l.siblings}
+									<span
+										class="shrink-0 rounded-[4px] bg-[rgba(194,113,12,0.1)] px-[5px] py-px font-mono text-[9.5px] text-stale"
+									>
+										{l.siblings} events
+									</span>
+								{/if}
+							</div>
+							{#if l.categories && l.categories.length > 0}
+								<div class="flex flex-wrap items-center gap-1">
+									{#each l.categories.slice(0, MAX_CHIPS) as cat (cat.id)}
+										<CategoryChip category={cat} />
+									{/each}
+									{#if l.categories.length > MAX_CHIPS}
+										<span
+											class="shrink-0 rounded-[4px] bg-panel-sunken px-[5px] py-px font-mono text-[10px] text-ink-400"
+										>
+											+{l.categories.length - MAX_CHIPS} more
+										</span>
+									{/if}
+								</div>
 							{/if}
 						</div>
 					</div>

@@ -50,15 +50,11 @@ afterAll(async () => {
 
 describe.skipIf(SKIP_DB)('createLead + getLead roundtrip (DB)', () => {
 	it('creates a lead and reads it back by ID', async () => {
-		const lead = await createLead(
-			{ name: `${TEST_PREFIX} Roundtrip Org`, category: 'Sports' },
-			MANAGER_UUID
-		);
+		const lead = await createLead({ name: `${TEST_PREFIX} Roundtrip Org` }, MANAGER_UUID);
 		createdIds.push(lead.id);
 
 		expect(lead.id).toBeTruthy();
 		expect(lead.name).toBe(`${TEST_PREFIX} Roundtrip Org`);
-		expect(lead.category).toBe('Sports');
 		expect(lead.stage).toBe('new');
 		expect(lead.source).toBe('manual');
 		expect(lead.ownerId).toBe(MANAGER_UUID);
@@ -76,10 +72,7 @@ describe.skipIf(SKIP_DB)('createLead + getLead roundtrip (DB)', () => {
 	});
 
 	it('getLead returns null for a soft-deleted lead', async () => {
-		const lead = await createLead(
-			{ name: `${TEST_PREFIX} SoftDeleted Org`, category: 'Other' },
-			MANAGER_UUID
-		);
+		const lead = await createLead({ name: `${TEST_PREFIX} SoftDeleted Org` }, MANAGER_UUID);
 		createdIds.push(lead.id);
 
 		// Soft-delete it directly
@@ -95,7 +88,6 @@ describe.skipIf(SKIP_DB)('listLeads (DB)', () => {
 		const lead = await createLead(
 			{
 				name: `${TEST_PREFIX} List Target`,
-				category: 'Church',
 				platform: 'Facebook',
 				location: 'Davao',
 				contactEmail: 'test@example.com'
@@ -114,10 +106,7 @@ describe.skipIf(SKIP_DB)('listLeads (DB)', () => {
 	});
 
 	it('excludes soft-deleted leads from the list', async () => {
-		const lead = await createLead(
-			{ name: `${TEST_PREFIX} Deleted From List`, category: 'Other' },
-			MANAGER_UUID
-		);
+		const lead = await createLead({ name: `${TEST_PREFIX} Deleted From List` }, MANAGER_UUID);
 		createdIds.push(lead.id);
 
 		await db.update(crmLeads).set({ deletedAt: new Date() }).where(eq(crmLeads.id, lead.id));
@@ -140,7 +129,6 @@ describe.skipIf(SKIP_DB)('createLead field mapping (DB roundtrip)', () => {
 		const lead = await createLead(
 			{
 				name: `${TEST_PREFIX} Full Fields Org`,
-				category: 'Concert',
 				platform: 'Instagram',
 				location: 'Manila',
 				pageUrl: 'https://instagram.com/testorg',
@@ -164,10 +152,7 @@ describe.skipIf(SKIP_DB)('createLead field mapping (DB roundtrip)', () => {
 	});
 
 	it('derived handle uses input name when normalizedHandle not set', async () => {
-		const lead = await createLead(
-			{ name: `${TEST_PREFIX} Handle Test`, category: 'Other' },
-			MANAGER_UUID
-		);
+		const lead = await createLead({ name: `${TEST_PREFIX} Handle Test` }, MANAGER_UUID);
 		createdIds.push(lead.id);
 
 		// normalizedHandle is computed from name in createLead
@@ -181,48 +166,29 @@ describe.skipIf(SKIP_DB)('createLead field mapping (DB roundtrip)', () => {
 // ---------------------------------------------------------------------------
 describe.skipIf(SKIP_DB)('updateLead — hasFutureEvents flag (DB) — #94', () => {
 	async function mk(name: string) {
-		const lead = await createLead(
-			{ name: `${TEST_PREFIX} ${name}`, category: 'Concert' },
-			MANAGER_UUID
-		);
+		const lead = await createLead({ name: `${TEST_PREFIX} ${name}` }, MANAGER_UUID);
 		createdIds.push(lead.id);
 		return lead;
 	}
 
 	it('AC1: persists hasFutureEvents=true; reopen returns it', async () => {
 		const lead = await mk('FEPersist');
-		await updateLead(
-			lead.id,
-			{ name: lead.name, category: 'Concert', hasFutureEvents: true },
-			MANAGER_UUID
-		);
+		await updateLead(lead.id, { name: lead.name, hasFutureEvents: true }, MANAGER_UUID);
 		const fetched = await getLead(lead.id, MANAGER_UUID, 'manager');
 		expect(fetched!.hasFutureEvents).toBe(true);
 	});
 
 	it('AC2: toggle-off clears the flag; reload reflects false', async () => {
 		const lead = await mk('FEToggleOff');
-		await updateLead(
-			lead.id,
-			{ name: lead.name, category: 'Concert', hasFutureEvents: true },
-			MANAGER_UUID
-		);
-		await updateLead(
-			lead.id,
-			{ name: lead.name, category: 'Concert', hasFutureEvents: false },
-			MANAGER_UUID
-		);
+		await updateLead(lead.id, { name: lead.name, hasFutureEvents: true }, MANAGER_UUID);
+		await updateLead(lead.id, { name: lead.name, hasFutureEvents: false }, MANAGER_UUID);
 		const fetched = await getLead(lead.id, MANAGER_UUID, 'manager');
 		expect(fetched!.hasFutureEvents).toBe(false);
 	});
 
 	it('AC7: writes a crm_lead_history row with field has_future_events and correct old/new', async () => {
 		const lead = await mk('FEAudit');
-		await updateLead(
-			lead.id,
-			{ name: lead.name, category: 'Concert', hasFutureEvents: true },
-			MANAGER_UUID
-		);
+		await updateLead(lead.id, { name: lead.name, hasFutureEvents: true }, MANAGER_UUID);
 		const rows = await db
 			.select()
 			.from(crmLeadHistory)
@@ -239,11 +205,7 @@ describe.skipIf(SKIP_DB)('updateLead — hasFutureEvents flag (DB) — #94', () 
 	it('AC6: flipping the flag leaves stage and owner unchanged', async () => {
 		const lead = await mk('FEIsolation');
 		const before = await getLead(lead.id, MANAGER_UUID, 'manager');
-		await updateLead(
-			lead.id,
-			{ name: lead.name, category: 'Concert', hasFutureEvents: true },
-			MANAGER_UUID
-		);
+		await updateLead(lead.id, { name: lead.name, hasFutureEvents: true }, MANAGER_UUID);
 		const after = await getLead(lead.id, MANAGER_UUID, 'manager');
 		expect(after!.stage).toBe(before!.stage);
 		expect(after!.ownerId).toBe(before!.ownerId);
@@ -256,11 +218,7 @@ describe.skipIf(SKIP_DB)('updateLead — hasFutureEvents flag (DB) — #94', () 
 			.update(crmLeads)
 			.set({ stage: 'lost', lostReason: 'no_response' })
 			.where(eq(crmLeads.id, lead.id));
-		await updateLead(
-			lead.id,
-			{ name: lead.name, category: 'Concert', hasFutureEvents: true },
-			MANAGER_UUID
-		);
+		await updateLead(lead.id, { name: lead.name, hasFutureEvents: true }, MANAGER_UUID);
 		const fetched = await getLead(lead.id, MANAGER_UUID, 'manager');
 		expect(fetched!.stage).toBe('lost');
 		expect(fetched!.hasFutureEvents).toBe(true);
@@ -276,7 +234,6 @@ describe.skipIf(SKIP_DB)('lead visibility scoping (DB) — GitHub #87', () => {
 		const lead = await createLead(
 			{
 				name: `${TEST_PREFIX} Vis Selected`,
-				category: 'Sports',
 				visibility: 'selected',
 				selectedUserIds: [REP_UUID]
 			},
@@ -296,7 +253,7 @@ describe.skipIf(SKIP_DB)('lead visibility scoping (DB) — GitHub #87', () => {
 	it('AC#8: getLead returns null for a rep barred from an only_me lead (404 path, not redacted)', async () => {
 		// Owned by REP_UUID, only_me → OUTSIDER cannot see it; owner + manager can.
 		const lead = await createLead(
-			{ name: `${TEST_PREFIX} Vis OnlyMe`, category: 'Other', visibility: 'only_me' },
+			{ name: `${TEST_PREFIX} Vis OnlyMe`, visibility: 'only_me' },
 			REP_UUID
 		);
 		createdIds.push(lead.id);
@@ -307,7 +264,7 @@ describe.skipIf(SKIP_DB)('lead visibility scoping (DB) — GitHub #87', () => {
 
 	it('AC#9/#10: a manager sees and can edit any only_me lead they do not own', async () => {
 		const lead = await createLead(
-			{ name: `${TEST_PREFIX} Vis MgrOverride`, category: 'Other', visibility: 'only_me' },
+			{ name: `${TEST_PREFIX} Vis MgrOverride`, visibility: 'only_me' },
 			REP_UUID
 		);
 		createdIds.push(lead.id);
@@ -315,7 +272,7 @@ describe.skipIf(SKIP_DB)('lead visibility scoping (DB) — GitHub #87', () => {
 		expect(await getLead(lead.id, MANAGER_UUID, 'manager')).not.toBeNull();
 		const updated = await updateLead(
 			lead.id,
-			{ name: lead.name, category: 'Other', visibility: 'everyone' },
+			{ name: lead.name, visibility: 'everyone' },
 			MANAGER_UUID
 		);
 		expect(updated).not.toBeNull();
@@ -324,7 +281,7 @@ describe.skipIf(SKIP_DB)('lead visibility scoping (DB) — GitHub #87', () => {
 
 	it('AC#3/#4: updateLead visibility change takes effect + writes a history row', async () => {
 		const lead = await createLead(
-			{ name: `${TEST_PREFIX} Vis Change`, category: 'Other', visibility: 'everyone' },
+			{ name: `${TEST_PREFIX} Vis Change`, visibility: 'everyone' },
 			REP_UUID
 		);
 		createdIds.push(lead.id);
@@ -332,11 +289,7 @@ describe.skipIf(SKIP_DB)('lead visibility scoping (DB) — GitHub #87', () => {
 		// Visible to an outsider while everyone.
 		expect(await getLead(lead.id, OUTSIDER_UUID, 'rep')).not.toBeNull();
 
-		await updateLead(
-			lead.id,
-			{ name: lead.name, category: 'Other', visibility: 'only_me' },
-			REP_UUID
-		);
+		await updateLead(lead.id, { name: lead.name, visibility: 'only_me' }, REP_UUID);
 
 		// Now hidden from the outsider.
 		expect(await getLead(lead.id, OUTSIDER_UUID, 'rep')).toBeNull();
@@ -355,7 +308,6 @@ describe.skipIf(SKIP_DB)('lead visibility scoping (DB) — GitHub #87', () => {
 		const lead = await createLead(
 			{
 				name: `${TEST_PREFIX} Vis GrantCleanup`,
-				category: 'Other',
 				visibility: 'selected',
 				selectedUserIds: [MANAGER_UUID]
 			},
@@ -364,11 +316,7 @@ describe.skipIf(SKIP_DB)('lead visibility scoping (DB) — GitHub #87', () => {
 		createdIds.push(lead.id);
 		expect(await getLeadVisibilityGrants(lead.id)).toContain(MANAGER_UUID);
 
-		await updateLead(
-			lead.id,
-			{ name: lead.name, category: 'Other', visibility: 'everyone' },
-			REP_UUID
-		);
+		await updateLead(lead.id, { name: lead.name, visibility: 'everyone' }, REP_UUID);
 		expect(await getLeadVisibilityGrants(lead.id)).toHaveLength(0);
 	});
 
@@ -376,7 +324,6 @@ describe.skipIf(SKIP_DB)('lead visibility scoping (DB) — GitHub #87', () => {
 		const lead = await createLead(
 			{
 				name: `${TEST_PREFIX} Vis Claim`,
-				category: 'Other',
 				visibility: 'selected',
 				selectedUserIds: [MANAGER_UUID]
 			},
@@ -396,7 +343,6 @@ describe.skipIf(SKIP_DB)('lead visibility scoping (DB) — GitHub #87', () => {
 		const lead = await createLead(
 			{
 				name: `${TEST_PREFIX} Vis Reassign`,
-				category: 'Other',
 				visibility: 'selected',
 				selectedUserIds: [MANAGER_UUID]
 			},
@@ -414,7 +360,6 @@ describe.skipIf(SKIP_DB)('lead visibility scoping (DB) — GitHub #87', () => {
 		const lead = await createLead(
 			{
 				name: `${TEST_PREFIX} Vis Unclaim`,
-				category: 'Other',
 				visibility: 'selected',
 				selectedUserIds: [MANAGER_UUID]
 			},
@@ -438,7 +383,6 @@ function makeMapperRow(overrides: Partial<Parameters<typeof dbRowToLead>[0]> = {
 	return {
 		id: 'uuid-mapper-001',
 		name: 'Mapper Org',
-		category: 'Sports' as const,
 		location: 'Manila',
 		country: null,
 		platform: 'Facebook' as const,

@@ -8,7 +8,7 @@
 	import * as Dialog from '$lib/components/ui/dialog';
 	import { Textarea } from '$lib/components/ui/textarea';
 	import { formatEventDate } from '$lib/utils/dates';
-	import { leadUpdateSchema, LEAD_CATEGORIES, LEAD_PLATFORMS } from '$lib/zod/schemas';
+	import { leadUpdateSchema, LEAD_PLATFORMS } from '$lib/zod/schemas';
 	import { parseDate, type DateValue } from '@internationalized/date';
 	import type { Lead } from '$lib/types';
 
@@ -29,7 +29,6 @@
 	} = $props();
 
 	let name = $state('');
-	let category = $state('');
 	let platform = $state('');
 	let location = $state('');
 	let pageUrl = $state('');
@@ -50,7 +49,6 @@
 	$effect(() => {
 		if (open) {
 			name = lead.name;
-			category = lead.category;
 			platform = lead.platform ?? '';
 			location = lead.location === '—' ? '' : (lead.location ?? '');
 			pageUrl = lead.pageUrl ?? '';
@@ -76,7 +74,6 @@
 	function buildPayload() {
 		return leadUpdateSchema.safeParse({
 			name,
-			category,
 			platform: platform || undefined,
 			location: location || undefined,
 			pageUrl: pageUrl || '',
@@ -120,15 +117,6 @@
 			<div class="grid gap-1.5 sm:col-span-2">
 				<Label for="el-name">Page / organizer name</Label>
 				<Input id="el-name" bind:value={name} placeholder="e.g. Christian Concerts PH" />
-			</div>
-			<div class="grid gap-1.5">
-				<Label for="el-category">Category</Label>
-				<Select type="single" bind:value={category}>
-					<SelectTrigger id="el-category" class="w-full">{category}</SelectTrigger>
-					<SelectContent>
-						{#each LEAD_CATEGORIES as c (c)}<SelectItem value={c} label={c}>{c}</SelectItem>{/each}
-					</SelectContent>
-				</Select>
 			</div>
 			<div class="grid gap-1.5">
 				<Label for="el-platform">Platform</Label>

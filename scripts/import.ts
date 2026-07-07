@@ -475,9 +475,13 @@ async function load(groups: LeadGroup[], report: ReconciliationReport): Promise<
 				}
 
 				const now = new Date();
+				// NOTE(CAT-1): crm_leads.category column was dropped in migration 0028. `category`
+				// is still computed for the dry-run histogram (see LeadInsert) but must NOT be
+				// inserted — strip it here so the load does not reference a non-existent column.
+				const { category: _category, ...leadColumns } = group.lead;
 				const [inserted] = await tx
 					.insert(crmLeads)
-					.values({ ...group.lead, createdAt: now, updatedAt: now })
+					.values({ ...leadColumns, createdAt: now, updatedAt: now })
 					.returning({ id: crmLeads.id });
 				insertedLeads++;
 

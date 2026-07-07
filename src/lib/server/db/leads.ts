@@ -9,7 +9,8 @@ import {
 	crmActivities,
 	crmLeadHistory,
 	crmLeadVisibilityGrants,
-	crmOrganizers
+	crmOrganizers,
+	crmLeadCategories
 } from './schema';
 import {
 	eq,
@@ -89,7 +90,6 @@ export function dbRowToLead(
 		id: row.id,
 		name: row.name,
 		handle,
-		category: row.category as Lead['category'],
 		location: row.location ?? '—',
 		country: row.country ?? '—',
 		platform: (row.platform ?? 'Other') as Lead['platform'],
@@ -192,6 +192,28 @@ export function resolveFollowUpAt(
 		return new Date(occurredAt.getTime() + followUpInDays * 86_400_000);
 	}
 	return null;
+}
+
+/**
+ * Category filter predicate for the leads list (CAT-1, GitHub #248). Pure SQL
+ * construction — DB-free and `.toSQL()`-testable. Returns an EXISTS subquery
+ * matching leads that carry AT LEAST ONE of the given category assignments;
+ * an empty array yields `undefined` (no restriction). OR-within-filter semantics
+ * mirror the other multi-select list filters.
+ */
+export function buildCategoryFilterConditions(categoryIds: string[]): SQL | undefined {
+	if (!categoryIds.length) return undefined;
+	return exists(
+		db
+			.select({ one: sql`1` })
+			.from(crmLeadCategories)
+			.where(
+				and(
+					eq(crmLeadCategories.leadId, crmLeads.id),
+					inArray(crmLeadCategories.categoryId, categoryIds)
+				)
+			)
+	) as SQL;
 }
 
 // ---------------------------------------------------------------------------
@@ -325,6 +347,7 @@ export interface ListLeadsParams {
 	platform?: string;
 	country?: string;
 	ownerId?: string;
+	categoryIds?: string[];
 	staleOnly?: boolean;
 	hasFutureEvents?: boolean;
 	weeksAhead?: number | null;
@@ -353,6 +376,7 @@ export async function listLeadsFiltered(
 		platform,
 		country,
 		ownerId,
+		categoryIds,
 		staleOnly = false,
 		hasFutureEvents = false,
 		weeksAhead = 8,
@@ -388,6 +412,10 @@ export async function listLeadsFiltered(
 
 	// Owner filter (GitHub #226) — manager/super_manager only; validated caller-side.
 	if (ownerId) conditions.push(eq(crmLeads.ownerId, ownerId));
+
+	// Category filter (CAT-1, GitHub #248) — OR-within-filter EXISTS subquery; empty → no-op.
+	const categoryCondition = buildCategoryFilterConditions(categoryIds ?? []);
+	if (categoryCondition) conditions.push(categoryCondition);
 
 	// Stale only: no activity for > 30 days
 	if (staleOnly) {
@@ -550,7 +578,12 @@ export async function listUnassignedLeads(
 	pageSize = 25,
 	sort?: string,
 	dir?: 'asc' | 'desc',
-	filters?: { country?: string[]; category?: string[]; weeksAhead?: number | null; search?: string }
+	filters?: {
+		country?: string[];
+		categoryIds?: string[];
+		weeksAhead?: number | null;
+		search?: string;
+	}
 ): Promise<{ leads: Lead[]; total: number }> {
 	const conditions = unassignedBaseConditions();
 
@@ -559,9 +592,8 @@ export async function listUnassignedLeads(
 	if (filters?.country && filters.country.length > 0) {
 		conditions.push(inArray(crmLeads.country, filters.country));
 	}
-	if (filters?.category && filters.category.length > 0) {
-		conditions.push(inArray(crmLeads.category, filters.category as DbLead['category'][]));
-	}
+	const categoryCondition = buildCategoryFilterConditions(filters?.categoryIds ?? []);
+	if (categoryCondition) conditions.push(categoryCondition);
 
 	// Weeks-ahead minimum: show only leads with events at least N weeks out.
 	// undefined → default 8; null → no limit (All).
@@ -784,7 +816,6 @@ export async function listPipelineStage(
 export async function createLead(
 	input: {
 		name: string;
-		category: DbLead['category'];
 		platform?: DbLead['platform'];
 		location?: string;
 		pageUrl?: string;
@@ -817,7 +848,6 @@ export async function createLead(
 			.insert(crmLeads)
 			.values({
 				name: input.name,
-				category: input.category,
 				platform: input.platform ?? null,
 				location: input.location ?? null,
 				pageUrl: input.pageUrl ?? null,
@@ -852,7 +882,6 @@ export async function updateLead(
 	id: string,
 	input: {
 		name: string;
-		category: DbLead['category'];
 		platform?: DbLead['platform'];
 		location?: string;
 		pageUrl?: string;
@@ -906,7 +935,6 @@ export async function updateLead(
 			.set({
 				name: input.name,
 				normalizedHandle,
-				category: input.category,
 				platform: input.platform ?? null,
 				location: input.location ?? null,
 				pageUrl: input.pageUrl ?? null,
@@ -957,7 +985,6 @@ export async function updateLead(
 		// Write history rows for changed scalar fields.
 		const tracked: Array<[string, string | null, string | null]> = [
 			['name', existing.name, updated.name],
-			['category', existing.category, updated.category],
 			['platform', existing.platform ?? null, updated.platform ?? null],
 			['location', existing.location ?? null, updated.location ?? null],
 			['contact_email', existing.contactEmail ?? null, updated.contactEmail ?? null],

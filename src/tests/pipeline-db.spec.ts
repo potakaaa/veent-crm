@@ -38,10 +38,7 @@ afterAll(async () => {
 
 describe.skipIf(SKIP_DB)('moveLeadStage — regular transitions', () => {
 	it('moves a lead to contacted and persists to DB', async () => {
-		const lead = await createLead(
-			{ name: `${TEST_PREFIX} Stage Move`, category: 'Sports' },
-			MANAGER_UUID
-		);
+		const lead = await createLead({ name: `${TEST_PREFIX} Stage Move` }, MANAGER_UUID);
 		createdIds.push(lead.id);
 
 		const updated = await moveLeadStage(lead.id, 'contacted', {}, MANAGER_UUID, 'manager');
@@ -64,10 +61,7 @@ describe.skipIf(SKIP_DB)('moveLeadStage — regular transitions', () => {
 	});
 
 	it('returns null for a soft-deleted lead', async () => {
-		const lead = await createLead(
-			{ name: `${TEST_PREFIX} Deleted Stage`, category: 'Other' },
-			MANAGER_UUID
-		);
+		const lead = await createLead({ name: `${TEST_PREFIX} Deleted Stage` }, MANAGER_UUID);
 		createdIds.push(lead.id);
 		await db.update(crmLeads).set({ deletedAt: new Date() }).where(eq(crmLeads.id, lead.id));
 
@@ -76,10 +70,7 @@ describe.skipIf(SKIP_DB)('moveLeadStage — regular transitions', () => {
 	});
 
 	it('writes a stage history row on transition', async () => {
-		const lead = await createLead(
-			{ name: `${TEST_PREFIX} History Check`, category: 'Church' },
-			MANAGER_UUID
-		);
+		const lead = await createLead({ name: `${TEST_PREFIX} History Check` }, MANAGER_UUID);
 		createdIds.push(lead.id);
 
 		await moveLeadStage(lead.id, 'replied', {}, MANAGER_UUID, 'manager');
@@ -103,10 +94,7 @@ describe.skipIf(SKIP_DB)('moveLeadStage — regular transitions', () => {
 
 describe.skipIf(SKIP_DB)('moveLeadStage — won capture', () => {
 	it('marks a lead won with deal value and persists all won fields', async () => {
-		const lead = await createLead(
-			{ name: `${TEST_PREFIX} Won Lead`, category: 'Concert' },
-			MANAGER_UUID
-		);
+		const lead = await createLead({ name: `${TEST_PREFIX} Won Lead` }, MANAGER_UUID);
 		createdIds.push(lead.id);
 
 		const updated = await moveLeadStage(
@@ -130,10 +118,7 @@ describe.skipIf(SKIP_DB)('moveLeadStage — won capture', () => {
 	});
 
 	it('writes stage + won_org_name + deal_value_cents history rows', async () => {
-		const lead = await createLead(
-			{ name: `${TEST_PREFIX} Won History`, category: 'Sports' },
-			MANAGER_UUID
-		);
+		const lead = await createLead({ name: `${TEST_PREFIX} Won History` }, MANAGER_UUID);
 		createdIds.push(lead.id);
 
 		await moveLeadStage(
@@ -155,10 +140,7 @@ describe.skipIf(SKIP_DB)('moveLeadStage — won capture', () => {
 	});
 
 	it('marks won without a deal value (optional fields)', async () => {
-		const lead = await createLead(
-			{ name: `${TEST_PREFIX} Won No Value`, category: 'Other' },
-			MANAGER_UUID
-		);
+		const lead = await createLead({ name: `${TEST_PREFIX} Won No Value` }, MANAGER_UUID);
 		createdIds.push(lead.id);
 
 		const updated = await moveLeadStage(lead.id, 'won', {}, MANAGER_UUID, 'manager');
@@ -174,10 +156,7 @@ describe.skipIf(SKIP_DB)('moveLeadStage — won capture', () => {
 
 describe.skipIf(SKIP_DB)('moveLeadStage — lost', () => {
 	it('marks a lead lost with a reason', async () => {
-		const lead = await createLead(
-			{ name: `${TEST_PREFIX} Lost Lead`, category: 'Other' },
-			MANAGER_UUID
-		);
+		const lead = await createLead({ name: `${TEST_PREFIX} Lost Lead` }, MANAGER_UUID);
 		createdIds.push(lead.id);
 
 		const updated = await moveLeadStage(
@@ -193,10 +172,7 @@ describe.skipIf(SKIP_DB)('moveLeadStage — lost', () => {
 	});
 
 	it('writes stage + lost_reason history rows', async () => {
-		const lead = await createLead(
-			{ name: `${TEST_PREFIX} Lost History`, category: 'Sports' },
-			MANAGER_UUID
-		);
+		const lead = await createLead({ name: `${TEST_PREFIX} Lost History` }, MANAGER_UUID);
 		createdIds.push(lead.id);
 
 		await moveLeadStage(lead.id, 'lost', { lostReason: 'rejected' }, MANAGER_UUID, 'manager');
@@ -217,10 +193,7 @@ describe.skipIf(SKIP_DB)('moveLeadStage — lost', () => {
 
 describe.skipIf(SKIP_DB)('reassignLead', () => {
 	it('changes the owner and persists to DB', async () => {
-		const lead = await createLead(
-			{ name: `${TEST_PREFIX} Reassign`, category: 'Sports' },
-			MANAGER_UUID
-		);
+		const lead = await createLead({ name: `${TEST_PREFIX} Reassign` }, MANAGER_UUID);
 		createdIds.push(lead.id);
 		expect(lead.ownerId).toBe(MANAGER_UUID);
 
@@ -233,10 +206,7 @@ describe.skipIf(SKIP_DB)('reassignLead', () => {
 	});
 
 	it('writes an owner_id history row', async () => {
-		const lead = await createLead(
-			{ name: `${TEST_PREFIX} Reassign History`, category: 'Other' },
-			MANAGER_UUID
-		);
+		const lead = await createLead({ name: `${TEST_PREFIX} Reassign History` }, MANAGER_UUID);
 		createdIds.push(lead.id);
 
 		await reassignLead(lead.id, REP_UUID, MANAGER_UUID);
@@ -262,10 +232,7 @@ describe.skipIf(SKIP_DB)('reassignLead', () => {
 	});
 
 	it('returns null for a soft-deleted lead', async () => {
-		const lead = await createLead(
-			{ name: `${TEST_PREFIX} Deleted Reassign`, category: 'Other' },
-			MANAGER_UUID
-		);
+		const lead = await createLead({ name: `${TEST_PREFIX} Deleted Reassign` }, MANAGER_UUID);
 		createdIds.push(lead.id);
 		await db.update(crmLeads).set({ deletedAt: new Date() }).where(eq(crmLeads.id, lead.id));
 
@@ -280,10 +247,7 @@ describe.skipIf(SKIP_DB)('reassignLead', () => {
 
 describe.skipIf(SKIP_DB)('Phase 4 regression — reads unaffected', () => {
 	it('createLead + getLead still round-trips correctly', async () => {
-		const lead = await createLead(
-			{ name: `${TEST_PREFIX} Regression P4`, category: 'School' },
-			MANAGER_UUID
-		);
+		const lead = await createLead({ name: `${TEST_PREFIX} Regression P4` }, MANAGER_UUID);
 		createdIds.push(lead.id);
 
 		const fetched = await getLead(lead.id, MANAGER_UUID, 'manager');

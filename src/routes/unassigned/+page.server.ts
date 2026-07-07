@@ -5,7 +5,7 @@ import {
 	getUnassignedLeadCountries,
 	parseFilterCsv
 } from '$lib/server/db/leads';
-import { leadCategory } from '$lib/server/db/schema';
+import { getActiveCategories, getCategoriesForLeads } from '$lib/server/db/categories';
 import { computeAppealScore, today } from '$lib/appeal-score';
 
 const PAGE_SIZE = 25;
@@ -36,23 +36,24 @@ export const load: PageServerLoad = async ({ url }) => {
 				: Math.max(1, parseInt(rawWeeksAhead, 10) || 8);
 
 	const country = parseFilterCsv(url.searchParams.get('country'));
-	const rawCategory = parseFilterCsv(url.searchParams.get('category'));
-	const validCategories = new Set<string>(leadCategory.enumValues);
-	const category = rawCategory.filter((c) => validCategories.has(c));
+	const categoryIds = parseFilterCsv(url.searchParams.get('categoryIds'));
 
 	const search = url.searchParams.get('q')?.trim() || undefined;
 
-	const [result, users, countryOptions] = await Promise.all([
-		listUnassignedLeads(page, PAGE_SIZE, sort, dir, { country, category, weeksAhead, search }),
+	const [result, users, countryOptions, allCategories] = await Promise.all([
+		listUnassignedLeads(page, PAGE_SIZE, sort, dir, { country, categoryIds, weeksAhead, search }),
 		listUsers(),
-		getUnassignedLeadCountries()
+		getUnassignedLeadCountries(),
+		getActiveCategories()
 	]);
 
 	// Attach derived Lead Appeal Score per row (never persisted); `now` floored to date (E3).
 	const now = today();
+	const categoriesByLead = await getCategoriesForLeads(result.leads.map((l) => l.id));
 	const leads = result.leads.map((l) => ({
 		...l,
-		appealScore: computeAppealScore(l.eventDate, l.firstAnnouncedDate, l.firstReachedOutDate, now)
+		appealScore: computeAppealScore(l.eventDate, l.firstAnnouncedDate, l.firstReachedOutDate, now),
+		categories: categoriesByLead.get(l.id) ?? []
 	}));
 
 	return {
@@ -60,9 +61,9 @@ export const load: PageServerLoad = async ({ url }) => {
 		users,
 		sort: sort ?? 'event',
 		dir,
-		categoryOptions: [...leadCategory.enumValues],
+		allCategories,
 		countryOptions,
-		filters: { country, category, weeksAhead, search: search ?? '' },
+		filters: { country, categoryIds, weeksAhead, search: search ?? '' },
 		pagination: {
 			page,
 			pageSize: PAGE_SIZE,

@@ -1,6 +1,6 @@
 {
   "phase": "EVL",
-  "plan": "process/features/calendar/active/cal-3-owner-filter_06-07-26/cal-3-owner-filter_PLAN_06-07-26.md",
+  "plan": "process/features/calendar/completed/cal-3-owner-filter_06-07-26/cal-3-owner-filter_PLAN_06-07-26.md",
   "branch": "feat/208-cal-3-calendar-owner-filter",
   "date": "2026-07-07",
   "risk_class": "low",
@@ -24,7 +24,7 @@
       "purpose": "Vitest — CAL3-AC1/AC3/AC5/AC8 DB-free assertions",
       "exit_code": 0,
       "result": "PASS",
-      "notes": "28 files passed, 8 skipped; 383 tests passed, 148 skipped. All CAL3-AC1/AC3/AC5/AC8 blocks are synchronous .toSQL() tests — ran and passed (not among skipped)."
+      "notes": "28 files passed, 8 skipped; 383 tests passed, 148 skipped. CAL3-AC1/AC3/AC5 are synchronous .toSQL() tests; CAL3-AC8 is the source/arity guard and route-source check — all ran and passed (not among skipped)."
     }
   ],
   "structural_verifications": [

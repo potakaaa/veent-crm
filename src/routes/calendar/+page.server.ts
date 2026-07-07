@@ -25,7 +25,11 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 	// `?repId=<other-uuid>` is ignored here (filterRepId dropped for reps) AND ignored in-function
 	// (the query composers only honor filterRepId for non-rep roles). `filterRepId` may legitimately
 	// equal the manager's OWN UUID — that is the "Mine" view a manager gets by selecting themselves.
-	const filterRepId = isManager ? (url.searchParams.get('repId') ?? undefined) : undefined;
+	// UUID guard: reject malformed repId values before they reach eq(ownerId, ...) — PostgreSQL
+	// throws on non-UUID input to a uuid column, causing a 500 for the caller.
+	const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+	const rawRepId = isManager ? url.searchParams.get('repId') : null;
+	const filterRepId = rawRepId && UUID_RE.test(rawRepId) ? rawRepId : undefined;
 
 	// Meetings are team-shared (no owner/organizer scoping — AC8); they are NEVER narrowed by the
 	// rep filter. Follow-ups and milestones are owner-scoped per CAL-3 (rep → own only; manager →

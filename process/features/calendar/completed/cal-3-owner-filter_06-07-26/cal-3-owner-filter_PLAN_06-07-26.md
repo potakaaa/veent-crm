@@ -10,7 +10,7 @@ feature: calendar
 Date: 06-07-26
 Status: PLAN — active, pending VALIDATE
 Complexity: SIMPLE (4 sequential steps, single feature, no phase program)
-SPEC: `process/features/calendar/active/cal-3-owner-filter_06-07-26/cal-3-owner-filter_SPEC_06-07-26.md`
+SPEC: `process/features/calendar/completed/cal-3-owner-filter_06-07-26/cal-3-owner-filter_SPEC_06-07-26.md`
 Decision Summary source: INNOVATE — "Full Reminders Mirror" (combobox UI + additive `filterRepId?` + route-level trust boundary)
 Context loaded: `process/context/all-context.md`, `process/context/planning/all-planning.md`, `process/context/tests/all-tests.md`
 
@@ -236,7 +236,7 @@ Playwright auth-fixture backlog item, not a new infra gap introduced by this pla
 
 ## Resume and Execution Handoff
 
-1. **Selected plan file:** `process/features/calendar/active/cal-3-owner-filter_06-07-26/cal-3-owner-filter_PLAN_06-07-26.md`
+1. **Selected plan file:** `process/features/calendar/completed/cal-3-owner-filter_06-07-26/cal-3-owner-filter_PLAN_06-07-26.md`
 2. **Last completed step:** none — plan written + validated (2 passes), not yet executed.
 3. **Validate-contract status:** written — Gate CONDITIONAL (terminal, second pass); EXECUTE-ready.
 4. **Supporting context loaded:** SPEC (same folder); `process/context/all-context.md`; `process/context/tests/all-tests.md`; `reminders/+page.server.ts` + `+page.svelte` (mirror pattern); `calendar/+page.server.ts` + `+page.svelte` (targets); `leads.ts` lines 214-233 (visibilityCondition), 721 (listActiveReps), 1330-1540 (three query fns + helpers), 1740-1785 (getAllFollowUpsQueue filterRepId pattern); `calendar-db.spec.ts` (existing tests).
@@ -325,7 +325,7 @@ Hard stop conditions / safety constraints:
 - Do NOT broaden reps beyond strict-owner (AC1) — keep visibilityCondition + the D1 owner-narrow term; never drop the restricted-lead leak guard.
 - Do NOT touch buildGoLiveRangeConditions()/buildEventStartRangeConditions() no-arg helpers (keeps cal-2/golive tests green).
 - Rep `?repId` spoof must be dropped at the route AND ignored in-function (defense in depth).
-Next phase: EXECUTE — process/features/calendar/active/cal-3-owner-filter_06-07-26/cal-3-owner-filter_PLAN_06-07-26.md
+Next phase: EXECUTE — process/features/calendar/completed/cal-3-owner-filter_06-07-26/cal-3-owner-filter_PLAN_06-07-26.md
 Validate contract: inline in plan (Gate: CONDITIONAL — terminal, second pass after 1 supplement cycle; generated-by: outer-pvl)
 Execute start: fully-auto gates → `bun run check`; `bun run lint`; `bun run test:unit:ci` | e2e: n/a (auth-fixture blocked) | probe: manager/rep render + ?repId round-trip (manual) | high-risk pack: no
 Execute-agent instructions (from contract): E1 — folded into checklist item 17b (route-source guard that +page.server.ts never passes filterRepId to listAllMeetings); E2 — namespace new tests as CAL3-AC1/AC3/AC5/AC8 to avoid collision with existing AC3/AC7 blocks in calendar-db.spec.ts.

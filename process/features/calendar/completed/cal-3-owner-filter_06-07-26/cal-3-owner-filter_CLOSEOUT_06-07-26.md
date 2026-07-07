@@ -3,14 +3,14 @@ phase: UPDATE-PROCESS
 date: 2026-07-07
 status: COMPLETE
 feature: calendar
-plan: process/features/calendar/active/cal-3-owner-filter_06-07-26/cal-3-owner-filter_PLAN_06-07-26.md
+plan: process/features/calendar/completed/cal-3-owner-filter_06-07-26/cal-3-owner-filter_PLAN_06-07-26.md
 ---
 
 # CAL-3 — Calendar Owner Filter — Closeout Packet
 
 ## 1. Selected Plan Path
 
-`process/features/calendar/active/cal-3-owner-filter_06-07-26/cal-3-owner-filter_PLAN_06-07-26.md`
+`process/features/calendar/completed/cal-3-owner-filter_06-07-26/cal-3-owner-filter_PLAN_06-07-26.md`
 
 ## 2. Closeout Classification
 
@@ -99,7 +99,7 @@ Backward-compatibility check: `role` defaults to `'rep'` in all three extended f
 
 ## 9. SPEC Achievement
 
-Scores against `process/features/calendar/active/cal-3-owner-filter_06-07-26/cal-3-owner-filter_SPEC_06-07-26.md` AC1–AC11:
+Scores against `process/features/calendar/completed/cal-3-owner-filter_06-07-26/cal-3-owner-filter_SPEC_06-07-26.md` AC1–AC11:
 
 | AC | Status | Gate / Evidence |
 |---|---|---|

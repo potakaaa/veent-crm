@@ -182,6 +182,10 @@ const REP_ID = '00000000-0000-0000-0000-0000000000aa';
 const OTHER_REP_ID = '00000000-0000-0000-0000-0000000000bb';
 const MANAGER_ID = '00000000-0000-0000-0000-0000000000cc';
 
+function ownerPredicateCount(where: string): number {
+	return where.match(/\bowner_id\b/g)?.length ?? 0;
+}
+
 describe('CAL3-AC1 — rep sees only own leads (strict owner) across all 3 composers', () => {
 	it('follow-ups: rep path binds owner_id = userId and not another id', () => {
 		const { sql: sqlStr, params } = whereSql(
@@ -194,14 +198,17 @@ describe('CAL3-AC1 — rep sees only own leads (strict owner) across all 3 compo
 
 	it('go-live: rep path binds owner_id = userId', () => {
 		const { sql: sqlStr, params } = whereSql(buildGoLiveWhereClause(REP_ID, 'rep'));
-		expect(whereClauseOf(sqlStr)).toContain('owner_id');
+		// visibilityCondition('rep') contributes one owner_id; the D1 strict-own adds a second.
+		// >= 2 proves the explicit owner-narrowing predicate is present, not just the visibility guard.
+		expect(ownerPredicateCount(whereClauseOf(sqlStr))).toBeGreaterThanOrEqual(2);
 		expect(params).toContain(REP_ID);
 		expect(params).not.toContain(OTHER_REP_ID);
 	});
 
 	it('event-start: rep path binds owner_id = userId', () => {
 		const { sql: sqlStr, params } = whereSql(buildEventStartWhereClause(REP_ID, 'rep'));
-		expect(whereClauseOf(sqlStr)).toContain('owner_id');
+		// Same reasoning as go-live: >= 2 owner_id occurrences proves D1 predicate is present.
+		expect(ownerPredicateCount(whereClauseOf(sqlStr))).toBeGreaterThanOrEqual(2);
 		expect(params).toContain(REP_ID);
 		expect(params).not.toContain(OTHER_REP_ID);
 	});
@@ -271,11 +278,15 @@ describe('CAL3-AC8 — meetings always team-wide (never narrowed by the rep filt
 		// filterRepId? param would keep listAllMeetings.length === 0 yet still be threaded at
 		// the route; read the route source and assert the listAllMeetings() call is argument-free.
 		const src = readFileSync('src/routes/calendar/+page.server.ts', 'utf8');
-		const callMatch = src.match(/listAllMeetings\(([^)]*)\)/);
-		expect(callMatch).not.toBeNull();
-		// Capture group 1 is the argument list — it MUST be empty.
-		expect(callMatch![1].trim()).toBe('');
+		// Strip JS comments before matching so comment text cannot satisfy the assertion.
+		const executableSrc = src.replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, '');
+		// Collect argument lists from every real listAllMeetings(...) call site.
+		const callArgs = [...executableSrc.matchAll(/\blistAllMeetings\(([^)]*)\)/g)].map((m) =>
+			m[1].trim()
+		);
+		// There must be exactly one call, and it must be argument-free.
+		expect(callArgs).toEqual(['']);
 		// And filterRepId must never appear inside a listAllMeetings( ... ) call anywhere.
-		expect(/listAllMeetings\([^)]*filterRepId/.test(src)).toBe(false);
+		expect(/listAllMeetings\([^)]*filterRepId/.test(executableSrc)).toBe(false);
 	});
 });

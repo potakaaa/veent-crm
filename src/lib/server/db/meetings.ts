@@ -7,7 +7,7 @@
  */
 import { db } from './index';
 import { crmMeetings, crmMeetingAttendees, crmUsers, crmLeads, crmOrganizers } from './schema';
-import { eq, and, isNull, desc, asc, inArray, count, sql, ilike } from 'drizzle-orm';
+import { eq, and, isNull, isNotNull, desc, asc, inArray, count, sql, ilike } from 'drizzle-orm';
 import type { SQL } from 'drizzle-orm';
 import type { Meeting, MeetingAttendee } from '$lib/types';
 
@@ -436,7 +436,7 @@ export async function searchVenues(q: string | null | undefined, limit = 20): Pr
 	const term = (q ?? '').trim();
 	const where: SQL | undefined = and(
 		isNull(crmMeetings.deletedAt),
-		sql`${crmMeetings.venue} is not null`,
+		isNotNull(crmMeetings.venue),
 		term ? ilike(crmMeetings.venue, `%${term.replace(/[\\%_]/g, '\\$&')}%`) : undefined
 	);
 	const rows = await db

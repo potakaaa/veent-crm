@@ -403,7 +403,7 @@ module — so no AC rests on a Known-Gap alone (vacuous-green ban honored).
 
 ## Resume and Execution Handoff
 
-1. **Selected plan file:** `process/features/ux-enhancement/active/combobox-suggest-freetext_07-07-26/combobox-suggest-freetext_PLAN_07-07-26.md`
+1. **Selected plan file:** `process/features/ux-enhancement/completed/combobox-suggest-freetext_07-07-26/combobox-suggest-freetext_PLAN_07-07-26.md`
 2. **Last completed step:** none — plan just authored; awaiting VALIDATE.
 3. **Validate-contract status:** pending (placeholder below — vc-validate-agent writes it before EXECUTE).
 4. **Supporting context loaded:** SPEC (same folder); `process/context/all-context.md`
@@ -522,7 +522,7 @@ Hard stop conditions / safety constraints:
 - Run the Drizzle migration-journal drift pre-flight (checklist step 12) BEFORE `bun run db:generate`; STOP if new duplicate/stray beyond the known 0014 pair appears.
 - Do NOT run `db:push`/`db:migrate` (no live DB in this env); migration apply is deploy-time.
 - Both hand-built PATCH bodies (MeetingsPanel L197 + meetings/[id] L64) MUST add `venue` (checklist steps 21, 22).
-Next phase: EXECUTE — process/features/ux-enhancement/active/combobox-suggest-freetext_07-07-26/combobox-suggest-freetext_PLAN_07-07-26.md
+Next phase: EXECUTE — process/features/ux-enhancement/completed/combobox-suggest-freetext_07-07-26/combobox-suggest-freetext_PLAN_07-07-26.md
 Validate contract: inline in plan (## Validate Contract, gate CONDITIONAL)
 Execute start: Section A first (blocks B and C). Fully-auto gates: `bun run check` → `bun run test:unit:ci` → `bun run lint`. E2e: `bun run test:e2e` (new specs self-skip). High-risk pack: no (additive nullable schema only).
 ```

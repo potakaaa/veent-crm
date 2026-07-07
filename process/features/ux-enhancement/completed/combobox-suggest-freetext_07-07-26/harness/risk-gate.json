@@ -1,6 +1,6 @@
 {
 	"task": "GitHub #250 — combobox-freetext PLAN: add nullable `venue` text column to crm_meetings (Drizzle migration 0026) + full persistence chain",
-	"planPath": "process/features/ux-enhancement/active/combobox-suggest-freetext_07-07-26/combobox-suggest-freetext_PLAN_07-07-26.md",
+	"planPath": "process/features/ux-enhancement/completed/combobox-suggest-freetext_07-07-26/combobox-suggest-freetext_PLAN_07-07-26.md",
 	"riskLevel": "medium",
 	"riskClasses": ["schema/data migration or destructive data mutation"],
 	"mustStopBeforeFinalize": true,

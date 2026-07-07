@@ -3,7 +3,7 @@ phase: combobox-suggest-freetext-execute
 date: 2026-07-07
 status: COMPLETE_WITH_GAPS
 feature: ux-enhancement
-plan: process/features/ux-enhancement/active/combobox-suggest-freetext_07-07-26/combobox-suggest-freetext_PLAN_07-07-26.md
+plan: process/features/ux-enhancement/completed/combobox-suggest-freetext_07-07-26/combobox-suggest-freetext_PLAN_07-07-26.md
 ---
 
 # EXECUTE Report — Combobox Suggest + Free-Text (GitHub #250)

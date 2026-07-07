@@ -131,10 +131,18 @@ Both the Organizer Name suggestion behavior in this SPEC and any future reuse ar
 named component (not copy-pasted per field). The component takes free-text input, optionally shows
 a suggestion list from a supplied source, and never enforces "must match a suggestion" as a
 validation rule.
-`proven by:` Vitest component test importing the shared component directly and asserting: (a) it
-renders suggestions when given matches, (b) it accepts and forwards free-text values not in the
-suggestion list, (c) no validation error state is triggered by an unmatched value (Fully-Automated).
-`strategy:` Fully-Automated
+`proven by:` As delivered, no Svelte component-test harness exists in this repo (vitest excludes
+`*.svelte.{test,spec}` — see Test Infra Improvement Notes / `component-test-harness-decision_NOTE_07-07-26.md`),
+so the render/click path (dropdown shows suggestions, click-to-fill) is Hybrid e2e only (known-gap,
+self-skips pending the shared auth fixture). The AC5 "never block" invariant itself IS proven
+Fully-Automated via `combobox-freetext-logic.spec.ts`, which imports the shared component's pure
+logic module directly (`shouldShowDropdown`, `applySelection`, `isValueInvalidFromMatch`,
+`createRequestGen`) and asserts: (a) suggestions surface when results are present, (b) a typed value
+not present in any suggestion list is always accepted and forwarded, (c) no code path ever marks an
+unmatched value as invalid. The Svelte/Testing-Library render-level assertion described above is
+explicitly DEFERRED (Resolution B applied, not Resolution A) — this AC's Fully-Automated coverage is
+the logic module, not a mounted-component test.
+`strategy:` Hybrid (logic invariant is Fully-Automated; render/click behavior is Hybrid e2e known-gap)
 
 **AC6 — Existing organizer combobox pickers (Lead/Organizer id-pickers) are unaffected.**
 `LeadCombobox.svelte` and `OrganizerCombobox.svelte` (the id-only pickers used elsewhere, e.g. in

@@ -10,7 +10,7 @@
 		{
 			"file": "drizzle/meta/_journal.json",
 			"lines": "last entry (idx 25)",
-			"description": "Pre-flight drift check performed before authoring migration 0026: last journal idx is 25, tag '0025_mature_aaron_stack', matching the highest-numbered file on disk (0025_mature_aaron_stack.sql). No duplicate-prefix files, no untracked .sql files found in drizzle/. Clean to proceed with 0026 as the next sequential migration.",
+			"description": "Pre-flight drift check performed before authoring migration 0026: last journal idx is 25, tag '0025_mature_aaron_stack', matching the highest-numbered file on disk (0025_mature_aaron_stack.sql). No NEW duplicate-prefix or untracked .sql files found beyond the known, already-documented 0014 exception (drizzle/0014_agreements_fields.sql, tracked separately in process/general-plans/backlog/drizzle-migration-journal-drift_02-07-26.md) — that pre-existing pair is a known, accepted drift instance, not a new finding. Clean to proceed with 0026 as the next sequential migration.",
 			"content": "{ \"idx\": 25, \"version\": \"7\", \"when\": 1783308740036, \"tag\": \"0025_mature_aaron_stack\", \"breakpoints\": true }"
 		},
 		{

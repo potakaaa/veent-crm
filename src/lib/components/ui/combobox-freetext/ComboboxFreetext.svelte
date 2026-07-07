@@ -1,5 +1,7 @@
 <script lang="ts">
+	import { onDestroy } from 'svelte';
 	import { shouldShowDropdown, applySelection, createRequestGen } from './combobox-freetext-logic';
+	import { cn } from '$lib/utils';
 
 	let {
 		value = $bindable(''),
@@ -31,6 +33,12 @@
 	// Latest-wins race guard (copied recipe from OrganizerCombobox.svelte).
 	const tracker = createRequestGen();
 	let searchTimer: ReturnType<typeof setTimeout> | undefined;
+	let blurTimer: ReturnType<typeof setTimeout> | undefined;
+
+	onDestroy(() => {
+		if (searchTimer) clearTimeout(searchTimer);
+		if (blurTimer) clearTimeout(blurTimer);
+	});
 
 	// Stable ids for ARIA wiring. A random suffix avoids collisions when multiple
 	// instances render on one page.
@@ -109,6 +117,7 @@
 {#if hasSearch}
 	<div class="relative">
 		<input
+			{...restProps}
 			{id}
 			{placeholder}
 			{disabled}
@@ -121,9 +130,14 @@
 			value={value ?? ''}
 			oninput={(e) => onInput(e.currentTarget.value)}
 			onkeydown={onKeydown}
-			onblur={() => setTimeout(() => (open = false), 120)}
-			class="focus-ring flex h-9 w-full rounded-control border border-hairline bg-panel px-3 text-[13px] text-ink placeholder:text-ink-400 disabled:cursor-not-allowed disabled:opacity-60"
-			{...restProps}
+			onblur={() => {
+				if (blurTimer) clearTimeout(blurTimer);
+				blurTimer = setTimeout(() => (open = false), 120);
+			}}
+			class={cn(
+				'focus-ring flex h-9 w-full rounded-control border border-hairline bg-panel px-3 text-[13px] text-ink placeholder:text-ink-400 disabled:cursor-not-allowed disabled:opacity-60',
+				restProps.class as string | undefined
+			)}
 		/>
 		{#if showDropdown}
 			<ul
@@ -155,13 +169,16 @@
 {:else}
 	<!-- Free-text-only mode: plain input, zero dropdown/popover overhead. -->
 	<input
+		{...restProps}
 		{id}
 		{placeholder}
 		{disabled}
 		autocomplete="off"
 		value={value ?? ''}
 		oninput={(e) => onInput(e.currentTarget.value)}
-		class="focus-ring flex h-9 w-full rounded-control border border-hairline bg-panel px-3 text-[13px] text-ink placeholder:text-ink-400 disabled:cursor-not-allowed disabled:opacity-60"
-		{...restProps}
+		class={cn(
+			'focus-ring flex h-9 w-full rounded-control border border-hairline bg-panel px-3 text-[13px] text-ink placeholder:text-ink-400 disabled:cursor-not-allowed disabled:opacity-60',
+			restProps.class as string | undefined
+		)}
 	/>
 {/if}

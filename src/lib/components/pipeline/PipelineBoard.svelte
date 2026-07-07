@@ -14,6 +14,7 @@
 
 	let {
 		leads,
+		isFiltering = false,
 		totalsPerStage = {},
 		loadingPerStage = {},
 		users,
@@ -21,6 +22,7 @@
 		onLoadMore
 	}: {
 		leads: LeadWithAppeal[];
+		isFiltering?: boolean;
 		totalsPerStage?: Partial<Record<Stage, number>>;
 		loadingPerStage?: Partial<Record<Stage, boolean>>;
 		users: User[];
@@ -184,7 +186,11 @@
 						</div>
 					{/each}
 
-					{#if hasMore}
+					{#if col.cards.length === 0 && isFiltering}
+						<p class="px-1 py-3 font-mono text-[11px] text-ink-300">No results</p>
+					{/if}
+
+					{#if hasMore && !isFiltering}
 						<div use:sentinel={col.stage} class="flex items-center justify-center py-2">
 							{#if loading}
 								<span class="font-mono text-[11px] text-ink-400">Loading…</span>

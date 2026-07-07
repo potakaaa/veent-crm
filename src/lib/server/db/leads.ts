@@ -780,23 +780,90 @@ export async function listActivities(leadId: string): Promise<Activity[]> {
 	return rows.map(dbActivityToActivity);
 }
 
+/** Canonical UUID v4-shape guard — shared by the pipeline `?rep=` trust-boundary helper. */
+const PIPELINE_UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * Trust-boundary DECISION for the manager-only pipeline AE filter (`?rep=<uuid>`).
+ * Returns the owner UUID to scope to, or `undefined` (team-wide / no filter):
+ *   - manager/super_manager + valid-UUID `rawRepId` → that UUID (may be the manager's own id = "Mine")
+ *   - rep role                                       → always `undefined` (a rep can never filter)
+ *   - malformed / absent input                       → `undefined`
+ * Mirrors the CAL-3 `?repId` guard. A rep hand-crafting `?rep=<other-uuid>` is ignored here;
+ * `buildPipelineStageWhereClause` is a second, independent guard (the query only honors
+ * `filterRepId` for manager/super_manager).
+ */
+export function resolvePipelineRepFilter(
+	role: Role,
+	rawRepId: string | null | undefined
+): string | undefined {
+	if (role !== 'manager' && role !== 'super_manager') return undefined;
+	if (!rawRepId || !PIPELINE_UUID_RE.test(rawRepId)) return undefined;
+	return rawRepId;
+}
+
+/**
+ * Shared WHERE composition for the paginated pipeline-stage query. Exported so tests can
+ * assert the exact SQL `listPipelineStage` produces without a live DB (via drizzle `.toSQL()`).
+ * Composes the soft-delete guard + stage match + the `visibilityCondition` leak guard, plus the
+ * manager-only owner-narrow term:
+ *   - rep                                       → no owner-narrow (already own-scoped by visibilityCondition)
+ *   - manager/super_manager, no `filterRepId`   → no owner-narrow (team-wide)
+ *   - manager/super_manager, `filterRepId` set  → `eq(ownerId, filterRepId)`, ANDed (never OR)
+ * A rep's own-leads restriction can never be widened by a stray `filterRepId` — the owner-narrow
+ * is pushed ONLY for manager/super_manager. Mirrors `buildGoLiveWhereClause` exactly.
+ */
+export function buildPipelineStageWhereClause(
+	userId: string,
+	role: Role,
+	stage: Stage,
+	filterRepId?: string,
+	search?: string
+): SQL | undefined {
+	const conditions: SQL[] = [
+		isNull(crmLeads.deletedAt) as SQL,
+		sql`${crmLeads.stage} = ${stage}`,
+		visibilityCondition(userId, role)
+	];
+	if ((role === 'manager' || role === 'super_manager') && filterRepId) {
+		conditions.push(eq(crmLeads.ownerId, filterRepId));
+	}
+	// Search: case-insensitive against name, organizer name, and event name. Reuses the exact
+	// LIKE-metachar escaping idiom from listUnassignedLeads/listLeads so literal `%`/`_`/`\`
+	// input never acts as a wildcard. ANDed with visibility/rep scoping (never OR-widens).
+	const s = search?.trim();
+	if (s) {
+		const escapeLike = (x: string) => x.replace(/[\\%_]/g, '\\$&');
+		const like = `%${escapeLike(s)}%`;
+		conditions.push(
+			or(
+				ilike(crmLeads.name, like),
+				ilike(sql`COALESCE(${crmOrganizers.name}, '')`, like),
+				ilike(sql`COALESCE(${crmLeads.eventName}, '')`, like)
+			)!
+		);
+	}
+	return and(...conditions);
+}
+
 /**
  * Single-stage, paginated pipeline listing (10 per page by default).
  * Mirrors listPipelineLeads ordering: upcoming events float to the top,
  * then last-activity order. Returns the page rows plus the stage total.
+ *
+ * `filterRepId` (optional) narrows the board to a single AE — honored ONLY for
+ * manager/super_manager (see `buildPipelineStageWhereClause`); reps ignore it.
  */
 export async function listPipelineStage(
 	stage: Stage,
 	page: number = 1,
 	limit: number = 10,
 	userId: string,
-	role: Role
+	role: Role,
+	filterRepId?: string,
+	search?: string
 ): Promise<{ leads: Lead[]; total: number }> {
-	const where = and(
-		isNull(crmLeads.deletedAt),
-		sql`${crmLeads.stage} = ${stage}`,
-		visibilityCondition(userId, role)
-	);
+	const where = buildPipelineStageWhereClause(userId, role, stage, filterRepId, search);
 	const eventOrder = [
 		sql`CASE WHEN ${crmLeads.eventDate} >= CURRENT_DATE THEN 0 ELSE 1 END`,
 		sql`CASE WHEN ${crmLeads.eventDate} >= CURRENT_DATE THEN ${crmLeads.eventDate} END ASC NULLS LAST`,
@@ -806,15 +873,24 @@ export async function listPipelineStage(
 	const offset = (Math.max(1, page) - 1) * limit;
 	const [rows, [{ total }]] = await Promise.all([
 		db
-			.select()
+			.select({ lead: crmLeads, organizerName: crmOrganizers.name })
 			.from(crmLeads)
+			.leftJoin(crmOrganizers, eq(crmLeads.organizerId, crmOrganizers.id))
 			.where(where)
 			.orderBy(...eventOrder)
 			.limit(limit)
 			.offset(offset),
-		db.select({ total: count() }).from(crmLeads).where(where)
+		// The count query mirrors the rows query's leftJoin so the search predicate's
+		// COALESCE(organizers.name, …) term resolves (organizerId is a 1:1 FK, so the join
+		// never inflates the count). Without the join a `search` referencing the organizer
+		// column would raise a missing-FROM-clause error at runtime.
+		db
+			.select({ total: count() })
+			.from(crmLeads)
+			.leftJoin(crmOrganizers, eq(crmLeads.organizerId, crmOrganizers.id))
+			.where(where)
 	]);
-	return { leads: rows.map((row) => dbRowToLead(row)), total };
+	return { leads: rows.map((row) => dbRowToLead(row.lead, undefined, row.organizerName)), total };
 }
 
 // ---------------------------------------------------------------------------

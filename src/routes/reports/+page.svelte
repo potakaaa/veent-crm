@@ -5,6 +5,7 @@
 	import Avatar from '$lib/components/shared/Avatar.svelte';
 	import EmptyState from '$lib/components/shared/EmptyState.svelte';
 	import { Skeleton } from '$lib/components/shared/skeletons';
+	import { FilterDropdown } from '$lib/components/ui/filter-dropdown';
 	import CalendarHeatmap from '$lib/components/reports/CalendarHeatmap.svelte';
 	import MonthCalendar from '$lib/components/reports/MonthCalendar.svelte';
 	import type { HeatmapDay, ReportData, OutreachMetrics } from '$lib/types';
@@ -217,19 +218,14 @@
 			/>
 		</div>
 		<div class="flex flex-col gap-1">
-			<label class="font-mono text-[10px] uppercase tracking-[0.4px] text-ink-300" for="rpt-rep"
-				>Rep</label
-			>
-			<select
-				id="rpt-rep"
-				bind:value={filterRepId}
-				class="min-w-[160px] rounded-control border border-hairline bg-panel py-[7px] pl-2.5 pr-7 font-mono text-[12.5px] leading-[18px] text-ink focus:outline-none focus:ring-1 focus:ring-primary"
-			>
-				<option value="">All reps</option>
-				{#each data.users as u (u.id)}
-					<option value={u.id}>{u.name}</option>
-				{/each}
-			</select>
+			<span class="font-mono text-[10px] uppercase tracking-[0.4px] text-ink-300">Rep</span>
+			<FilterDropdown
+				label="All reps"
+				multiple={false}
+				options={data.users.map((u) => ({ value: u.id, label: u.name }))}
+				selected={filterRepId}
+				onchange={(v) => (filterRepId = v as string)}
+			/>
 		</div>
 		<button
 			type="submit"

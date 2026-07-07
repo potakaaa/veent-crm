@@ -5,9 +5,14 @@
  * for migrations that were applied outside drizzle-kit's tracking. This script
  * inserts the missing records so `bun run db:migrate` only runs the truly new ones.
  *
+ * IMPORTANT: only pass --up-to <tag> matching the last migration that has actually
+ * been applied to the target DB. The script will refuse to track migrations beyond
+ * that point so drizzle-kit can apply them properly.
+ *
  * Usage:
- *   bun run scripts/repair-migration-tracking.ts           # apply fixes
- *   bun run scripts/repair-migration-tracking.ts --dry-run # inspect only, no writes
+ *   bun run scripts/repair-migration-tracking.ts --up-to 0007_tan_mongu           # mark 0000–0007 as applied
+ *   bun run scripts/repair-migration-tracking.ts --up-to 0007_tan_mongu --dry-run # inspect only
+ *   bun run scripts/repair-migration-tracking.ts --dry-run                         # preview without --up-to (marks all)
  */
 
 import { createHash } from 'crypto';
@@ -57,6 +62,34 @@ if (!DATABASE_URL) {
 const dryRun = process.argv.includes('--dry-run');
 if (dryRun) console.log('DRY RUN — no writes will be made\n');
 
+// --up-to <tag> limits which migrations are considered applied. Migrations after
+// this tag are left untracked so drizzle-kit applies them normally.
+const upToIdx = (() => {
+	const flag = process.argv.indexOf('--up-to');
+	if (flag === -1) return ALL_MIGRATIONS.length - 1; // no limit — process all
+	const tag = process.argv[flag + 1];
+	if (!tag) {
+		console.error('--up-to requires a migration tag, e.g. --up-to 0007_tan_mongu');
+		process.exit(1);
+	}
+	const found = ALL_MIGRATIONS.findIndex((m) => m.tag === tag);
+	if (found === -1) {
+		console.error(`Unknown migration tag: "${tag}"`);
+		console.error('Known tags:\n' + ALL_MIGRATIONS.map((m) => `  ${m.tag}`).join('\n'));
+		process.exit(1);
+	}
+	return found;
+})();
+
+const MIGRATIONS_TO_TRACK = ALL_MIGRATIONS.slice(0, upToIdx + 1);
+
+if (upToIdx < ALL_MIGRATIONS.length - 1) {
+	const skipped = ALL_MIGRATIONS.length - MIGRATIONS_TO_TRACK.length;
+	console.log(
+		`Tracking up to: ${MIGRATIONS_TO_TRACK[upToIdx].tag} (skipping ${skipped} later migration(s) — drizzle-kit will apply those)\n`
+	);
+}
+
 async function main() {
 	const sql = postgres(DATABASE_URL!, { max: 1 });
 
@@ -76,10 +109,12 @@ async function main() {
 		// Check what's already tracked
 		const existing = await sql`SELECT hash FROM drizzle.__drizzle_migrations`;
 		const existingHashes = new Set(existing.map((r: { hash: string }) => r.hash));
-		console.log(`Already tracked: ${existingHashes.size} / ${ALL_MIGRATIONS.length} migrations`);
+		console.log(
+			`Already tracked: ${existingHashes.size} / ${MIGRATIONS_TO_TRACK.length} migrations (in scope)`
+		);
 
 		const missing: Array<(typeof ALL_MIGRATIONS)[number] & { hash: string }> = [];
-		for (const m of ALL_MIGRATIONS) {
+		for (const m of MIGRATIONS_TO_TRACK) {
 			const sqlContent = readFileSync(`drizzle/${m.tag}.sql`).toString();
 			const hash = createHash('sha256').update(sqlContent).digest('hex');
 			if (!existingHashes.has(hash)) {

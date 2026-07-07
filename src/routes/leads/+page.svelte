@@ -96,6 +96,12 @@
 		}
 	}
 
+	// Category filter (CAT-1, GitHub #248): multi-select → comma-joined `categoryIds` param.
+	const categoryOptions = $derived(data.allCategories.map((c) => ({ value: c.id, label: c.name })));
+	function setCategoryFilter(ids: string[]) {
+		navigate({ categoryIds: ids.length ? ids.join(',') : undefined, page: undefined });
+	}
+
 	// Search debounce is owned by SearchInput (canonical 300ms) — page only navigates.
 	function onSearch(value: string) {
 		navigate({ q: value || undefined, page: undefined });
@@ -207,6 +213,16 @@
 				options={data.countries}
 				selected={data.filters.country ?? ''}
 				onchange={(v) => setFilter('country', (v as string) || undefined)}
+			/>
+		{/if}
+
+		{#if categoryOptions.length > 0}
+			<FilterDropdown
+				label="Category"
+				multiple={true}
+				options={categoryOptions}
+				selected={data.filters.categoryIds ?? []}
+				onchange={(v) => setCategoryFilter(v as string[])}
 			/>
 		{/if}
 

@@ -32,10 +32,7 @@ afterAll(async () => {
 });
 
 async function makeTestLead(stage: 'new' | 'contacted' | 'replied' = 'contacted') {
-	const lead = await createLead(
-		{ name: `${PREFIX} Lead ${Date.now()}`, category: 'Sports' },
-		MANAGER_UUID
-	);
+	const lead = await createLead({ name: `${PREFIX} Lead ${Date.now()}` }, MANAGER_UUID);
 	createdLeadIds.push(lead.id);
 	if (stage !== 'new') {
 		await db.update(crmLeads).set({ stage }).where(eq(crmLeads.id, lead.id));

@@ -52,7 +52,6 @@ async function makeLead(name: string, organizerId?: string): Promise<string> {
 		.insert(crmLeads)
 		.values({
 			name: `${TEST_PREFIX} ${name}`,
-			category: 'Sports',
 			organizerId: organizerId ?? null
 		})
 		.returning({ id: crmLeads.id });

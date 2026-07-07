@@ -143,10 +143,6 @@
 									{/if}
 								</div>
 								<div class="mt-1.5 flex items-center gap-1.5">
-									<span
-										class="shrink-0 rounded-[4px] bg-panel-sunken px-[5px] py-px font-mono text-[9px] text-ink-400"
-										>{c.category}</span
-									>
 									<span class="truncate font-mono text-[10.5px] text-ink-300"
 										>{c.eventName ?? '—'}{c.eventDate ? ` · ${c.eventDate}` : ''}</span
 									>

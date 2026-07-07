@@ -37,7 +37,7 @@ async function mkLead(
 		lastActivityAt: Date;
 	}> = {}
 ) {
-	const lead = await createLead({ name: `${PREFIX} ${name}`, category: 'Sports' }, MANAGER_UUID);
+	const lead = await createLead({ name: `${PREFIX} ${name}` }, MANAGER_UUID);
 	created.push(lead.id);
 	const patch: Record<string, unknown> = {};
 	if (overrides.location !== undefined) patch.location = overrides.location;
@@ -228,16 +228,12 @@ const UFG_PREFIX = '__ufgtest__';
 
 /**
  * Create a lead that lands in the Up for Grabs queue (ownerId=null, active stage),
- * with an explicit country + category. createLead assigns an owner, so we null it out.
+ * with an explicit country. createLead assigns an owner, so we null it out.
+ * NOTE(CAT-1): the third `category` positional arg is retained for call-site compatibility but
+ * is ignored — the crm_leads.category column was removed and the UFG category filter is deferred.
  */
-async function mkUnassigned(name: string, country: string, category: string) {
-	const lead = await createLead(
-		{
-			name: `${UFG_PREFIX} ${name}`,
-			category: category as Parameters<typeof createLead>[0]['category']
-		},
-		MANAGER_UUID
-	);
+async function mkUnassigned(name: string, country: string, _category?: string) {
+	const lead = await createLead({ name: `${UFG_PREFIX} ${name}` }, MANAGER_UUID);
 	created.push(lead.id);
 	await db
 		.update(crmLeads)
@@ -294,48 +290,20 @@ describe.skipIf(SKIP_DB)('listUnassignedLeads — country/category filters (DB) 
 		expect(names.some((n) => n.includes('MC-JP'))).toBe(false);
 	});
 
-	it('AC#3: multi-category selection returns the union across categories', async () => {
-		await mkUnassigned('Cat-Sports', '__UFG_CAT_C1__', 'Sports');
-		await mkUnassigned('Cat-Concert', '__UFG_CAT_C1__', 'Concert');
-		await mkUnassigned('Cat-Expo', '__UFG_CAT_C1__', 'Expo');
-
-		const { leads } = await listUnassignedLeads(1, 200, undefined, undefined, {
-			category: ['Sports', 'Concert']
-		});
-		const test = leads.filter(isTestLead);
-		expect(test.some((l) => l.name.includes('Cat-Sports'))).toBe(true);
-		expect(test.some((l) => l.name.includes('Cat-Concert'))).toBe(true);
-		expect(test.some((l) => l.name.includes('Cat-Expo'))).toBe(false);
-	});
-
-	it('AC#4: country + category combine as AND across filter types', async () => {
-		await mkUnassigned('AND-Match', '__UFG_AND__', 'Theater');
-		await mkUnassigned('AND-CountryOnly', '__UFG_AND__', 'Workshop');
-		await mkUnassigned('AND-CategoryOnly', '__UFG_AND_OTHER__', 'Theater');
-
-		const { leads } = await listUnassignedLeads(1, 200, undefined, undefined, {
-			country: ['__UFG_AND__'],
-			category: ['Theater']
-		});
-		const test = leads.filter(isTestLead);
-		expect(test.some((l) => l.name.includes('AND-Match'))).toBe(true);
-		expect(test.some((l) => l.name.includes('AND-CountryOnly'))).toBe(false);
-		expect(test.some((l) => l.name.includes('AND-CategoryOnly'))).toBe(false);
-	});
+	// NOTE(CAT-1): AC#3 (multi-category union) and AC#4 (country+category AND) tests were retired —
+	// the enum-based unassigned category filter was removed; redesign against crm_categories is deferred.
 
 	it('AC#9 (DB half): a zero-match combination returns an empty array', async () => {
-		await mkUnassigned('ZeroMatch', '__UFG_ZERO__', 'Sports');
+		await mkUnassigned('ZeroMatch', '__UFG_ZERO__');
 		const { leads } = await listUnassignedLeads(1, 200, undefined, undefined, {
-			country: ['__UFG_NONEXISTENT_COUNTRY__'],
-			category: ['Camp']
+			country: ['__UFG_NONEXISTENT_COUNTRY__']
 		});
 		expect(leads.filter(isTestLead)).toHaveLength(0);
 	});
 
 	it('empty filter arrays behave identically to no filters (backward compatible)', async () => {
 		const { total: baseline } = await listUnassignedLeads(1, 25, undefined, undefined, {
-			country: [],
-			category: []
+			country: []
 		});
 		const { total: nofilter } = await listUnassignedLeads();
 		expect(baseline).toBe(nofilter);
@@ -440,7 +408,7 @@ describe.skipIf(SKIP_DB)('listLeadsFiltered — createdFrom (DB)', () => {
 describe.skipIf(SKIP_DB)('listLeadsFiltered — visibility scoping (DB) — #87', () => {
 	it('AC#5: a non-permitted rep does NOT see an only_me lead owned by someone else', async () => {
 		const lead = await createLead(
-			{ name: `${PREFIX} VisOnlyMe`, category: 'Sports', visibility: 'only_me' },
+			{ name: `${PREFIX} VisOnlyMe`, visibility: 'only_me' },
 			MANAGER_UUID
 		);
 		created.push(lead.id);
@@ -455,7 +423,7 @@ describe.skipIf(SKIP_DB)('listLeadsFiltered — visibility scoping (DB) — #87'
 
 	it('AC#9: a manager sees an only_me lead regardless of visibility', async () => {
 		const lead = await createLead(
-			{ name: `${PREFIX} VisMgrSeesAll`, category: 'Sports', visibility: 'only_me' },
+			{ name: `${PREFIX} VisMgrSeesAll`, visibility: 'only_me' },
 			MANAGER_UUID
 		);
 		created.push(lead.id);
@@ -470,7 +438,7 @@ describe.skipIf(SKIP_DB)('listLeadsFiltered — visibility scoping (DB) — #87'
 
 	it('AC#11: an unassigned lead stays visible to any rep even if it was once only_me', async () => {
 		const lead = await createLead(
-			{ name: `${PREFIX} VisUnassigned`, category: 'Sports', visibility: 'only_me' },
+			{ name: `${PREFIX} VisUnassigned`, visibility: 'only_me' },
 			MANAGER_UUID
 		);
 		created.push(lead.id);
@@ -487,7 +455,7 @@ describe.skipIf(SKIP_DB)('listLeadsFiltered — visibility scoping (DB) — #87'
 
 	it('a rep DOES see an everyone-visibility lead owned by someone else', async () => {
 		const lead = await createLead(
-			{ name: `${PREFIX} VisEveryone`, category: 'Sports', visibility: 'everyone' },
+			{ name: `${PREFIX} VisEveryone`, visibility: 'everyone' },
 			REP_UUID
 		);
 		created.push(lead.id);

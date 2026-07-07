@@ -50,7 +50,6 @@ async function makeLead(
 		.insert(crmLeads)
 		.values({
 			name: `${TEST_PREFIX} lead ${stage}`,
-			category: 'Other',
 			organizerId,
 			ownerId,
 			visibility: 'everyone',
@@ -152,7 +151,7 @@ describe.skipIf(SKIP_DB)('createLead organizerId persistence (DB)', () => {
 	it('persists organizerId when provided (AC8)', async () => {
 		const org = await makeOrganizer('CreateWith');
 		const lead = await createLead(
-			{ name: `${TEST_PREFIX} created`, category: 'Other', organizerId: org },
+			{ name: `${TEST_PREFIX} created`, organizerId: org },
 			MANAGER_UUID
 		);
 		createdLeadIds.push(lead.id);
@@ -162,10 +161,7 @@ describe.skipIf(SKIP_DB)('createLead organizerId persistence (DB)', () => {
 	});
 
 	it('persists null organizerId when omitted (AC8)', async () => {
-		const lead = await createLead(
-			{ name: `${TEST_PREFIX} created-null`, category: 'Other' },
-			MANAGER_UUID
-		);
+		const lead = await createLead({ name: `${TEST_PREFIX} created-null` }, MANAGER_UUID);
 		createdLeadIds.push(lead.id);
 
 		const [row] = await db.select().from(crmLeads).where(eq(crmLeads.id, lead.id));
@@ -207,7 +203,6 @@ async function makeLeadFull(
 		.insert(crmLeads)
 		.values({
 			name: `${TEST_PREFIX} lead`,
-			category: 'Other',
 			organizerId,
 			ownerId: opts.ownerId === undefined ? MANAGER_UUID : opts.ownerId,
 			visibility: opts.visibility ?? 'everyone',

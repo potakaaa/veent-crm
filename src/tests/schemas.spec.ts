@@ -5,6 +5,9 @@ import {
 	ingestBatchSchema,
 	meetingFormSchema,
 	meetingUpdateSchema,
+	categoryCreateSchema,
+	categoryRenameSchema,
+	assignCategoriesSchema,
 	userNameEditSchema,
 	LEAD_STAGES,
 	USER_ROLES
@@ -39,7 +42,7 @@ describe('zod schemas (stub)', () => {
 // leadUpdateSchema — hasFutureEvents flag (GitHub #94, AC1/AC2 schema layer)
 // ---------------------------------------------------------------------------
 describe('leadUpdateSchema hasFutureEvents flag (#94)', () => {
-	const base = { name: 'Recurring Org', category: 'Concert' } as const;
+	const base = { name: 'Recurring Org' } as const;
 
 	it('accepts hasFutureEvents: true', () => {
 		const r = leadUpdateSchema.safeParse({ ...base, hasFutureEvents: true });
@@ -94,7 +97,7 @@ describe('leadFormSchema organizerId (#190)', () => {
 // ---------------------------------------------------------------------------
 describe('leadUpdateSchema eventDate clear path (#195)', () => {
 	it('accepts an empty-string eventDate (cleared/unset)', () => {
-		const r = leadUpdateSchema.safeParse({ name: 'X', category: 'Concert', eventDate: '' });
+		const r = leadUpdateSchema.safeParse({ name: 'X', eventDate: '' });
 		expect(r.success).toBe(true);
 	});
 });
@@ -237,5 +240,87 @@ describe('meetingUpdateSchema leadOrganizerId (edit)', () => {
 	it('rejects a malformed leadOrganizerId', () => {
 		const r = meetingUpdateSchema.safeParse({ leadOrganizerId: 'nope' });
 		expect(r.success).toBe(false);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Custom lead categories (CAT-1, GitHub #248) — create / rename / assign schemas
+// ---------------------------------------------------------------------------
+describe('categoryCreateSchema (CAT-1 AC-1 / AC-10)', () => {
+	it('accepts a valid name with an optional hex color', () => {
+		const r = categoryCreateSchema.safeParse({ name: 'VIP Leads', color: '#1a2b3c' });
+		expect(r.success).toBe(true);
+	});
+
+	it('accepts a valid name with no color', () => {
+		const r = categoryCreateSchema.safeParse({ name: 'VIP Leads' });
+		expect(r.success).toBe(true);
+	});
+
+	it('trims surrounding whitespace on the name', () => {
+		const r = categoryCreateSchema.safeParse({ name: '  Spaced  ' });
+		expect(r.success).toBe(true);
+		if (r.success) expect(r.data.name).toBe('Spaced');
+	});
+
+	it('rejects a missing name', () => {
+		const r = categoryCreateSchema.safeParse({ color: '#1a2b3c' });
+		expect(r.success).toBe(false);
+	});
+
+	it('rejects an empty/blank name', () => {
+		expect(categoryCreateSchema.safeParse({ name: '' }).success).toBe(false);
+		expect(categoryCreateSchema.safeParse({ name: '   ' }).success).toBe(false);
+	});
+
+	it('rejects an invalid hex color', () => {
+		expect(categoryCreateSchema.safeParse({ name: 'X', color: 'red' }).success).toBe(false);
+		expect(categoryCreateSchema.safeParse({ name: 'X', color: '#12' }).success).toBe(false);
+		expect(categoryCreateSchema.safeParse({ name: 'X', color: '1a2b3c' }).success).toBe(false);
+	});
+
+	it('rejects a name that is too long (> 50 chars)', () => {
+		const r = categoryCreateSchema.safeParse({ name: 'a'.repeat(51) });
+		expect(r.success).toBe(false);
+	});
+});
+
+describe('categoryRenameSchema (CAT-1 AC-8)', () => {
+	it('accepts a valid rename', () => {
+		expect(categoryRenameSchema.safeParse({ name: 'Renamed' }).success).toBe(true);
+	});
+
+	it('rejects a missing name', () => {
+		expect(categoryRenameSchema.safeParse({}).success).toBe(false);
+	});
+
+	it('rejects an empty/blank name', () => {
+		expect(categoryRenameSchema.safeParse({ name: '' }).success).toBe(false);
+		expect(categoryRenameSchema.safeParse({ name: '   ' }).success).toBe(false);
+	});
+
+	it('rejects an invalid hex color', () => {
+		expect(categoryRenameSchema.safeParse({ name: 'X', color: 'nope' }).success).toBe(false);
+	});
+
+	it('rejects a name that is too long (> 50 chars)', () => {
+		expect(categoryRenameSchema.safeParse({ name: 'a'.repeat(51) }).success).toBe(false);
+	});
+});
+
+describe('assignCategoriesSchema (CAT-1 AC-2 / AC-6)', () => {
+	it('accepts a valid UUID categoryId', () => {
+		const r = assignCategoriesSchema.safeParse({
+			categoryId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
+		});
+		expect(r.success).toBe(true);
+	});
+
+	it('rejects a non-UUID categoryId', () => {
+		expect(assignCategoriesSchema.safeParse({ categoryId: 'not-a-uuid' }).success).toBe(false);
+	});
+
+	it('rejects a missing categoryId', () => {
+		expect(assignCategoriesSchema.safeParse({}).success).toBe(false);
 	});
 });

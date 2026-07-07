@@ -122,3 +122,13 @@ unchanged from before that session.
   `db:generate` — it must emit ONLY the single `crm_users` ALTER. Apply manual-first with the
   risk-evidence pack. This unblocks Sections C/D/E of `vercel-deploy-migration_03-07-26`
   (pending_welcome DB column + the in-memory-Set → DB-flag serverless fix).
+
+## Update 07-07-26 — CAT-1 migrations 0026–0028 added snapshot-less by intent
+
+CAT-1 (`cat-1-custom-lead-categories_07-07-26`, GitHub #248) added three HAND-WRITTEN migrations —
+`0026_cat1_add_tables`, `0027_cat1_data_migrate`, `0028_cat1_drop_enum_column` — registered at
+journal `idx` 26/27/28 with NO matching `meta/00NN_snapshot.json` files. This is intentional:
+`db:generate` remains blocked by the duplicate-id snapshot-chain corruption documented above, so
+these migrations were authored by hand and ship snapshot-less, continuing the existing documented
+drift pattern (0016/0017 already ship snapshot-less). Full snapshot-chain reconciliation remains
+the separate backlog item described in this note.

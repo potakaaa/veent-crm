@@ -1,6 +1,12 @@
 import type { PageServerLoad } from './$types';
 import { error } from '@sveltejs/kit';
-import { listLeadsFiltered, listUsers, getLeadCountries } from '$lib/server/db/leads';
+import {
+	listLeadsFiltered,
+	listUsers,
+	getLeadCountries,
+	parseFilterCsv
+} from '$lib/server/db/leads';
+import { getActiveCategories, getCategoriesForLeads } from '$lib/server/db/categories';
 import { computeAppealScore, today } from '$lib/appeal-score';
 import { LEAD_STAGES, LEAD_PLATFORMS } from '$lib/zod/schemas';
 import type { LeadSegment, User } from '$lib/types';
@@ -31,6 +37,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	const rawPlatform = url.searchParams.get('platform') ?? '';
 	const platform = VALID_PLATFORMS.has(rawPlatform) ? rawPlatform : '';
 	const country = url.searchParams.get('country') ?? '';
+	const categoryIds = parseFilterCsv(url.searchParams.get('categoryIds'));
 	const rawOwner = url.searchParams.get('owner') ?? '';
 	const staleOnly = url.searchParams.get('staleOnly') === '1';
 	const hasFutureEvents = url.searchParams.get('hasFutureEvents') === '1';
@@ -77,7 +84,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	const owner =
 		isManagerRole(locals.user.role) && users.some((u) => u.id === rawOwner) ? rawOwner : '';
 
-	const [result, countries] = await Promise.all([
+	const [result, countries, allCategories] = await Promise.all([
 		listLeadsFiltered({
 			userId: locals.user.id,
 			role: locals.user.role,
@@ -86,6 +93,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 			platform: platform || undefined,
 			country: country || undefined,
 			ownerId: owner || undefined,
+			categoryIds: categoryIds.length ? categoryIds : undefined,
 			staleOnly,
 			hasFutureEvents,
 			search: search || undefined,
@@ -98,8 +106,12 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 			dir,
 			weeksAhead
 		}),
-		getLeadCountries()
+		getLeadCountries(),
+		getActiveCategories()
 	]);
+
+	// Per-lead category chips for the visible page (single bulk query — no N+1).
+	const categoriesByLead = await getCategoriesForLeads(result.leads.map((l) => l.id));
 
 	const me: User = {
 		id: locals.user.id,
@@ -114,13 +126,15 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	const now = today();
 	const leads = result.leads.map((l) => ({
 		...l,
-		appealScore: computeAppealScore(l.eventDate, l.firstAnnouncedDate, l.firstReachedOutDate, now)
+		appealScore: computeAppealScore(l.eventDate, l.firstAnnouncedDate, l.firstReachedOutDate, now),
+		categories: categoriesByLead.get(l.id) ?? []
 	}));
 
 	return {
 		leads,
 		total: result.total,
 		countries,
+		allCategories,
 		users,
 		me,
 		filters: {
@@ -128,6 +142,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 			stage,
 			platform,
 			country,
+			categoryIds,
 			owner,
 			staleOnly,
 			hasFutureEvents,

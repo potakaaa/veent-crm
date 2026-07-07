@@ -3,9 +3,12 @@
 // `scripts/import.ts` CLI (via relative path). Types are derived from the Drizzle enums in
 // db/schema.ts (the single source of truth for the category/platform vocabularies).
 
-import { leadCategory, leadPlatform } from './db/schema';
+import { leadPlatform } from './db/schema';
+import { TEMPLATE_CATEGORIES, type TemplateCategory } from '../data/template-categories';
 
-export type CrmLeadCategory = (typeof leadCategory.enumValues)[number];
+// Category vocabulary is the frozen TEMPLATE_CATEGORIES list (CAT-1) — the leadCategory enum
+// was dropped in migration 0028.
+export type CrmLeadCategory = TemplateCategory;
 export type CrmLeadPlatform = (typeof leadPlatform.enumValues)[number];
 
 export function slugify(name: string): string {
@@ -99,8 +102,8 @@ const CATEGORY_MAP: Record<string, CrmLeadCategory> = {
 
 export function mapCategory(value: string): { category: CrmLeadCategory } {
 	const trimmed = value.trim();
-	// Pass through values already valid in the CRM enum (e.g. Camp, Modelling, Resort).
-	if ((leadCategory.enumValues as readonly string[]).includes(trimmed)) {
+	// Pass through values already valid in the vocabulary (e.g. Camp, Modelling, Resort).
+	if ((TEMPLATE_CATEGORIES as readonly string[]).includes(trimmed)) {
 		return { category: trimmed as CrmLeadCategory };
 	}
 	const mapped = CATEGORY_MAP[trimmed];

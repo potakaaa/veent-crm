@@ -56,9 +56,11 @@
 		const { sort, dir } = state;
 		const factor = dir === 'asc' ? 1 : -1;
 		return [...rows].sort((a, b) => {
-			// #261 — deactivated members always sort below active ones, regardless of
-			// which column/direction is selected.
-			if (a.active !== b.active) return a.active ? -1 : 1;
+			// #261 — deactivated members always sort below active ones when sorting by any
+			// column other than Status itself. Sorting by Status is the one case where the
+			// chosen direction should actually control which group comes first — otherwise
+			// toggling that column's sort direction would be a no-op.
+			if (sort !== 'active' && a.active !== b.active) return a.active ? -1 : 1;
 			let av: string | number;
 			let bv: string | number;
 			if (sort === 'active') {

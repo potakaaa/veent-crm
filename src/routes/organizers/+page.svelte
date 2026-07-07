@@ -9,8 +9,7 @@
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
 	import { Select, SelectTrigger, SelectContent, SelectItem } from '$lib/components/ui/select';
-	import { Popover, PopoverTrigger, PopoverContent } from '$lib/components/ui/popover';
-	import Icon from '$lib/components/shared/Icon.svelte';
+	import SortPopover from '$lib/components/shared/SortPopover.svelte';
 	import {
 		Table,
 		TableHeader,
@@ -59,9 +58,8 @@
 	}
 
 	// #260 follow-up — mobile cards drop the clickable table headers, so sorting needs an
-	// explicit control on narrow viewports. Reuses the same sort/dir query params as the
-	// desktop table's column headers.
-	let sortOpen = $state(false);
+	// explicit control on narrow viewports (SortPopover). Reuses the same sort/dir query
+	// params as the desktop table's column headers.
 	const SORT_OPTIONS: { id: 'name' | 'leads'; dir: 'asc' | 'desc'; label: string }[] = [
 		{ id: 'name', dir: 'asc', label: 'Name (A–Z)' },
 		{ id: 'name', dir: 'desc', label: 'Name (Z–A)' },
@@ -121,36 +119,13 @@
 		{/if}
 
 		<!-- mobile-only: the card list drops the table's clickable sort headers, so this
-		     Popover reproduces "sort by Name / Leads" as an explicit control. -->
-		<Popover bind:open={sortOpen}>
-			<PopoverTrigger
-				aria-label="Sort"
-				title="Sort"
-				class="ml-auto flex h-8 w-8 items-center justify-center rounded-control border border-hairline bg-panel text-ink hover:bg-panel-sunken sm:hidden"
-			>
-				<Icon name="sort" size={15} stroke={2} />
-			</PopoverTrigger>
-			<PopoverContent class="w-52 p-1" align="end">
-				<div class="flex flex-col gap-0.5">
-					{#each SORT_OPTIONS as opt (opt.id + opt.dir)}
-						{@const active = data.sort === opt.id && data.dir === opt.dir}
-						<button
-							type="button"
-							onclick={() => {
-								sortToggle(opt.id, opt.dir === 'desc');
-								sortOpen = false;
-							}}
-							class="flex items-center justify-between rounded-[5px] px-2.5 py-1.5 text-left text-[12.5px] {active
-								? 'bg-selected font-semibold text-primary-strong'
-								: 'text-ink-600 hover:bg-panel-sunken'}"
-						>
-							{opt.label}
-							{#if active}<Icon name="check" size={13} stroke={2.2} />{/if}
-						</button>
-					{/each}
-				</div>
-			</PopoverContent>
-		</Popover>
+		     reproduces "sort by Name / Leads" as an explicit control. -->
+		<SortPopover
+			options={SORT_OPTIONS}
+			sort={data.sort}
+			dir={data.dir}
+			onSelect={(id, dir) => sortToggle(id, dir === 'desc')}
+		/>
 	</div>
 
 	<!-- #260: table on sm+, reusable card list on mobile -->

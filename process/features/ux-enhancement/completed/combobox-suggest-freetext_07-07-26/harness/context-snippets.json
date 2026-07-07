@@ -1,0 +1,23 @@
+{
+	"task": "GitHub #250 — combobox-freetext PLAN: add nullable `venue` text column to crm_meetings",
+	"snippets": [
+		{
+			"file": "src/lib/server/db/schema.ts",
+			"lines": "336-365",
+			"description": "crm_meetings table definition — insertion point for the new nullable `venue: text('venue')` column. No existing column is modified; all current columns (leadId, organizerId, leadOrganizerId, startAt, meetingUrl, notes, outcome, deletedAt, reminder checkpoints) are untouched.",
+			"content": "export const crmMeetings = pgTable(\n\t'crm_meetings',\n\t{\n\t\tid: uuid('id').primaryKey().defaultRandom(),\n\t\tleadId: uuid('lead_id').notNull().references(() => crmLeads.id, { onDelete: 'cascade' }),\n\t\torganizerId: uuid('organizer_id').references(() => crmUsers.id, { onDelete: 'set null' }),\n\t\tleadOrganizerId: uuid('lead_organizer_id').references(() => crmOrganizers.id, { onDelete: 'set null' }),\n\t\tstartAt: timestamp('start_at', { withTimezone: true }).notNull(),\n\t\tmeetingUrl: text('meeting_url'),\n\t\tnotes: text('notes'),\n\t\toutcome: text('outcome'),\n\t\tdeletedAt: timestamp('deleted_at', { withTimezone: true }),\n\t\t// ... reminder checkpoint columns\n\t},\n\t(t) => [index('crm_meetings_lead_idx').on(t.leadId)]\n);"
+		},
+		{
+			"file": "drizzle/meta/_journal.json",
+			"lines": "last entry (idx 25)",
+			"description": "Pre-flight drift check performed before authoring migration 0026: last journal idx is 25, tag '0025_mature_aaron_stack', matching the highest-numbered file on disk (0025_mature_aaron_stack.sql). No duplicate-prefix files, no untracked .sql files found in drizzle/. Clean to proceed with 0026 as the next sequential migration.",
+			"content": "{ \"idx\": 25, \"version\": \"7\", \"when\": 1783308740036, \"tag\": \"0025_mature_aaron_stack\", \"breakpoints\": true }"
+		},
+		{
+			"file": "process/context/all-context.md",
+			"lines": "Drizzle conventions section",
+			"description": "Project convention requiring the journal/file drift check before running `bun run db:generate`, and the known prior incident (drizzle/0014 + a merge-time idx:15 collision) that motivates this check.",
+			"content": "Before running `bun run db:generate`, confirm `drizzle/meta/_journal.json`'s last `idx` matches the highest-numbered `.sql` file in `drizzle/` by filename, AND scan `drizzle/` for duplicate-prefix or stray files..."
+		}
+	]
+}

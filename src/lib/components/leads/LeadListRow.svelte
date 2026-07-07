@@ -5,6 +5,7 @@
 	import FutureEventsBadge from '$lib/components/shared/FutureEventsBadge.svelte';
 	import Icon from '$lib/components/shared/Icon.svelte';
 	import { riskMeta } from '$lib/utils/risk';
+	import { isClosed } from '$lib/utils/stages';
 	import { formatDate } from '$lib/utils/dates';
 	import type { Lead } from '$lib/types';
 
@@ -47,7 +48,9 @@
 		<div class="mb-1.5 flex flex-wrap items-center gap-1.5">
 			<PlatformBadge platform={lead.platform} />
 			<StageChip stage={lead.stage} />
-			<AgeBadge label={lead.age.label} type={lead.age.type} />
+			{#if !isClosed(lead.stage)}
+				<AgeBadge label={lead.age.label} type={lead.age.type} />
+			{/if}
 			{#if lead.hasFutureEvents}
 				<FutureEventsBadge />
 			{/if}
@@ -131,7 +134,9 @@
 	</a>
 	<div class="flex shrink-0 flex-col items-end gap-1">
 		<StageChip stage={lead.stage} />
-		<AgeBadge label={lead.age.label} type={lead.age.type} />
+		{#if !isClosed(lead.stage)}
+			<AgeBadge label={lead.age.label} type={lead.age.type} />
+		{/if}
 		{#if lead.hasFutureEvents}
 			<FutureEventsBadge />
 		{/if}

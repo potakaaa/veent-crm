@@ -10,6 +10,7 @@
 	import DataGridShell from '$lib/components/leads/DataGridShell.svelte';
 	import { Button } from '$lib/components/ui/button';
 	import { riskMeta } from '$lib/utils/risk';
+	import { isClosed } from '$lib/utils/stages';
 	import { ownerNameFor } from '$lib/utils/owner';
 	import type { Lead, User } from '$lib/types';
 
@@ -129,7 +130,9 @@
 						<Avatar name={ownerName(l.ownerId)} />
 					</div>
 					<div class="flex items-center lg:contents">
-						<AgeBadge label={l.age.label} type={l.age.type} />
+						{#if !isClosed(l.stage)}
+							<AgeBadge label={l.age.label} type={l.age.type} />
+						{/if}
 					</div>
 					<div class="flex items-center lg:contents"><PlatformBadge platform={l.platform} /></div>
 					<div class="flex min-w-0 items-center lg:contents">
@@ -144,7 +147,7 @@
 		<EmptyState
 			icon="leads"
 			title="Nothing here yet"
-			hint="No leads match this view — go prospect, or check Up for grabs."
+			hint="No leads match this view — go prospect, or check Unassigned Leads."
 		>
 			{#snippet actions()}
 				<Button
@@ -152,7 +155,7 @@
 					size="sm"
 					href="/unassigned"
 					class="border-stage-contacted text-stage-contacted hover:bg-stage-contacted/10"
-					>Up for grabs</Button
+					>Unassigned Leads</Button
 				>
 				<Button variant="destructive" size="sm" href="/leads/new">Add lead</Button>
 			{/snippet}

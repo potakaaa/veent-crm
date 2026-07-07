@@ -111,7 +111,7 @@
 	</div>
 {:else if isUnassigned}
 	<div class="px-7 pb-16 pt-6">
-		<PageHeader title="Up for grabs" subtitle="Unassigned leads — claim what you can work." />
+		<PageHeader title="Unassigned Leads" subtitle="Unassigned leads — claim what you can work." />
 		<TableSkeleton rows={8} cols={6} />
 	</div>
 {:else if isReminders}

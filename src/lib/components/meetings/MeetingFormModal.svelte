@@ -7,6 +7,8 @@
 	import { Select, SelectTrigger, SelectContent, SelectItem } from '$lib/components/ui/select';
 	import LeadCombobox from '$lib/components/meetings/LeadCombobox.svelte';
 	import OrganizerCombobox from '$lib/components/meetings/OrganizerCombobox.svelte';
+	import { ComboboxFreetext } from '$lib/components/ui/combobox-freetext';
+	import { fetchVenueSuggestions } from '$lib/utils/venue-suggest';
 	import { FieldError, fieldErrorAttrs } from '$lib/components/ui/field-error';
 	import type { Meeting, User } from '$lib/types';
 
@@ -16,6 +18,7 @@
 		organizerId?: string;
 		leadOrganizerId?: string | null;
 		meetingUrl?: string;
+		venue?: string;
 		notes?: string;
 		outcome?: string;
 		attendeeIds: string[];
@@ -66,6 +69,7 @@
 	// Label to seed the combobox trigger: edit → meeting's saved organizer; create → lead's.
 	let leadOrganizerLabel = $state<string | undefined>(undefined);
 	let meetingUrl = $state('');
+	let venue = $state('');
 	let notes = $state('');
 	let outcome = $state('');
 	let attendeeIds = $state<string[]>([]);
@@ -93,6 +97,7 @@
 			leadOrganizerLabel = leadOrganizerName;
 		}
 		meetingUrl = meeting?.meetingUrl ?? '';
+		venue = meeting?.venue ?? '';
 		notes = meeting?.notes ?? '';
 		outcome = meeting?.outcome ?? '';
 		attendeeIds = meeting?.attendees.map((a) => a.userId) ?? [];
@@ -134,6 +139,7 @@
 			// key survives and the DB layer applies the clear.
 			leadOrganizerId: selectedLeadOrganizerId ?? null,
 			meetingUrl: meetingUrl.trim() || undefined,
+			venue: venue.trim() || undefined,
 			notes: notes.trim() || undefined,
 			outcome: outcome.trim() || undefined,
 			attendeeIds
@@ -227,6 +233,16 @@
 			bind:value={meetingUrl}
 			placeholder="https://meet.google.com/…"
 			class="font-mono"
+		/>
+	</div>
+
+	<div class="mb-3.5 grid gap-1.5">
+		<Label for="mtg-venue">Venue</Label>
+		<ComboboxFreetext
+			id="mtg-venue"
+			bind:value={venue}
+			placeholder="e.g. Ayala Center Cebu"
+			search={fetchVenueSuggestions}
 		/>
 	</div>
 

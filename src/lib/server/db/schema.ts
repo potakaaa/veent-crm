@@ -350,6 +350,8 @@ export const crmMeetings = pgTable(
 		}),
 		startAt: timestamp('start_at', { withTimezone: true }).notNull(),
 		meetingUrl: text('meeting_url'),
+		// Free-text meeting venue (GitHub #250). Nullable, no default, no backfill.
+		venue: text('venue'),
 		notes: text('notes'),
 		outcome: text('outcome'),
 		// soft delete; no hard deletes

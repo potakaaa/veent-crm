@@ -1,0 +1,11 @@
+{
+	"task": "GitHub #250 — combobox-freetext PLAN: add nullable `venue` text column to crm_meetings (Drizzle migration 0026) + full persistence chain",
+	"planPath": "process/features/ux-enhancement/active/combobox-suggest-freetext_07-07-26/combobox-suggest-freetext_PLAN_07-07-26.md",
+	"riskLevel": "medium",
+	"riskClasses": ["schema/data migration or destructive data mutation"],
+	"mustStopBeforeFinalize": true,
+	"humanApprovalRequired": false,
+	"why": "Change is additive-only: one new nullable text column, no existing crm_meetings column altered or dropped, no backfill, no NOT NULL constraint, no destructive write. Journal drift pre-flight is clean (idx 25 matches highest .sql file on disk), so risk is downgraded from the class default to medium. humanApprovalRequired is false because the user granted standing authorization this session (\"ENTER VALIDATE AND THEN EXECUTE DONT ASK ME AGAIN\") to proceed through VALIDATE/EXECUTE without further check-ins; this pack still records the gate per protocol rather than skipping it.",
+	"workDescription": "Add one new nullable `venue` text column to `crm_meetings` (Drizzle migration 0026) plus its full persistence chain (schema, TS type, DB mapper, create/update functions, Zod schema, 2 API routes, 2 hand-built PATCH bodies, MeetingFormModal field). Part of GitHub #250 (combobox-freetext SPEC/PLAN).",
+	"approver": "orchestrator (Claude Code main session), under user's standing execution authorization"
+}

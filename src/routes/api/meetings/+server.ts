@@ -41,6 +41,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		// Lead's linked recurring-organizer (crm_organizers) — pre-filled from the lead, nullable.
 		leadOrganizerId: data.leadOrganizerId ?? null,
 		meetingUrl: data.meetingUrl || undefined,
+		venue: data.venue || undefined,
 		notes: data.notes || undefined,
 		outcome: data.outcome || undefined,
 		attendeeIds: data.attendeeIds

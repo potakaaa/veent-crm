@@ -100,6 +100,7 @@ export function dbRowToMeeting(
 		leadOrganizerName: leadOrganizerName ?? undefined,
 		startAt: row.startAt.toISOString(),
 		meetingUrl: row.meetingUrl ?? undefined,
+		venue: row.venue ?? undefined,
 		notes: row.notes ?? undefined,
 		outcome: row.outcome ?? undefined,
 		attendees,
@@ -308,6 +309,7 @@ export async function createMeeting(input: {
 	organizerId?: string | null;
 	leadOrganizerId?: string | null;
 	meetingUrl?: string | null;
+	venue?: string | null;
 	notes?: string | null;
 	outcome?: string | null;
 	attendeeIds?: string[];
@@ -321,6 +323,7 @@ export async function createMeeting(input: {
 				organizerId: input.organizerId ?? null,
 				leadOrganizerId: input.leadOrganizerId ?? null,
 				meetingUrl: input.meetingUrl ?? null,
+				venue: input.venue ?? null,
 				notes: input.notes ?? null,
 				outcome: input.outcome ?? null
 			})
@@ -350,6 +353,7 @@ export async function updateMeeting(
 		organizerId?: string | null;
 		leadOrganizerId?: string | null;
 		meetingUrl?: string | null;
+		venue?: string | null;
 		notes?: string | null;
 		outcome?: string | null;
 		attendeeIds?: string[];
@@ -362,6 +366,7 @@ export async function updateMeeting(
 		// undefined leaves the saved link untouched; explicit null clears it (mirrors organizerId).
 		if (patch.leadOrganizerId !== undefined) set.leadOrganizerId = patch.leadOrganizerId;
 		if (patch.meetingUrl !== undefined) set.meetingUrl = patch.meetingUrl;
+		if (patch.venue !== undefined) set.venue = patch.venue;
 		if (patch.notes !== undefined) set.notes = patch.notes;
 		if (patch.outcome !== undefined) set.outcome = patch.outcome;
 
@@ -419,4 +424,26 @@ export async function softDeleteMeeting(id: string): Promise<boolean> {
 		.where(and(eq(crmMeetings.id, id), isNull(crmMeetings.deletedAt)))
 		.returning({ id: crmMeetings.id });
 	return rows.length > 0;
+}
+
+/**
+ * Case-insensitive DISTINCT venue search over crm_meetings. Empty/blank query returns the
+ * first `limit` venues alphabetically. Backs the meeting-create/edit venue free-text combobox
+ * (GitHub #249, MTG-5) — suggestions layered on top of a field that stays fully free-text.
+ * Read-only; filters soft-deleted rows and drops null venues.
+ */
+export async function searchVenues(q: string | null | undefined, limit = 20): Promise<string[]> {
+	const term = (q ?? '').trim();
+	const where: SQL | undefined = and(
+		isNull(crmMeetings.deletedAt),
+		sql`${crmMeetings.venue} is not null`,
+		term ? ilike(crmMeetings.venue, `%${term.replace(/[\\%_]/g, '\\$&')}%`) : undefined
+	);
+	const rows = await db
+		.selectDistinct({ venue: crmMeetings.venue })
+		.from(crmMeetings)
+		.where(where)
+		.orderBy(asc(crmMeetings.venue))
+		.limit(limit);
+	return rows.map((r) => r.venue).filter((v): v is string => v != null);
 }

@@ -172,6 +172,8 @@ export interface Meeting {
 	/** ISO datetime the meeting starts. */
 	startAt: string;
 	meetingUrl?: string;
+	/** Free-text meeting venue (GitHub #250). Undefined when unset (DB null). */
+	venue?: string;
 	notes?: string;
 	outcome?: string;
 	attendees: MeetingAttendee[];

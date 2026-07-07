@@ -173,7 +173,7 @@
 			await invalidateAll();
 			toasts.push(
 				u.active
-					? `Deactivated ${u.name} — their workable leads moved to Up for grabs`
+					? `Deactivated ${u.name} — their workable leads moved to Unassigned Leads`
 					: `Reactivated ${u.name}`
 			);
 		} catch (err) {
@@ -538,7 +538,7 @@
 	<div class="mt-3.5 flex items-center gap-2 text-[12.5px] text-ink-200">
 		<Icon name="info" size={14} stroke={2} />
 		Deactivating a rep keeps their history but moves their workable leads to
-		<a href="/unassigned" class="font-semibold text-primary">Up for grabs</a>.
+		<a href="/unassigned" class="font-semibold text-primary">Unassigned Leads</a>.
 	</div>
 </div>
 

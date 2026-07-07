@@ -262,6 +262,10 @@ export const userFormSchema = z.object({
 });
 export type UserForm = z.infer<typeof userFormSchema>;
 
+// --- Edit an existing team member's name (managers editing others, or self) ---
+export const userNameEditSchema = userFormSchema.pick({ name: true });
+export type UserNameEditForm = z.infer<typeof userNameEditSchema>;
+
 // --- Add / edit an outreach message template (Superforms) ------------------
 export const templateFormSchema = z.object({
 	title: z.string().min(1, 'Title is required'),

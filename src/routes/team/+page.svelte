@@ -26,7 +26,7 @@
 	import { toasts } from '$lib/stores/toasts.svelte';
 	import { canManageUsers, isSuperManager, canPromoteToSuperManager } from '$lib/utils/permissions';
 	import { roleLabel, statusLabel } from '$lib/utils/roles';
-	import { userFormSchema, USER_ROLES } from '$lib/zod/schemas';
+	import { userFormSchema, userNameEditSchema, USER_ROLES } from '$lib/zod/schemas';
 	import type { Role, User } from '$lib/types';
 
 	let { data } = $props();
@@ -75,6 +75,8 @@
 	let name = $state('');
 	let email = $state('');
 	let role = $state<string>('rep');
+	// #227 — the add-user modal copy must reflect the selected role.
+	const addLabel = $derived(role === 'manager' ? 'Add a manager' : 'Add a rep');
 	let formError = $state('');
 	// Per-field validation errors for the add-a-rep form, keyed by userFormSchema
 	// field name (Phase 4 — shared field-error component).
@@ -152,6 +154,55 @@
 	let roleChanging = $state(false);
 	let deactivating = $state<Record<string, boolean>>({});
 
+	// --- Edit a team member's name -------------------------------------------
+	let editTarget = $state<User | null>(null);
+	let editName = $state('');
+	let editSaving = $state(false);
+	let editFieldErrors = $state<Record<string, string[] | undefined>>({});
+
+	function openEdit(u: User) {
+		editTarget = u;
+		editName = u.name;
+		editFieldErrors = {};
+	}
+
+	async function saveEditName() {
+		const target = editTarget;
+		if (!target) return;
+		const parsed = userNameEditSchema.safeParse({ name: editName });
+		if (!parsed.success) {
+			editFieldErrors = parsed.error.flatten().fieldErrors as Record<string, string[] | undefined>;
+			return;
+		}
+		editFieldErrors = {};
+		editSaving = true;
+		try {
+			const res = await fetch(`/api/users/${target.id}`, {
+				method: 'PATCH',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ name: editName })
+			});
+			if (!res.ok) {
+				toasts.push(
+					res.status === 403
+						? 'You do not have permission to do that.'
+						: `Unable to update ${target.name} — try again.`,
+					{ tone: 'warn' }
+				);
+				return;
+			}
+			editTarget = null;
+			await invalidateAll();
+			toasts.success('Name updated');
+		} catch (err) {
+			toasts.push(err instanceof Error ? err.message : `Unable to update ${target.name}`, {
+				tone: 'warn'
+			});
+		} finally {
+			editSaving = false;
+		}
+	}
+
 	async function applyRoleChange() {
 		const pending = confirmRoleChange;
 		if (!pending) return;
@@ -225,7 +276,8 @@
 		{#snippet actions()}
 			{#if canManage}
 				<Button onclick={() => (addOpen = true)}>
-					<Icon name="plus" size={15} stroke={2.2} /> Add a rep
+					<Icon name="plus" size={15} stroke={2.2} />
+					{addLabel}
 				</Button>
 			{/if}
 		{/snippet}
@@ -327,6 +379,14 @@
 								{#if canManage}
 									{@const isSelf = u.id === data.currentUser.id}
 									<div class="flex items-center justify-end gap-2">
+										<Button
+											variant="outline"
+											size="icon"
+											title="Edit name"
+											onclick={() => openEdit(u)}
+										>
+											<Icon name="edit" size={14} stroke={2.2} />
+										</Button>
 										{#if isSuper && u.role === 'rep'}
 											<Button
 												variant="outline"
@@ -422,7 +482,7 @@
 
 <Modal
 	open={addOpen}
-	title="Add a rep"
+	title={addLabel}
 	subtitle="They'll receive a welcome email with a sign-in link."
 	width={420}
 	onclose={() => (addOpen = false)}
@@ -465,7 +525,7 @@
 	</div>
 	{#snippet footer()}
 		<Button variant="outline" class="flex-1" onclick={() => (addOpen = false)}>Cancel</Button>
-		<Button class="flex-[2]" onclick={addRep}>Add rep</Button>
+		<Button class="flex-[2]" onclick={addRep}>{addLabel}</Button>
 	{/snippet}
 </Modal>
 
@@ -508,6 +568,25 @@
 		<Button variant="outline" class="flex-1" onclick={() => (promoteTarget = null)}>Cancel</Button>
 		<Button class="flex-[2]" onclick={confirmPromote} disabled={promoting}>
 			{promoting ? 'Transferring…' : 'Transfer role'}
+		</Button>
+	{/snippet}
+</Modal>
+
+<Modal open={editTarget !== null} title="Edit name" width={420} onclose={() => (editTarget = null)}>
+	<div class="grid gap-1.5">
+		<Label for="edit-name">Name</Label>
+		<Input
+			id="edit-name"
+			bind:value={editName}
+			placeholder="Marites"
+			{...fieldErrorAttrs('edit-name', editFieldErrors.name)}
+		/>
+		<FieldError id="edit-name" errors={editFieldErrors.name} />
+	</div>
+	{#snippet footer()}
+		<Button variant="outline" class="flex-1" onclick={() => (editTarget = null)}>Cancel</Button>
+		<Button class="flex-[2]" onclick={saveEditName} disabled={editSaving}>
+			{editSaving ? 'Saving…' : 'Save'}
 		</Button>
 	{/snippet}
 </Modal>

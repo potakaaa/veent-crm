@@ -56,6 +56,9 @@
 		const { sort, dir } = state;
 		const factor = dir === 'asc' ? 1 : -1;
 		return [...rows].sort((a, b) => {
+			// #261 — deactivated members always sort below active ones, regardless of
+			// which column/direction is selected.
+			if (a.active !== b.active) return a.active ? -1 : 1;
 			let av: string | number;
 			let bv: string | number;
 			if (sort === 'active') {

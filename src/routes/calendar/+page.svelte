@@ -114,7 +114,7 @@
 
 <svelte:head><title>Calendar · Veent CRM</title></svelte:head>
 
-<div class="px-7 pb-16 pt-6">
+<div class="overflow-x-hidden px-7 pb-16 pt-6">
 	<PageHeader title="Calendar" subtitle="Team meetings and your follow-ups on one grid.">
 		{#snippet actions()}
 			<div
@@ -260,7 +260,7 @@
 		</div>
 	{/if}
 
-	<div class="mb-3 flex items-center gap-2.5" aria-label="Calendar legend">
+	<div class="mb-3 flex flex-wrap items-center gap-2" aria-label="Calendar legend">
 		{#each [{ label: 'Meeting', bg: 'bg-blue-50', text: 'text-blue-700', dot: 'bg-blue-400' }, { label: 'Follow-up', bg: 'bg-amber-50', text: 'text-amber-700', dot: 'bg-amber-400' }, { label: 'Sale Opens', bg: 'bg-green-50', text: 'text-green-700', dot: 'bg-green-500' }, { label: 'Event Start', bg: 'bg-purple-50', text: 'text-purple-700', dot: 'bg-purple-500' }] as item}
 			<span
 				class="flex items-center gap-1 rounded-[4px] px-1.5 py-0.5 text-[11px] font-medium {item.bg} {item.text}"

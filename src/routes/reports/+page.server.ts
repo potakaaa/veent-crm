@@ -12,7 +12,8 @@ const STAGE_META: Record<string, { label: string; color: string; order: number }
 	replied: { label: 'Replied', color: '#3b82f6', order: 2 },
 	in_discussion: { label: 'In discussion', color: '#8b5cf6', order: 3 },
 	won: { label: 'Won', color: '#22c55e', order: 4 },
-	lost: { label: 'Lost', color: '#ef4444', order: 5 }
+	live: { label: 'Live', color: '#16a34a', order: 5 },
+	lost: { label: 'Lost', color: '#ef4444', order: 6 }
 };
 
 async function fetchReport(): Promise<ReportData> {

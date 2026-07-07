@@ -12,6 +12,16 @@
 @plugin '@tailwindcss/forms';
 @plugin '@tailwindcss/typography';
 
+@layer base {
+	/* #259 — some pages (e.g. calendar's min-width grid) intentionally scroll horizontally
+	   inside their own overflow-x-auto wrapper; without this, that overflow can bleed into a
+	   page-level horizontal drag/scroll on mobile viewports. */
+	html,
+	body {
+		overflow-x: hidden;
+	}
+}
+
 @layer utilities {
 	/* Subtle token-based thin scrollbar for Command popover lists (opt-in via the class). */
 	.scrollbar-thin {

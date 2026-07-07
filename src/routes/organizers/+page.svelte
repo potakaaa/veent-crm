@@ -5,9 +5,11 @@
 	import PageHeader from '$lib/components/shared/PageHeader.svelte';
 	import { Skeleton } from '$lib/components/ui/skeleton';
 	import { Card } from '$lib/components/ui/card';
+	import ListItemCard from '$lib/components/shared/ListItemCard.svelte';
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
 	import { Select, SelectTrigger, SelectContent, SelectItem } from '$lib/components/ui/select';
+	import SortPopover from '$lib/components/shared/SortPopover.svelte';
 	import {
 		Table,
 		TableHeader,
@@ -54,6 +56,16 @@
 	function sortToggle(id: string, desc: boolean) {
 		navigate({ sort: id, dir: desc ? 'desc' : 'asc', page: undefined });
 	}
+
+	// #260 follow-up — mobile cards drop the clickable table headers, so sorting needs an
+	// explicit control on narrow viewports (SortPopover). Reuses the same sort/dir query
+	// params as the desktop table's column headers.
+	const SORT_OPTIONS: { id: 'name' | 'leads'; dir: 'asc' | 'desc'; label: string }[] = [
+		{ id: 'name', dir: 'asc', label: 'Name (A–Z)' },
+		{ id: 'name', dir: 'desc', label: 'Name (Z–A)' },
+		{ id: 'leads', dir: 'desc', label: 'Leads (high–low)' },
+		{ id: 'leads', dir: 'asc', label: 'Leads (low–high)' }
+	];
 
 	const table = $derived(
 		makeSortTable({
@@ -105,9 +117,19 @@
 				</SelectContent>
 			</Select>
 		{/if}
+
+		<!-- mobile-only: the card list drops the table's clickable sort headers, so this
+		     reproduces "sort by Name / Leads" as an explicit control. -->
+		<SortPopover
+			options={SORT_OPTIONS}
+			sort={data.sort}
+			dir={data.dir}
+			onSelect={(id, dir) => sortToggle(id, dir === 'desc')}
+		/>
 	</div>
 
-	<Card class="gap-0 overflow-hidden rounded-control py-0">
+	<!-- #260: table on sm+, reusable card list on mobile -->
+	<Card class="hidden gap-0 overflow-hidden rounded-control py-0 sm:block">
 		<Table>
 			<TableHeader>
 				<TableRow class="bg-[#faf9fb] hover:bg-[#faf9fb]">
@@ -191,6 +213,38 @@
 			</TableBody>
 		</Table>
 	</Card>
+
+	<div class="flex flex-col gap-2 sm:hidden">
+		{#if navLoading}
+			{#each Array(5) as _, i (i)}
+				<div class="rounded-control border border-hairline bg-panel px-3.5 py-3">
+					<Skeleton class="mb-1.5 h-3.5 w-2/3" />
+					<Skeleton class="h-3 w-1/3" />
+				</div>
+			{/each}
+		{:else if data.organizers.length === 0}
+			<div
+				class="rounded-control border border-hairline bg-panel py-10 text-center text-[13px] text-ink-300"
+			>
+				No organizers match.
+			</div>
+		{:else}
+			{#each data.organizers as org (org.id)}
+				<ListItemCard href={`/organizers/${org.id}`} title={org.name} titleTitle={org.name}>
+					{#snippet meta()}
+						<span class="truncate font-mono text-[11.5px] text-ink-500">
+							{org.normalizedHandle ?? '—'}
+						</span>
+						<span class="truncate text-[12px] text-ink-400">{org.location ?? '—'}</span>
+					{/snippet}
+					{#snippet trailing()}
+						<div class="font-mono text-[13px] text-ink-600">{org.leadCount}</div>
+						<div class="font-mono text-[9.5px] uppercase tracking-[0.4px] text-ink-200">leads</div>
+					{/snippet}
+				</ListItemCard>
+			{/each}
+		{/if}
+	</div>
 
 	<!-- pagination -->
 	{#if data.pagination.totalPages > 1}

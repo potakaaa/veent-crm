@@ -6,11 +6,14 @@
 	import StageChip from '$lib/components/shared/StageChip.svelte';
 	import Icon from '$lib/components/shared/Icon.svelte';
 	import NotesPanel from '$lib/components/shared/NotesPanel.svelte';
+	import ListItemCard from '$lib/components/shared/ListItemCard.svelte';
+	import { Skeleton } from '$lib/components/ui/skeleton';
 	import { createNoteHandlers } from '$lib/utils/note-actions';
 	import { Card } from '$lib/components/ui/card';
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
 	import { Select, SelectTrigger, SelectContent, SelectItem } from '$lib/components/ui/select';
+	import SortPopover from '$lib/components/shared/SortPopover.svelte';
 	import {
 		Table,
 		TableHeader,
@@ -65,6 +68,15 @@
 	function sortToggle(id: string, desc: boolean) {
 		navigate({ sort: id, dir: desc ? 'desc' : 'asc', page: undefined });
 	}
+
+	// Mobile cards drop the clickable table headers, so sorting needs an explicit control on
+	// narrow viewports (SortPopover) — same convention as the Organizers list page.
+	const SORT_OPTIONS: { id: 'event' | 'eventDate'; dir: 'asc' | 'desc'; label: string }[] = [
+		{ id: 'event', dir: 'asc', label: 'Event (A–Z)' },
+		{ id: 'event', dir: 'desc', label: 'Event (Z–A)' },
+		{ id: 'eventDate', dir: 'desc', label: 'Event date (newest)' },
+		{ id: 'eventDate', dir: 'asc', label: 'Event date (oldest)' }
+	];
 
 	const table = $derived(
 		makeSortTable({
@@ -169,9 +181,19 @@
 							>{/each}
 					</SelectContent>
 				</Select>
+
+				<!-- mobile-only: reproduces "sort by Event / Event date" since the card list
+				     drops the table's clickable sort headers. -->
+				<SortPopover
+					options={SORT_OPTIONS}
+					sort={data.sort}
+					dir={data.dir}
+					onSelect={(id, dir) => sortToggle(id, dir === 'desc')}
+				/>
 			</div>
 
-			<Card class="gap-0 overflow-hidden rounded-control py-0">
+			<!-- table on sm+, reusable card list on mobile -->
+			<Card class="hidden gap-0 overflow-hidden rounded-control py-0 sm:block">
 				<Table>
 					<TableHeader>
 						<TableRow class="bg-[#faf9fb] hover:bg-[#faf9fb]">
@@ -233,6 +255,38 @@
 					</TableBody>
 				</Table>
 			</Card>
+
+			<div class="flex flex-col gap-2 sm:hidden">
+				{#if navLoading}
+					{#each Array(5) as _, i (i)}
+						<div class="rounded-control border border-hairline bg-panel px-3.5 py-3">
+							<Skeleton class="mb-1.5 h-3.5 w-2/3" />
+							<Skeleton class="h-3 w-1/3" />
+						</div>
+					{/each}
+				{:else if data.leads.length === 0}
+					<div
+						class="rounded-control border border-hairline bg-panel py-10 text-center text-[13px] text-ink-300"
+					>
+						No events match.
+					</div>
+				{:else}
+					{#each data.leads as lead (lead.id)}
+						{@const eventTitle = lead.eventName ?? lead.name}
+						<ListItemCard href={`/leads/${lead.id}`} title={eventTitle} titleTitle={eventTitle}>
+							{#snippet meta()}
+								<span class="truncate text-[12px] text-ink-400">{formatDate(lead.eventDate)}</span>
+								<span class="truncate text-[12px] text-ink-500">
+									{lead.ownerName ?? 'Unassigned'}
+								</span>
+							{/snippet}
+							{#snippet trailing()}
+								<StageChip stage={lead.stage} />
+							{/snippet}
+						</ListItemCard>
+					{/each}
+				{/if}
+			</div>
 
 			<!-- pagination -->
 			{#if data.pagination.totalPages > 1}

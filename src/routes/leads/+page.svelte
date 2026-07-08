@@ -4,6 +4,7 @@
 	import { SvelteURLSearchParams } from 'svelte/reactivity';
 	import PageHeader from '$lib/components/shared/PageHeader.svelte';
 	import LeadGrid from '$lib/components/leads/LeadGrid.svelte';
+	import ImportWizard from '$lib/components/import/ImportWizard.svelte';
 	import { Button } from '$lib/components/ui/button';
 	import { FilterDropdown } from '$lib/components/ui/filter-dropdown';
 	import { SearchInput } from '$lib/components/ui/search-input';
@@ -20,6 +21,7 @@
 	let { data } = $props();
 
 	let paging = $state(false);
+	let importOpen = $state(false);
 	// Optimistic segment: set on click for instant highlight; cleared when navigation
 	// settles so the active state falls back to what the server confirmed.
 	let pendingSegment = $state<LeadSegment | null>(null);
@@ -177,9 +179,12 @@
 	<PageHeader title="My Leads">
 		{#snippet actions()}
 			<span class="font-mono text-[12px] text-ink-300">{data.total} matching</span>
+			<Button variant="outline" size="sm" onclick={() => (importOpen = true)}>Import</Button>
 			<Button variant="outline" size="sm" href={exportHref}>Export CSV</Button>
 		{/snippet}
 	</PageHeader>
+
+	<ImportWizard open={importOpen} onOpenChange={(v) => (importOpen = v)} />
 
 	<!-- toolbar -->
 	<div class="mb-3.5 flex flex-wrap items-center gap-2.5">

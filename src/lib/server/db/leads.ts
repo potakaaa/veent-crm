@@ -2120,3 +2120,15 @@ export async function getLeadHeatmapData(
 		.where(and(isNull(crmLeads.deletedAt), sql`${crmLeads.createdAt} >= ${pastStr}`))
 		.groupBy(sql`DATE(${crmLeads.createdAt})`, crmLeads.stage);
 }
+
+/**
+ * Writes Nextcloud UIDs back to a lead row after a successful CalDAV create,
+ * or clears them (null) after a successful CalDAV delete. Called by calendar-sync.ts only.
+ * Only the fields present in `patch` are updated (partial patch — others untouched).
+ */
+export async function updateLeadNextcloudUids(
+	id: string,
+	patch: { nextcloudGoLiveUid?: string | null; nextcloudEventUid?: string | null }
+): Promise<void> {
+	await db.update(crmLeads).set(patch).where(eq(crmLeads.id, id));
+}

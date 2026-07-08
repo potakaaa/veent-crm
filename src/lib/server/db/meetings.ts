@@ -436,6 +436,14 @@ export async function softDeleteMeeting(id: string): Promise<boolean> {
  * (GitHub #249, MTG-5) — suggestions layered on top of a field that stays fully free-text.
  * Read-only; filters soft-deleted rows and drops null venues.
  */
+/**
+ * Writes the Nextcloud UID back to a meeting row after a successful CalDAV create,
+ * or clears it (null) after a successful CalDAV delete. Called by calendar-sync.ts only.
+ */
+export async function updateMeetingNextcloudUid(id: string, uid: string | null): Promise<void> {
+	await db.update(crmMeetings).set({ nextcloudUid: uid }).where(eq(crmMeetings.id, id));
+}
+
 export async function searchVenues(q: string | null | undefined, limit = 20): Promise<string[]> {
 	const term = (q ?? '').trim();
 	const where: SQL | undefined = and(

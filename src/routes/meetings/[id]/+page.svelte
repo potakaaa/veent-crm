@@ -54,6 +54,31 @@
 	let modalOpen = $state(false);
 	let saving = $state(false);
 
+	// Sync-to-calendar state
+	let syncing = $state(false);
+	let syncLabel = $state<'idle' | 'syncing' | 'synced' | 'error'>('idle');
+
+	async function syncToCalendar() {
+		if (syncing) return;
+		syncing = true;
+		syncLabel = 'syncing';
+		try {
+			const res = await fetch(`/api/meetings/${meeting.id}/sync`, { method: 'POST' });
+			if (!res.ok) {
+				syncLabel = 'error';
+				return;
+			}
+			syncLabel = 'synced';
+			setTimeout(() => {
+				syncLabel = 'idle';
+			}, 2000);
+		} catch {
+			syncLabel = 'error';
+		} finally {
+			syncing = false;
+		}
+	}
+
 	async function submit(payload: MeetingFormPayload) {
 		if (saving) return;
 		saving = true;
@@ -144,6 +169,19 @@
 					>
 						<Icon name="video" size={15} stroke={2} /> Join meeting
 					</a>
+				{/if}
+				<Button variant="outline" onclick={syncToCalendar} disabled={syncing} class="gap-1.5">
+					<Icon name="calendar" size={14} stroke={2} />
+					{#if syncLabel === 'syncing'}
+						Syncing…
+					{:else if syncLabel === 'synced'}
+						Synced
+					{:else}
+						Sync to Calendar
+					{/if}
+				</Button>
+				{#if syncLabel === 'error'}
+					<span class="text-[12.5px] text-red-600">Calendar sync failed — try again</span>
 				{/if}
 				{#if canManage}
 					<Button

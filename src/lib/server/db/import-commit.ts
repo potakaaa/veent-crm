@@ -42,44 +42,48 @@ export async function runImportCommit(
 
 	if (input.target === 'leads') {
 		const now = new Date();
-		const values: (typeof crmLeads.$inferInsert)[] = [];
-		input.rows.forEach((row, index) => {
+		// Per-row insert (mirrors the organizer branch below and /api/leads/ingest): one bad or
+		// conflicting row is caught and recorded in `errors` without aborting the whole batch, so the
+		// result summary reports true per-row created/skipped/errored counts (SPEC AC10/AC11).
+		for (let index = 0; index < input.rows.length; index++) {
+			const row = input.rows[index];
 			if (row.skip) {
 				skipped++;
-				return;
+				continue;
 			}
 			const parsed = importLeadRowSchema.safeParse(row.data);
 			if (!parsed.success) {
 				errors.push({ index, message: parsed.error.issues[0]?.message ?? 'Invalid row' });
-				return;
+				continue;
 			}
 			const data = parsed.data;
-			values.push({
-				name: data.name,
-				normalizedHandle: deriveNormalizedHandle(data, 'leads'),
-				location: data.location || null,
-				country: normalizeCountry(parseCountryFromLocation(data.location)),
-				pageUrl: data.pageUrl || null,
-				contactEmail: data.contactEmail || null,
-				contactPhone: data.contactPhone || null,
-				socialFacebook: data.socialFacebook || null,
-				socialInstagram: data.socialInstagram || null,
-				eventName: data.eventName || null,
-				eventLink: data.eventLink || null,
-				notes: data.notes || null,
-				sourceRef: data.sourceRef || null,
-				platform: normalizePlatform(data.socialFacebook, data.socialInstagram, data.pageUrl),
-				currentPlatform: inferCurrentPlatform(data.pageUrl, data.eventLink),
-				source: 'sheet_import',
-				stage: 'new',
-				ownerId: null,
-				createdAt: now,
-				updatedAt: now
-			});
-		});
-		if (values.length) {
-			await dbClient.insert(crmLeads).values(values);
-			created = values.length;
+			try {
+				await dbClient.insert(crmLeads).values({
+					name: data.name,
+					normalizedHandle: deriveNormalizedHandle(data, 'leads'),
+					location: data.location || null,
+					country: normalizeCountry(parseCountryFromLocation(data.location)),
+					pageUrl: data.pageUrl || null,
+					contactEmail: data.contactEmail || null,
+					contactPhone: data.contactPhone || null,
+					socialFacebook: data.socialFacebook || null,
+					socialInstagram: data.socialInstagram || null,
+					eventName: data.eventName || null,
+					eventLink: data.eventLink || null,
+					notes: data.notes || null,
+					sourceRef: data.sourceRef || null,
+					platform: normalizePlatform(data.socialFacebook, data.socialInstagram, data.pageUrl),
+					currentPlatform: inferCurrentPlatform(data.pageUrl, data.eventLink),
+					source: 'sheet_import',
+					stage: 'new',
+					ownerId: null,
+					createdAt: now,
+					updatedAt: now
+				});
+				created++;
+			} catch (e) {
+				errors.push({ index, message: e instanceof Error ? e.message : 'Failed to create lead' });
+			}
 		}
 	} else {
 		for (let index = 0; index < input.rows.length; index++) {

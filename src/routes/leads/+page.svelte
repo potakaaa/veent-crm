@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { goto, afterNavigate } from '$app/navigation';
+	import { goto, afterNavigate, invalidateAll } from '$app/navigation';
 	import { page, navigating } from '$app/state';
 	import { SvelteURLSearchParams } from 'svelte/reactivity';
 	import PageHeader from '$lib/components/shared/PageHeader.svelte';
@@ -184,7 +184,11 @@
 		{/snippet}
 	</PageHeader>
 
-	<ImportWizard open={importOpen} onOpenChange={(v) => (importOpen = v)} />
+	<ImportWizard
+		open={importOpen}
+		onOpenChange={(v) => (importOpen = v)}
+		onImportComplete={() => invalidateAll()}
+	/>
 
 	<!-- toolbar -->
 	<div class="mb-3.5 flex flex-wrap items-center gap-2.5">

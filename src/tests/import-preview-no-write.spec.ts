@@ -48,6 +48,19 @@ describe('POST /api/import/preview — zero-write guarantee', () => {
 		expect(updateSpy).not.toHaveBeenCalled();
 	});
 
+	it('never calls db.insert or db.update for the organizers target', async () => {
+		const res = await POST(
+			event({
+				target: 'organizers',
+				rows: [{ name: 'Acme Events', socialFacebook: 'https://facebook.com/acme' }]
+			})
+		);
+		const bodyJson = await res.json();
+		expect(bodyJson.previews.length).toBe(1);
+		expect(insertSpy).not.toHaveBeenCalled();
+		expect(updateSpy).not.toHaveBeenCalled();
+	});
+
 	it('rejects an unauthenticated request with 401 (E1)', async () => {
 		await expect(
 			POST(event({ target: 'leads', rows: [{ name: 'Acme' }] }, null))

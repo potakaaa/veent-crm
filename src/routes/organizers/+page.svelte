@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { goto } from '$app/navigation';
+	import { goto, invalidateAll } from '$app/navigation';
 	import { page, navigating } from '$app/state';
 	import { SvelteURLSearchParams } from 'svelte/reactivity';
 	import PageHeader from '$lib/components/shared/PageHeader.svelte';
@@ -107,6 +107,7 @@
 		onOpenChange={(v) => (importOpen = v)}
 		defaultTarget="organizers"
 		locked
+		onImportComplete={() => invalidateAll()}
 	/>
 
 	<!-- toolbar -->

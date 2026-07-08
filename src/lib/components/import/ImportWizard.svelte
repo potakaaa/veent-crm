@@ -13,12 +13,15 @@
 		open = false,
 		onOpenChange,
 		defaultTarget,
-		locked = false
+		locked = false,
+		onImportComplete
 	}: {
 		open?: boolean;
 		onOpenChange: (open: boolean) => void;
 		defaultTarget?: ImportTarget;
 		locked?: boolean;
+		/** Called once after a successful commit so the parent page can refresh its loaded data. */
+		onImportComplete?: () => void;
 	} = $props();
 
 	const wizard = setImportWizard({ defaultTarget, locked });
@@ -42,6 +45,7 @@
 
 	async function loadPreviewFlags() {
 		busy = true;
+		wizard.error = null;
 		try {
 			const res = await fetch('/api/import/preview', {
 				method: 'POST',
@@ -60,9 +64,18 @@
 					duplicateReason: body.previews[i]?.duplicateReason
 				}));
 				wizard.applyDuplicateFlags(flagged);
+			} else {
+				// Preview still usable without dedup flags, but the user must know the duplicate
+				// check did not run — otherwise a silent 500 looks like "no duplicates found".
+				const err = await res.json().catch(() => ({ message: 'Duplicate check failed' }));
+				wizard.error =
+					(err.message ?? 'Duplicate check failed') +
+					' — duplicates are not flagged below; review rows before importing.';
 			}
 		} catch {
-			// Non-fatal: preview still works without dedup flags.
+			// Network/parse failure: dedup did not run — surface it (import still works).
+			wizard.error =
+				'Duplicate check failed — duplicates are not flagged below; review rows before importing.';
 		} finally {
 			busy = false;
 		}
@@ -84,6 +97,7 @@
 			if (res.ok) {
 				wizard.result = await res.json();
 				wizard.advance(); // step → result
+				onImportComplete?.(); // refresh parent page data (newly-imported rows)
 			} else {
 				const err = await res.json().catch(() => ({ message: 'Import failed' }));
 				wizard.error = err.message ?? 'Import failed';

@@ -119,4 +119,4 @@ Access-Control-Expose-Headers: Cache-Control,Content-Disposition,Content-Encodin
 **Summary:** Empirically confirmed (via `curl` against Google's own public example Sheet) that both the `docs.google.com` redirect hop and the `googleusercontent.com` CSV-content hop return valid `Access-Control-Allow-Origin` headers when a cross-origin `Origin` header is present — VIABLE for client-side direct fetch of public/published sheets. Private/restricted sheet CORS behavior is an untested known-gap.
 **Concerns/Blockers:** None blocking. Known-gap noted above (private sheet CORS behavior untested) should be revisited if the import wizard needs to support non-public sheets.
 
-VC-FEASIBILITY-VERDICT-READY: VIABLE — E:\OJT\Veent Apps Inc\SCRAPING\veent-crm\process\features\import\active\csv-sheets-import-ui_07-07-26\csv-sheets-import-ui_FEASIBILITY_07-07-26.md
+VC-FEASIBILITY-VERDICT-READY: VIABLE — process/features/import/active/csv-sheets-import-ui_07-07-26/csv-sheets-import-ui_FEASIBILITY_07-07-26.md

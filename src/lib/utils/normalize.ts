@@ -34,7 +34,11 @@ const NON_ACCOUNT_SEGMENTS = new Set([
 export function extractHandleFromUrl(url: string): string | null {
 	// Extract the first meaningful path segment from an FB/IG/website URL.
 	try {
-		const u = new URL(url);
+		// Accept scheme-less input (e.g. "facebook.com/acme", "www.instagram.com/acme"): a bare
+		// domain is the common paste case, and `new URL()` requires a scheme. Prepend https:// when
+		// no scheme is present so duplicate detection works on scheme-less URLs.
+		const withScheme = /^[a-z][a-z0-9+.-]*:\/\//i.test(url) ? url : `https://${url}`;
+		const u = new URL(withScheme);
 		const parts = u.pathname.split('/').filter(Boolean);
 		if (!parts.length) return null;
 		const seg = parts[0].replace(/[^a-z0-9._-]/gi, '').toLowerCase();

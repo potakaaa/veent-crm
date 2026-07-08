@@ -11,6 +11,9 @@
 </script>
 
 <div class="flex flex-col gap-3">
+	{#if wizard.error}
+		<p class="text-[12.5px] text-amber-600" role="alert">{wizard.error}</p>
+	{/if}
 	<div class="flex items-center justify-between">
 		<h3 class="text-[14px] font-semibold text-ink">
 			Preview ({wizard.previewRows.length} rows)

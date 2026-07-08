@@ -15,20 +15,29 @@
 	import DedupBanner from '$lib/components/leads/DedupBanner.svelte';
 	import ActivityTimeline from '$lib/components/leads/ActivityTimeline.svelte';
 	import LogTouchForm from '$lib/components/leads/LogTouchForm.svelte';
+	import NotesPanel from '$lib/components/shared/NotesPanel.svelte';
 	import StageControl from '$lib/components/leads/StageControl.svelte';
 	import WonCaptureModal from '$lib/components/leads/WonCaptureModal.svelte';
 	import LostReasonModal from '$lib/components/leads/LostReasonModal.svelte';
 	import ReassignModal from '$lib/components/leads/ReassignModal.svelte';
+	import OrganizerTagModal from '$lib/components/leads/OrganizerTagModal.svelte';
+	import { buildOrganizerTagPatch } from '$lib/components/leads/organizer-tag';
 	import DiscardIssueModal from '$lib/components/leads/DiscardIssueModal.svelte';
 	import MeetingsPanel from '$lib/components/meetings/MeetingsPanel.svelte';
+	import CategoryChip from '$lib/components/categories/CategoryChip.svelte';
+	import CategoryAssignPanel from '$lib/components/categories/CategoryAssignPanel.svelte';
+	import CategoryManager from '$lib/components/categories/CategoryManager.svelte';
 	import { Tabs } from '$lib/components/ui/tabs';
 	import * as Popover from '$lib/components/ui/popover';
 	import { toasts } from '$lib/stores/toasts.svelte';
 	import { canEditLead, canReassign } from '$lib/utils/permissions';
 	import { riskMeta } from '$lib/utils/risk';
+	import { createNoteHandlers } from '$lib/utils/note-actions';
 	import { formatDate, followUpDate } from '$lib/utils/dates';
-	import { stageColor, stageLabel } from '$lib/utils/stages';
+	import { stageColor, stageLabel, isClosed } from '$lib/utils/stages';
 	import type { AddActivityInput, LostReason, MoveStagePayload, Stage } from '$lib/types';
+	import { FieldError, fieldErrorAttrs } from '$lib/components/ui/field-error';
+	import { leadUpdateSchema } from '$lib/zod/schemas';
 
 	let { data } = $props();
 
@@ -87,6 +96,7 @@
 	let contractUrl = $state('');
 	let onboardingStartDate = $state('');
 	let goLiveDate = $state('');
+	let eventDate = $state('');
 	let savingOnboarding = $state(false);
 
 	// Agreements form fields — resynced whenever server truth changes.
@@ -97,12 +107,16 @@
 	let serviceFeePerTicketPesos = $state(20);
 	let bankChargesAbsorbed = $state<boolean | null>(null);
 	let hasFutureEvents = $state(false);
+	let competitorNotesDraft = $state('');
+	let savingCompetitorNotes = $state(false);
+	let competitorNotesErrors = $state<string[]>([]);
 
 	$effect(() => {
 		onboardingNotes = lead.onboardingNotes ?? '';
 		contractUrl = lead.contractUrl ?? '';
 		onboardingStartDate = lead.onboardingStartDate ?? '';
 		goLiveDate = lead.goLiveDate ?? '';
+		eventDate = lead.eventDate ?? '';
 		feeStructure = lead.feeStructure ?? null;
 		transactionFeePct = lead.transactionFeePct ?? 7;
 		convenienceFeePesos = lead.convenienceFeePesos ?? 20;
@@ -110,7 +124,43 @@
 		serviceFeePerTicketPesos = lead.serviceFeePerTicketPesos ?? 20;
 		bankChargesAbsorbed = lead.bankChargesAbsorbed ?? null;
 		hasFutureEvents = lead.hasFutureEvents ?? false;
+		competitorNotesDraft = lead.competitorNotes ?? '';
 	});
+
+	async function saveCompetitorNotes() {
+		if (savingCompetitorNotes) return;
+		competitorNotesErrors = [];
+		const parsed = leadUpdateSchema.safeParse({
+			name: lead.name,
+			competitorNotes: competitorNotesDraft
+		});
+		if (!parsed.success) {
+			competitorNotesErrors = parsed.error.issues.map((e) => e.message);
+			return;
+		}
+		savingCompetitorNotes = true;
+		try {
+			const res = await fetch(`/api/leads/${lead.id}`, {
+				method: 'PATCH',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(parsed.data)
+			});
+			if (!res.ok) {
+				const msg = await res
+					.json()
+					.then((b) => b?.message ?? 'Server error')
+					.catch(() => 'Server error');
+				competitorNotesErrors = [msg];
+				return;
+			}
+			await invalidateAll();
+			toasts.success('Competitor notes saved');
+		} catch {
+			competitorNotesErrors = ['Could not save — please try again'];
+		} finally {
+			savingCompetitorNotes = false;
+		}
+	}
 
 	async function saveOnboarding() {
 		if (savingOnboarding) return;
@@ -121,11 +171,11 @@
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
 					name: lead.name,
-					category: lead.category,
 					onboardingNotes,
 					contractUrl,
 					onboardingStartDate,
 					goLiveDate,
+					eventDate,
 					feeStructure: feeStructure ?? undefined,
 					transactionFeePct,
 					convenienceFeePesos,
@@ -153,16 +203,43 @@
 	let wonOpen = $state(false);
 	let lostOpen = $state(false);
 	let reassignOpen = $state(false);
+	let organizerTagOpen = $state(false);
 	let discardOpen = $state(false);
+	let categoryManagerOpen = $state(false);
 
 	// Single shared mutation guard — prevents any two actions from running concurrently.
 	let mutating = $state(false);
+
+	// Remove a category assignment from this lead (CAT-1). invalidateAll() refreshes
+	// data.assignedCategories so the chip disappears.
+	async function removeCategory(categoryId: string) {
+		if (mutating) return;
+		mutating = true;
+		try {
+			const res = await fetch(`/api/leads/${lead.id}/categories`, {
+				method: 'DELETE',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ categoryId })
+			});
+			if (!res.ok) {
+				const msg = await res.text().catch(() => 'Server error');
+				toasts.push(`Remove failed: ${msg}`);
+				return;
+			}
+		} catch {
+			toasts.push('Remove failed — server error');
+			return;
+		} finally {
+			mutating = false;
+		}
+		await invalidateAll();
+		toasts.success('Category removed');
+	}
 
 	// DetailSkeleton while navigating to any lead-detail route (incl. id → id switches).
 	const navLoading = $derived(navigating.to?.route?.id === '/leads/[id]');
 
 	const fields = $derived([
-		{ label: 'Category', value: lead.category },
 		{ label: 'Location', value: lead.location },
 		{ label: 'Platform', value: lead.platform },
 		{
@@ -233,6 +310,10 @@
 		await invalidateAll();
 		toasts.success('Touch logged · follow-up booked');
 	}
+
+	// $derived (not a one-time call) so the create URL follows `lead.id` across
+	// id → id navigations within this same page instance.
+	const noteHandlers = $derived(createNoteHandlers(`/api/leads/${lead.id}/notes`));
 
 	async function selectStage(stage: Stage) {
 		if (stage === lead.stage) return;
@@ -376,6 +457,36 @@
 		await invalidateAll(); // $effect reconciles shadow with server truth
 		toasts.success('Lead reassigned');
 	}
+
+	async function confirmOrganizerTag(organizerId: string | null) {
+		if (mutating) return;
+		mutating = true;
+		organizerTagOpen = false;
+		const snapshot = lead;
+		const { body, optimisticPatch } = buildOrganizerTagPatch(organizerId, data.organizers);
+		lead = patchRecord(lead, optimisticPatch); // optimistic organizer tag
+		try {
+			const res = await fetch(`/api/leads/${lead.id}/organizer`, {
+				method: 'PATCH',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(body)
+			});
+			if (!res.ok) {
+				const msg = await res.text().catch(() => 'Server error');
+				lead = snapshot; // rollback
+				toasts.push(`Organizer tag failed: ${msg}`);
+				return;
+			}
+		} catch {
+			lead = snapshot; // rollback on network error
+			toasts.push('Organizer tag failed — server error');
+			return;
+		} finally {
+			mutating = false;
+		}
+		await invalidateAll();
+		toasts.success(organizerId ? 'Lead tagged to organizer' : 'Organizer tag cleared');
+	}
 </script>
 
 <svelte:head><title>{lead.name} · Veent CRM</title></svelte:head>
@@ -406,9 +517,17 @@
 								{lead.name}
 							</h1>
 							<StageChip stage={lead.stage} />
-							<AgeBadge label={lead.age.label} type={lead.age.type} />
+							{#if !isClosed(lead.stage)}
+								<AgeBadge label={lead.age.label} type={lead.age.type} />
+							{/if}
 							{#if lead.hasFutureEvents}
 								<FutureEventsBadge />
+							{/if}
+							{#if lead.currentPlatform}
+								<span
+									class="rounded-[5px] bg-amber-100 px-[6px] py-[2px] font-mono text-[10.5px] font-medium text-amber-700"
+									>{lead.currentPlatform}</span
+								>
 							{/if}
 							<AppealScoreBadge
 								score={computeAppealScore(
@@ -420,7 +539,7 @@
 							/>
 						</div>
 						<div class="mt-[5px] font-mono text-[12px] text-ink-300">
-							{lead.category} · {lead.location}
+							{lead.location}
 						</div>
 					</div>
 				</div>
@@ -516,7 +635,14 @@
 		</div>
 
 		{#if activeTab === 'meetings'}
-			<MeetingsPanel meetings={data.meetings} users={data.users} me={data.me} leadId={lead.id} />
+			<MeetingsPanel
+				meetings={data.meetings}
+				users={data.users}
+				me={data.me}
+				leadId={lead.id}
+				leadOrganizerId={lead.organizerId}
+				leadOrganizerName={lead.organizerName}
+			/>
 		{/if}
 
 		{#if activeTab === 'onboarding'}
@@ -567,12 +693,23 @@
 							</div>
 							<div>
 								<label class="mb-1 block text-[11px] text-ink-300" for="ob-golive"
-									>Go-live date</label
+									>Ticket Sale Start</label
 								>
 								<input
 									id="ob-golive"
 									type="date"
 									bind:value={goLiveDate}
+									class="h-[34px] w-full rounded-control border border-hairline bg-panel px-2.5 font-mono text-[12.5px] text-ink focus:outline-none focus:ring-1 focus:ring-primary"
+								/>
+							</div>
+							<div>
+								<label class="mb-1 block text-[11px] text-ink-300" for="ob-eventdate"
+									>Event Date</label
+								>
+								<input
+									id="ob-eventdate"
+									type="date"
+									bind:value={eventDate}
 									class="h-[34px] w-full rounded-control border border-hairline bg-panel px-2.5 font-mono text-[12.5px] text-ink focus:outline-none focus:ring-1 focus:ring-primary"
 								/>
 							</div>
@@ -793,6 +930,45 @@
 		>
 			<!-- LEFT -->
 			<div>
+				<!-- Categories (CAT-1) -->
+				<div class="mb-4 rounded-control border border-hairline bg-panel p-4">
+					<div class="mb-3 flex items-center justify-between">
+						<div class="font-mono text-[11px] uppercase tracking-[0.5px] text-ink-300">
+							Categories
+						</div>
+						{#if data.isManager}
+							<button
+								type="button"
+								class="font-mono text-[11px] text-blue-600 underline hover:text-blue-800"
+								onclick={() => (categoryManagerOpen = true)}
+							>
+								Manage categories
+							</button>
+						{/if}
+					</div>
+					{#if data.assignedCategories.length > 0}
+						<div class="mb-3 flex flex-wrap gap-1.5">
+							{#each data.assignedCategories as c (c.id)}
+								<CategoryChip
+									category={c}
+									removable={canEdit}
+									onRemove={() => removeCategory(c.id)}
+								/>
+							{/each}
+						</div>
+					{:else}
+						<div class="mb-3 text-[12px] text-ink-300">No categories assigned.</div>
+					{/if}
+					{#if canEdit}
+						<CategoryAssignPanel
+							leadId={lead.id}
+							allCategories={data.allCategories}
+							assignedCategories={data.assignedCategories}
+							onUpdate={() => {}}
+						/>
+					{/if}
+				</div>
+
 				<div class="mb-4 rounded-control border border-hairline bg-panel p-4">
 					<div class="mb-3 font-mono text-[11px] uppercase tracking-[0.5px] text-ink-300">
 						Lead &amp; event
@@ -814,17 +990,63 @@
 								{/if}
 							</div>
 						{/each}
+						<div>
+							<div class="mb-0.5 text-[11px] text-ink-300">Organizer</div>
+							<div class="flex items-center gap-2">
+								<span class="font-mono text-[13px] text-ink"
+									>{lead.organizerName ?? 'Not tagged'}</span
+								>
+								{#if canEdit}
+									<button
+										type="button"
+										class="font-mono text-[11px] text-blue-600 underline hover:text-blue-800"
+										onclick={() => (organizerTagOpen = true)}
+									>
+										{lead.organizerId ? 'Change' : 'Tag'}
+									</button>
+								{/if}
+							</div>
+						</div>
 					</div>
 				</div>
 
-				{#if lead.notes}
-					<div class="mb-4 rounded-control border border-hairline bg-panel p-4">
-						<div class="mb-2 font-mono text-[11px] uppercase tracking-[0.5px] text-ink-300">
-							Notes
-						</div>
-						<p class="whitespace-pre-wrap text-[13px] leading-relaxed text-ink-600">{lead.notes}</p>
+				<!-- Competitor notes panel -->
+				<div class="mb-4 rounded-control border border-hairline bg-panel p-4">
+					<div class="mb-3 font-mono text-[11px] uppercase tracking-[0.5px] text-ink-300">
+						Competitor platform &amp; notes
 					</div>
-				{/if}
+					{#if canEdit}
+						<div class="flex flex-col gap-2">
+							<div>
+								<label class="mb-1 block text-[11px] text-ink-300" for="competitor-notes"
+									>Notes</label
+								>
+								<textarea
+									id="competitor-notes"
+									bind:value={competitorNotesDraft}
+									rows={3}
+									placeholder="Notes about competitor platforms, pricing, objections…"
+									class="w-full rounded-[6px] border border-hairline bg-surface px-3 py-2 text-[13px] text-ink placeholder:text-ink-300 focus:border-primary focus:outline-none"
+									{...fieldErrorAttrs('competitor-notes', competitorNotesErrors)}></textarea>
+								<FieldError id="competitor-notes" errors={competitorNotesErrors} />
+							</div>
+							<div class="flex justify-end">
+								<Button
+									onclick={saveCompetitorNotes}
+									disabled={savingCompetitorNotes}
+									variant="outline"
+									class="h-[30px] text-[12px]"
+								>
+									{savingCompetitorNotes ? 'Saving…' : 'Save'}
+								</Button>
+							</div>
+						</div>
+					{:else if lead.competitorNotes}
+						<p class="text-[13px] text-ink">{lead.competitorNotes}</p>
+					{:else}
+						<p class="text-[12px] text-ink-300">No competitor notes.</p>
+					{/if}
+				</div>
 
 				<div class="mb-4">
 					<ActivityTimeline
@@ -948,6 +1170,13 @@
 						</div>
 					</div>
 				</div>
+
+				<NotesPanel
+					notes={data.notes}
+					currentUserId={data.me.id}
+					onSubmit={noteHandlers.addNote}
+					onEdit={noteHandlers.editNote}
+				/>
 			</div>
 		</div>
 	</div>
@@ -980,6 +1209,15 @@
 		onconfirm={confirmReassign}
 	/>
 {/if}
+{#if organizerTagOpen}
+	<OrganizerTagModal
+		open={true}
+		organizers={data.organizers}
+		currentOrganizerId={lead.organizerId}
+		onclose={() => (organizerTagOpen = false)}
+		onconfirm={confirmOrganizerTag}
+	/>
+{/if}
 {#if discardOpen}
 	<DiscardIssueModal
 		open={true}
@@ -987,5 +1225,13 @@
 		saving={mutating}
 		onclose={() => (discardOpen = false)}
 		onconfirm={confirmDiscard}
+	/>
+{/if}
+{#if categoryManagerOpen}
+	<CategoryManager
+		open={true}
+		categories={data.allCategories}
+		onClose={() => (categoryManagerOpen = false)}
+		onUpdate={() => {}}
 	/>
 {/if}

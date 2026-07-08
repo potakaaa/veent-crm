@@ -122,3 +122,44 @@ unchanged from before that session.
   `db:generate` — it must emit ONLY the single `crm_users` ALTER. Apply manual-first with the
   risk-evidence pack. This unblocks Sections C/D/E of `vercel-deploy-migration_03-07-26`
   (pending_welcome DB column + the in-memory-Set → DB-flag serverless fix).
+
+## Update 07-07-26 — CAT-1 migrations 0026–0028 added snapshot-less by intent
+
+CAT-1 (`cat-1-custom-lead-categories_07-07-26`, GitHub #248) added three HAND-WRITTEN migrations —
+`0026_cat1_add_tables`, `0027_cat1_data_migrate`, `0028_cat1_drop_enum_column` — registered at
+journal `idx` 26/27/28 with NO matching `meta/00NN_snapshot.json` files. This is intentional:
+`db:generate` remains blocked by the duplicate-id snapshot-chain corruption documented above, so
+these migrations were authored by hand and ship snapshot-less, continuing the existing documented
+drift pattern (0016/0017 already ship snapshot-less). Full snapshot-chain reconciliation remains
+the separate backlog item described in this note.
+
+## Update 07-07-26 (session 2) — third idx collision, `git merge development`, resolved
+
+While merging `development` into the local working branch (GitHub #250 combobox-suggest-freetext
+work), both branches had independently claimed journal `idx: 26`: this branch's
+`0026_careless_captain_britain` (adds `crm_meetings.venue`, from #250) vs. `development`'s 4-migration
+CAT-1 chain (`0026_cat1_add_tables` through `0029_cat1_partial_name_idx`, GitHub #248, see the
+update directly above). Same drift class as the `idx: 15` collision documented in the 02-07-26
+update — two branches generating sequential migrations independently off the same base.
+
+Resolved the same way as before: kept `development`'s 4-entry CAT-1 chain as-is (idx 26–29, already
+merged/canonical), renamed this branch's single migration + snapshot to idx 30
+(`0030_careless_captain_britain.sql` / `drizzle/meta/0030_snapshot.json`, `git mv`'d to preserve
+history), and re-sequenced `drizzle/meta/_journal.json` accordingly. `bun run db:migrate` applied
+CAT-1's 26–29 cleanly to the local dev DB (this branch's own 0030 content was already applied
+earlier under its pre-rename name/hash — renaming a migration file does not change its content
+hash, so drizzle-kit correctly recognized it as already-tracked and did not re-run it).
+
+**New chain-quality note:** `0030_snapshot.json` was generated (via `bun run db:generate`) BEFORE
+this merge, so it reflects only this branch's schema state (adds `venue`) — it does NOT include
+CAT-1's categories tables/enum changes, which (per the update above) were never snapshotted in the
+first place. This is consistent with the existing drift, not a new regression, but it means
+`0030_snapshot.json` cannot be treated as a trustworthy full-schema baseline for a future
+`db:generate` any more than the pre-existing chain could. The same reconciliation-pass backlog item
+(03-07-26 update, above) still covers fixing this permanently — not attempted here per the same
+"HIGH-risk migration-baseline call, manual-first" reasoning already on record.
+
+**Guardrail reminder that caught this:** the pre-flight check (confirm journal's last `idx` matches
+the highest-numbered `.sql` file before generating/applying) is what surfaces this class of
+collision at merge time rather than at deploy time — worth re-running explicitly after every
+`git merge`/`git pull` that touches `drizzle/`, not just before `db:generate`.

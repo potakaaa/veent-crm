@@ -22,5 +22,5 @@
 		</AvatarFallback>
 	</Avatar>
 {:else}
-	<span class="truncate font-mono text-[11px] italic text-ink-200">— up for grabs</span>
+	<span class="truncate font-mono text-[11px] italic text-ink-200">— unassigned</span>
 {/if}

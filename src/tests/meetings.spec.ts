@@ -92,8 +92,10 @@ describe('dbRowToMeeting', () => {
 			id: UUID_A,
 			leadId: UUID_B,
 			organizerId: UUID_C,
+			leadOrganizerId: null,
 			startAt: new Date('2026-07-10T14:00:00.000Z'),
 			meetingUrl: 'https://meet.example.com/abc',
+			venue: null,
 			notes: 'Kickoff',
 			outcome: 'positive',
 			deletedAt: null,
@@ -114,6 +116,7 @@ describe('dbRowToMeeting', () => {
 			leadName: 'Acme Corp',
 			organizerId: UUID_C,
 			organizerName: 'Alice',
+			leadOrganizerId: null,
 			startAt: '2026-07-10T14:00:00.000Z',
 			meetingUrl: 'https://meet.example.com/abc',
 			notes: 'Kickoff',
@@ -121,6 +124,24 @@ describe('dbRowToMeeting', () => {
 			attendees,
 			createdAt: '2026-07-01T09:00:00.000Z'
 		});
+	});
+
+	it('maps leadOrganizerId + leadOrganizerName when the lead is linked to an organizer (#188)', () => {
+		const m = dbRowToMeeting(
+			makeRow({ leadOrganizerId: UUID_B }),
+			[],
+			null,
+			null,
+			'Acme Organizers'
+		);
+		expect(m.leadOrganizerId).toBe(UUID_B);
+		expect(m.leadOrganizerName).toBe('Acme Organizers');
+	});
+
+	it('defaults leadOrganizerId to null and leadOrganizerName undefined when unset (#188)', () => {
+		const m = dbRowToMeeting(makeRow({ leadOrganizerId: null }), []);
+		expect(m.leadOrganizerId).toBe(null);
+		expect(m.leadOrganizerName).toBeUndefined();
 	});
 
 	it('coerces null scalar columns to undefined and null organizer to null', () => {
@@ -191,5 +212,14 @@ describe('parseMeetingFilterParams', () => {
 		expect(parse('dateFrom=07-01-2026').dateFrom).toBeUndefined(); // wrong format
 		expect(parse('dateTo=notadate').dateTo).toBeUndefined();
 		expect(parse('').dateFrom).toBeUndefined();
+	});
+
+	// --- outcome free-text filter ---
+	it('trims outcome and treats empty/whitespace-only as undefined', () => {
+		expect(parse('outcome=won%20deal').outcome).toBe('won deal');
+		expect(parse('outcome=%20%20trimmed%20%20').outcome).toBe('trimmed');
+		expect(parse('outcome=').outcome).toBeUndefined();
+		expect(parse('outcome=%20%20%20').outcome).toBeUndefined();
+		expect(parse('').outcome).toBeUndefined();
 	});
 });

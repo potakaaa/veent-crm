@@ -14,7 +14,6 @@ import {
 	parseFilterCsv,
 	visibilityCondition
 } from '$lib/server/db/leads';
-import { leadCategory } from '$lib/server/db/schema';
 import { canEditLead } from '$lib/utils/permissions';
 import { PgDialect } from 'drizzle-orm/pg-core';
 import type { SQL } from 'drizzle-orm';
@@ -29,7 +28,6 @@ function makeRow(overrides: Partial<Parameters<typeof dbRowToLead>[0]> = {}) {
 	return {
 		id: 'uuid-test-001',
 		name: 'Test Org',
-		category: 'Sports' as const,
 		location: 'Manila',
 		country: null,
 		platform: 'Facebook' as const,
@@ -73,6 +71,8 @@ function makeRow(overrides: Partial<Parameters<typeof dbRowToLead>[0]> = {}) {
 		bankChargesAbsorbed: null,
 		hasFutureEvents: false,
 		notes: null,
+		currentPlatform: null,
+		competitorNotes: null,
 		createdAt: now,
 		updatedAt: now,
 		...overrides
@@ -109,7 +109,6 @@ describe('leadFormSchema (create-lead validation)', () => {
 	it('accepts a minimal payload with just a name', () => {
 		const r = leadFormSchema.safeParse({ name: 'USWAG Davao' });
 		expect(r.success).toBe(true);
-		if (r.success) expect(r.data.category).toBe('Other');
 	});
 
 	it('rejects an empty name', () => {
@@ -174,7 +173,6 @@ describe('dbRowToLead mapper', () => {
 		const lead = dbRowToLead(makeRow());
 		expect(lead.id).toBe('uuid-test-001');
 		expect(lead.name).toBe('Test Org');
-		expect(lead.category).toBe('Sports');
 		expect(lead.stage).toBe('new');
 		expect(lead.source).toBe('manual');
 		expect(lead.ownerId).toBe('owner-uuid');
@@ -288,6 +286,30 @@ describe('dbRowToLead mapper', () => {
 		// Simulate a legacy row where the value is null despite the NOT NULL default.
 		const lead = dbRowToLead(makeRow({ hasFutureEvents: null as unknown as boolean }));
 		expect(lead.hasFutureEvents).toBe(false);
+	});
+
+	// #188 — linked recurring-organizer (crm_organizers) pre-fill source
+	it('populates organizerId and organizerName when a crm_organizers row is present', () => {
+		const lead = dbRowToLead(
+			makeRow({ organizerId: '00000000-0000-0000-0000-0000000000aa' }),
+			undefined,
+			'Acme Organizers'
+		);
+		expect(lead.organizerId).toBe('00000000-0000-0000-0000-0000000000aa');
+		expect(lead.organizerName).toBe('Acme Organizers');
+	});
+
+	it('leaves organizerId null and organizerName undefined when the lead has no organizer', () => {
+		const lead = dbRowToLead(makeRow({ organizerId: null }));
+		expect(lead.organizerId).toBeNull();
+		expect(lead.organizerName).toBeUndefined();
+	});
+
+	it('populates organizerId from the row even when organizerName is not looked up', () => {
+		// List paths pass no organizerName; the id must still map from the row column.
+		const lead = dbRowToLead(makeRow({ organizerId: '00000000-0000-0000-0000-0000000000bb' }));
+		expect(lead.organizerId).toBe('00000000-0000-0000-0000-0000000000bb');
+		expect(lead.organizerName).toBeUndefined();
 	});
 });
 
@@ -421,21 +443,9 @@ describe('parseFilterCsv (Up for Grabs filter param parsing)', () => {
 	});
 });
 
-// ---------------------------------------------------------------------------
-// Category filter options — must equal leadCategory.enumValues exactly (AC#12)
-// Fully-Automated gate: enum-derived, never DB-queried.
-// ---------------------------------------------------------------------------
-
-describe('category filter options (AC#12 — enum-derived)', () => {
-	it('includes known categories from the enum and preserves order', () => {
-		const options = [...leadCategory.enumValues];
-		expect(options[0]).toBe('Sports');
-		expect(options).toContain('Concert');
-		expect(options).toContain('Other');
-		// No duplicates.
-		expect(new Set(options).size).toBe(options.length);
-	});
-});
+// NOTE(CAT-1): the AC#12 "category filter options == leadCategory.enumValues" test was retired.
+// Lead categories are now dynamic (crm_categories) — filter SQL is covered by
+// buildCategoryFilterConditions() tests in categories-db.spec.ts, not a static enum assertion.
 
 // 404 path covered by leads-db.spec.ts: "getLead returns null for a nonexistent UUID"
 

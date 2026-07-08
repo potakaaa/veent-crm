@@ -6,6 +6,9 @@
 	import { Textarea } from '$lib/components/ui/textarea';
 	import { Select, SelectTrigger, SelectContent, SelectItem } from '$lib/components/ui/select';
 	import LeadCombobox from '$lib/components/meetings/LeadCombobox.svelte';
+	import OrganizerCombobox from '$lib/components/meetings/OrganizerCombobox.svelte';
+	import { ComboboxFreetext } from '$lib/components/ui/combobox-freetext';
+	import { fetchVenueSuggestions } from '$lib/utils/venue-suggest';
 	import { FieldError, fieldErrorAttrs } from '$lib/components/ui/field-error';
 	import type { Meeting, User } from '$lib/types';
 
@@ -13,7 +16,9 @@
 		leadId: string;
 		startAt: string; // ISO
 		organizerId?: string;
+		leadOrganizerId?: string | null;
 		meetingUrl?: string;
+		venue?: string;
 		notes?: string;
 		outcome?: string;
 		attendeeIds: string[];
@@ -25,6 +30,10 @@
 		// Single-lead mode: leadId fixed, no lead selector. Cross-lead/create mode: leadId omitted;
 		// the lead is chosen via LeadCombobox (assign mode) backed by GET /api/leads.
 		leadId = undefined,
+		// Lead's linked recurring-organizer (crm_organizers, GitHub #188) — the CREATE-mode
+		// pre-fill source only. Never used to hydrate an existing meeting on edit.
+		leadOrganizerId = undefined,
+		leadOrganizerName = undefined,
 		meeting = null,
 		saving = false,
 		onclose,
@@ -33,6 +42,8 @@
 		open: boolean;
 		users: User[];
 		leadId?: string;
+		leadOrganizerId?: string | null;
+		leadOrganizerName?: string;
 		meeting?: Meeting | null;
 		saving?: boolean;
 		onclose: () => void;
@@ -53,7 +64,12 @@
 	let selectedLeadId = $state('');
 	let startLocal = $state('');
 	let organizerId = $state('');
+	// Lead's linked recurring-organizer (crm_organizers) selection for THIS meeting.
+	let selectedLeadOrganizerId = $state<string | undefined>(undefined);
+	// Label to seed the combobox trigger: edit → meeting's saved organizer; create → lead's.
+	let leadOrganizerLabel = $state<string | undefined>(undefined);
 	let meetingUrl = $state('');
+	let venue = $state('');
 	let notes = $state('');
 	let outcome = $state('');
 	let attendeeIds = $state<string[]>([]);
@@ -70,7 +86,18 @@
 		selectedLeadId = meeting?.leadId ?? leadId ?? '';
 		startLocal = toLocalInput(meeting?.startAt);
 		organizerId = meeting?.organizerId ?? '';
+		// Edit: hydrate from the meeting's OWN saved value so editing never overwrites a
+		// previously-chosen organizer with the lead's current tag. Create: pre-fill from the
+		// lead's linked organizer (GitHub #188 AC1/AC2).
+		if (meeting) {
+			selectedLeadOrganizerId = meeting.leadOrganizerId ?? undefined;
+			leadOrganizerLabel = meeting.leadOrganizerName;
+		} else {
+			selectedLeadOrganizerId = leadOrganizerId ?? undefined;
+			leadOrganizerLabel = leadOrganizerName;
+		}
 		meetingUrl = meeting?.meetingUrl ?? '';
+		venue = meeting?.venue ?? '';
 		notes = meeting?.notes ?? '';
 		outcome = meeting?.outcome ?? '';
 		attendeeIds = meeting?.attendees.map((a) => a.userId) ?? [];
@@ -107,7 +134,12 @@
 			// On edit keep the empty-string value so unassigning is distinct from
 			// "field untouched"; on create collapse empty to undefined (omit).
 			organizerId: isEdit ? organizerId : organizerId || undefined,
+			// null explicitly clears the linked organizer (edit) or persists "no organizer"
+			// (create); a chosen id persists the link. Send null (not undefined) so the JSON
+			// key survives and the DB layer applies the clear.
+			leadOrganizerId: selectedLeadOrganizerId ?? null,
 			meetingUrl: meetingUrl.trim() || undefined,
+			venue: venue.trim() || undefined,
 			notes: notes.trim() || undefined,
 			outcome: outcome.trim() || undefined,
 			attendeeIds
@@ -162,6 +194,18 @@
 	</div>
 
 	<div class="mb-3.5 grid gap-1.5">
+		<Label for="mtg-lead-organizer">Organizer / Contact</Label>
+		<OrganizerCombobox
+			id="mtg-lead-organizer"
+			bind:value={selectedLeadOrganizerId}
+			selectedLabel={leadOrganizerLabel}
+		/>
+		<p class="text-[11px] text-ink-400">
+			Linked from the lead's organizer. Change or clear as needed.
+		</p>
+	</div>
+
+	<div class="mb-3.5 grid gap-1.5">
 		<Label id="mtg-attendees-label">Attendees</Label>
 		<div class="max-h-32 overflow-y-auto rounded-[8px] border border-hairline bg-panel-subtle p-2">
 			<div class="flex flex-wrap gap-1.5" role="group" aria-labelledby="mtg-attendees-label">
@@ -189,6 +233,16 @@
 			bind:value={meetingUrl}
 			placeholder="https://meet.google.com/…"
 			class="font-mono"
+		/>
+	</div>
+
+	<div class="mb-3.5 grid gap-1.5">
+		<Label for="mtg-venue">Venue</Label>
+		<ComboboxFreetext
+			id="mtg-venue"
+			bind:value={venue}
+			placeholder="e.g. Ayala Center Cebu"
+			search={fetchVenueSuggestions}
 		/>
 	</div>
 

@@ -6,6 +6,6 @@ export const load: LayoutServerLoad = async ({ locals, cookies }) => {
 	const sidebarOpen = cookies.get(SIDEBAR_COOKIE_NAME) !== 'false';
 	const counts = locals.user
 		? await getNavCounts(locals.user.id, locals.user.role)
-		: { overdue: 0, unassigned: 0 };
+		: { overdue: 0, unassigned: 0, unread: 0 };
 	return { user: locals.user, sidebarOpen, counts };
 };

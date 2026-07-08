@@ -8,8 +8,11 @@ import {
 	crmUsers,
 	crmActivities,
 	crmLeadHistory,
-	crmLeadVisibilityGrants
+	crmLeadVisibilityGrants,
+	crmOrganizers,
+	crmLeadCategories
 } from './schema';
+import { createLeadAssignedNotification, getUnreadNotificationCount } from './notifications';
 import {
 	eq,
 	isNull,
@@ -49,7 +52,11 @@ type DbActivity = typeof crmActivities.$inferSelect;
 // Pure mappers (exported for unit tests)
 // ---------------------------------------------------------------------------
 
-export function dbRowToLead(row: DbLead, followUpAt?: string | Date | null): Lead {
+export function dbRowToLead(
+	row: DbLead,
+	followUpAt?: string | Date | null,
+	organizerName?: string | null
+): Lead {
 	const createdAt = row.createdAt.toISOString();
 	const lastActivityAt = row.lastActivityAt?.toISOString() ?? createdAt;
 
@@ -84,7 +91,6 @@ export function dbRowToLead(row: DbLead, followUpAt?: string | Date | null): Lea
 		id: row.id,
 		name: row.name,
 		handle,
-		category: row.category as Lead['category'],
 		location: row.location ?? '—',
 		country: row.country ?? '—',
 		platform: (row.platform ?? 'Other') as Lead['platform'],
@@ -101,8 +107,15 @@ export function dbRowToLead(row: DbLead, followUpAt?: string | Date | null): Lea
 		pageUrl: row.pageUrl ?? undefined,
 		socialFacebook: row.socialFacebook ?? undefined,
 		socialInstagram: row.socialInstagram ?? undefined,
+		// Lead's linked recurring-organizer entity (crm_organizers, GitHub #188). `organizerId`
+		// maps straight from the row column (always available); `organizerName` requires a
+		// crm_organizers lookup and is only passed by detail-load paths (undefined otherwise).
+		organizerId: row.organizerId ?? null,
+		organizerName: organizerName ?? undefined,
 		source: row.source as Lead['source'],
 		notes: row.notes ?? undefined,
+		currentPlatform: row.currentPlatform ?? undefined,
+		competitorNotes: row.competitorNotes ?? undefined,
 		signedOrg: row.wonOrgName ?? undefined,
 		dealValue: row.dealValueCents != null ? row.dealValueCents / 100 : undefined,
 		currency: ((row.currency as Lead['currency']) ?? 'PHP') || 'PHP',
@@ -182,6 +195,28 @@ export function resolveFollowUpAt(
 		return new Date(occurredAt.getTime() + followUpInDays * 86_400_000);
 	}
 	return null;
+}
+
+/**
+ * Category filter predicate for the leads list (CAT-1, GitHub #248). Pure SQL
+ * construction — DB-free and `.toSQL()`-testable. Returns an EXISTS subquery
+ * matching leads that carry AT LEAST ONE of the given category assignments;
+ * an empty array yields `undefined` (no restriction). OR-within-filter semantics
+ * mirror the other multi-select list filters.
+ */
+export function buildCategoryFilterConditions(categoryIds: string[]): SQL | undefined {
+	if (!categoryIds.length) return undefined;
+	return exists(
+		db
+			.select({ one: sql`1` })
+			.from(crmLeadCategories)
+			.where(
+				and(
+					eq(crmLeadCategories.leadId, crmLeads.id),
+					inArray(crmLeadCategories.categoryId, categoryIds)
+				)
+			)
+	) as SQL;
 }
 
 // ---------------------------------------------------------------------------
@@ -314,12 +349,15 @@ export interface ListLeadsParams {
 	stage?: string;
 	platform?: string;
 	country?: string;
+	ownerId?: string;
+	categoryIds?: string[];
 	staleOnly?: boolean;
 	hasFutureEvents?: boolean;
 	weeksAhead?: number | null;
 	search?: string;
 	date?: string;
 	dateField?: 'event_date' | 'created_at';
+	createdFrom?: string;
 	page?: number;
 	pageSize?: number;
 	sort?: string;
@@ -341,12 +379,15 @@ export async function listLeadsFiltered(
 		stage,
 		platform,
 		country,
+		ownerId,
+		categoryIds,
 		staleOnly = false,
 		hasFutureEvents = false,
 		weeksAhead = 8,
 		search,
 		date,
 		dateField,
+		createdFrom,
 		page = 1,
 		pageSize = 25,
 		sort,
@@ -373,6 +414,13 @@ export async function listLeadsFiltered(
 
 	// Country filter (normalized country column)
 	if (country) conditions.push(eq(crmLeads.country, country));
+
+	// Owner filter (GitHub #226) — manager/super_manager only; validated caller-side.
+	if (ownerId) conditions.push(eq(crmLeads.ownerId, ownerId));
+
+	// Category filter (CAT-1, GitHub #248) — OR-within-filter EXISTS subquery; empty → no-op.
+	const categoryCondition = buildCategoryFilterConditions(categoryIds ?? []);
+	if (categoryCondition) conditions.push(categoryCondition);
 
 	// Stale only: no activity for > 30 days
 	if (staleOnly) {
@@ -420,6 +468,12 @@ export async function listLeadsFiltered(
 		} else {
 			conditions.push(sql`${crmLeads.eventDate} = ${date}::date`);
 		}
+	}
+
+	// "Added since" filter (from dashboard drill-through) — independent of the exact-date
+	// filter above; always scoped to created_at, lower-bound inclusive.
+	if (createdFrom && /^\d{4}-\d{2}-\d{2}$/.test(createdFrom)) {
+		conditions.push(sql`DATE(${crmLeads.createdAt}) >= ${createdFrom}::date`);
 	}
 
 	const where = and(...conditions);
@@ -478,12 +532,16 @@ export async function listLeadsFiltered(
  * returns `null` — the caller renders a 404, never a redacted view or a 403 (AC#8).
  */
 export async function getLead(id: string, userId: string, role: Role): Promise<Lead | null> {
+	// Left-join crm_organizers so the lead's linked organizer NAME is available for the
+	// meeting-create pre-fill (GitHub #188). Selecting {lead, organizerName} keeps the
+	// existing full-row shape intact for dbRowToLead; organizerName is passed separately.
 	const [row] = await db
-		.select()
+		.select({ lead: crmLeads, organizerName: crmOrganizers.name })
 		.from(crmLeads)
+		.leftJoin(crmOrganizers, eq(crmLeads.organizerId, crmOrganizers.id))
 		.where(and(eq(crmLeads.id, id), isNull(crmLeads.deletedAt), visibilityCondition(userId, role)))
 		.limit(1);
-	return row ? dbRowToLead(row) : null;
+	return row ? dbRowToLead(row.lead, undefined, row.organizerName) : null;
 }
 
 const UNASSIGNED_SORT_COLS = ['name', 'event', 'stage', 'source', 'appeal'] as const;
@@ -531,7 +589,12 @@ export async function listUnassignedLeads(
 	pageSize = 25,
 	sort?: string,
 	dir?: 'asc' | 'desc',
-	filters?: { country?: string[]; category?: string[]; weeksAhead?: number | null; search?: string }
+	filters?: {
+		country?: string[];
+		categoryIds?: string[];
+		weeksAhead?: number | null;
+		search?: string;
+	}
 ): Promise<{ leads: Lead[]; total: number }> {
 	const conditions = unassignedBaseConditions();
 
@@ -540,9 +603,8 @@ export async function listUnassignedLeads(
 	if (filters?.country && filters.country.length > 0) {
 		conditions.push(inArray(crmLeads.country, filters.country));
 	}
-	if (filters?.category && filters.category.length > 0) {
-		conditions.push(inArray(crmLeads.category, filters.category as DbLead['category'][]));
-	}
+	const categoryCondition = buildCategoryFilterConditions(filters?.categoryIds ?? []);
+	if (categoryCondition) conditions.push(categoryCondition);
 
 	// Weeks-ahead minimum: show only leads with events at least N weeks out.
 	// undefined → default 8; null → no limit (All).
@@ -721,23 +783,90 @@ export async function listActivities(leadId: string): Promise<Activity[]> {
 	return rows.map(dbActivityToActivity);
 }
 
+/** Canonical UUID v4-shape guard — shared by the pipeline `?rep=` trust-boundary helper. */
+const PIPELINE_UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * Trust-boundary DECISION for the manager-only pipeline AE filter (`?rep=<uuid>`).
+ * Returns the owner UUID to scope to, or `undefined` (team-wide / no filter):
+ *   - manager/super_manager + valid-UUID `rawRepId` → that UUID (may be the manager's own id = "Mine")
+ *   - rep role                                       → always `undefined` (a rep can never filter)
+ *   - malformed / absent input                       → `undefined`
+ * Mirrors the CAL-3 `?repId` guard. A rep hand-crafting `?rep=<other-uuid>` is ignored here;
+ * `buildPipelineStageWhereClause` is a second, independent guard (the query only honors
+ * `filterRepId` for manager/super_manager).
+ */
+export function resolvePipelineRepFilter(
+	role: Role,
+	rawRepId: string | null | undefined
+): string | undefined {
+	if (role !== 'manager' && role !== 'super_manager') return undefined;
+	if (!rawRepId || !PIPELINE_UUID_RE.test(rawRepId)) return undefined;
+	return rawRepId;
+}
+
+/**
+ * Shared WHERE composition for the paginated pipeline-stage query. Exported so tests can
+ * assert the exact SQL `listPipelineStage` produces without a live DB (via drizzle `.toSQL()`).
+ * Composes the soft-delete guard + stage match + the `visibilityCondition` leak guard, plus the
+ * manager-only owner-narrow term:
+ *   - rep                                       → no owner-narrow (already own-scoped by visibilityCondition)
+ *   - manager/super_manager, no `filterRepId`   → no owner-narrow (team-wide)
+ *   - manager/super_manager, `filterRepId` set  → `eq(ownerId, filterRepId)`, ANDed (never OR)
+ * A rep's own-leads restriction can never be widened by a stray `filterRepId` — the owner-narrow
+ * is pushed ONLY for manager/super_manager. Mirrors `buildGoLiveWhereClause` exactly.
+ */
+export function buildPipelineStageWhereClause(
+	userId: string,
+	role: Role,
+	stage: Stage,
+	filterRepId?: string,
+	search?: string
+): SQL | undefined {
+	const conditions: SQL[] = [
+		isNull(crmLeads.deletedAt) as SQL,
+		sql`${crmLeads.stage} = ${stage}`,
+		visibilityCondition(userId, role)
+	];
+	if ((role === 'manager' || role === 'super_manager') && filterRepId) {
+		conditions.push(eq(crmLeads.ownerId, filterRepId));
+	}
+	// Search: case-insensitive against name, organizer name, and event name. Reuses the exact
+	// LIKE-metachar escaping idiom from listUnassignedLeads/listLeads so literal `%`/`_`/`\`
+	// input never acts as a wildcard. ANDed with visibility/rep scoping (never OR-widens).
+	const s = search?.trim();
+	if (s) {
+		const escapeLike = (x: string) => x.replace(/[\\%_]/g, '\\$&');
+		const like = `%${escapeLike(s)}%`;
+		conditions.push(
+			or(
+				ilike(crmLeads.name, like),
+				ilike(sql`COALESCE(${crmOrganizers.name}, '')`, like),
+				ilike(sql`COALESCE(${crmLeads.eventName}, '')`, like)
+			)!
+		);
+	}
+	return and(...conditions);
+}
+
 /**
  * Single-stage, paginated pipeline listing (10 per page by default).
  * Mirrors listPipelineLeads ordering: upcoming events float to the top,
  * then last-activity order. Returns the page rows plus the stage total.
+ *
+ * `filterRepId` (optional) narrows the board to a single AE — honored ONLY for
+ * manager/super_manager (see `buildPipelineStageWhereClause`); reps ignore it.
  */
 export async function listPipelineStage(
 	stage: Stage,
 	page: number = 1,
 	limit: number = 10,
 	userId: string,
-	role: Role
+	role: Role,
+	filterRepId?: string,
+	search?: string
 ): Promise<{ leads: Lead[]; total: number }> {
-	const where = and(
-		isNull(crmLeads.deletedAt),
-		sql`${crmLeads.stage} = ${stage}`,
-		visibilityCondition(userId, role)
-	);
+	const where = buildPipelineStageWhereClause(userId, role, stage, filterRepId, search);
 	const eventOrder = [
 		sql`CASE WHEN ${crmLeads.eventDate} >= CURRENT_DATE THEN 0 ELSE 1 END`,
 		sql`CASE WHEN ${crmLeads.eventDate} >= CURRENT_DATE THEN ${crmLeads.eventDate} END ASC NULLS LAST`,
@@ -747,15 +876,24 @@ export async function listPipelineStage(
 	const offset = (Math.max(1, page) - 1) * limit;
 	const [rows, [{ total }]] = await Promise.all([
 		db
-			.select()
+			.select({ lead: crmLeads, organizerName: crmOrganizers.name })
 			.from(crmLeads)
+			.leftJoin(crmOrganizers, eq(crmLeads.organizerId, crmOrganizers.id))
 			.where(where)
 			.orderBy(...eventOrder)
 			.limit(limit)
 			.offset(offset),
-		db.select({ total: count() }).from(crmLeads).where(where)
+		// The count query mirrors the rows query's leftJoin so the search predicate's
+		// COALESCE(organizers.name, …) term resolves (organizerId is a 1:1 FK, so the join
+		// never inflates the count). Without the join a `search` referencing the organizer
+		// column would raise a missing-FROM-clause error at runtime.
+		db
+			.select({ total: count() })
+			.from(crmLeads)
+			.leftJoin(crmOrganizers, eq(crmLeads.organizerId, crmOrganizers.id))
+			.where(where)
 	]);
-	return { leads: rows.map((row) => dbRowToLead(row)), total };
+	return { leads: rows.map((row) => dbRowToLead(row.lead, undefined, row.organizerName)), total };
 }
 
 // ---------------------------------------------------------------------------
@@ -765,7 +903,6 @@ export async function listPipelineStage(
 export async function createLead(
 	input: {
 		name: string;
-		category: DbLead['category'];
 		platform?: DbLead['platform'];
 		location?: string;
 		pageUrl?: string;
@@ -778,6 +915,9 @@ export async function createLead(
 		notes?: string;
 		visibility?: Visibility;
 		selectedUserIds?: string[];
+		organizerId?: string;
+		currentPlatform?: string;
+		competitorNotes?: string;
 	},
 	ownerId: string
 ): Promise<Lead> {
@@ -797,7 +937,6 @@ export async function createLead(
 			.insert(crmLeads)
 			.values({
 				name: input.name,
-				category: input.category,
 				platform: input.platform ?? null,
 				location: input.location ?? null,
 				pageUrl: input.pageUrl ?? null,
@@ -808,7 +947,10 @@ export async function createLead(
 				firstAnnouncedDate: input.firstAnnouncedDate ?? null,
 				firstReachedOutDate: input.firstReachedOutDate ?? null,
 				notes: input.notes ?? null,
+				currentPlatform: input.currentPlatform ?? null,
+				competitorNotes: input.competitorNotes ?? null,
 				normalizedHandle,
+				organizerId: input.organizerId ?? null,
 				ownerId,
 				visibility,
 				source: 'manual',
@@ -831,7 +973,6 @@ export async function updateLead(
 	id: string,
 	input: {
 		name: string;
-		category: DbLead['category'];
 		platform?: DbLead['platform'];
 		location?: string;
 		pageUrl?: string;
@@ -859,6 +1000,8 @@ export async function updateLead(
 		serviceFeePerTicketPesos?: number;
 		bankChargesAbsorbed?: boolean;
 		hasFutureEvents?: boolean;
+		currentPlatform?: string | null;
+		competitorNotes?: string | null;
 	},
 	actorId: string
 ): Promise<Lead | null> {
@@ -885,7 +1028,6 @@ export async function updateLead(
 			.set({
 				name: input.name,
 				normalizedHandle,
-				category: input.category,
 				platform: input.platform ?? null,
 				location: input.location ?? null,
 				pageUrl: input.pageUrl ?? null,
@@ -926,6 +1068,12 @@ export async function updateLead(
 					? { bankChargesAbsorbed: input.bankChargesAbsorbed }
 					: {}),
 				...(input.hasFutureEvents !== undefined ? { hasFutureEvents: input.hasFutureEvents } : {}),
+				...(input.currentPlatform !== undefined
+					? { currentPlatform: input.currentPlatform || null }
+					: {}),
+				...(input.competitorNotes !== undefined
+					? { competitorNotes: input.competitorNotes || null }
+					: {}),
 				updatedAt: now
 			})
 			.where(and(eq(crmLeads.id, id), isNull(crmLeads.deletedAt)))
@@ -936,7 +1084,6 @@ export async function updateLead(
 		// Write history rows for changed scalar fields.
 		const tracked: Array<[string, string | null, string | null]> = [
 			['name', existing.name, updated.name],
-			['category', existing.category, updated.category],
 			['platform', existing.platform ?? null, updated.platform ?? null],
 			['location', existing.location ?? null, updated.location ?? null],
 			['contact_email', existing.contactEmail ?? null, updated.contactEmail ?? null],
@@ -999,7 +1146,9 @@ export async function updateLead(
 				'has_future_events',
 				existing.hasFutureEvents != null ? String(existing.hasFutureEvents) : null,
 				updated.hasFutureEvents != null ? String(updated.hasFutureEvents) : null
-			]
+			],
+			['current_platform', existing.currentPlatform ?? null, updated.currentPlatform ?? null],
+			['competitor_notes', existing.competitorNotes ?? null, updated.competitorNotes ?? null]
 		];
 
 		const changed = tracked.filter(([, oldVal, newVal]) => oldVal !== newVal);
@@ -1225,7 +1374,7 @@ export async function reassignLead(
 	actorId: string
 ): Promise<Lead | null> {
 	const [existing] = await db
-		.select({ ownerId: crmLeads.ownerId })
+		.select({ ownerId: crmLeads.ownerId, name: crmLeads.name })
 		.from(crmLeads)
 		.where(and(eq(crmLeads.id, id), isNull(crmLeads.deletedAt)))
 		.limit(1);
@@ -1253,6 +1402,13 @@ export async function reassignLead(
 			oldValue: existing.ownerId,
 			newValue: ownerId
 		});
+
+		// Notify the new owner (E1: LAST statement in this transaction — after the
+		// visibility-reset, grant-delete, and history-insert above; do not reorder).
+		// Shares the reassignment's all-or-nothing semantics: if this insert fails the
+		// whole PATCH rolls back (a reassignment without a notification is a worse
+		// silent partial-success than failing outright).
+		await createLeadAssignedNotification(tx, ownerId, id, existing.name);
 
 		return rows[0];
 	});
@@ -1314,19 +1470,33 @@ export async function getTodayQueue(userId: string, role: Role = 'rep'): Promise
 
 /**
  * Lead-level predicate for the calendar follow-up query. Isolated as a pure,
- * DB-free helper so the AC3 regression guard can assert the `ownerId` scoping
- * predicate is present WITHOUT a live DB connection (see Validate Contract E1).
+ * DB-free helper so the owner-scope guards can assert the predicate via `.toSQL()`
+ * WITHOUT a live DB connection (see Validate Contract).
  *
- * MUST keep `eq(crmLeads.ownerId, userId)` — dropping it would leak other reps'
- * follow-ups onto the signed-in user's calendar (the single flagged regression risk).
+ * Owner-scope rule (CAL-3, GitHub #208) — three cases:
+ *   - `role === 'rep'`                         → `eq(ownerId, userId)` (strict; always own)
+ *   - manager/super_manager, no `filterRepId`  → no owner predicate (team-wide)
+ *   - manager/super_manager, `filterRepId` set → `eq(ownerId, filterRepId)`
+ *
+ * `filterRepId` may legitimately equal the manager's own UUID (the "Mine" view) — it is
+ * any user UUID, not necessarily a rep's. Reps NEVER honor `filterRepId` (defense in depth:
+ * the route also drops a rep's `?repId`). Dropping the rep owner predicate would leak other
+ * reps' follow-ups onto the signed-in rep's calendar (the single flagged regression risk).
+ * `role` defaults to `'rep'` so existing callers stay strict-owner (backward compatible).
  */
-export function buildFollowUpsRangeLeadConditions(userId: string): SQL[] {
-	return [
+export function buildFollowUpsRangeLeadConditions(
+	userId: string,
+	role: Role = 'rep',
+	filterRepId?: string
+): SQL[] {
+	const conditions: SQL[] = [
 		isNull(crmLeads.deletedAt) as SQL,
-		eq(crmLeads.ownerId, userId),
 		ne(crmLeads.stage, 'won'),
 		ne(crmLeads.stage, 'lost')
 	];
+	if (role === 'rep') conditions.push(eq(crmLeads.ownerId, userId));
+	else if (filterRepId) conditions.push(eq(crmLeads.ownerId, filterRepId));
+	return conditions;
 }
 
 /**
@@ -1351,17 +1521,19 @@ export function isWithinRange(
  * Adapts getTodayQueue's DISTINCT ON "current follow-up per lead" pattern: the
  * latest touch's follow-up wins per lead, then leads are filtered to those whose
  * current follow-up lands in the visible window. Owner scoping is preserved via
- * buildFollowUpsRangeLeadConditions (AC3). Does NOT modify getTodayQueue/getRemindersQueue.
+ * buildFollowUpsRangeLeadConditions (CAL-3). Does NOT modify getTodayQueue/getRemindersQueue.
  */
 export async function getFollowUpsInRange(
 	userId: string,
 	rangeStart: Date,
-	rangeEnd: Date
+	rangeEnd: Date,
+	role: Role = 'rep',
+	filterRepId?: string
 ): Promise<Lead[]> {
 	const rows = await db
 		.select()
 		.from(crmLeads)
-		.where(and(...buildFollowUpsRangeLeadConditions(userId)))
+		.where(and(...buildFollowUpsRangeLeadConditions(userId, role, filterRepId)))
 		.orderBy(desc(sql`coalesce(${crmLeads.lastActivityAt}, ${crmLeads.createdAt})`));
 
 	if (rows.length === 0) return [];
@@ -1381,6 +1553,180 @@ export async function getFollowUpsInRange(
 	return rows
 		.filter((row) => isWithinRange(followUpMap.get(row.id) ?? null, rangeStart, rangeEnd))
 		.map((row) => dbRowToLead(row, followUpMap.get(row.id) ?? undefined));
+}
+
+// ---------------------------------------------------------------------------
+// Calendar go-live milestones — live-stage leads shown on their goLiveDate
+// ---------------------------------------------------------------------------
+
+/**
+ * Calendar-facing summary of a live-stage lead's go-live milestone. Carries only
+ * the lead name (used directly as the calendar title — no derived `handle`) and a
+ * local-midnight ISO string for day-safe grid bucketing.
+ */
+export type LiveLeadSummary = { id: string; name: string; goLiveIso: string };
+
+/**
+ * Normalize a Postgres DATE (`'YYYY-MM-DD'` string from Drizzle) to a local-midnight
+ * ISO string by appending `T00:00:00`. Passing the bare `'YYYY-MM-DD'` to `new Date()`
+ * parses as UTC-midnight, which shifts to the previous day in negative-offset zones and
+ * mis-buckets the go-live milestone. Idempotent: input already containing `T` is returned
+ * as-is.
+ */
+export function normalizeGoLiveDate(dateStr: string): string {
+	return dateStr.includes('T') ? dateStr : `${dateStr}T00:00:00`;
+}
+
+/**
+ * Lead-level predicates for the calendar go-live query. Isolated as a pure, DB-free
+ * helper so the AC1 selection guard can assert the WHERE clause via `.toSQL()` without
+ * a live DB connection (mirrors buildFollowUpsRangeLeadConditions).
+ */
+export function buildGoLiveRangeConditions(): SQL[] {
+	return [
+		isNull(crmLeads.deletedAt) as SQL,
+		eq(crmLeads.stage, 'live'),
+		isNotNull(crmLeads.goLiveDate) as SQL
+	];
+}
+
+/**
+ * Shared WHERE composition for the go-live calendar query. Exported so tests can assert
+ * the exact SQL `getGoLiveDatesInRange` produces without a live DB. Composes the base
+ * range conditions + the `visibilityCondition` leak guard + the CAL-3 owner-narrow term:
+ *   - `role === 'rep'`                         → `eq(ownerId, userId)` (strict; AC1)
+ *   - manager/super_manager, no `filterRepId`  → no owner-narrow (team-wide; AC3)
+ *   - manager/super_manager, `filterRepId` set → `eq(ownerId, filterRepId)` (AC5)
+ * For a rep, `visibilityCondition` already contains `owner=me`, so the extra owner-narrow
+ * simply tightens to strict-owner without weakening the restricted-lead leak guard.
+ * `filterRepId` may equal the manager's own UUID ("Mine" view); reps never honor it.
+ */
+export function buildGoLiveWhereClause(userId: string, role: Role, filterRepId?: string) {
+	const conditions: SQL[] = [...buildGoLiveRangeConditions(), visibilityCondition(userId, role)];
+	if (role === 'rep') conditions.push(eq(crmLeads.ownerId, userId));
+	else if (filterRepId) conditions.push(eq(crmLeads.ownerId, filterRepId));
+	return and(...conditions);
+}
+
+/**
+ * Returns live-stage leads whose `goLiveDate` falls within [rangeStart, rangeEnd] —
+ * the read model for go-live milestone entries on the calendar. Owner-scoped per CAL-3
+ * (rep → own only; manager → team-wide or narrowed to `filterRepId`), with the enforced
+ * `visibilityCondition(userId, role)` predicate applied so restricted (`only_me` /
+ * `selected`) live leads never leak onto other users' calendars (concern C2).
+ * Selects only `name` for the calendar title — never the derived `handle` (concern C1).
+ */
+export async function getGoLiveDatesInRange(
+	rangeStart: Date,
+	rangeEnd: Date,
+	userId: string,
+	role: Role,
+	filterRepId?: string
+): Promise<LiveLeadSummary[]> {
+	const rows = await db
+		.select({
+			id: crmLeads.id,
+			name: crmLeads.name,
+			goLiveDate: crmLeads.goLiveDate
+		})
+		.from(crmLeads)
+		.where(buildGoLiveWhereClause(userId, role, filterRepId));
+
+	return rows
+		.map((row) => ({
+			id: row.id,
+			name: row.name,
+			goLiveIso: normalizeGoLiveDate(row.goLiveDate!)
+		}))
+		.filter((summary) => isWithinRange(summary.goLiveIso, rangeStart, rangeEnd));
+}
+
+// ---------------------------------------------------------------------------
+// Calendar event-start milestones — live-stage leads shown on their eventDate
+// ---------------------------------------------------------------------------
+
+/**
+ * Calendar-facing summary of a live-stage lead's event-start milestone. Carries only
+ * the lead name (used directly as the calendar title — no derived `handle`) and a
+ * local-midnight ISO string for day-safe grid bucketing.
+ */
+export type EventStartSummary = { id: string; name: string; eventStartIso: string };
+
+/**
+ * Normalize a Postgres DATE (`'YYYY-MM-DD'` string from Drizzle) to a local-midnight
+ * ISO string by appending `T00:00:00`. Passing the bare `'YYYY-MM-DD'` to `new Date()`
+ * parses as UTC-midnight, which shifts to the previous day in negative-offset zones and
+ * mis-buckets the event-start milestone. Idempotent: input already containing `T` is
+ * returned as-is. Kept separate from normalizeGoLiveDate for independent unit-testability.
+ */
+export function normalizeEventDate(dateStr: string): string {
+	return dateStr.includes('T') ? dateStr : `${dateStr}T00:00:00`;
+}
+
+/**
+ * Lead-level predicates for the calendar event-start query. Isolated as a pure, DB-free
+ * helper so the AC1 selection guard can assert the WHERE clause via `.toSQL()` without
+ * a live DB connection (mirrors buildGoLiveRangeConditions).
+ */
+export function buildEventStartRangeConditions(): SQL[] {
+	return [
+		isNull(crmLeads.deletedAt) as SQL,
+		eq(crmLeads.stage, 'live'),
+		isNotNull(crmLeads.eventDate) as SQL
+	];
+}
+
+/**
+ * Shared WHERE composition for the event-start calendar query. Exported so tests
+ * can assert the exact SQL `getEventDatesInRange` produces without a live DB. Composes
+ * the base range conditions + the `visibilityCondition` leak guard + the CAL-3
+ * owner-narrow term:
+ *   - `role === 'rep'`                         → `eq(ownerId, userId)` (strict; AC1)
+ *   - manager/super_manager, no `filterRepId`  → no owner-narrow (team-wide; AC3)
+ *   - manager/super_manager, `filterRepId` set → `eq(ownerId, filterRepId)` (AC5)
+ * `filterRepId` may equal the manager's own UUID ("Mine" view); reps never honor it.
+ */
+export function buildEventStartWhereClause(userId: string, role: Role, filterRepId?: string) {
+	const conditions: SQL[] = [
+		...buildEventStartRangeConditions(),
+		visibilityCondition(userId, role)
+	];
+	if (role === 'rep') conditions.push(eq(crmLeads.ownerId, userId));
+	else if (filterRepId) conditions.push(eq(crmLeads.ownerId, filterRepId));
+	return and(...conditions);
+}
+
+/**
+ * Returns live-stage leads whose `eventDate` falls within [rangeStart, rangeEnd] —
+ * the read model for event-start milestone entries on the calendar. Owner-scoped per
+ * CAL-3 (rep → own only; manager → team-wide or narrowed to `filterRepId`), with the
+ * enforced `visibilityCondition(userId, role)` predicate applied so restricted
+ * (`only_me` / `selected`) live leads never leak onto other users' calendars (AC7).
+ * Selects only `name` for the calendar title — never the derived `handle`.
+ */
+export async function getEventDatesInRange(
+	rangeStart: Date,
+	rangeEnd: Date,
+	userId: string,
+	role: Role,
+	filterRepId?: string
+): Promise<EventStartSummary[]> {
+	const rows = await db
+		.select({
+			id: crmLeads.id,
+			name: crmLeads.name,
+			eventDate: crmLeads.eventDate
+		})
+		.from(crmLeads)
+		.where(buildEventStartWhereClause(userId, role, filterRepId));
+
+	return rows
+		.map((row) => ({
+			id: row.id,
+			name: row.name,
+			eventStartIso: normalizeEventDate(row.eventDate!)
+		}))
+		.filter((summary) => isWithinRange(summary.eventStartIso, rangeStart, rangeEnd));
 }
 
 // ---------------------------------------------------------------------------
@@ -1463,11 +1809,12 @@ export async function logLeadTouch(
 export async function getNavCounts(
 	userId: string,
 	role: Role = 'rep'
-): Promise<{ overdue: number; unassigned: number }> {
+): Promise<{ overdue: number; unassigned: number; unread: number }> {
 	// Overdue count flows through getTodayQueue (owner-scoped + visibility-guarded). The
 	// unassigned sub-count is visibility-EXEMPT (unowned leads always visible — SPEC), so
-	// visibilityCondition is intentionally NOT applied to it (E3).
-	const [todayLeads, [unassignedRow]] = await Promise.all([
+	// visibilityCondition is intentionally NOT applied to it (E3). The unread sub-count is
+	// user-scoped to `userId` only (a user only ever sees their own notifications).
+	const [todayLeads, [unassignedRow], unread] = await Promise.all([
 		getTodayQueue(userId, role),
 		db
 			.select({ count: sql<number>`COUNT(*)` })
@@ -1479,12 +1826,14 @@ export async function getNavCounts(
 					ne(crmLeads.stage, 'won'),
 					ne(crmLeads.stage, 'lost')
 				)
-			)
+			),
+		getUnreadNotificationCount(userId)
 	]);
 
 	return {
 		overdue: todayLeads.filter((l) => l.urgency === 'overdue').length,
-		unassigned: Number(unassignedRow?.count ?? 0)
+		unassigned: Number(unassignedRow?.count ?? 0),
+		unread
 	};
 }
 

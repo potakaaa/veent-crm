@@ -29,6 +29,10 @@
 		me,
 		// Single-lead mode: leadId fixed (no lead column). Cross-lead mode: leadId omitted.
 		leadId = undefined,
+		// Single-lead mode only: the lead's linked recurring-organizer (crm_organizers,
+		// GitHub #188) — the CREATE-mode pre-fill source passed through to the meeting modal.
+		leadOrganizerId = undefined,
+		leadOrganizerName = undefined,
 		// Cross-lead mode only: server-resolved label for the currently-selected lead filter.
 		selectedLead = undefined,
 		// Cross-lead mode only: hydrates the filter/sort toolbar from the SSR loader.
@@ -39,6 +43,8 @@
 		users: User[];
 		me: User;
 		leadId?: string;
+		leadOrganizerId?: string | null;
+		leadOrganizerName?: string;
 		selectedLead?: { id: string; name: string } | null;
 		filters?: {
 			organizer: string;
@@ -46,6 +52,7 @@
 			dateFrom: string;
 			dateTo: string;
 			sortDir: 'asc' | 'desc';
+			outcome: string;
 		};
 	} = $props();
 
@@ -192,7 +199,10 @@
 							// Empty string means "unassign" — send explicit null so JSON.stringify
 							// keeps the key (undefined would be dropped, leaving organizer unchanged).
 							organizerId: payload.organizerId ? payload.organizerId : null,
+							// Explicit null (from the modal) clears the linked organizer on edit.
+							leadOrganizerId: payload.leadOrganizerId ?? null,
 							meetingUrl: payload.meetingUrl ?? '',
+							venue: payload.venue ?? '',
 							notes: payload.notes ?? '',
 							outcome: payload.outcome ?? '',
 							attendeeIds: payload.attendeeIds
@@ -390,6 +400,26 @@
 				{#if navLoading && pendingAction === 'sortDir'}{@render spinner(12)}{/if}
 				{filters.sortDir === 'asc' ? 'Oldest first' : 'Newest first'}
 			</Button>
+
+			<div class="relative flex items-center">
+				<input
+					type="text"
+					value={filters.outcome}
+					disabled={navLoading}
+					onchange={(e) => {
+						pendingAction = 'outcome';
+						setFilter('outcome', e.currentTarget.value);
+					}}
+					aria-label="Filter by outcome"
+					placeholder="Search outcome…"
+					class="h-8 rounded-control border border-hairline bg-panel px-2 text-[12.5px] text-ink focus:outline-none focus:ring-1 focus:ring-primary disabled:cursor-wait disabled:opacity-60"
+				/>
+				{#if navLoading && pendingAction === 'outcome'}
+					<span class="pointer-events-none absolute right-2 text-ink-400"
+						>{@render spinner(12)}</span
+					>
+				{/if}
+			</div>
 		</div>
 	{/if}
 
@@ -423,7 +453,14 @@
 						<div class="min-w-0">
 							<div class="text-[13px] font-semibold text-ink">{formatStart(m.startAt)}</div>
 							{#if crossLead && m.leadName}
-								<div class="mt-0.5 text-[12px] text-ink-500">{m.leadName}</div>
+								<a
+									href={`/leads/${m.leadId}`}
+									onclick={(e) => e.stopPropagation()}
+									onkeydown={(e) => e.stopPropagation()}
+									class="mt-0.5 inline-block text-[12px] font-medium text-primary hover:underline"
+								>
+									{m.leadName}
+								</a>
 							{/if}
 							<div class="mt-0.5 text-[12px] text-ink-400">
 								Organizer: {m.organizerName ?? 'Unassigned'}
@@ -495,6 +532,8 @@
 	open={modalOpen}
 	{users}
 	{leadId}
+	{leadOrganizerId}
+	{leadOrganizerName}
 	meeting={editing}
 	{saving}
 	onclose={() => {

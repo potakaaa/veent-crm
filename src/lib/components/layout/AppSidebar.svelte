@@ -22,7 +22,7 @@
 		mobileOpen = $bindable(false)
 	}: {
 		user: User | null;
-		counts: { overdue: number; unassigned: number };
+		counts: { overdue: number; unassigned: number; unread: number };
 		mobileOpen?: boolean;
 	} = $props();
 
@@ -36,6 +36,12 @@
 
 	const work: NavItem[] = $derived([
 		{
+			href: '/unassigned',
+			label: 'Unassigned Leads',
+			icon: 'unassigned',
+			badge: counts.unassigned || undefined
+		},
+		{
 			href: '/',
 			label: 'Today',
 			icon: 'today',
@@ -44,18 +50,20 @@
 		},
 		{ href: '/leads', label: 'My Leads', icon: 'leads' },
 		{ href: '/pipeline', label: 'Pipeline', icon: 'pipeline' },
-		{
-			href: '/unassigned',
-			label: 'Up for grabs',
-			icon: 'unassigned',
-			badge: counts.unassigned || undefined
-		},
+		{ href: '/organizers', label: 'Organizers', icon: 'organizers' },
 		{ href: '/reminders', label: 'Reminders', icon: 'reminders' },
+		{
+			href: '/notifications',
+			label: 'Notifications',
+			icon: 'bell',
+			badge: counts.unread || undefined
+		},
 		{ href: '/calendar', label: 'Calendar', icon: 'calendarDays' },
 		{ href: '/meetings', label: 'Meetings', icon: 'calendar' },
 		{ href: '/templates', label: 'Templates', icon: 'reply' }
 	]);
 	const manager: NavItem[] = $derived([
+		{ href: '/dashboard', label: 'Dashboard', icon: 'reports' },
 		{ href: '/reports', label: 'Reports', icon: 'reports' },
 		{ href: '/team', label: 'Team', icon: 'team' }
 	]);
@@ -64,6 +72,7 @@
 		const p = navigating.to?.url.pathname ?? page.url.pathname;
 		if (href === '/') return p === '/';
 		if (href === '/leads') return p === '/leads' || p.startsWith('/leads/');
+		if (href === '/organizers') return p === '/organizers' || p.startsWith('/organizers/');
 		return p.startsWith(href);
 	};
 </script>

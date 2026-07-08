@@ -13,7 +13,8 @@
 	import { Select, SelectTrigger, SelectContent, SelectItem } from '$lib/components/ui/select';
 	import { toasts } from '$lib/stores/toasts.svelte';
 	import { isManager } from '$lib/utils/permissions';
-	import { templateFormSchema, LEAD_CATEGORIES } from '$lib/zod/schemas';
+	import { templateFormSchema } from '$lib/zod/schemas';
+	import { TEMPLATE_CATEGORIES } from '$lib/data/template-categories';
 	import type { MessageTemplate } from '$lib/types';
 	import { SvelteMap } from 'svelte/reactivity';
 	import { categoryColor } from '$lib/design/tokens';
@@ -246,7 +247,7 @@
 			>
 			<SelectContent>
 				<SelectItem value="" label="All categories">All categories</SelectItem>
-				{#each LEAD_CATEGORIES as c (c)}<SelectItem value={c} label={c}>{c}</SelectItem>{/each}
+				{#each TEMPLATE_CATEGORIES as c (c)}<SelectItem value={c} label={c}>{c}</SelectItem>{/each}
 			</SelectContent>
 		</Select>
 
@@ -548,7 +549,8 @@
 			<Select type="single" bind:value={category}>
 				<SelectTrigger id="tpl-category" class="w-full">{category}</SelectTrigger>
 				<SelectContent>
-					{#each LEAD_CATEGORIES as c (c)}<SelectItem value={c} label={c}>{c}</SelectItem>{/each}
+					{#each TEMPLATE_CATEGORIES as c (c)}<SelectItem value={c} label={c}>{c}</SelectItem
+						>{/each}
 				</SelectContent>
 			</Select>
 		</div>

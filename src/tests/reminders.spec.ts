@@ -22,7 +22,6 @@ function makeLeadRow(overrides: Partial<Parameters<typeof dbRowToLead>[0]> = {})
 	return {
 		id: 'uuid-test-001',
 		name: 'Test Org',
-		category: 'Sports' as const,
 		location: 'Manila',
 		country: null,
 		platform: 'Facebook' as const,
@@ -66,6 +65,8 @@ function makeLeadRow(overrides: Partial<Parameters<typeof dbRowToLead>[0]> = {})
 		bankChargesAbsorbed: null,
 		hasFutureEvents: false,
 		notes: null,
+		currentPlatform: null,
+		competitorNotes: null,
 		createdAt: now,
 		updatedAt: now,
 		...overrides

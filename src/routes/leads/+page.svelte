@@ -1,22 +1,27 @@
 <script lang="ts">
-	import { goto, afterNavigate } from '$app/navigation';
+	import { goto, afterNavigate, invalidateAll } from '$app/navigation';
 	import { page, navigating } from '$app/state';
 	import { SvelteURLSearchParams } from 'svelte/reactivity';
 	import PageHeader from '$lib/components/shared/PageHeader.svelte';
 	import LeadGrid from '$lib/components/leads/LeadGrid.svelte';
+	import ImportWizard from '$lib/components/import/ImportWizard.svelte';
 	import { Button } from '$lib/components/ui/button';
-	import { Input } from '$lib/components/ui/input';
-	import { Select, SelectTrigger, SelectContent, SelectItem } from '$lib/components/ui/select';
+	import { FilterDropdown } from '$lib/components/ui/filter-dropdown';
+	import { SearchInput } from '$lib/components/ui/search-input';
+	import { WeekRangeControl } from '$lib/components/ui/week-range-control';
 	import { Tabs } from '$lib/components/ui/tabs';
 	import { Badge } from '$lib/components/ui/badge';
 	import * as Popover from '$lib/components/ui/popover';
+	import RepFilterCombobox from '$lib/components/ui/rep-filter-combobox/RepFilterCombobox.svelte';
 	import { LEAD_STAGES, LEAD_PLATFORMS } from '$lib/zod/schemas';
 	import { stageLabel } from '$lib/utils/stages';
-	import type { LeadSegment, Stage } from '$lib/types';
+	import { isManagerRole } from '$lib/utils/permissions';
+	import type { LeadSegment } from '$lib/types';
 
 	let { data } = $props();
 
 	let paging = $state(false);
+	let importOpen = $state(false);
 	// Optimistic segment: set on click for instant highlight; cleared when navigation
 	// settles so the active state falls back to what the server confirmed.
 	let pendingSegment = $state<LeadSegment | null>(null);
@@ -29,12 +34,15 @@
 	// Skeleton while navigating to this route (filter/segment/page changes included).
 	const navLoading = $derived(paging || navigating.to?.url.pathname === '/leads');
 
-	// Local search state — writable derived: resets when the loaded filter changes
-	// (back/forward navigation), but still assignable for live typing before debounce.
-	let searchInput = $derived(data.filters.search ?? '');
-	let searchTimer: ReturnType<typeof setTimeout> | null = null;
+	// Stage filter options (value = stage key, label = human label). Segment-aware:
+	// "lost" only appears while viewing the Lost segment.
+	const stageOptions = $derived(
+		LEAD_STAGES.filter((s) => s !== 'lost' || data.filters.segment === 'lost').map((s) => ({
+			value: s,
+			label: stageLabel(s)
+		}))
+	);
 
-	const WEEKS_PRESETS = [4, 8, 12] as const;
 	let weeksInput = $derived(
 		data.filters.weeksAhead === null ? '' : String(data.filters.weeksAhead ?? 8)
 	);
@@ -63,6 +71,23 @@
 		navigate({ [key]: value, page: undefined }); // reset page (delete param = default 1)
 	}
 
+	// Owner combobox reconciliation (GitHub #226): the server ANDs the `segment==='mine'`
+	// condition (scoped to the current session user) with the explicit `ownerId` param, so a
+	// specific-owner selection under the default `segment=mine` would contradict and return
+	// nothing. Change owner + segment together so the two never fight.
+	function setOwnerFilter(id: string) {
+		if (id === '' /* "All owners" */) {
+			// Show every owner's leads: clear owner, widen segment to `all`.
+			navigate({ owner: undefined, segment: 'all', page: undefined });
+		} else if (id === data.me.id /* "Mine" quick filter */) {
+			// Back to the manager's own leads: drop owner, reset segment to default `mine`.
+			navigate({ owner: undefined, segment: undefined, page: undefined });
+		} else {
+			// A specific other owner: widen segment to `all` so only the explicit owner filter applies.
+			navigate({ owner: id, segment: 'all', page: undefined });
+		}
+	}
+
 	async function setSegment(seg: LeadSegment) {
 		pendingSegment = seg;
 		try {
@@ -73,20 +98,21 @@
 		}
 	}
 
-	function onSearchInput(e: Event & { currentTarget: HTMLInputElement }) {
-		const val = e.currentTarget.value;
-		searchInput = val;
-		if (searchTimer) clearTimeout(searchTimer);
-		searchTimer = setTimeout(() => {
-			navigate({ q: val || undefined, page: undefined });
-		}, 300);
+	// Category filter (CAT-1, GitHub #248): multi-select → comma-joined `categoryIds` param.
+	const categoryOptions = $derived(data.allCategories.map((c) => ({ value: c.id, label: c.name })));
+	function setCategoryFilter(ids: string[]) {
+		navigate({ categoryIds: ids.length ? ids.join(',') : undefined, page: undefined });
+	}
+
+	// Search debounce is owned by SearchInput (canonical 300ms) — page only navigates.
+	function onSearch(value: string) {
+		navigate({ q: value || undefined, page: undefined });
 	}
 
 	function setWeeks(w: number | 'all') {
 		setFilter('weeksAhead', w === 'all' ? 'all' : w);
 	}
-	function onWeeksInput(e: Event & { currentTarget: HTMLInputElement }) {
-		const raw = e.currentTarget.value;
+	function onWeeksInput(raw: string) {
 		weeksInput = raw;
 		if (weeksTimer) clearTimeout(weeksTimer);
 		const n = parseInt(raw, 10);
@@ -153,9 +179,16 @@
 	<PageHeader title="My Leads">
 		{#snippet actions()}
 			<span class="font-mono text-[12px] text-ink-300">{data.total} matching</span>
+			<Button variant="outline" size="sm" onclick={() => (importOpen = true)}>Import</Button>
 			<Button variant="outline" size="sm" href={exportHref}>Export CSV</Button>
 		{/snippet}
 	</PageHeader>
+
+	<ImportWizard
+		open={importOpen}
+		onOpenChange={(v) => (importOpen = v)}
+		onImportComplete={() => invalidateAll()}
+	/>
 
 	<!-- toolbar -->
 	<div class="mb-3.5 flex flex-wrap items-center gap-2.5">
@@ -167,56 +200,50 @@
 			onValueChange={(v) => setSegment(v as LeadSegment)}
 		/>
 
-		<Select
-			type="single"
-			value={data.filters.stage}
-			onValueChange={(v: string) => setFilter('stage', v)}
-		>
-			<SelectTrigger
-				size="sm"
-				class={data.filters.stage ? 'border-primary text-primary-strong bg-selected' : ''}
-				>{data.filters.stage ? stageLabel(data.filters.stage as Stage) : 'Stage'}</SelectTrigger
-			>
-			<SelectContent>
-				<SelectItem value="" label="All stages">All stages</SelectItem>
-				{#each LEAD_STAGES.filter((s) => s !== 'lost' || data.filters.segment === 'lost') as s (s)}<SelectItem
-						value={s}
-						label={stageLabel(s)}>{stageLabel(s)}</SelectItem
-					>{/each}
-			</SelectContent>
-		</Select>
-		<Select
-			type="single"
-			value={data.filters.platform}
-			onValueChange={(v: string) => setFilter('platform', v)}
-		>
-			<SelectTrigger
-				size="sm"
-				class={data.filters.platform ? 'border-primary text-primary-strong bg-selected' : ''}
-				>{data.filters.platform || 'Platform'}</SelectTrigger
-			>
-			<SelectContent>
-				<SelectItem value="" label="All platforms">All platforms</SelectItem>
-				{#each LEAD_PLATFORMS as p (p)}<SelectItem value={p} label={p}>{p}</SelectItem>{/each}
-			</SelectContent>
-		</Select>
+		<FilterDropdown
+			label="Stage"
+			multiple={false}
+			options={stageOptions}
+			selected={data.filters.stage ?? ''}
+			onchange={(v) => setFilter('stage', (v as string) || undefined)}
+		/>
+		<FilterDropdown
+			label="Platform"
+			multiple={false}
+			options={LEAD_PLATFORMS}
+			selected={data.filters.platform ?? ''}
+			onchange={(v) => setFilter('platform', (v as string) || undefined)}
+		/>
 
 		{#if data.countries.length > 0}
-			<Select
-				type="single"
-				value={data.filters.country}
-				onValueChange={(v: string) => setFilter('country', v)}
-			>
-				<SelectTrigger
-					size="sm"
-					class={data.filters.country ? 'border-primary text-primary-strong bg-selected' : ''}
-					>{data.filters.country || 'Country'}</SelectTrigger
-				>
-				<SelectContent>
-					<SelectItem value="" label="All countries">All countries</SelectItem>
-					{#each data.countries as c (c)}<SelectItem value={c} label={c}>{c}</SelectItem>{/each}
-				</SelectContent>
-			</Select>
+			<FilterDropdown
+				label="Country"
+				multiple={false}
+				options={data.countries}
+				selected={data.filters.country ?? ''}
+				onchange={(v) => setFilter('country', (v as string) || undefined)}
+			/>
+		{/if}
+
+		{#if categoryOptions.length > 0}
+			<FilterDropdown
+				label="Category"
+				multiple={true}
+				options={categoryOptions}
+				selected={data.filters.categoryIds ?? []}
+				onchange={(v) => setCategoryFilter(v as string[])}
+			/>
+		{/if}
+
+		{#if isManagerRole(data.me.role)}
+			<RepFilterCombobox
+				users={data.users}
+				selectedId={data.filters.owner || (data.filters.segment === 'mine' ? data.me.id : '')}
+				currentUserId={data.me.id}
+				allLabel="All owners"
+				placeholder="Search owners..."
+				onSelect={setOwnerFilter}
+			/>
 		{/if}
 
 		<!-- Secondary "Filters" popover: Stale-only, Future events, and weeks-timing group -->
@@ -272,44 +299,23 @@
 					<span class="font-mono text-[10.5px] uppercase tracking-[0.4px] text-ink-300"
 						>Event timing</span
 					>
-					<div class="flex flex-wrap items-center gap-1.5">
-						<button
-							onclick={() => setWeeks('all')}
-							aria-pressed={data.filters.weeksAhead === null}
-							class="h-8 rounded-md border px-2.5 font-mono text-[11.5px] transition-colors {data
-								.filters.weeksAhead === null
-								? chipActive
-								: chipInactive}">All future</button
-						>
-						{#each WEEKS_PRESETS as w (w)}
-							<button
-								onclick={() => setWeeks(w)}
-								aria-pressed={data.filters.weeksAhead !== null &&
-									(data.filters.weeksAhead ?? 8) === w}
-								class="h-8 rounded-md border px-2.5 font-mono text-[11.5px] transition-colors {data
-									.filters.weeksAhead !== null && (data.filters.weeksAhead ?? 8) === w
-									? chipActive
-									: chipInactive}">{w}w+</button
-							>
-						{/each}
-						<input
-							type="number"
-							min="1"
-							value={weeksInput}
-							oninput={onWeeksInput}
-							placeholder="—"
-							aria-label="Minimum weeks until event"
-							class="h-8 w-14 rounded-md border border-hairline bg-panel px-2 font-mono text-[11.5px] text-ink focus:outline-none focus:ring-1 focus:ring-primary"
-						/>
-					</div>
+					<WeekRangeControl
+						label="Minimum weeks until event"
+						presets={[4, 8, 12]}
+						value={data.filters.weeksAhead}
+						onchange={setWeeks}
+						overrideValue={weeksInput}
+						onOverrideInput={onWeeksInput}
+					/>
 				</div>
 			</Popover.Content>
 		</Popover.Root>
 
-		<Input
-			value={searchInput}
-			oninput={onSearchInput}
+		<SearchInput
+			value={data.filters.search ?? ''}
+			oninput={onSearch}
 			placeholder="Search…"
+			ariaLabel="Search My Leads"
 			class="ml-auto h-8 w-44"
 		/>
 	</div>
@@ -329,6 +335,22 @@
 			>
 				Clear
 			</a>
+		</div>
+	{/if}
+
+	{#if data.filters.createdFrom}
+		<div
+			class="mb-3 flex items-center gap-2 rounded-control border border-hairline bg-panel-sunken px-3 py-2 text-[12.5px]"
+		>
+			<span class="text-ink-500">Showing leads added since:</span>
+			<span class="font-mono font-semibold text-ink">{data.filters.createdFrom}</span>
+			<button
+				type="button"
+				onclick={() => navigate({ createdFrom: undefined, page: undefined })}
+				class="ml-auto font-mono text-[11.5px] text-primary hover:underline"
+			>
+				Clear
+			</button>
 		</div>
 	{/if}
 

@@ -10,10 +10,34 @@
  *   - calendar-followups-owner-scoped-visibility (unit half) — AC3 regression guard
  */
 import { describe, it, expect } from 'vitest';
-import { buildFollowUpsRangeLeadConditions, isWithinRange } from '$lib/server/db/leads';
+import { readFileSync } from 'node:fs';
+import {
+	buildFollowUpsRangeLeadConditions,
+	buildGoLiveRangeConditions,
+	buildGoLiveWhereClause,
+	buildEventStartRangeConditions,
+	buildEventStartWhereClause,
+	isWithinRange,
+	normalizeGoLiveDate,
+	normalizeEventDate
+} from '$lib/server/db/leads';
+import { listAllMeetings } from '$lib/server/db/meetings';
 import { db } from '$lib/server/db/index';
 import { crmLeads } from '$lib/server/db/schema';
-import { and } from 'drizzle-orm';
+import { and, type SQL } from 'drizzle-orm';
+
+// Helper: render a WHERE clause to its SQL string + bound params without a live DB.
+function whereSql(clause: SQL | undefined) {
+	return db.select().from(crmLeads).where(clause).toSQL();
+}
+
+// Isolate ONLY the WHERE-clause portion of a rendered query. `SELECT *` always lists the
+// `owner_id` column, so a raw `sqlStr.toContain('owner_id')` is polluted by the projection —
+// owner-scoping assertions must look at the predicate portion only.
+function whereClauseOf(sqlStr: string): string {
+	const idx = sqlStr.indexOf(' where ');
+	return idx === -1 ? '' : sqlStr.slice(idx);
+}
 
 describe('getFollowUpsInRange — owner-scoping regression guard (AC3, DB-free)', () => {
 	it('should include eq(crmLeads.ownerId, userId) predicate in getFollowUpsInRange query', () => {
@@ -73,5 +97,196 @@ describe('isWithinRange — follow-up range filter behavior (DB-free)', () => {
 		expect(isWithinRange(null, start, end)).toBe(false);
 		expect(isWithinRange(undefined, start, end)).toBe(false);
 		expect(isWithinRange('not-a-date', start, end)).toBe(false);
+	});
+});
+
+describe('normalizeGoLiveDate — day-shift-safe DATE normalization (AC4, DB-free)', () => {
+	it("normalizes a 'YYYY-MM-DD' string to local-midnight ISO without day-shift", () => {
+		expect(normalizeGoLiveDate('2026-07-15')).toBe('2026-07-15T00:00:00');
+	});
+
+	it('is idempotent on input that already contains a time component', () => {
+		expect(normalizeGoLiveDate('2026-07-15T00:00:00')).toBe('2026-07-15T00:00:00');
+		expect(normalizeGoLiveDate('2026-07-15T09:30:00.000Z')).toBe('2026-07-15T09:30:00.000Z');
+	});
+});
+
+describe('buildGoLiveRangeConditions — live-lead selection guard (AC1, DB-free)', () => {
+	it("builds WHERE with deleted_at is null, stage = 'live', go_live_date is not null", () => {
+		const conditions = buildGoLiveRangeConditions();
+		const { sql: sqlStr, params } = db
+			.select()
+			.from(crmLeads)
+			.where(and(...conditions))
+			.toSQL();
+
+		expect(sqlStr).toContain('deleted_at');
+		expect(sqlStr).toContain('is null');
+		expect(sqlStr).toContain('stage');
+		expect(sqlStr).toContain('go_live_date');
+		expect(sqlStr).toContain('is not null');
+		expect(params).toContain('live');
+	});
+});
+
+describe('normalizeEventDate — day-shift-safe DATE normalization (AC4, DB-free)', () => {
+	it("normalizes a 'YYYY-MM-DD' string to local-midnight ISO without day-shift", () => {
+		expect(normalizeEventDate('2026-07-15')).toBe('2026-07-15T00:00:00');
+	});
+
+	it('is idempotent on input that already contains a time component', () => {
+		expect(normalizeEventDate('2026-07-15T00:00:00')).toBe('2026-07-15T00:00:00');
+		expect(normalizeEventDate('2026-07-15T09:30:00.000Z')).toBe('2026-07-15T09:30:00.000Z');
+	});
+});
+
+describe('buildEventStartRangeConditions — live-lead selection guard (AC1, DB-free)', () => {
+	it("builds WHERE with deleted_at is null, stage = 'live', event_date is not null", () => {
+		const conditions = buildEventStartRangeConditions();
+		const { sql: sqlStr, params } = db
+			.select()
+			.from(crmLeads)
+			.where(and(...conditions))
+			.toSQL();
+
+		expect(sqlStr).toContain('deleted_at');
+		expect(sqlStr).toContain('is null');
+		expect(sqlStr).toContain('stage');
+		expect(sqlStr).toContain('event_date');
+		expect(sqlStr).toContain('is not null');
+		expect(params).toContain('live');
+	});
+});
+
+describe('getEventDatesInRange — visibility-composition regression guard (AC7, DB-free)', () => {
+	it('composes visibilityCondition into the event-start query WHERE (no restricted-lead leak)', () => {
+		const { sql: sqlStr } = db
+			.select()
+			.from(crmLeads)
+			.where(buildEventStartWhereClause('user-1', 'rep'))
+			.toSQL();
+
+		// The visibility predicate MUST be composed into the WHERE clause so a future
+		// refactor cannot silently drop it and leak restricted (only_me/selected) live leads.
+		expect(sqlStr).toContain('owner_id');
+		expect(sqlStr).toContain('visibility');
+	});
+});
+
+// ---------------------------------------------------------------------------
+// CAL-3 (GitHub #208) — owner filter scoping guards (DB-free, .toSQL())
+// Namespaced CAL3-AC* to avoid colliding with the existing AC3/AC7 blocks above.
+// ---------------------------------------------------------------------------
+
+const REP_ID = '00000000-0000-0000-0000-0000000000aa';
+const OTHER_REP_ID = '00000000-0000-0000-0000-0000000000bb';
+const MANAGER_ID = '00000000-0000-0000-0000-0000000000cc';
+
+function ownerPredicateCount(where: string): number {
+	return where.match(/\bowner_id\b/g)?.length ?? 0;
+}
+
+describe('CAL3-AC1 — rep sees only own leads (strict owner) across all 3 composers', () => {
+	it('follow-ups: rep path binds owner_id = userId and not another id', () => {
+		const { sql: sqlStr, params } = whereSql(
+			and(...buildFollowUpsRangeLeadConditions(REP_ID, 'rep'))
+		);
+		expect(whereClauseOf(sqlStr)).toContain('owner_id');
+		expect(params).toContain(REP_ID);
+		expect(params).not.toContain(OTHER_REP_ID);
+	});
+
+	it('go-live: rep path binds owner_id = userId', () => {
+		const { sql: sqlStr, params } = whereSql(buildGoLiveWhereClause(REP_ID, 'rep'));
+		// visibilityCondition('rep') contributes one owner_id; the D1 strict-own adds a second.
+		// >= 2 proves the explicit owner-narrowing predicate is present, not just the visibility guard.
+		expect(ownerPredicateCount(whereClauseOf(sqlStr))).toBeGreaterThanOrEqual(2);
+		expect(params).toContain(REP_ID);
+		expect(params).not.toContain(OTHER_REP_ID);
+	});
+
+	it('event-start: rep path binds owner_id = userId', () => {
+		const { sql: sqlStr, params } = whereSql(buildEventStartWhereClause(REP_ID, 'rep'));
+		// Same reasoning as go-live: >= 2 owner_id occurrences proves D1 predicate is present.
+		expect(ownerPredicateCount(whereClauseOf(sqlStr))).toBeGreaterThanOrEqual(2);
+		expect(params).toContain(REP_ID);
+		expect(params).not.toContain(OTHER_REP_ID);
+	});
+});
+
+describe('CAL3-AC3 — manager sees all reps by default (no owner-narrow term)', () => {
+	it('follow-ups: manager + no filterRepId → no owner_id predicate at all', () => {
+		const { sql: sqlStr, params } = whereSql(
+			and(...buildFollowUpsRangeLeadConditions(MANAGER_ID, 'manager', undefined))
+		);
+		// No owner scoping whatsoever for the team-wide default (WHERE portion only).
+		expect(whereClauseOf(sqlStr)).not.toContain('owner_id');
+		expect(params).not.toContain(MANAGER_ID);
+	});
+
+	it('go-live: manager + no filterRepId → visibilityCondition is a no-op true, no owner-narrow', () => {
+		const { sql: sqlStr, params } = whereSql(
+			buildGoLiveWhereClause(MANAGER_ID, 'manager', undefined)
+		);
+		// visibilityCondition(manager) returns `true`, so no per-owner predicate binds.
+		expect(whereClauseOf(sqlStr)).not.toContain('owner_id');
+		expect(params).not.toContain(MANAGER_ID);
+	});
+
+	it('event-start: manager + no filterRepId → no owner-narrow predicate', () => {
+		const { sql: sqlStr, params } = whereSql(
+			buildEventStartWhereClause(MANAGER_ID, 'manager', undefined)
+		);
+		expect(whereClauseOf(sqlStr)).not.toContain('owner_id');
+		expect(params).not.toContain(MANAGER_ID);
+	});
+});
+
+describe('CAL3-AC5 — manager + filterRepId narrows all 3 composers to that rep', () => {
+	it('follow-ups: manager + filterRepId binds owner_id = filterRepId', () => {
+		const { sql: sqlStr, params } = whereSql(
+			and(...buildFollowUpsRangeLeadConditions(MANAGER_ID, 'manager', REP_ID))
+		);
+		expect(whereClauseOf(sqlStr)).toContain('owner_id');
+		expect(params).toContain(REP_ID);
+		expect(params).not.toContain(MANAGER_ID);
+	});
+
+	it('go-live: manager + filterRepId binds owner_id = filterRepId', () => {
+		const { sql: sqlStr, params } = whereSql(buildGoLiveWhereClause(MANAGER_ID, 'manager', REP_ID));
+		expect(whereClauseOf(sqlStr)).toContain('owner_id');
+		expect(params).toContain(REP_ID);
+	});
+
+	it('event-start: manager + filterRepId binds owner_id = filterRepId', () => {
+		const { sql: sqlStr, params } = whereSql(
+			buildEventStartWhereClause(MANAGER_ID, 'manager', REP_ID)
+		);
+		expect(whereClauseOf(sqlStr)).toContain('owner_id');
+		expect(params).toContain(REP_ID);
+	});
+});
+
+describe('CAL3-AC8 — meetings always team-wide (never narrowed by the rep filter)', () => {
+	it('listAllMeetings takes no owner/rep argument (arity guard)', () => {
+		// A rep/owner param would make meetings filterable — assert the signature has none.
+		expect(listAllMeetings.length).toBe(0);
+	});
+
+	it('the calendar route never threads filterRepId into the listAllMeetings(...) call (route-source guard)', () => {
+		// Static-source guard (item 17b): closes the arity-only blind spot. An optional
+		// filterRepId? param would keep listAllMeetings.length === 0 yet still be threaded at
+		// the route; read the route source and assert the listAllMeetings() call is argument-free.
+		const src = readFileSync('src/routes/calendar/+page.server.ts', 'utf8');
+		// Strip JS comments before matching so comment text cannot satisfy the assertion.
+		const executableSrc = src.replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, '');
+		// Collect argument lists from every real listAllMeetings(...) call site.
+		const callArgs = [...executableSrc.matchAll(/\blistAllMeetings\(([^)]*)\)/g)].map((m) =>
+			m[1].trim()
+		);
+		// There must be exactly one call, and it must be argument-free.
+		expect(callArgs).toEqual(['']);
+		// And filterRepId must never appear inside a listAllMeetings( ... ) call anywhere.
+		expect(/listAllMeetings\([^)]*filterRepId/.test(executableSrc)).toBe(false);
 	});
 });

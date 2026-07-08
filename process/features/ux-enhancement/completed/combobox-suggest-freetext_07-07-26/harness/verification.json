@@ -1,0 +1,30 @@
+{
+	"task": "GitHub #250 — combobox-freetext PLAN: add nullable `venue` text column to crm_meetings",
+	"commands": [
+		"ls drizzle | tail -10 && cat drizzle/meta/_journal.json | tail -20"
+	],
+	"manualChecks": [
+		"Confirmed the change is additive-only: no existing crm_meetings column modified or dropped (manual read of src/lib/server/db/schema.ts:336-365).",
+		"Confirmed no destructive mutation path exists: nullable column, no default/constraint change, no backfill script — a failed/reverted migration leaves existing data fully intact.",
+		"Confirmed both hand-built PATCH bodies (MeetingsPanel + meetings/[id]) are checklisted for the new field in the plan (steps 21-22), independently re-confirmed at VALIDATE; POST path auto-includes it via existing spread pattern."
+	],
+	"result": "PASS",
+	"notes": "This is the pre-EXECUTE manual-first migration-risk gate. Post-implementation gate commands (bun run check, bun run lint, bun run test:unit) are deferred to EXECUTE and the mandatory EVL confirmation run (vc-tester), which is the authoritative post-implementation record — this file is not retroactively edited after EXECUTE completes.",
+	"evlConfirmation": {
+		"runBy": "vc-tester (EVL Step 3 confirmation run)",
+		"date": "2026-07-07",
+		"gates": [
+			{ "gate": "bun run check (typecheck)", "result": "PASS", "detail": "0 errors, 2 pre-existing state_referenced_locally warnings (leads/[id]/+page.svelte, profile/+page.svelte)" },
+			{ "gate": "bun run test:unit:ci (Fully-Automated tests)", "result": "PASS", "detail": "434 passed | 159 skipped | 0 failed across 34 test files" },
+			{ "gate": "scoped eslint on changeset", "result": "PASS", "detail": "exit 0, clean" },
+			{ "gate": "scoped prettier --check on changeset", "result": "CONDITIONAL", "detail": "exits non-zero on 9 changeset .svelte files, but purely CRLF/LF line-ending normalization (git core.autocrlf=true on Windows vs prettier endOfLine:lf). Diff is byte-identical visible content (1,Nc1,N EOL-only). No feature-introduced formatting drift. Known-gap, repo-wide environment artifact." }
+		],
+		"spotChecks": [
+			{ "claim": "AC6 regression — LeadCombobox.svelte + OrganizerCombobox.svelte untouched", "result": "CONFIRMED", "detail": "Neither file in changeset; both still exist on disk." },
+			{ "claim": "Migration 0026 additive nullable-only", "result": "CONFIRMED", "detail": "drizzle/0026_careless_captain_britain.sql = single line: ALTER TABLE crm_meetings ADD COLUMN venue text. No ALTER/DROP on existing columns." },
+			{ "claim": "execute-agent: no drift-note files in changeset", "result": "PARTIALLY INACCURATE", "detail": "src/routes/team/+page.svelte appears in BOTH the lint-drift NOTE 7-file list AND this changeset. However the prettier failure on it is CRLF-only, not real formatting drift — substance of the 'no real drift introduced' claim holds." }
+		],
+		"verdict": "DONE_WITH_CONCERNS",
+		"summary": "Two authoritative gates (typecheck + unit tests) PASS clean. Scoped lint: eslint clean; prettier --check non-zero from CRLF line-endings only (environment, not feature). Both risk spot-checks confirmed."
+	}
+}

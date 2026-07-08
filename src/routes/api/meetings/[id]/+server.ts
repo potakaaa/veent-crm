@@ -3,6 +3,7 @@ import type { RequestHandler } from './$types';
 import { meetingUpdateSchema } from '$lib/zod/schemas';
 import { getMeeting, updateMeeting, softDeleteMeeting } from '$lib/server/db/meetings';
 import { isManagerRole } from '$lib/utils/permissions';
+import { syncMeetingToNextcloud, deleteMeetingFromNextcloud } from '$lib/server/n8n/calendar-sync';
 
 export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 	if (!locals.user) throw error(401, 'Unauthorized');
@@ -39,6 +40,16 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 	});
 
 	if (!updated) throw error(404, 'Meeting not found');
+
+	void syncMeetingToNextcloud({
+		id: updated.id,
+		leadId: updated.leadId,
+		startAt: updated.startAt,
+		venue: updated.venue ?? null,
+		notes: updated.notes ?? null,
+		nextcloudUid: meeting.nextcloudUid ?? null
+	}).catch((e) => console.error('[NCAL-3] meeting update sync failed:', e));
+
 	return json(updated);
 };
 
@@ -53,5 +64,12 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
 
 	const ok = await softDeleteMeeting(params.id);
 	if (!ok) throw error(404, 'Meeting not found');
+
+	if (meeting.nextcloudUid) {
+		void deleteMeetingFromNextcloud(meeting.id, meeting.nextcloudUid).catch((e) =>
+			console.error('[NCAL-3] meeting delete sync failed:', e)
+		);
+	}
+
 	return json({ ok: true });
 };

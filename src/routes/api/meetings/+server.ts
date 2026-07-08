@@ -6,6 +6,7 @@ import {
 	createMeeting,
 	parseMeetingFilterParams
 } from '$lib/server/db/meetings';
+import { syncMeetingToNextcloud } from '$lib/server/n8n/calendar-sync';
 
 export const GET: RequestHandler = async ({ url, locals }) => {
 	if (!locals.user) throw error(401, 'Unauthorized');
@@ -46,6 +47,15 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		outcome: data.outcome || undefined,
 		attendeeIds: data.attendeeIds
 	});
+
+	void syncMeetingToNextcloud({
+		id: meeting.id,
+		leadId: meeting.leadId,
+		startAt: meeting.startAt,
+		venue: meeting.venue ?? null,
+		notes: meeting.notes ?? null,
+		nextcloudUid: null
+	}).catch((e) => console.error('[NCAL-3] meeting create sync failed:', e));
 
 	return json(meeting, { status: 201 });
 };

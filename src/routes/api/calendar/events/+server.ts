@@ -14,7 +14,7 @@ import type { RequestHandler } from './$types';
 import { fetchCalendarReport } from '$lib/caldav/reader';
 import { parseIcsToEvents } from '$lib/caldav/parser';
 import { CalDavError } from '$lib/caldav/reader';
-import { createEvent, CalDavWebhookError } from '$lib/caldav/writer';
+import { createEvent, CalDavWebhookError, embedCrmHref } from '$lib/caldav/writer';
 import { createCalendarEventSchema } from '$lib/zod/schemas';
 
 /** Current-month window `[first-of-month 00:00Z, first-of-next-month 00:00Z)`. */
@@ -88,11 +88,7 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 
 	const { title, start, end, location, description, categories, leadHref } = parsed.data;
 	const uid = crypto.randomUUID();
-	// Embed the CRM deep-link as a CRM-HREF line prepended to the description (n8n's ICS
-	// builder cannot emit the URL: property; the NCAL-1 parser reads this line back).
-	const finalDescription = leadHref
-		? `CRM-HREF:${leadHref}${description ? `\n${description}` : ''}`
-		: description;
+	const finalDescription = embedCrmHref(leadHref, description);
 
 	try {
 		await createEvent({

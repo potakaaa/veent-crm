@@ -115,6 +115,30 @@ function toN8nBody(payload: CalendarEventPayload): Record<string, unknown> {
 }
 
 /**
+ * Builds the final event description with a trusted `CRM-HREF:` line prepended.
+ *
+ * Strips any `CRM-HREF:` lines already present in the user-supplied description first
+ * to prevent callers from injecting a fake deep-link when `leadHref` is absent.
+ * When `leadHref` is present, prepends `CRM-HREF:${leadHref}` so the NCAL-1 parser
+ * can surface the link as `event.url` without the route handlers needing to know the
+ * exact format.
+ */
+export function embedCrmHref(
+	leadHref: string | undefined,
+	description: string | undefined
+): string | undefined {
+	const sanitized =
+		description != null
+			? description
+					.split('\n')
+					.filter((l) => !/^CRM-HREF:/i.test(l.trim()))
+					.join('\n')
+					.trim() || undefined
+			: undefined;
+	return leadHref ? `CRM-HREF:${leadHref}${sanitized ? `\n${sanitized}` : ''}` : sanitized;
+}
+
+/**
  * Creates an event via the n8n create/update webhook. The caller supplies `uid`
  * (`crypto.randomUUID()` in the route); it is returned on 2xx.
  */

@@ -218,27 +218,37 @@ export type MeetingUpdate = z.infer<typeof meetingUpdateSchema>;
 // the event DESCRIPTION (n8n's ICS builder cannot emit the `URL:` property), and the
 // NCAL-1 parser reads it back so calendar cards can deep-link to the lead.
 // `z.iso.datetime()` is the Zod v4 ISO-8601 date-time validator (confirmed v4.4.3).
-export const createCalendarEventSchema = z.object({
-	title: z.string().trim().min(1),
-	start: z.iso.datetime(),
-	end: z.iso.datetime(),
-	location: z.string().optional(),
-	description: z.string().optional(),
-	categories: z.string().optional(),
-	leadHref: z.string().optional()
-});
+export const createCalendarEventSchema = z
+	.object({
+		title: z.string().trim().min(1),
+		start: z.iso.datetime(),
+		end: z.iso.datetime(),
+		location: z.string().optional(),
+		description: z.string().optional(),
+		categories: z.string().optional(),
+		leadHref: z.string().optional()
+	})
+	.refine((v) => new Date(v.end) > new Date(v.start), {
+		message: 'end must be after start',
+		path: ['end']
+	});
 export type CreateCalendarEvent = z.infer<typeof createCalendarEventSchema>;
 
 // Same shape as create; `uid` comes from the path param, never the body.
-export const updateCalendarEventSchema = z.object({
-	title: z.string().trim().min(1),
-	start: z.iso.datetime(),
-	end: z.iso.datetime(),
-	location: z.string().optional(),
-	description: z.string().optional(),
-	categories: z.string().optional(),
-	leadHref: z.string().optional()
-});
+export const updateCalendarEventSchema = z
+	.object({
+		title: z.string().trim().min(1),
+		start: z.iso.datetime(),
+		end: z.iso.datetime(),
+		location: z.string().optional(),
+		description: z.string().optional(),
+		categories: z.string().optional(),
+		leadHref: z.string().optional()
+	})
+	.refine((v) => new Date(v.end) > new Date(v.start), {
+		message: 'end must be after start',
+		path: ['end']
+	});
 export type UpdateCalendarEvent = z.infer<typeof updateCalendarEventSchema>;
 
 // --- Won capture (manual) --------------------------------------------------

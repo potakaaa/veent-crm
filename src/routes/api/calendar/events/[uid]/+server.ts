@@ -8,7 +8,7 @@
  */
 import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { updateEvent, deleteEvent, CalDavWebhookError } from '$lib/caldav/writer';
+import { updateEvent, deleteEvent, CalDavWebhookError, embedCrmHref } from '$lib/caldav/writer';
 import { updateCalendarEventSchema } from '$lib/zod/schemas';
 
 export const PUT: RequestHandler = async ({ locals, request, params }) => {
@@ -28,10 +28,7 @@ export const PUT: RequestHandler = async ({ locals, request, params }) => {
 	}
 
 	const { title, start, end, location, description, categories, leadHref } = parsed.data;
-	// Mirror POST: embed the CRM deep-link as a prepended CRM-HREF line in the description.
-	const finalDescription = leadHref
-		? `CRM-HREF:${leadHref}${description ? `\n${description}` : ''}`
-		: description;
+	const finalDescription = embedCrmHref(leadHref, description);
 
 	try {
 		await updateEvent(params.uid, {

@@ -183,8 +183,8 @@ veent-crm/
       api/
         reminders/due/+server.ts    # Secret-authed endpoint polled by n8n
         leads/ingest/+server.ts     # Secret-authed scraper ingest
-        calendar/events/+server.ts  # Session-gated GET (read) + POST (create) — reads/writes Nextcloud CalDAV via src/lib/caldav/; POST returns { success: true, uid }
-        calendar/events/[uid]/+server.ts  # Session-gated PUT (update) + DELETE — delegates to writer.ts; PUT/DELETE return { success: true } or 502
+        calendar/events/+server.ts  # Session-gated GET (read) + POST (create via n8n webhook) — read path uses src/lib/caldav/reader.ts; POST returns { success: true, uid }
+        calendar/events/[uid]/+server.ts  # Session-gated PUT (update) + DELETE (via n8n webhook) — delegates to writer.ts; PUT/DELETE return { success: true } or 502
       layout.css               # Global CSS (Tailwind imports)
     tests/
       schemas.spec.ts          # Vitest schema tests

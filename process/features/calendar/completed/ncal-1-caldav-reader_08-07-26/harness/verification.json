@@ -1,0 +1,19 @@
+{
+  "task": "NCAL-1 — CalDAV read client + session-gated GET /api/calendar/events",
+  "result": "PASS",
+  "commands": [
+    { "command": "bun run check", "result": "PASS", "notes": "0 type errors (1 pre-existing unrelated warning in leads/[id]/+page.svelte)." },
+    { "command": "bun run lint", "result": "PASS", "notes": "prettier + eslint clean." },
+    { "command": "bun run test:unit:ci", "result": "PASS", "notes": "360 passed / 114 skipped / 0 failed, incl. 19 new NCAL-1 tests." }
+  ],
+  "manualChecks": [
+    { "check": "Nextcloud 401 → leak-free CalDavError (no '401'/app-password/user in message)", "result": "PASS", "evidence": "caldav-reader.spec.ts 'throws a leak-free CalDavError on an upstream 401'" },
+    { "check": "Endpoint remaps reader CalDavError → generic 503, no credential leak", "result": "PASS", "evidence": "calendar-events-endpoint.spec.ts 'maps a reader CalDavError to a leak-free 503'" },
+    { "check": "XML-injection guard — time-range formatted from Date args only", "result": "PASS", "evidence": "caldav-reader.spec.ts buildReportBody tests" },
+    { "check": "Bad ?start → 400 (NOT 503)", "result": "PASS", "evidence": "calendar-events-endpoint.spec.ts 'throws 400 (NOT 503) on an unparseable ?start'" },
+    { "check": "No CRM session → 401 before any upstream call", "result": "PASS", "evidence": "calendar-events-endpoint.spec.ts 'throws 401 when there is no CRM session'" },
+    { "check": "ATTACH/SOUND stripped on parse", "result": "PASS", "evidence": "caldav-parser.spec.ts 'strips ATTACH and SOUND'" },
+    { "check": "RRULE-expansion DoS clamp (>2y window / >1000 occurrences)", "result": "PASS", "evidence": "src/lib/caldav/parser.ts MAX_WINDOW_MS / MAX_OCCURRENCES + ordered-iterator break" },
+    { "check": "Live Nextcloud REPORT round-trip + time-range + REPORT-method acceptance", "result": "SKIP", "evidence": "Accepted known-gap — no credentialed live-CalDAV CI harness; process/features/calendar/backlog/caldav-live-harness_NOTE_08-07-26.md" }
+  ]
+}

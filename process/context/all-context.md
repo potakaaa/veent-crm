@@ -11,7 +11,7 @@ metadata:
 
 # veent-crm - All Context
 
-Last updated: 2026-07-07
+Last updated: 2026-07-08
 
 This file is the root context entrypoint for the repo.
 
@@ -89,6 +89,7 @@ For most substantial tasks:
 | reminders / n8n                         | `process/features/reminders/_GUIDE.md`            |
 | reports / layerchart charts              | `process/features/reports/_GUIDE.md`              |
 | calendar (meetings + follow-ups grid)   | `process/features/calendar/_GUIDE.md`              |
+| CalDAV / Nextcloud integration          | this file — see §CalDAV conventions + `src/lib/caldav/` |
 
 ## Feature Folders
 
@@ -100,7 +101,7 @@ For most substantial tasks:
 | import    | `process/features/import/_GUIDE.md`    | not-started (stub pipeline)              |
 | reminders | `process/features/reminders/_GUIDE.md` | in-progress (code-complete, EVL green; /reminders now shows four sections: overdue, due today, upcoming 7 days, going cold — `getRemindersQueue` returns `{ overdue, due, upcoming, cold }` — EVL green 03-07-26; AC1–AC5 render/snooze verification pending manual gates) |
 | reports   | `process/features/reports/_GUIDE.md`   | in-progress (real-DB-backed via Drizzle `reports/+page.server.ts`; `layerchart` charts) |
-| calendar  | `process/features/calendar/completed/calendar_01-07-26/` | code-complete, EVL green; e2e written but self-skipping pending shared auth e2e harness (2 known-gaps, pre-accepted) |
+| calendar  | `process/features/calendar/completed/calendar_01-07-26/` | calendar grid (meetings + follow-ups): code-complete, EVL green; e2e written but self-skipping pending shared auth e2e harness (2 known-gaps, pre-accepted). NCAL-1 CalDAV reader (`src/lib/caldav/*`) + `GET /api/calendar/events`: ✅ VERIFIED 2026-07-08 — live Nextcloud round-trip confirmed; 360 tests green; plan at `process/features/calendar/completed/ncal-1-caldav-reader_08-07-26/`; known-gap for live CI harness in `backlog/caldav-live-harness_NOTE_08-07-26.md` |
 | manager-dashboard | `process/features/manager-dashboard/_GUIDE.md` | in-progress (GitHub #244/DASH-1 — manager/super-manager-only `/dashboard`; 6 per-AE aggregation queries in `src/lib/server/db/dashboard.ts`, new `range-bucket-control` filter component, gate mirrors `/team`. EVL-confirmed 07-07-26: gate test PASS 5/5, typecheck PASS, scoped lint clean. Known gaps: Hybrid DB aggregation test self-skips — no live Postgres in this env, needs a live-DB CI harness run before full sign-off; AC5 e2e click-through is the pre-accepted shared-auth-fixture known-gap (same as calendar/reminders); repo-wide pre-existing prettier drift in 7 unrelated files flagged, see `process/general-plans/backlog/lint-drift-pre-existing-files_07-07-26_NOTE.md`) |
 | calendar  | `process/features/calendar/_GUIDE.md` | code-complete (CAL-1 base grid + CAL-3 owner filter), EVL green; CAL-3: reps scoped to own leads, managers get `?repId` combobox — `getFollowUpsInRange`/`getGoLiveDatesInRange`/`getEventDatesInRange` now accept `role` + optional `filterRepId`; meetings always team-wide; e2e self-skipping pending shared auth fixture (known-gaps pre-accepted) |
 | ux-enhancement | `process/features/ux-enhancement/completed/sitewide-ux-refresh_02-07-26/` + `process/features/ux-enhancement/completed/unified-filter-components_06-07-26/` + `process/features/ux-enhancement/completed/combobox-suggest-freetext_07-07-26/` | code-complete, EVL-confirmed across all 5 phases of `sitewide-ux-refresh_02-07-26` (program COMPLETE 02-07-26) — mobile nav drawer + design tokens (`--color-nav-*`/`--color-focus-ring`/`--shadow-nav-*`), consolidated Leads/UFG grid + date-picker + hover-popover, keyboard-accessible pipeline stage change, responsive Pipeline/Calendar/Reports, shared per-field form-error component, shared `Tabs.svelte` + chip token contract, Reminders/Today snooze parity, program-wide ARIA sweep. **Follow-on `unified-filter-components_06-07-26` (EVL-confirmed 06-07-26)** unified the duplicated search/filter/week-range toolbar UI across Up for Grabs/My Leads/Reports/Reminders into 3 shared components now in `src/lib/components/ui/`: `filter-dropdown/` (generalized `MultiSelectFilter` behind a `multiple` prop), `search-input/` (canonical 300ms debounce), `week-range-control/` (new `role="radiogroup"` component, not a `Tabs.svelte` reuse). `src/lib/components/leads/MultiSelectFilter.svelte` is retired (deleted, zero remaining references). **Follow-on `combobox-suggest-freetext_07-07-26` (GitHub #250, EVL-confirmed 07-07-26)** added a new shared `src/lib/components/ui/combobox-freetext/ComboboxFreetext.svelte` ("suggest but never block" free-text input, two modes: free-text-only and suggestion-mode with 300ms debounce + latest-wins race guard + explicit ARIA combobox semantics/keyboard nav) — wired as Organizer Name suggestions at 3 entry points (`leads/new`, `LeadEditModal`, `leads/[id]/edit`) via `src/lib/utils/organizer-suggest.ts` (reuses live `GET /api/organizers?q=`), and a brand-new persisted **Meeting Venue** free-text field on `MeetingFormModal.svelte` backed by a new nullable `crm_meetings.venue text` column (migration `drizzle/0026_careless_captain_britain.sql` — additive, generated but NOT applied to any live DB in this env; deploy-time step). `LeadCombobox.svelte`/`OrganizerCombobox.svelte` (id-only pickers) confirmed byte-for-byte unchanged (AC6). Known-gaps (all three plans, same root causes, none new): shared Playwright auth-fixture (pre-existing, blocks most e2e proof — `process/features/auth/backlog/e2e-auth-bootstrap_NOTE_01-07-26.md`), `@axe-core/playwright` devDependency decision (open — `process/features/ux-enhancement/backlog/axe-core-devdependency-decision_NOTE_02-07-26.md`), nested-worktree Playwright env blocker (open), Svelte component-test harness decision for `ComboboxFreetext` render/click coverage (open — `process/features/ux-enhancement/backlog/component-test-harness-decision_NOTE_07-07-26.md`), live-DB CI harness for migration `0026` apply-and-query (pre-accepted, same class as manager-dashboard/calendar) — see each program's own `*_CLOSEOUT_*.md`/`*_REPORT_*.md` for full SPEC scoring and known-gaps detail |
@@ -131,6 +132,10 @@ veent-crm/
         mock.ts                # Placeholder data behind every surface (keep isolated)
         reminders.ts           # Reminder logic stub
         sentry.ts              # Sentry init stub
+      caldav/
+        constants.ts           # Env-driven CalDAV URL builder (`calendarCollectionUrl()`) + `basicAuthHeader()`
+        reader.ts              # `fetchCalendarReport({ start, end })` — sends REPORT request; extracts `.ics` blobs via fast-xml-parser; throws `CalDavError` on non-2xx
+        parser.ts              # `parseIcsToEvents(ics, { start, end })` — ical.js + rrule; ATTACH/SOUND stripped; RRULE DST-safe via ical.js RecurExpansion
       zod/
         schemas.ts             # Zod validators (forms + import/ingest)
     routes/
@@ -177,6 +182,7 @@ veent-crm/
       api/
         reminders/due/+server.ts    # Secret-authed endpoint polled by n8n
         leads/ingest/+server.ts     # Secret-authed scraper ingest
+        calendar/events/+server.ts  # Session-gated GET — reads Nextcloud CalDAV via src/lib/caldav/, returns CalendarEvent[] JSON
       layout.css               # Global CSS (Tailwind imports)
     tests/
       schemas.spec.ts          # Vitest schema tests
@@ -212,6 +218,7 @@ veent-crm/
 - **Forms:** Zod 4.x schemas (`src/lib/zod/schemas.ts`) + client `safeParse()` + `fetch()` — Superforms 2.x is installed but unusable (`typebox@1.3.0` conflict breaks `sveltekit-superforms/adapters`); see Key Patterns §Mandatory conventions
 - **UI:** Tailwind CSS 4.x + `@tailwindcss/forms` + `@tailwindcss/typography`
 - **Charts:** `layerchart` 2.0.0-next.48 (shadcn-svelte chart primitives — bar/line/pie/area; reports page). ECharts is NOT installed — do not assume it is present.
+- **CalDAV / ICS parsing:** `ical.js` 2.x (iCalendar parse via `ICAL.parse`/`ICAL.Component`/`ICAL.Event` + `RecurExpansion` — ships own TS types), `rrule` (RRULE recurrence expansion; used for bounded window expansion when not using ical.js native RecurExpansion), `fast-xml-parser` (CalDAV multistatus XML extraction — server-only; NOT `DOMParser` which is undefined in Node/Vercel runtime)
 - **Email:** Resend 6.x (magic-link delivery — live; real Resend client in `src/lib/server/email.ts`, `RESEND_API_KEY`/`RESEND_FROM`)
 - **Error tracking:** Sentry 10.x (`@sentry/sveltekit` — stubbed)
 - **Testing:** Vitest 4.x (unit) + Playwright 1.60.x (e2e)
@@ -257,6 +264,18 @@ veent-crm/
 - Unauthenticated hits on protected routes split into two branches: no Better Auth session at all → `/login?from=[encoded-path]`; session exists but the email has no active `crm_users` allowlist row → `/unauthorized?from=[encoded-path]`. The `from` param is sanitized server-side via the shared `sanitizeFrom` helper (`src/lib/server/sanitize-redirect.ts`, used by both `/login` and `/unauthorized`) — only same-origin relative paths (single leading `/`) pass through; off-origin and scheme-containing values are stripped to `null`.
 - `src/routes/+error.svelte` is the global SvelteKit error page (404 + generic errors). It renders outside the layout tree — chrome-less by default, no bare-mode edit needed.
 
+### CalDAV conventions
+
+- `src/lib/caldav/` is server-only — never imported from `.svelte` files.
+- `NEXTCLOUD_URL` already contains `https://`; never prepend a scheme. `NEXTCLOUD_CALENDAR_SLUG` is pre-encoded; never re-`encodeURIComponent`.
+- Multistatus XML (`207`) parsed with `fast-xml-parser`; `DOMParser` is undefined in the Node/Vercel runtime.
+- `fetch` global supports the WebDAV `REPORT` method (not on the Fetch forbidden-method list) — confirmed against live Nextcloud.
+- Nextcloud `401` (bad app password) → throw `CalDavError`; endpoint maps it to `503` generic. Credentials/upstream status MUST NOT reach the client or logs.
+- Format CalDAV `time-range` from parsed `Date` objects (`YYYYMMDDTHHMMSSZ`), never from raw query string values (XML-injection guard).
+- RRULE expansion: use ical.js native `RecurExpansion` (honors `VTIMEZONE`) or convert `DTSTART` to UTC before `rrule` — a naive mix produces wrong instants across DST.
+- ICS fixture files live in `src/tests/fixtures/*.ics`; reuse them for future NCAL phases.
+- Default date window (when `?start`/`?end` absent): current-month `[first-of-month 00:00:00Z, first-of-next-month 00:00:00Z)`.
+
 ### Audit trail
 
 - All stage changes, owner changes, deal value changes write a row to `crm_lead_history`
@@ -275,12 +294,13 @@ veent-crm/
 - Email: `RESEND_API_KEY`
 - Error tracking: `SENTRY_DSN`
 - Better Auth (TBD when wired): `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`
+- CalDAV / Nextcloud: `NEXTCLOUD_URL` (includes `https://` scheme — do NOT prepend scheme), `NEXTCLOUD_USER`, `NEXTCLOUD_APP_PASSWORD`, `NEXTCLOUD_CALENDAR_SLUG` (pre-encoded slug — do NOT re-`encodeURIComponent`)
 
 ---
 
 ## Current Project State (v0 → v1)
 
-**Current state (as of 03-07-26):** Better Auth (magic-link + `crm_users` allowlist) is live-wired in `hooks.server.ts` — `DEV_BYPASS` no longer exists. Leads, pipeline, meetings, reminders, calendar, and reports all query the real DB via Drizzle (reports via `reports/+page.server.ts`). Resend email is live-wired. No real Sentry yet (accepted known-gap).
+**Current state (as of 08-07-26):** Better Auth (magic-link + `crm_users` allowlist) is live-wired in `hooks.server.ts` — `DEV_BYPASS` no longer exists. Leads, pipeline, meetings, reminders, calendar, and reports all query the real DB via Drizzle (reports via `reports/+page.server.ts`). Resend email is live-wired. No real Sentry yet (accepted known-gap). CalDAV read client (`src/lib/caldav/`) + `GET /api/calendar/events` live-wired to Nextcloud — NCAL-1 VERIFIED 08-07-26.
 
 **Remaining v1 work (in priority order):**
 

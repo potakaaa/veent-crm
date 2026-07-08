@@ -68,8 +68,13 @@ export function parseIcsToEvents(ics: string, range: { start: Date; end: Date })
 		throw new RangeError('Requested calendar window is too wide');
 	}
 
-	const jcal = ICAL.parse(ics);
-	const root = new ICAL.Component(jcal);
+	let root: ICAL.Component;
+	try {
+		root = new ICAL.Component(ICAL.parse(ics));
+	} catch {
+		// Malformed ICS blob — skip silently so one bad entry doesn't abort the whole response.
+		return [];
+	}
 
 	// Register any VTIMEZONE blocks so ICAL.Time.toJSDate() resolves TZID instants correctly.
 	for (const vtz of root.getAllSubcomponents('vtimezone')) {
@@ -135,12 +140,12 @@ export function parseIcsToEvents(ics: string, range: { start: Date; end: Date })
 			while ((next = iterator.next())) {
 				const occStartMs = next.toJSDate().getTime();
 				if (occStartMs >= rangeEndMs) break; // ordered — no later occurrence is in range
+				const occEndMs = occStartMs + durationMs;
+				if (occEndMs <= rangeStartMs) continue; // ends before the window opens
 				count += 1;
 				if (count > MAX_OCCURRENCES) {
 					throw new RangeError('RRULE expands to too many occurrences');
 				}
-				const occEndMs = occStartMs + durationMs;
-				if (occEndMs <= rangeStartMs) continue; // ends before the window opens
 				events.push({
 					...base,
 					start: new Date(occStartMs).toISOString(),

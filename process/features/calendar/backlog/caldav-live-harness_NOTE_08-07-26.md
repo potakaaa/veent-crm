@@ -35,5 +35,5 @@ Options (pick one when a credentialed harness becomes worthwhile):
 
 ## References
 
-- Plan: `process/features/calendar/active/ncal-1-caldav-reader_08-07-26/ncal-1-caldav-reader_PLAN_08-07-26.md`
+- Plan: `process/features/calendar/completed/ncal-1-caldav-reader_08-07-26/ncal-1-caldav-reader_PLAN_08-07-26.md`
 - Same-class gap: repo live-DB CI harness (calendar / reminders / manager-dashboard Hybrid gates).

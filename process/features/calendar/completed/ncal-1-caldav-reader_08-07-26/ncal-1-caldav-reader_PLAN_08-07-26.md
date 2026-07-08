@@ -210,7 +210,7 @@ Status vocabulary: `CODE DONE` = checklist + Fully-Automated gates green with Hy
 
 ## Resume and Execution Handoff
 
-1. **Selected plan file:** `process/features/calendar/active/ncal-1-caldav-reader_08-07-26/ncal-1-caldav-reader_PLAN_08-07-26.md`
+1. **Selected plan file:** `process/features/calendar/completed/ncal-1-caldav-reader_08-07-26/ncal-1-caldav-reader_PLAN_08-07-26.md`
 2. **Last completed step:** VALIDATE complete (CONDITIONAL). Checklist steps 1–11 pending EXECUTE.
 3. **Validate-contract status:** written (08-07-26) — see `## Validate Contract` below.
 4. **Supporting context loaded:** `process/context/all-context.md` (root router), `process/context/tests/all-tests.md` (vitest `requireAssertions` on; `test:unit:ci`; `$env/dynamic/private` mock pattern), `src/routes/api/nav-counts/+server.ts` (session-gate pattern), `src/tests/reminders-due-endpoint.spec.ts` (endpoint test pattern), `src/app.d.ts` (`Locals.user`).

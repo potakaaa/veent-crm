@@ -123,7 +123,8 @@ export async function fetchCalendarReport({
 				Depth: '1',
 				'Content-Type': 'application/xml; charset=utf-8'
 			},
-			body: buildReportBody(start, end)
+			body: buildReportBody(start, end),
+			signal: AbortSignal.timeout(10_000)
 		});
 	} catch {
 		// Network/DNS/TLS failure — never surface the underlying detail.

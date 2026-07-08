@@ -28,6 +28,7 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 	if (!locals.user) throw error(401, 'Unauthorized');
 
 	// Date parsing/validation OUTSIDE the CalDavError catch — an invalid date is a 400, not a 503.
+	const MAX_RANGE_MS = 2 * 365 * 24 * 60 * 60 * 1000; // matches parser MAX_WINDOW_MS (~2 years)
 	const startParam = url.searchParams.get('start');
 	const endParam = url.searchParams.get('end');
 	let range: { start: Date; end: Date };
@@ -41,6 +42,9 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 		}
 		if (start.getTime() >= end.getTime()) {
 			throw error(400, 'start must be before end');
+		}
+		if (end.getTime() - start.getTime() > MAX_RANGE_MS) {
+			throw error(400, 'date range too large (max 2 years)');
 		}
 		range = { start, end };
 	}

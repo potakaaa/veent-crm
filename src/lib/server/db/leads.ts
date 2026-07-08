@@ -132,6 +132,9 @@ export function dbRowToLead(
 		bankChargesAbsorbed: row.bankChargesAbsorbed ?? undefined,
 		hasFutureEvents: row.hasFutureEvents ?? false,
 		lostReason: (row.lostReason as Lead['lostReason']) ?? undefined,
+		// NCAL-3 — Nextcloud calendar UID fields (nullable; set after first successful sync)
+		nextcloudGoLiveUid: row.nextcloudGoLiveUid ?? null,
+		nextcloudEventUid: row.nextcloudEventUid ?? null,
 		createdAt,
 		lastActivityAt,
 		followUpAt: followUpIso,

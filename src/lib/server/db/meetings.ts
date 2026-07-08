@@ -290,9 +290,13 @@ export async function listMeetingsPaginated(
  */
 export async function getMeeting(
 	id: string
-): Promise<{ id: string; organizerId: string | null } | null> {
+): Promise<{ id: string; organizerId: string | null; nextcloudUid: string | null } | null> {
 	const [row] = await db
-		.select({ id: crmMeetings.id, organizerId: crmMeetings.organizerId })
+		.select({
+			id: crmMeetings.id,
+			organizerId: crmMeetings.organizerId,
+			nextcloudUid: crmMeetings.nextcloudUid
+		})
 		.from(crmMeetings)
 		.where(and(eq(crmMeetings.id, id), isNull(crmMeetings.deletedAt)))
 		.limit(1);

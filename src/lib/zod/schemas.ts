@@ -211,6 +211,36 @@ export const meetingUpdateSchema = z.object({
 });
 export type MeetingUpdate = z.infer<typeof meetingUpdateSchema>;
 
+// --- Create / update a Nextcloud calendar event (NCAL-2, GitHub #252) -------
+// POST /api/calendar/events + PUT /api/calendar/events/[uid]. The CRM never holds
+// CalDAV write credentials — these payloads are POSTed to an n8n webhook which
+// performs the actual CalDAV PUT. `leadHref` is embedded as a `CRM-HREF:` line in
+// the event DESCRIPTION (n8n's ICS builder cannot emit the `URL:` property), and the
+// NCAL-1 parser reads it back so calendar cards can deep-link to the lead.
+// `z.iso.datetime()` is the Zod v4 ISO-8601 date-time validator (confirmed v4.4.3).
+export const createCalendarEventSchema = z.object({
+	title: z.string().trim().min(1),
+	start: z.iso.datetime(),
+	end: z.iso.datetime(),
+	location: z.string().optional(),
+	description: z.string().optional(),
+	categories: z.string().optional(),
+	leadHref: z.string().optional()
+});
+export type CreateCalendarEvent = z.infer<typeof createCalendarEventSchema>;
+
+// Same shape as create; `uid` comes from the path param, never the body.
+export const updateCalendarEventSchema = z.object({
+	title: z.string().trim().min(1),
+	start: z.iso.datetime(),
+	end: z.iso.datetime(),
+	location: z.string().optional(),
+	description: z.string().optional(),
+	categories: z.string().optional(),
+	leadHref: z.string().optional()
+});
+export type UpdateCalendarEvent = z.infer<typeof updateCalendarEventSchema>;
+
 // --- Won capture (manual) --------------------------------------------------
 export const wonFormSchema = z.object({
 	leadId: z.string().uuid(),

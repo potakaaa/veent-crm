@@ -14,6 +14,8 @@ import type { RequestHandler } from './$types';
 import { fetchCalendarReport } from '$lib/caldav/reader';
 import { parseIcsToEvents } from '$lib/caldav/parser';
 import { CalDavError } from '$lib/caldav/reader';
+import { createEvent, CalDavWebhookError } from '$lib/caldav/writer';
+import { createCalendarEventSchema } from '$lib/zod/schemas';
 
 /** Current-month window `[first-of-month 00:00Z, first-of-next-month 00:00Z)`. */
 function defaultMonthWindow(): { start: Date; end: Date } {
@@ -57,4 +59,55 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 		if (e instanceof CalDavError) throw error(503, 'Calendar service unavailable');
 		throw e;
 	}
+};
+
+/**
+ * POST /api/calendar/events (NCAL-2) — session-gated create of a Nextcloud event via
+ * the n8n webhook. The CRM never holds CalDAV write credentials.
+ *
+ * Flow: session gate (401, FIRST statement) → parse JSON (400 on malformed) → Zod
+ * validate (400 with per-field errors, no webhook call) → generate uid + embed
+ * `CRM-HREF:` in description when `leadHref` present → writer.createEvent → 200
+ * `{ success, uid }`. Any writer throw maps to 502 — secret/URL/upstream never leak.
+ */
+export const POST: RequestHandler = async ({ locals, request }) => {
+	// Session gate BEFORE any parse/validate/writer call.
+	if (!locals.user) throw error(401, 'Unauthorized');
+
+	let body: unknown;
+	try {
+		body = await request.json();
+	} catch {
+		throw error(400, 'Invalid JSON body');
+	}
+
+	const parsed = createCalendarEventSchema.safeParse(body);
+	if (!parsed.success) {
+		return json({ success: false, errors: parsed.error.flatten().fieldErrors }, { status: 400 });
+	}
+
+	const { title, start, end, location, description, categories, leadHref } = parsed.data;
+	const uid = crypto.randomUUID();
+	// Embed the CRM deep-link as a CRM-HREF line prepended to the description (n8n's ICS
+	// builder cannot emit the URL: property; the NCAL-1 parser reads this line back).
+	const finalDescription = leadHref
+		? `CRM-HREF:${leadHref}${description ? `\n${description}` : ''}`
+		: description;
+
+	try {
+		await createEvent({
+			uid,
+			title,
+			start,
+			end,
+			location,
+			description: finalDescription,
+			categories
+		});
+	} catch (e) {
+		if (e instanceof CalDavWebhookError) throw error(502, 'Calendar service unavailable');
+		throw e;
+	}
+
+	return json({ success: true, uid });
 };

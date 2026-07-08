@@ -426,3 +426,49 @@ export const assignCategoriesSchema = z.object({
 	categoryId: z.string().uuid()
 });
 export type AssignCategories = z.infer<typeof assignCategoriesSchema>;
+
+// --- CSV / Google Sheets import UI (GitHub #210, #211) --------------------------
+// Server-side re-validation for the /api/import/preview and /api/import/commit endpoints. Client
+// data is UX-only and NEVER a trust boundary — both endpoints re-run these schemas on every
+// request. `rows` is capped at 2000 (E4) to bound the batched dedup query and batch insert,
+// mirroring ingestBatchSchema.leads.max(1000).
+
+const IMPORT_ROW_CAP = 2000;
+
+// Strict per-target mapped-row shape: only `name` (DB notNull) is hard-required; every other
+// mapped column is an optional string. `category` is intentionally not a recognized field.
+export const importLeadRowSchema = z
+	.object({ name: z.string().trim().min(1, 'Name is required') })
+	.catchall(z.string());
+export const importOrganizerRowSchema = z
+	.object({ name: z.string().trim().min(1, 'Name is required') })
+	.catchall(z.string());
+
+// Lenient row shape for the commit payload: skipped rows may be incomplete, so the request-level
+// schema only checks the {data, skip} envelope. Non-skipped rows are strictly re-validated per-row
+// in the handler (drives the `errored` count).
+const importCommitRowSchema = z.object({
+	data: z.record(z.string(), z.string()),
+	skip: z.boolean()
+});
+
+export const importPreviewRequestSchema = z.discriminatedUnion('target', [
+	z.object({ target: z.literal('leads'), rows: z.array(importLeadRowSchema).max(IMPORT_ROW_CAP) }),
+	z.object({
+		target: z.literal('organizers'),
+		rows: z.array(importOrganizerRowSchema).max(IMPORT_ROW_CAP)
+	})
+]);
+export type ImportPreviewRequest = z.infer<typeof importPreviewRequestSchema>;
+
+export const importCommitRequestSchema = z.discriminatedUnion('target', [
+	z.object({
+		target: z.literal('leads'),
+		rows: z.array(importCommitRowSchema).max(IMPORT_ROW_CAP)
+	}),
+	z.object({
+		target: z.literal('organizers'),
+		rows: z.array(importCommitRowSchema).max(IMPORT_ROW_CAP)
+	})
+]);
+export type ImportCommitRequest = z.infer<typeof importCommitRequestSchema>;

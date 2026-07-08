@@ -6,67 +6,16 @@
 import { leadPlatform } from './db/schema';
 import { TEMPLATE_CATEGORIES, type TemplateCategory } from '../data/template-categories';
 
+// Pure handle-normalization trio lives in the client-safe `$lib/utils/normalize.ts` (single source
+// of truth) so the import wizard's browser-side MappingStep can reuse it without pulling this
+// server-only module (which imports the Drizzle schema) into the client bundle. Re-exported here so
+// existing server-side importers of `$lib/server/import-utils` keep working unchanged.
+export { slugify, extractHandleFromUrl, normalizeHandle } from '../utils/normalize';
+
 // Category vocabulary is the frozen TEMPLATE_CATEGORIES list (CAT-1) — the leadCategory enum
 // was dropped in migration 0028.
 export type CrmLeadCategory = TemplateCategory;
 export type CrmLeadPlatform = (typeof leadPlatform.enumValues)[number];
-
-export function slugify(name: string): string {
-	return name
-		.toLowerCase()
-		.replace(/\s+/g, '-')
-		.replace(/[^a-z0-9-]/g, '')
-		.replace(/-+/g, '-')
-		.replace(/^-|-$/g, '');
-}
-
-// Known non-account path prefixes on FB/IG that are not organizer handles.
-const NON_ACCOUNT_SEGMENTS = new Set([
-	'groups',
-	'events',
-	'pages',
-	'profile.php',
-	'p',
-	'reel',
-	'reels',
-	'share',
-	'watch',
-	'video',
-	'videos',
-	'photo',
-	'photos',
-	'stories',
-	'hashtag'
-]);
-
-export function extractHandleFromUrl(url: string): string | null {
-	// Extract the first meaningful path segment from an FB/IG/website URL.
-	try {
-		const u = new URL(url);
-		const parts = u.pathname.split('/').filter(Boolean);
-		if (!parts.length) return null;
-		const seg = parts[0].replace(/[^a-z0-9._-]/gi, '').toLowerCase();
-		if (seg.length < 2 || NON_ACCOUNT_SEGMENTS.has(seg)) return null;
-		return seg;
-	} catch {
-		return null;
-	}
-}
-
-export function normalizeHandle(
-	fbUrl?: string,
-	igUrl?: string,
-	website?: string,
-	name?: string
-): string {
-	// Priority: FB → IG → website → slugify(name).
-	for (const url of [fbUrl, igUrl, website]) {
-		if (!url) continue;
-		const h = extractHandleFromUrl(url);
-		if (h) return h;
-	}
-	return slugify(name ?? 'unknown');
-}
 
 // Full category map: scraper agent_categories value → CRM crm_lead_category enum.
 const CATEGORY_MAP: Record<string, CrmLeadCategory> = {

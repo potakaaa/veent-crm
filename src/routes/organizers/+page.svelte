@@ -1,8 +1,9 @@
 <script lang="ts">
-	import { goto } from '$app/navigation';
+	import { goto, invalidateAll } from '$app/navigation';
 	import { page, navigating } from '$app/state';
 	import { SvelteURLSearchParams } from 'svelte/reactivity';
 	import PageHeader from '$lib/components/shared/PageHeader.svelte';
+	import ImportWizard from '$lib/components/import/ImportWizard.svelte';
 	import { Skeleton } from '$lib/components/ui/skeleton';
 	import { Card } from '$lib/components/ui/card';
 	import ListItemCard from '$lib/components/shared/ListItemCard.svelte';
@@ -23,6 +24,7 @@
 	let { data } = $props();
 
 	let paging = $state(false);
+	let importOpen = $state(false);
 	const navLoading = $derived(paging || navigating.to?.url.pathname === '/organizers');
 
 	let searchInput = $derived(data.filters.search ?? '');
@@ -94,6 +96,18 @@
 	<PageHeader
 		title="Organizers"
 		subtitle="Every recurring event organizer, with their linked-lead count. Open one to see its full event history."
+	>
+		{#snippet actions()}
+			<Button variant="outline" size="sm" onclick={() => (importOpen = true)}>Import</Button>
+		{/snippet}
+	</PageHeader>
+
+	<ImportWizard
+		open={importOpen}
+		onOpenChange={(v) => (importOpen = v)}
+		defaultTarget="organizers"
+		locked
+		onImportComplete={() => invalidateAll()}
 	/>
 
 	<!-- toolbar -->

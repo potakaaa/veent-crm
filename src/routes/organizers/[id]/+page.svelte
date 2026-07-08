@@ -37,6 +37,12 @@
 	let paging = $state(false);
 	const navLoading = $derived(paging || !!navigating.to);
 
+	$effect(() => {
+		// data updates once the new page's load() resolves — clear the paging flag then.
+		void data;
+		paging = false;
+	});
+
 	let searchInput = $derived(data.filters.search ?? '');
 	let searchTimer: ReturnType<typeof setTimeout> | null = null;
 

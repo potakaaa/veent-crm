@@ -59,6 +59,28 @@ function colorFor(category: string | null): string {
 }
 
 /**
+ * Extracts a CRM deep-link from a DESCRIPTION value (NCAL-2). n8n's ICS builder cannot
+ * emit the `URL:` property, so CRM links are embedded as a `CRM-HREF:<path>` line inside
+ * DESCRIPTION. Returns the first non-empty href and the remaining description with that
+ * line removed. No CRM-HREF line → `url: null` and the description unchanged (behavior-
+ * preserving for NCAL-1 events).
+ */
+function extractCrmHref(description: string | null): {
+	url: string | null;
+	description: string | null;
+} {
+	if (description == null) return { url: null, description: null };
+	const lines = description.split('\n');
+	const idx = lines.findIndex((l) => /^CRM-HREF:(.+)$/.test(l));
+	if (idx === -1) return { url: null, description };
+	const match = lines[idx].match(/^CRM-HREF:(.+)$/);
+	const url = match ? match[1].trim() || null : null;
+	if (url == null) return { url: null, description };
+	const remaining = [...lines.slice(0, idx), ...lines.slice(idx + 1)].join('\n').trim();
+	return { url, description: remaining || null };
+}
+
+/**
  * Parses an `.ics` string to a bounded list of {@link CalendarEvent}.
  * Recurring events are expanded to per-occurrence entries within `[start, end)`.
  */
@@ -99,11 +121,13 @@ export function parseIcsToEvents(ics: string, range: { start: Date; end: Date })
 		const uid = event.uid ?? '';
 		const title = event.summary ?? '';
 		const location = (vevent.getFirstPropertyValue('location') as string) ?? null;
-		const description = (vevent.getFirstPropertyValue('description') as string) ?? null;
+		const rawDescription = (vevent.getFirstPropertyValue('description') as string) ?? null;
 		const status = (vevent.getFirstPropertyValue('status') as string) ?? null;
 		const category = mapCategory(vevent);
 		const color = colorFor(category);
-		const url = (vevent.getFirstPropertyValue('url') as string) ?? null;
+		// NCAL-2: derive `url` from a `CRM-HREF:` line inside DESCRIPTION (n8n cannot emit
+		// the ICS `URL:` property); strip that line from the returned description.
+		const { url, description } = extractCrmHref(rawDescription);
 		const organizer = parseCalAddress(vevent.getFirstProperty('organizer'));
 		const attendees = vevent
 			.getAllProperties('attendee')

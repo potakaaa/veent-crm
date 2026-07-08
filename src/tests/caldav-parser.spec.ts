@@ -71,10 +71,13 @@ describe('parseIcsToEvents', () => {
 		]);
 	});
 
-	it('maps CATEGORIES to category and URL to url, with organizer/attendees', () => {
+	it('maps CATEGORIES to category, with organizer/attendees (URL: property no longer read — NCAL-2)', () => {
 		const [ev] = parseIcsToEvents(fixture('event-categories-url.ics'), JULY);
 		expect(ev.category).toBe('meeting');
-		expect(ev.url).toBe('/meetings/abc-123');
+		// NCAL-2: `url` now derives from a CRM-HREF line in DESCRIPTION, not the raw ICS
+		// URL: property. This fixture has no DESCRIPTION, so url is null (deliberate contract
+		// change, not an NCAL-1 regression).
+		expect(ev.url).toBeNull();
 		expect(ev.color).toBe('#3b82f6');
 		expect(ev.status).toBe('CONFIRMED');
 		expect(ev.organizer).toEqual({ name: 'Jane Rep', email: 'jane@veent.io' });

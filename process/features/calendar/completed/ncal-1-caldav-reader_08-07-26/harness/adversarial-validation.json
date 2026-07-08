@@ -1,0 +1,19 @@
+{
+  "scenarios": [
+    {
+      "scenario": "Nextcloud-401 credential leak — a bad/expired app password makes Nextcloud return 401; an attacker probing the endpoint could learn the upstream auth state or see leaked credentials in the error/log.",
+      "ruled_out": true,
+      "rationale": "reader.ts throws CalDavError('Calendar service unavailable') with NO upstream status/credential in the message; the upstream status is kept only on a server-side-internal upstreamStatus field. The endpoint remaps any CalDavError to error(503, 'Calendar service unavailable'). caldav-reader.spec.ts and calendar-events-endpoint.spec.ts both assert the client-visible message contains no '401', app password, or user. No plaintext credential logging path exists."
+    },
+    {
+      "scenario": "XML injection via ?start/?end — a crafted query value (e.g. '\"/><c:evil/>') is interpolated into the calendar-query REPORT XML body, altering the CalDAV filter or injecting elements.",
+      "ruled_out": true,
+      "rationale": "buildReportBody formats both bounds via toCalDavUtc() from parsed Date objects only — raw request strings never reach the body. The endpoint rejects unparseable dates with error(400) before the reader is called. caldav-reader.spec.ts asserts an injection-y raw value cannot appear in the emitted body."
+    },
+    {
+      "scenario": "RRULE-expansion DoS via a very wide window — an authenticated user requests a multi-decade range or an unbounded RRULE, forcing the parser to expand millions of occurrences and exhaust CPU/memory.",
+      "ruled_out": true,
+      "rationale": "parser.ts enforces MAX_WINDOW_MS (~2 years) — a wider requested window throws RangeError before expansion; MAX_OCCURRENCES (1000) caps per-event occurrences; and the ordered iterator breaks as soon as an occurrence starts at/after the window end. The endpoint additionally rejects start>=end with 400. The CalDAV server-side time-range filter further bounds the returned set on the happy path."
+    }
+  ]
+}

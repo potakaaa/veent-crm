@@ -1,0 +1,9 @@
+{
+  "task": "NCAL-1 — CalDAV read client + session-gated GET /api/calendar/events",
+  "decision": "approved",
+  "blockingFindings": [],
+  "nonBlockingFindings": [
+    "Live Nextcloud REPORT round-trip, server-side time-range filtering, and undici REPORT-method acceptance are unproven — no credentialed live-CalDAV CI harness (pre-accepted Hybrid known-gap; backlog note written). Status is CODE DONE, not VERIFIED end-to-end."
+  ],
+  "notes": "All Fully-Automated gates green (bun run check 0 errors, bun run lint clean, bun run test:unit:ci 360 pass / 0 fail incl. 19 new NCAL-1 tests). Execute-agent instructions E1-E6 honored: E1 fast-xml-parser (no DOMParser); E2 time-range from Date; E3 VTIMEZONE resolved via ical.js native ICAL.Event recurrence, proven by the DST fixture; E4 ical.js v2 TS types satisfy bun run check; E5 error(401) before try + error(400) outside the CalDavError catch; E6 this evidence pack. Credential-mask and XML-injection guard are automated-tested; RRULE-DoS clamp is code-enforced. mustStopBeforeFinalize satisfied: pack complete + APPROVE recorded."
+}

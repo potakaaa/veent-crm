@@ -1,0 +1,35 @@
+{
+  "task": "NCAL-1 — CalDAV read client + session-gated GET /api/calendar/events",
+  "snippets": [
+    {
+      "file": "src/lib/caldav/constants.ts",
+      "lines": "25-27",
+      "description": "basicAuthHeader() — Basic Auth built server-side from NEXTCLOUD_USER:NEXTCLOUD_APP_PASSWORD; never exported to client code."
+    },
+    {
+      "file": "src/lib/caldav/reader.ts",
+      "lines": "47-58",
+      "description": "buildReportBody() — CalDAV time-range formatted via toCalDavUtc() from Date args only (XML-injection guard)."
+    },
+    {
+      "file": "src/lib/caldav/reader.ts",
+      "lines": "126-133",
+      "description": "fetchCalendarReport() error paths — network failure and any non-2xx (incl. 401) throw CalDavError('Calendar service unavailable') with no upstream status/credential in the message."
+    },
+    {
+      "file": "src/lib/caldav/parser.ts",
+      "lines": "88-90",
+      "description": "ATTACH/SOUND removeAllProperties() before any field is read (attachment payload never reaches JSON)."
+    },
+    {
+      "file": "src/lib/caldav/parser.ts",
+      "lines": "31-34,67-69,138-141",
+      "description": "RRULE-expansion DoS clamp — MAX_WINDOW_MS (~2y) and MAX_OCCURRENCES (1000) reject abusively wide windows / unbounded recurrence."
+    },
+    {
+      "file": "src/routes/api/calendar/events/+server.ts",
+      "lines": "34-58",
+      "description": "Session gate (401 before try), date validation (400 outside the CalDavError catch), CalDavError → generic 503 remap."
+    }
+  ]
+}

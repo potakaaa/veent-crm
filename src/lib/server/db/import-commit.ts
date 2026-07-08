@@ -72,7 +72,7 @@ export async function runImportCommit(
 					eventLink: data.eventLink || null,
 					notes: data.notes || null,
 					sourceRef: data.sourceRef || null,
-					platform: normalizePlatform(data.socialFacebook, data.socialInstagram, data.pageUrl),
+					platform: normalizePlatform(data.socialFacebook, data.socialInstagram, data.eventLink),
 					currentPlatform: inferCurrentPlatform(data.pageUrl, data.eventLink),
 					source: 'sheet_import',
 					stage: 'new',

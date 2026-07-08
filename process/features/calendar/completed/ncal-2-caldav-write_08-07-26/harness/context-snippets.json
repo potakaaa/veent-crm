@@ -1,0 +1,29 @@
+{
+  "task": "NCAL-2 CalDAV write client (#252)",
+  "snippets": [
+    {
+      "file": "src/lib/caldav/writer.ts",
+      "lines": "44-79",
+      "description": "postWebhook: fixed client-safe CalDavWebhookError message; secret/URL/upstream body never attached to the thrown error; fail-closed on missing env.",
+      "content": "const CLIENT_SAFE_MESSAGE = 'Calendar service unavailable'; ... if (!url || !secret) throw new CalDavWebhookError(CLIENT_SAFE_MESSAGE); ... catch { throw new CalDavWebhookError(CLIENT_SAFE_MESSAGE); } if (!res.ok) throw new CalDavWebhookError(CLIENT_SAFE_MESSAGE, res.status);"
+    },
+    {
+      "file": "src/routes/api/calendar/events/+server.ts",
+      "lines": "72-119",
+      "description": "POST handler: session gate is FIRST statement; Zod validate before writer; CalDavWebhookError mapped to error(502) generic message.",
+      "content": "if (!locals.user) throw error(401, 'Unauthorized'); ... catch (e) { if (e instanceof CalDavWebhookError) throw error(502, 'Calendar service unavailable'); throw e; }"
+    },
+    {
+      "file": "src/routes/api/calendar/events/[uid]/+server.ts",
+      "lines": "14-70",
+      "description": "PUT + DELETE handlers: session gate FIRST in both; PUT mirrors POST CRM-HREF embedding; writer throws mapped to error(502).",
+      "content": "export const PUT = async ({ locals, request, params }) => { if (!locals.user) throw error(401, 'Unauthorized'); ... } export const DELETE = async ({ locals, params }) => { if (!locals.user) throw error(401, 'Unauthorized'); ... }"
+    },
+    {
+      "file": "src/lib/caldav/constants.ts",
+      "lines": "29-52",
+      "description": "n8n env accessors read $env/dynamic/private (never process.env); server-only JSDoc; return undefined when unset (writer fails closed).",
+      "content": "export function n8nWebhookSecret(): string | undefined { return env.N8N_WEBHOOK_SECRET; }"
+    }
+  ]
+}

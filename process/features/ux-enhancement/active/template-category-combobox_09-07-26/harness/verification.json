@@ -1,0 +1,31 @@
+{
+  "scope": "GitHub #274 — Template Category → ComboboxFreetext (scoped, 1 field)",
+  "evl_run": "2026-07-09T09:00Z",
+  "invocation": "EVL confirmation sweep (independent re-run of validate-contract gates)",
+  "gates": [
+    { "gate": "bun run check", "result": "PASS", "detail": "2549 files, 0 ERRORS, 6 pre-existing WARNINGS (none in #274 files)" },
+    { "gate": "bun run test:unit -- template-category-suggest.spec.ts + schemas.spec.ts", "result": "PASS", "detail": "2 files, 74 tests passed" },
+    { "gate": "bun run test:unit:ci (full suite)", "result": "PASS", "detail": "52 files passed, 9 skipped; 565 tests passed, 165 skipped, 0 failed" }
+  ],
+  "file_set_verified": {
+    "expected_count": 5,
+    "new": ["src/lib/utils/template-category-suggest.ts", "src/tests/template-category-suggest.spec.ts"],
+    "edited": ["src/lib/zod/schemas.ts", "src/tests/schemas.spec.ts", "src/routes/templates/+page.svelte"],
+    "unexpected_out_of_scope": "none"
+  },
+  "direct_read_verification": {
+    "filterTemplateCategories": "real impl — case-insensitive substring over TEMPLATE_CATEGORIES, empty query returns full copy",
+    "schema_category": "z.enum(TEMPLATE_CATEGORIES, {message}) — import added (line 5)",
+    "schemas_spec": "valid category passes, 'Sportz' rejected, title/body regression cases present and unchanged",
+    "svelte_wiring": "ComboboxFreetext bind:value={category} search={filterTemplateCategories}; filter+sort Selects (2) unchanged",
+    "edit_prefill": "openEdit() line 108 sets category = t.category — flows into bind:value"
+  },
+  "known_gaps": [
+    "AC1/AC5 combobox render + keyboard nav — Agent-Probe, blocked by missing Svelte component-test harness (pre-accepted, #250 class)",
+    "AC3 edit-prefill visual confirmation — Agent-Probe, same harness gap",
+    "AC6/AC7 filter+sort visual-unchanged check — Agent-Probe (static grep confirms 2 Selects retained; visual DOM check deferred)",
+    "live-DB off-list-row check for Option A enum — live-DB CI harness gap (pre-accepted)"
+  ],
+  "verdict": "DONE_WITH_CONCERNS",
+  "concerns": "All Fully-Automated gates green; residual concerns are pre-accepted Agent-Probe/known-gap rows only, no new failures."
+}

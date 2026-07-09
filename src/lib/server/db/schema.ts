@@ -39,6 +39,7 @@ export const leadStage = pgEnum('crm_lead_stage', [
 	'in_discussion',
 	'won',
 	'live',
+	'done',
 	'lost'
 ]);
 
@@ -76,7 +77,8 @@ export const crmUsers = pgTable(
 	'crm_users',
 	{
 		id: uuid('id').primaryKey().defaultRandom(),
-		name: text('name').notNull(),
+		firstName: text('first_name').notNull(),
+		lastName: text('last_name'),
 		// login + Better Auth link key; null for former reps (record-only, no login)
 		email: text('email'),
 		role: userRole('role').notNull().default('rep'),
@@ -84,6 +86,8 @@ export const crmUsers = pgTable(
 		active: boolean('active').notNull().default(true),
 		// IdP `sub` once Authentik/OIDC is on; null for magic-link users
 		authSubject: text('auth_subject'),
+		// manager-editable display color (hex); null falls back to avatarColor(name) hash (GitHub #275)
+		color: text('color'),
 		createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 		updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
 	},
@@ -175,6 +179,9 @@ export const crmLeads = pgTable(
 		dealValueCents: integer('deal_value_cents'),
 		currency: text('currency').default('PHP'), // required when value set (enforced in app)
 		signedAt: timestamp('signed_at', { withTimezone: true }),
+
+		// Done-stage post-event revenue capture (GitHub #273); nullable, app-enforced non-negative
+		revenueCents: integer('revenue_cents'),
 
 		// Onboarding capture (post-won; manual) — only surfaced when stage = 'won'
 		onboardingNotes: text('onboarding_notes'),

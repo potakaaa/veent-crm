@@ -13,7 +13,7 @@
  */
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { createLead } from '$lib/server/db/leads';
-import { getDashboardData } from '$lib/server/db/dashboard';
+import { getDashboardData, getRevenuePerAe } from '$lib/server/db/dashboard';
 import { db } from '$lib/server/db/index';
 import { crmUsers, crmLeads, crmActivities, crmLeadHistory } from '$lib/server/db/schema';
 import { eq, inArray } from 'drizzle-orm';
@@ -35,7 +35,7 @@ let aeGId = '';
 async function makeAe(label: string): Promise<string> {
 	const [row] = await db
 		.insert(crmUsers)
-		.values({ name: `${TEST_PREFIX} ${label}`, role: 'rep', active: true, email: null })
+		.values({ firstName: `${TEST_PREFIX} ${label}`, role: 'rep', active: true, email: null })
 		.returning();
 	createdUserIds.push(row.id);
 	return row.id;
@@ -309,5 +309,102 @@ describe.skipIf(SKIP_DB)('getDashboardData — per-AE aggregation (DB)', () => {
 		expect(p1.rows.length).toBe(1);
 		expect(p2.rows.length).toBe(1);
 		expect(p1.rows[0].id).not.toBe(p2.rows[0].id);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// getRevenuePerAe (GitHub #273 AC5/AC6) — dedicated fixtures, own AE (Delta), so
+// numbers are independent of the Alpha/Beta/Gamma hand-calculated blocks above.
+// ---------------------------------------------------------------------------
+describe.skipIf(SKIP_DB)('getRevenuePerAe — GitHub #273 AC5/AC6', () => {
+	let aeDId = '';
+	const deltaLeadIds: string[] = [];
+	const deltaUserIds: string[] = [];
+
+	async function makeDeltaAe(label: string): Promise<string> {
+		const [row] = await db
+			.insert(crmUsers)
+			.values({ firstName: `${TEST_PREFIX} ${label}`, role: 'rep', active: true, email: null })
+			.returning();
+		deltaUserIds.push(row.id);
+		return row.id;
+	}
+
+	async function makeDeltaLead(
+		name: string,
+		ownerId: string,
+		opts: { stage: string; revenueCents?: number | null }
+	): Promise<string> {
+		const lead = await createLead({ name: `${TEST_PREFIX} ${name}` }, ownerId);
+		deltaLeadIds.push(lead.id);
+		await db
+			.update(crmLeads)
+			.set({ stage: opts.stage as never, revenueCents: opts.revenueCents ?? null })
+			.where(eq(crmLeads.id, lead.id));
+		return lead.id;
+	}
+
+	beforeAll(async () => {
+		if (SKIP_DB) return;
+		aeDId = await makeDeltaAe('AE Delta');
+
+		// (1) AC5 — currently done, transitioned "now", revenue 5000 cents → counted.
+		const doneNow = await makeDeltaLead('Done Now', aeDId, {
+			stage: 'done',
+			revenueCents: 5000
+		});
+		await stageTransition(doneNow, 'done', new Date());
+
+		// (2) AC5 — currently done, transitioned "now", revenue 3000 cents → counted (sums with #1).
+		const doneNow2 = await makeDeltaLead('Done Now 2', aeDId, {
+			stage: 'done',
+			revenueCents: 3000
+		});
+		await stageTransition(doneNow2, 'done', new Date());
+
+		// (3) AC6 — Won-stage lead WITH a revenue_cents value present → EXCLUDED (never
+		// transitioned to 'done', so no field='stage'/newValue='done' history row exists).
+		await makeDeltaLead('Won With Revenue', aeDId, { stage: 'won', revenueCents: 9999 });
+
+		// (4) AC6 (E2 current-stage guard) — transitioned INTO 'done' in range, but current
+		// stage has since moved OUT to 'live' → EXCLUDED despite the stale done history row
+		// and non-nulled revenueCents (mirrors the generic moveLeadStage clearing branch).
+		const doneThenMovedOut = await makeDeltaLead('Done Then Moved Out', aeDId, {
+			stage: 'live',
+			revenueCents: 7777
+		});
+		await stageTransition(doneThenMovedOut, 'done', new Date());
+	});
+
+	afterAll(async () => {
+		if (deltaLeadIds.length > 0) {
+			await db.delete(crmLeads).where(inArray(crmLeads.id, deltaLeadIds));
+		}
+		if (deltaUserIds.length > 0) {
+			await db.delete(crmUsers).where(inArray(crmUsers.id, deltaUserIds));
+		}
+	});
+
+	it('AC5: sums revenue_cents for leads currently in done, per AE', async () => {
+		const map = await getRevenuePerAe('all');
+		expect(map.get(aeDId)).toBe(8000); // 5000 + 3000
+	});
+
+	it('AC6: a Won-stage lead with revenue_cents present is excluded', async () => {
+		const map = await getRevenuePerAe('all');
+		// If the Won-with-revenue lead were included, the total would be 8000 + 9999.
+		expect(map.get(aeDId)).toBe(8000);
+	});
+
+	it('AC6 (E2 current-stage guard): a lead that transitioned to done but is no longer in done is excluded', async () => {
+		const map = await getRevenuePerAe('all');
+		// If the done→moved-out lead were included, the total would be 8000 + 7777.
+		expect(map.get(aeDId)).toBe(8000);
+	});
+
+	it('getDashboardData composes revenueCentsInRange using getRevenuePerAe (E4)', async () => {
+		const { rows } = await getDashboardData('all', { pageSize: 1000 });
+		const d = rows.find((r) => r.id === aeDId)!;
+		expect(d.revenueCentsInRange).toBe(8000);
 	});
 });

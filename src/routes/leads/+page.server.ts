@@ -117,6 +117,8 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		id: locals.user.id,
 		email: locals.user.email,
 		name: locals.user.name,
+		firstName: locals.user.firstName,
+		lastName: locals.user.lastName,
 		role: locals.user.role,
 		active: true
 	};

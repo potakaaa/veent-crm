@@ -88,7 +88,14 @@ describe('handle — authenticated allowlisted user (7b)', () => {
 	it('does not redirect, calls resolve, and populates locals.user', async () => {
 		getSession.mockResolvedValue({ user: { email: 'rep@veent.io' } });
 		limit.mockResolvedValue([
-			{ id: 'u-1', email: 'rep@veent.io', name: 'Rep One', role: 'rep', active: true }
+			{
+				id: 'u-1',
+				email: 'rep@veent.io',
+				firstName: 'Rep',
+				lastName: 'One',
+				role: 'rep',
+				active: true
+			}
 		]);
 
 		const { thrown, resolve, event } = await runHandle('/leads');
@@ -99,6 +106,8 @@ describe('handle — authenticated allowlisted user (7b)', () => {
 			id: 'u-1',
 			email: 'rep@veent.io',
 			name: 'Rep One',
+			firstName: 'Rep',
+			lastName: 'One',
 			role: 'rep'
 		});
 	});

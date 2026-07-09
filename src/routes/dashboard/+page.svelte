@@ -112,6 +112,17 @@
 								</span>
 								<span class="font-mono text-[11px] font-semibold">{ae.leadsAddedInRange}</span>
 							</div>
+							<div class="mb-1 flex items-center justify-between">
+								<span class="font-mono text-[9.5px] uppercase tracking-[1px] text-ink-400">
+									Revenue (range)
+								</span>
+								<span class="font-mono text-[11px] font-semibold">
+									{(ae.revenueCentsInRange / 100).toLocaleString(undefined, {
+										minimumFractionDigits: 2,
+										maximumFractionDigits: 2
+									})} PHP
+								</span>
+							</div>
 							<ul class="flex flex-wrap gap-1.5">
 								{#each STAGE_ORDER as s (s.key)}
 									{#if ae.stageDistribution[s.key]}

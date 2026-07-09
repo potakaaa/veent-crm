@@ -236,8 +236,29 @@
     {
       "idx": 33,
       "version": "7",
+      "when": 1783406000000,
+      "tag": "0033_name_split_first_last",
+      "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1783407000000,
+      "tag": "0034_user_color",
+      "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1783408000000,
+      "tag": "0035_done_stage_revenue",
+      "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
       "when": 1752019200000,
-      "tag": "0033_ncal3_uid_columns",
+      "tag": "0036_ncal3_uid_columns",
       "breakpoints": true
     }
   ]

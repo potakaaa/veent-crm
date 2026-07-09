@@ -1,0 +1,88 @@
+{
+  "steps": [
+    {
+      "step": "AC1 — LEAD_STAGES contains 'done', length 8, ordered immediately after 'live'",
+      "command": "bun run test:unit -- src/tests/schemas.spec.ts",
+      "result": "PASS",
+      "notes": "74 tests passed"
+    },
+    {
+      "step": "AC2 — moveStageSchema done branch: valid accepted, missing/negative/non-integer revenueCents rejected",
+      "command": "bun run test:unit -- src/tests/schemas.spec.ts",
+      "result": "PASS",
+      "notes": "included in the same 74-test run"
+    },
+    {
+      "step": "AC7 — existing won-branch regression (BOARD_STAGES ordering test updated for the new 'done' column — expected per plan step 7 signal, not a failure)",
+      "command": "bun run test:unit:ci",
+      "result": "PASS",
+      "notes": "570 passed / 172 skipped (Hybrid self-skip, no DATABASE_URL in this env)"
+    },
+    {
+      "step": "AC3 — moveLeadStage done-branch DB persist + history rows + won-metadata untouched",
+      "command": "bun run test:unit -- src/tests/pipeline-db.spec.ts (describe.skipIf(SKIP_DB) 'moveLeadStage — done capture')",
+      "result": "SKIP",
+      "notes": "self-skips without live Postgres — known-gap, backlog stub done-revenue-live-db-harness_NOTE_09-07-26.md"
+    },
+    {
+      "step": "AC5/AC6 — getRevenuePerAe sums + Won-exclusion + current-stage-guard exclusion (E2)",
+      "command": "bun run test:unit -- src/tests/dashboard-db.spec.ts (describe.skipIf(SKIP_DB) 'getRevenuePerAe — GitHub #273 AC5/AC6')",
+      "result": "SKIP",
+      "notes": "self-skips without live Postgres — same known-gap class"
+    },
+    {
+      "step": "AC4 — inline revenue editor e2e walkthrough (display→edit→save→persist, Escape cancel)",
+      "command": "n/a — Agent-Probe scenario, no shared Playwright auth fixture in this env",
+      "result": "SKIP",
+      "notes": "known-gap, reference existing process/features/auth/backlog/e2e-auth-bootstrap_NOTE_01-07-26.md"
+    },
+    {
+      "step": "Auth boundary — a rep cannot PATCH revenueCents on a lead they don't own",
+      "command": "manual code trace of PATCH /api/leads/[id] handler (getLead visibility-scoped -> canEditLead -> 403 branch); no code change to the gate itself",
+      "result": "PASS",
+      "notes": "see adversarial-validation.json for the explicit ruled-out scenario"
+    },
+    {
+      "step": "Full regression sweep — typecheck",
+      "command": "bun run check",
+      "result": "PASS",
+      "notes": "0 errors, 6 pre-existing unrelated warnings, 2550 files"
+    },
+    {
+      "step": "Full regression sweep — unit tests",
+      "command": "bun run test:unit:ci",
+      "result": "PASS",
+      "notes": "570 passed / 172 skipped, 0 failed"
+    },
+    {
+      "step": "Full regression sweep — lint",
+      "command": "bun run lint",
+      "result": "PARTIAL",
+      "notes": "ESLint clean (0 errors, 1 pre-existing unrelated warning in calendar/+page.svelte). Prettier flags 10 files, ALL pre-existing drift confirmed NOT touched by this task (package.json, src/lib/caldav/*, template-category-suggest.ts, api/calendar/events, organizers/[id], caldav/calendar spec files) — cross-checked against git status; none are in this plan's touchpoints. This task's own edited file (leads/[id]/+page.svelte) was reformatted and is clean."
+    },
+    {
+      "step": "Migration generation (step 4)",
+      "command": "bun run db:generate",
+      "result": "FAIL",
+      "notes": "BLOCKED by a pre-existing, unrelated repo bug: drizzle snapshot-chain collision between meta/0026_snapshot.json and meta/0030_snapshot.json (meta/0027-0029_snapshot.json files are missing from disk). This predates GitHub #273 and is not caused by this task's schema.ts changes. Documented in process/features/pipeline/backlog/drizzle-snapshot-chain-collision-0026-0030_NOTE_09-07-26.md. Migration idx/file numbering itself (the plan's anticipated drift class) was independently verified clean (journal idx 34 = highest .sql file 0034; next would be 0035). The schema.ts enum/column change is the correct source-of-truth code and is typechecked/tested; only the physical migration SQL file could not be generated in this session."
+    },
+    {
+      "step": "EVL CONFIRMATION RUN (vc-tester, independent re-run 2026-07-09) — all validate-contract gate commands re-executed, not trusting execute-agent self-report",
+      "command": "bun run check && bun run test:unit:ci && bun run lint (+ eslint . independently)",
+      "result": "PASS",
+      "notes": "bun run check: 0 errors / 6 pre-existing warnings. bun run test:unit:ci: 570 passed / 172 skipped / 0 failed (matches execute-agent's claim exactly). Lint: eslint . = 0 errors (1 pre-existing calendar/+page.svelte warning); prettier drift in 10 files ALL confirmed outside #273 blast radius (caldav/calendar/organizers/template-category — cross-checked vs git status). Overall EVL verdict: gates green."
+    },
+    {
+      "step": "EVL — hand-written migration file verification (0035 written by orchestrator AFTER execute-agent's report; not part of execute-agent's own verification)",
+      "command": "read drizzle/0035_done_stage_revenue.sql + node JSON.parse(drizzle/meta/_journal.json)",
+      "result": "PASS",
+      "notes": "0035_done_stage_revenue.sql contains ALTER TYPE ... ADD VALUE 'done' AFTER 'live' + --> statement-breakpoint + ALTER TABLE crm_leads ADD COLUMN revenue_cents integer, matching 0021 enum syntax and 0033/0034 hand-written header convention. _journal.json idx-35 entry well-formed (tag 0035_done_stage_revenue), no duplicate/collision, JSON syntactically valid. Migration NOT applied to any DB (deploy-time step, hard-stop honored)."
+    },
+    {
+      "step": "EVL — source re-verification of highest-stakes claims (auth-gate, E1 audit trail, E2 current-stage guard)",
+      "command": "direct file reads of leads.ts, dashboard.ts, api/leads/[id]/+server.ts, leads/[id]/+page.svelte",
+      "result": "PASS",
+      "notes": "Auth-gate: inline PATCH sends {name: lead.name, revenueCents, currency} (page.svelte:468-470) through unchanged leadUpdateSchema.safeParse -> getLead -> canEditLead -> 403 (+server.ts:17-35); no bypass. E1: revenue_cents tuple (leads.ts:1164-1168) matches transaction_fee_pct/convenience_fee_pesos pattern verbatim. E2: eq(crmLeads.stage,'done') present in getRevenuePerAe WHERE (dashboard.ts:241). moveLeadStage done branch (leads.ts:1305-1321) dedicated + before generic else, does NOT touch dealValueCents/wonOrgName; writes both stage + revenue_cents history rows."
+    }
+  ]
+}

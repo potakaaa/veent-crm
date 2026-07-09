@@ -9,9 +9,15 @@ import { dbUserToUser } from '$lib/server/db/leads';
 import { isManagerRole } from '$lib/utils/permissions';
 
 const patchSchema = z.object({
-	name: z.string().min(1).optional(),
+	firstName: z.string().min(1).optional(),
+	lastName: z.string().optional(),
 	role: z.enum(USER_ROLES).optional(),
-	active: z.boolean().optional()
+	active: z.boolean().optional(),
+	color: z
+		.string()
+		.regex(/^#[0-9a-fA-F]{6}$/)
+		.nullable()
+		.optional()
 });
 
 export const PATCH: RequestHandler = async ({ params, request, locals }) => {
@@ -20,7 +26,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 	const body = patchSchema.safeParse(await request.json().catch(() => null));
 	if (!body.success) throw error(400, body.error.issues[0]?.message ?? 'Invalid payload');
 
-	const { name, role, active } = body.data;
+	const { firstName, lastName, role, active, color } = body.data;
 
 	const isSelf = params.id === locals.user.id;
 
@@ -29,6 +35,12 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 		// outright (whole request), regardless of the actor's own role.
 		if (role !== undefined || active !== undefined) {
 			throw error(403, 'You cannot change your own role or status');
+		}
+
+		// Color is manager-administered data (GitHub #275) — unlike name, reps
+		// cannot set their own color, even via a self-edit request.
+		if (color !== undefined && !isManagerRole(locals.user.role)) {
+			throw error(403, 'Only managers can change color');
 		}
 	} else {
 		// Role changes require super_manager.
@@ -42,7 +54,12 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 		}
 
 		// Renaming another user requires manager or super_manager.
-		if (name !== undefined && !isManagerRole(locals.user.role)) {
+		if ((firstName !== undefined || lastName !== undefined) && !isManagerRole(locals.user.role)) {
+			throw error(403, 'Forbidden');
+		}
+
+		// Setting another user's color requires manager or super_manager.
+		if (color !== undefined && !isManagerRole(locals.user.role)) {
 			throw error(403, 'Forbidden');
 		}
 	}
@@ -50,9 +67,11 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 	const [row] = await db
 		.update(crmUsers)
 		.set({
-			...(name !== undefined ? { name } : {}),
+			...(firstName !== undefined ? { firstName } : {}),
+			...(lastName !== undefined ? { lastName } : {}),
 			...(role !== undefined ? { role } : {}),
 			...(active !== undefined ? { active } : {}),
+			...(color !== undefined ? { color } : {}),
 			updatedAt: new Date()
 		})
 		.where(eq(crmUsers.id, params.id))

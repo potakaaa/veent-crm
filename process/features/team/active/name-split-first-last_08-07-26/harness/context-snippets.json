@@ -1,0 +1,40 @@
+{
+	"snippets": [
+		{
+			"file": "drizzle/0033_name_split_first_last.sql",
+			"lines": "1-11",
+			"description": "Full hand-written migration content. Hand-written because bun run db:generate is blocked repo-wide by pre-existing drizzle snapshot-chain drift (see process/general-plans/backlog/drizzle-migration-journal-drift_02-07-26.md) — same precedent as the CAT-1 migrations 0026-0028. Registered at journal idx=33, snapshot-less by the same intentional precedent.",
+			"content": "-- HAND-WRITTEN: do not regenerate (db:generate blocked by snapshot-chain drift — see drizzle-migration-journal-drift_02-07-26.md)\n-- GitHub #277 — split crm_users.name into first_name (NOT NULL, backfilled verbatim) + last_name (nullable).\n-- Ordering is load-bearing: add first_name -> backfill -> set-not-null -> add last_name -> drop name.\n\nALTER TABLE \"crm_users\" ADD COLUMN \"first_name\" text;\n--> statement-breakpoint\nUPDATE \"crm_users\" SET \"first_name\" = \"name\";\n--> statement-breakpoint\nALTER TABLE \"crm_users\" ALTER COLUMN \"first_name\" SET NOT NULL;\n--> statement-breakpoint\nALTER TABLE \"crm_users\" ADD COLUMN \"last_name\" text;\n--> statement-breakpoint\nALTER TABLE \"crm_users\" DROP COLUMN \"name\";\n"
+		},
+		{
+			"file": "src/lib/server/db/schema.ts",
+			"lines": "77-80",
+			"description": "crm_users columns after the split — firstName NOT NULL, lastName nullable, name column removed",
+			"content": "id: uuid('id').primaryKey().defaultRandom(),\nfirstName: text('first_name').notNull(),\nlastName: text('last_name'),\n// login + Better Auth link key; null for former reps (record-only, no login)"
+		},
+		{
+			"file": "src/lib/utils/format-name.ts",
+			"lines": "1-8",
+			"description": "New shared derived-name helper — pure, total, never throws",
+			"content": "export function formatFullName(firstName: string, lastName: string | null | undefined): string {\n\treturn firstName + (lastName ? ` ${lastName}` : '');\n}"
+		},
+		{
+			"file": "src/lib/server/db/leads.ts",
+			"lines": "142-151",
+			"description": "dbUserToUser mapper (G3) — the single canonical name-derivation point for the User shape",
+			"content": "export function dbUserToUser(row: DbUser): User {\n\treturn {\n\t\tid: row.id,\n\t\tname: formatFullName(row.firstName, row.lastName),\n\t\tfirstName: row.firstName,\n\t\tlastName: row.lastName,\n\t\temail: row.email ?? '',\n\t\trole: row.role as User['role'],\n\t\tactive: row.active\n\t};\n}"
+		},
+		{
+			"file": "src/lib/server/db/notes.ts",
+			"lines": "12-19",
+			"description": "G8c — SQL-level concat form used where the raw {authorName} shape must be preserved without a JS .map()",
+			"content": "const noteSelection = {\n\tid: crmNotes.id,\n\tcontent: crmNotes.content,\n\tauthorId: crmNotes.authorId,\n\tauthorName: sql<string>`${crmUsers.firstName} || case when ${crmUsers.lastName} is null or ${crmUsers.lastName} = '' then '' else ' ' || ${crmUsers.lastName} end`,\n\tleadId: crmNotes.leadId,\n\torganizerId: crmNotes.organizerId,\n\tcreatedAt: crmNotes.createdAt\n};"
+		},
+		{
+			"file": "src/lib/server/db/dashboard.ts",
+			"lines": "68-84",
+			"description": "G8h — orderBy/ilike switched to firstName (byte-identical to old name-ordering for verbatim-backfilled rows); select composed via .map()",
+			"content": "if (term) {\n\tconds.push(ilike(crmUsers.firstName, `%${term.replace(/[\\\\%_]/g, '\\\\$&')}%`));\n}\n\nconst rows = await db\n\t.select({ id: crmUsers.id, firstName: crmUsers.firstName, lastName: crmUsers.lastName })\n\t.from(crmUsers)\n\t.where(and(...conds))\n\t.orderBy(crmUsers.firstName);\n\nconst filtered = rows.map((r) => ({ id: r.id, name: formatFullName(r.firstName, r.lastName) }));"
+		}
+	]
+}

@@ -12,12 +12,13 @@
 
 	let { data } = $props();
 
-	let name = $state(data.currentUser.name);
+	let firstName = $state(data.currentUser.firstName);
+	let lastName = $state(data.currentUser.lastName ?? '');
 	let saving = $state(false);
 	let fieldErrors = $state<Record<string, string[] | undefined>>({});
 
 	async function save() {
-		const parsed = userNameEditSchema.safeParse({ name });
+		const parsed = userNameEditSchema.safeParse({ firstName, lastName });
 		if (!parsed.success) {
 			fieldErrors = parsed.error.flatten().fieldErrors as Record<string, string[] | undefined>;
 			return;
@@ -28,7 +29,7 @@
 			const res = await fetch(`/api/users/${data.currentUser.id}`, {
 				method: 'PATCH',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ name })
+				body: JSON.stringify({ firstName, lastName })
 			});
 			if (!res.ok) {
 				toasts.push(
@@ -62,14 +63,25 @@
 	<Card class="max-w-lg">
 		<CardContent class="flex flex-col gap-4">
 			<div class="grid gap-1.5">
-				<Label for="profile-name">Name</Label>
+				<Label for="profile-first-name">First name</Label>
 				<Input
-					id="profile-name"
-					bind:value={name}
-					placeholder="Your name"
-					{...fieldErrorAttrs('profile-name', fieldErrors.name)}
+					id="profile-first-name"
+					bind:value={firstName}
+					placeholder="Your first name"
+					{...fieldErrorAttrs('profile-first-name', fieldErrors.firstName)}
 				/>
-				<FieldError id="profile-name" errors={fieldErrors.name} />
+				<FieldError id="profile-first-name" errors={fieldErrors.firstName} />
+			</div>
+
+			<div class="grid gap-1.5">
+				<Label for="profile-last-name">Last name (optional)</Label>
+				<Input
+					id="profile-last-name"
+					bind:value={lastName}
+					placeholder="Your last name"
+					{...fieldErrorAttrs('profile-last-name', fieldErrors.lastName)}
+				/>
+				<FieldError id="profile-last-name" errors={fieldErrors.lastName} />
 			</div>
 
 			<div class="grid gap-1.5">

@@ -9,7 +9,8 @@
  */
 import { db } from './index';
 import { crmLeads, crmUsers, crmLeadHistory } from './schema';
-import { eq, isNull, and, count, desc, gte, sql, ilike } from 'drizzle-orm';
+import { eq, isNull, and, or, count, desc, gte, sql, ilike } from 'drizzle-orm';
+import { formatFullName } from '$lib/utils/format-name';
 
 /** The four date-range buckets the dashboard supports. */
 export type DashboardRange = 'week' | 'month' | 'year' | 'all';
@@ -30,6 +31,10 @@ export interface AeDashboardRow {
 	/** on-time / (on-time + late + missed), 0-100 rounded; 0 when no classified follow-ups. */
 	adherencePct: number;
 	leadsAddedInRange: number;
+	/** Sum of `revenue_cents` for leads CURRENTLY in `done` whose most-recent stage→`done`
+	 * transition falls in the selected range (GitHub #273 AC5/AC6). Raw cents, single currency
+	 * (PHP) assumed in practice — see `getRevenuePerAe`. */
+	revenueCentsInRange: number;
 }
 
 /**
@@ -72,14 +77,17 @@ export async function getActiveAeList(
 	const conds = [eq(crmUsers.role, 'rep'), eq(crmUsers.active, true)];
 	const term = (search ?? '').trim();
 	if (term) {
-		conds.push(ilike(crmUsers.name, `%${term.replace(/[\\%_]/g, '\\$&')}%`));
+		const escaped = `%${term.replace(/[\\%_]/g, '\\$&')}%`;
+		conds.push(or(ilike(crmUsers.firstName, escaped), ilike(crmUsers.lastName, escaped))!);
 	}
 
-	const filtered = await db
-		.select({ id: crmUsers.id, name: crmUsers.name })
+	const rows = await db
+		.select({ id: crmUsers.id, firstName: crmUsers.firstName, lastName: crmUsers.lastName })
 		.from(crmUsers)
 		.where(and(...conds))
-		.orderBy(crmUsers.name);
+		.orderBy(crmUsers.firstName);
+
+	const filtered = rows.map((r) => ({ id: r.id, name: formatFullName(r.firstName, r.lastName) }));
 
 	const total = filtered.length;
 	const start = (page - 1) * pageSize;
@@ -206,6 +214,47 @@ export async function getWonInRangePerAe(range: DashboardRange): Promise<Map<str
 }
 
 /**
+ * Post-event revenue per AE (GitHub #273 AC5/AC6). Mirrors `getWonInRangePerAe`'s
+ * `.selectDistinctOn()` shape exactly, but sums `revenue_cents` instead of counting, and
+ * adds a mandatory CURRENT-STAGE guard (`eq(crmLeads.stage, 'done')`, E2): `done` is NOT
+ * terminal (a lead may move on afterward via the generic `moveLeadStage` clearing branch,
+ * which does not null `revenueCents`), so without this guard a done→moved-out lead would
+ * keep both its `revenue_cents` value and its stale done-transition history row and be
+ * double-counted despite no longer being "in Done". `getWonInRangePerAe` carries the same
+ * latent inaccuracy for `won` — intentionally NOT retrofitted here (out of scope for #273).
+ */
+export async function getRevenuePerAe(range: DashboardRange): Promise<Map<string, number>> {
+	const start = rangeToStartDate(range);
+
+	const transitions = await db
+		.selectDistinctOn([crmLeadHistory.leadId], {
+			leadId: crmLeadHistory.leadId,
+			at: crmLeadHistory.at,
+			ownerId: crmLeads.ownerId,
+			revenueCents: crmLeads.revenueCents
+		})
+		.from(crmLeadHistory)
+		.innerJoin(crmLeads, eq(crmLeadHistory.leadId, crmLeads.id))
+		.where(
+			and(
+				eq(crmLeadHistory.field, 'stage'),
+				eq(crmLeadHistory.newValue, 'done'),
+				eq(crmLeads.stage, 'done'), // E2 — only leads CURRENTLY in `done` contribute
+				isNull(crmLeads.deletedAt)
+			)
+		)
+		.orderBy(crmLeadHistory.leadId, desc(crmLeadHistory.at));
+
+	const map = new Map<string, number>();
+	for (const t of transitions) {
+		if (!t.ownerId || t.revenueCents == null) continue;
+		if (start && (!t.at || t.at < start)) continue;
+		map.set(t.ownerId, (map.get(t.ownerId) ?? 0) + t.revenueCents);
+	}
+	return map;
+}
+
+/**
  * Follow-up adherence per AE. For each activity that scheduled a follow-up
  * (`follow_up_at IS NOT NULL`), the next activity on the same lead (window `LEAD()`)
  * decides the classification:
@@ -304,7 +353,7 @@ export async function getDashboardData(
 	range: DashboardRange,
 	opts?: { search?: string; page?: number; pageSize?: number }
 ): Promise<{ rows: AeDashboardRow[]; total: number }> {
-	const [{ aes, total }, owned, stages, wonAll, wonRange, adherence, addedRange] =
+	const [{ aes, total }, owned, stages, wonAll, wonRange, adherence, addedRange, revenueRange] =
 		await Promise.all([
 			getActiveAeList(opts),
 			getLeadsOwnedPerAe(),
@@ -312,7 +361,8 @@ export async function getDashboardData(
 			getWonAllTimePerAe(),
 			getWonInRangePerAe(range),
 			getFollowUpAdherencePerAe(range),
-			getLeadsAddedInRangePerAe(range)
+			getLeadsAddedInRangePerAe(range),
+			getRevenuePerAe(range)
 		]);
 
 	const rows = aes.map((ae) => ({
@@ -323,7 +373,8 @@ export async function getDashboardData(
 		wonAllTime: wonAll.get(ae.id) ?? 0,
 		wonInRange: wonRange.get(ae.id) ?? 0,
 		adherencePct: adherence.get(ae.id) ?? 0,
-		leadsAddedInRange: addedRange.get(ae.id) ?? 0
+		leadsAddedInRange: addedRange.get(ae.id) ?? 0,
+		revenueCentsInRange: revenueRange.get(ae.id) ?? 0
 	}));
 
 	return { rows, total };

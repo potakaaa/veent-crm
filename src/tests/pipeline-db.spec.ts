@@ -157,6 +157,78 @@ describe.skipIf(SKIP_DB)('moveLeadStage — won capture', () => {
 });
 
 // ---------------------------------------------------------------------------
+// moveLeadStage — done capture (GitHub #273 AC3)
+// ---------------------------------------------------------------------------
+
+describe.skipIf(SKIP_DB)('moveLeadStage — done capture (GitHub #273)', () => {
+	it('marks a lead done with revenue + currency and persists both', async () => {
+		const lead = await createLead({ name: `${TEST_PREFIX} Done Lead` }, MANAGER_UUID);
+		createdIds.push(lead.id);
+
+		const updated = await moveLeadStage(
+			lead.id,
+			'done',
+			{ revenueCents: 250000, currency: 'PHP' },
+			MANAGER_UUID,
+			'manager'
+		);
+
+		expect(updated).not.toBeNull();
+		expect((updated as Lead).stage).toBe('done');
+		expect((updated as Lead).revenueCents).toBe(250000);
+		expect((updated as Lead).currency).toBe('PHP');
+	});
+
+	it('writes stage + revenue_cents history rows', async () => {
+		const lead = await createLead({ name: `${TEST_PREFIX} Done History` }, MANAGER_UUID);
+		createdIds.push(lead.id);
+
+		await moveLeadStage(
+			lead.id,
+			'done',
+			{ revenueCents: 300000, currency: 'PHP' },
+			MANAGER_UUID,
+			'manager'
+		);
+
+		const history = await db
+			.select()
+			.from(crmLeadHistory)
+			.where(eq(crmLeadHistory.leadId, lead.id));
+
+		expect(history.find((h) => h.field === 'stage')?.newValue).toBe('done');
+		expect(history.find((h) => h.field === 'revenue_cents')?.newValue).toBe('300000');
+	});
+
+	it('does NOT touch dealValueCents/wonOrgName when moving a won lead to done', async () => {
+		const lead = await createLead({ name: `${TEST_PREFIX} Won-Then-Done` }, MANAGER_UUID);
+		createdIds.push(lead.id);
+
+		await moveLeadStage(
+			lead.id,
+			'won',
+			{ wonOrgName: 'Preserve Co.', dealValueCents: 999900, currency: 'PHP' },
+			MANAGER_UUID,
+			'manager'
+		);
+
+		const updated = await moveLeadStage(
+			lead.id,
+			'done',
+			{ revenueCents: 400000, currency: 'PHP' },
+			MANAGER_UUID,
+			'manager'
+		);
+
+		expect(updated).not.toBeNull();
+		expect((updated as Lead).stage).toBe('done');
+		// won metadata must survive the done transition untouched (AC7 / plan step 10)
+		expect((updated as Lead).signedOrg).toBe('Preserve Co.');
+		expect((updated as Lead).dealValue).toBe(9999); // 999900 cents / 100
+	});
+});
+
+// ---------------------------------------------------------------------------
 // moveLeadStage — lost
 // ---------------------------------------------------------------------------
 

@@ -251,7 +251,7 @@
 			<section class="rounded-frame border border-hairline bg-panel p-5 shadow-frame">
 				<h2 class="mb-3 font-mono text-[11px] uppercase tracking-[0.5px] text-ink-300">Host</h2>
 				<div class="flex items-center gap-2.5">
-					<Avatar name={meeting.organizerName ?? null} size="lg" />
+					<Avatar name={meeting.organizerName ?? null} size="lg" color={meeting.organizerColor} />
 					<span class="text-[13.5px] font-semibold text-ink">
 						{meeting.organizerName ?? 'Unassigned'}
 					</span>
@@ -269,7 +269,7 @@
 							<li
 								class="inline-flex items-center gap-1.5 rounded-chip border border-hairline bg-panel-subtle py-1 pl-1 pr-2.5"
 							>
-								<Avatar name={a.name} size="sm" />
+								<Avatar name={a.name} size="sm" color={a.color} />
 								<span class="text-[12.5px] font-medium text-ink-700">{a.name}</span>
 							</li>
 						{/each}

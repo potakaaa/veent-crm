@@ -450,7 +450,7 @@
 						class="grid grid-cols-[1.6fr_0.9fr_0.9fr_0.7fr] items-center gap-2 border-b border-panel-sunken py-2 last:border-b-0"
 					>
 						<div class="flex min-w-0 items-center gap-2">
-							<Avatar name={r.name} />
+							<Avatar name={r.name} color={r.color} />
 							<span class="truncate text-[13px] font-semibold">{r.name}</span>
 						</div>
 						<span class="text-right font-mono text-[13px]">{r.touches || '—'}</span>

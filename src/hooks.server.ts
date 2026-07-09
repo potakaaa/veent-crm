@@ -10,6 +10,7 @@ import { initSentry } from '$lib/server/sentry';
 import { db } from '$lib/server/db/index';
 import { crmUsers } from '$lib/server/db/schema';
 import { eq, and } from 'drizzle-orm';
+import { formatFullName } from '$lib/utils/format-name';
 
 initSentry(); // no-op stub
 
@@ -41,7 +42,14 @@ export const handle: Handle = async ({ event, resolve }) => {
 
 		event.locals.user =
 			crmUser && crmUser.email
-				? { id: crmUser.id, email: crmUser.email, name: crmUser.name, role: crmUser.role }
+				? {
+						id: crmUser.id,
+						email: crmUser.email,
+						name: formatFullName(crmUser.firstName, crmUser.lastName),
+						firstName: crmUser.firstName,
+						lastName: crmUser.lastName,
+						role: crmUser.role
+					}
 				: null;
 	} else {
 		event.locals.user = null;

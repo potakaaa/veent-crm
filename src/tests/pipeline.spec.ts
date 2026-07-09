@@ -105,8 +105,16 @@ describe('ownerUpdateSchema (owner reassignment validator)', () => {
 // ---------------------------------------------------------------------------
 
 describe('BOARD_STAGES (pipeline column order)', () => {
-	it('matches the expected ordered columns (new → contacted → replied → in_discussion → won → live)', () => {
-		expect(BOARD_STAGES).toEqual(['new', 'contacted', 'replied', 'in_discussion', 'won', 'live']);
+	it('matches the expected ordered columns (new → contacted → replied → in_discussion → won → live → done, GitHub #273)', () => {
+		expect(BOARD_STAGES).toEqual([
+			'new',
+			'contacted',
+			'replied',
+			'in_discussion',
+			'won',
+			'live',
+			'done'
+		]);
 	});
 });
 

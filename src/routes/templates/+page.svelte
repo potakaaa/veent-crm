@@ -11,17 +11,18 @@
 	import { Label } from '$lib/components/ui/label';
 	import { Textarea } from '$lib/components/ui/textarea';
 	import { Select, SelectTrigger, SelectContent, SelectItem } from '$lib/components/ui/select';
+	import ComboboxFreetext from '$lib/components/ui/combobox-freetext/ComboboxFreetext.svelte';
 	import { toasts } from '$lib/stores/toasts.svelte';
-	import { isManager } from '$lib/utils/permissions';
 	import { templateFormSchema } from '$lib/zod/schemas';
 	import { TEMPLATE_CATEGORIES } from '$lib/data/template-categories';
+	import { filterTemplateCategories } from '$lib/utils/template-category-suggest';
 	import type { MessageTemplate } from '$lib/types';
 	import { SvelteMap } from 'svelte/reactivity';
 	import { categoryColor } from '$lib/design/tokens';
 
 	let { data } = $props();
-	const canManage = $derived(isManager(data.currentUser));
-	// GitHub #199 — any authenticated user may create a template; edit/delete stay manager-only.
+	// GitHub #199 — any authenticated user may create a template.
+	// GitHub #276 — any authenticated user may also edit/delete a template.
 	const canCreate = $derived(!!data.currentUser);
 
 	// View toggle persists client-side only.
@@ -104,7 +105,9 @@
 	function openEdit(t: MessageTemplate) {
 		editingId = t.id;
 		title = t.title;
-		category = t.category;
+		category = TEMPLATE_CATEGORIES.includes(t.category as (typeof TEMPLATE_CATEGORIES)[number])
+			? t.category
+			: 'Other';
 		body = t.body;
 		formError = '';
 		formOpen = true;
@@ -191,7 +194,7 @@
 <div class="px-7 pb-16 pt-6">
 	<PageHeader
 		title="Message templates"
-		subtitle="Reusable outreach messages reps can insert from a lead. Managed by managers, organized by event category."
+		subtitle="Reusable outreach messages reps can insert from a lead, organized by event category."
 	>
 		{#snippet actions()}
 			{#if canCreate}
@@ -201,14 +204,6 @@
 			{/if}
 		{/snippet}
 	</PageHeader>
-
-	{#if !canManage}
-		<div
-			class="mb-4 rounded-control border border-border bg-panel-subtle px-4 py-2.5 text-[12.5px] text-ink-500"
-		>
-			You can create templates. Editing and deleting are manager-only.
-		</div>
-	{/if}
 
 	<!-- toolbar: view toggle + search + category filter + sort -->
 	<div class="mb-4 flex flex-wrap items-center gap-2.5">
@@ -296,9 +291,7 @@
 		<Card class="rounded-control px-6 py-10 text-center text-[13px] text-ink-300">
 			{data.filters.q || data.filters.category
 				? 'No templates match your filters.'
-				: canManage
-					? 'No templates yet. Add your first one above.'
-					: 'No templates yet.'}
+				: 'No templates yet. Add your first one above.'}
 		</Card>
 	{:else if effectiveViewMode === 'card'}
 		{#if isChronologicalSort}
@@ -317,30 +310,28 @@
 						</Button>
 						<div class="text-[13px] font-semibold text-ink-600">{t.title}</div>
 						<p class="line-clamp-3 text-[12.5px] text-ink-500">{t.body}</p>
-						{#if canManage}
-							<div class="mt-auto flex gap-0.5 pt-1">
-								<Button
-									variant="ghost"
-									size="icon"
-									class="size-8 text-ink-400 hover:text-ink-600"
-									title="Edit"
-									aria-label="Edit template"
-									onclick={() => openEdit(t)}
-								>
-									<Icon name="edit" size={15} />
-								</Button>
-								<Button
-									variant="ghost"
-									size="icon"
-									class="size-8 text-ink-400 hover:text-red-500"
-									title="Delete"
-									aria-label="Delete template"
-									onclick={() => remove(t)}
-								>
-									<Icon name="trash" size={15} />
-								</Button>
-							</div>
-						{/if}
+						<div class="mt-auto flex gap-0.5 pt-1">
+							<Button
+								variant="ghost"
+								size="icon"
+								class="size-8 text-ink-400 hover:text-ink-600"
+								title="Edit"
+								aria-label="Edit template"
+								onclick={() => openEdit(t)}
+							>
+								<Icon name="edit" size={15} />
+							</Button>
+							<Button
+								variant="ghost"
+								size="icon"
+								class="size-8 text-ink-400 hover:text-red-500"
+								title="Delete"
+								aria-label="Delete template"
+								onclick={() => remove(t)}
+							>
+								<Icon name="trash" size={15} />
+							</Button>
+						</div>
 					</Card>
 				{/each}
 			</div>
@@ -365,30 +356,28 @@
 									</Button>
 									<div class="text-[13px] font-semibold text-ink-600">{t.title}</div>
 									<p class="line-clamp-3 text-[12.5px] text-ink-500">{t.body}</p>
-									{#if canManage}
-										<div class="mt-auto flex gap-0.5 pt-1">
-											<Button
-												variant="ghost"
-												size="icon"
-												class="size-8 text-ink-400 hover:text-ink-600"
-												title="Edit"
-												aria-label="Edit template"
-												onclick={() => openEdit(t)}
-											>
-												<Icon name="edit" size={15} />
-											</Button>
-											<Button
-												variant="ghost"
-												size="icon"
-												class="size-8 text-ink-400 hover:text-red-500"
-												title="Delete"
-												aria-label="Delete template"
-												onclick={() => remove(t)}
-											>
-												<Icon name="trash" size={15} />
-											</Button>
-										</div>
-									{/if}
+									<div class="mt-auto flex gap-0.5 pt-1">
+										<Button
+											variant="ghost"
+											size="icon"
+											class="size-8 text-ink-400 hover:text-ink-600"
+											title="Edit"
+											aria-label="Edit template"
+											onclick={() => openEdit(t)}
+										>
+											<Icon name="edit" size={15} />
+										</Button>
+										<Button
+											variant="ghost"
+											size="icon"
+											class="size-8 text-ink-400 hover:text-red-500"
+											title="Delete"
+											aria-label="Delete template"
+											onclick={() => remove(t)}
+										>
+											<Icon name="trash" size={15} />
+										</Button>
+									</div>
 								</Card>
 							{/each}
 						</div>
@@ -406,40 +395,38 @@
 						<div class="text-[13px] font-semibold text-ink-600">{t.title}</div>
 						<p class="mt-1 whitespace-pre-wrap text-[12.5px] text-ink-500">{t.body}</p>
 					</div>
-					{#if canManage}
-						<div class="flex shrink-0 gap-0.5">
-							<Button
-								variant="ghost"
-								size="icon"
-								class="size-8 text-ink-400 hover:text-ink-600"
-								title="Edit"
-								aria-label="Edit template"
-								onclick={() => openEdit(t)}
-							>
-								<Icon name="edit" size={15} />
-							</Button>
-							<Button
-								variant="ghost"
-								size="icon"
-								class="size-8 text-ink-400 hover:text-ink-600"
-								title="Copy"
-								aria-label="Copy template"
-								onclick={() => copy(t)}
-							>
-								<Icon name="copy" size={15} />
-							</Button>
-							<Button
-								variant="ghost"
-								size="icon"
-								class="size-8 text-ink-400 hover:text-red-500"
-								title="Delete"
-								aria-label="Delete template"
-								onclick={() => remove(t)}
-							>
-								<Icon name="trash" size={15} />
-							</Button>
-						</div>
-					{/if}
+					<div class="flex shrink-0 gap-0.5">
+						<Button
+							variant="ghost"
+							size="icon"
+							class="size-8 text-ink-400 hover:text-ink-600"
+							title="Edit"
+							aria-label="Edit template"
+							onclick={() => openEdit(t)}
+						>
+							<Icon name="edit" size={15} />
+						</Button>
+						<Button
+							variant="ghost"
+							size="icon"
+							class="size-8 text-ink-400 hover:text-ink-600"
+							title="Copy"
+							aria-label="Copy template"
+							onclick={() => copy(t)}
+						>
+							<Icon name="copy" size={15} />
+						</Button>
+						<Button
+							variant="ghost"
+							size="icon"
+							class="size-8 text-ink-400 hover:text-red-500"
+							title="Delete"
+							aria-label="Delete template"
+							onclick={() => remove(t)}
+						>
+							<Icon name="trash" size={15} />
+						</Button>
+					</div>
 				</div>
 			{/each}
 		</Card>
@@ -458,40 +445,38 @@
 									<div class="text-[13px] font-semibold text-ink-600">{t.title}</div>
 									<p class="mt-1 whitespace-pre-wrap text-[12.5px] text-ink-500">{t.body}</p>
 								</div>
-								{#if canManage}
-									<div class="flex shrink-0 gap-0.5">
-										<Button
-											variant="ghost"
-											size="icon"
-											class="size-8 text-ink-400 hover:text-ink-600"
-											title="Edit"
-											aria-label="Edit template"
-											onclick={() => openEdit(t)}
-										>
-											<Icon name="edit" size={15} />
-										</Button>
-										<Button
-											variant="ghost"
-											size="icon"
-											class="size-8 text-ink-400 hover:text-ink-600"
-											title="Copy"
-											aria-label="Copy template"
-											onclick={() => copy(t)}
-										>
-											<Icon name="copy" size={15} />
-										</Button>
-										<Button
-											variant="ghost"
-											size="icon"
-											class="size-8 text-ink-400 hover:text-red-500"
-											title="Delete"
-											aria-label="Delete template"
-											onclick={() => remove(t)}
-										>
-											<Icon name="trash" size={15} />
-										</Button>
-									</div>
-								{/if}
+								<div class="flex shrink-0 gap-0.5">
+									<Button
+										variant="ghost"
+										size="icon"
+										class="size-8 text-ink-400 hover:text-ink-600"
+										title="Edit"
+										aria-label="Edit template"
+										onclick={() => openEdit(t)}
+									>
+										<Icon name="edit" size={15} />
+									</Button>
+									<Button
+										variant="ghost"
+										size="icon"
+										class="size-8 text-ink-400 hover:text-ink-600"
+										title="Copy"
+										aria-label="Copy template"
+										onclick={() => copy(t)}
+									>
+										<Icon name="copy" size={15} />
+									</Button>
+									<Button
+										variant="ghost"
+										size="icon"
+										class="size-8 text-ink-400 hover:text-red-500"
+										title="Delete"
+										aria-label="Delete template"
+										onclick={() => remove(t)}
+									>
+										<Icon name="trash" size={15} />
+									</Button>
+								</div>
 							</div>
 						{/each}
 					</Card>
@@ -535,7 +520,7 @@
 <Modal
 	open={formOpen}
 	title={editingId ? 'Edit template' : 'Add template'}
-	subtitle="Use {'{{organizerName}}'}, {'{{eventName}}'}, and {'{{repName}}'} as placeholders."
+	subtitle="Use {'{{organizerName}}'}, {'{{eventName}}'}, {'{{repName}}'}, {'{{repFirstName}}'}, and {'{{repLastName}}'} as placeholders."
 	width={520}
 	onclose={() => (formOpen = false)}
 >
@@ -546,13 +531,12 @@
 		</div>
 		<div class="grid gap-1.5">
 			<Label for="tpl-category">Category</Label>
-			<Select type="single" bind:value={category}>
-				<SelectTrigger id="tpl-category" class="w-full">{category}</SelectTrigger>
-				<SelectContent>
-					{#each TEMPLATE_CATEGORIES as c (c)}<SelectItem value={c} label={c}>{c}</SelectItem
-						>{/each}
-				</SelectContent>
-			</Select>
+			<ComboboxFreetext
+				id="tpl-category"
+				bind:value={category}
+				search={filterTemplateCategories}
+				placeholder="Category"
+			/>
 		</div>
 		<div class="grid gap-1.5">
 			<Label for="tpl-body">Message</Label>

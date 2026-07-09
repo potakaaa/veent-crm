@@ -10,6 +10,7 @@ import { crmMeetings, crmMeetingAttendees, crmUsers, crmLeads, crmOrganizers } f
 import { eq, and, isNull, isNotNull, desc, asc, inArray, count, sql, ilike } from 'drizzle-orm';
 import type { SQL } from 'drizzle-orm';
 import type { Meeting, MeetingAttendee } from '$lib/types';
+import { formatFullName } from '$lib/utils/format-name';
 
 type DbMeeting = typeof crmMeetings.$inferSelect;
 
@@ -88,7 +89,8 @@ export function dbRowToMeeting(
 	attendees: MeetingAttendee[],
 	organizerName?: string | null,
 	leadName?: string | null,
-	leadOrganizerName?: string | null
+	leadOrganizerName?: string | null,
+	organizerColor?: string | null
 ): Meeting {
 	return {
 		id: row.id,
@@ -96,6 +98,7 @@ export function dbRowToMeeting(
 		leadName: leadName ?? undefined,
 		organizerId: row.organizerId,
 		organizerName: organizerName ?? undefined,
+		organizerColor: organizerColor ?? null,
 		leadOrganizerId: row.leadOrganizerId ?? null,
 		leadOrganizerName: leadOrganizerName ?? undefined,
 		startAt: row.startAt.toISOString(),
@@ -124,7 +127,9 @@ async function attendeesByMeeting(meetingIds: string[]): Promise<Map<string, Mee
 		.select({
 			meetingId: crmMeetingAttendees.meetingId,
 			userId: crmMeetingAttendees.userId,
-			name: crmUsers.name
+			firstName: crmUsers.firstName,
+			lastName: crmUsers.lastName,
+			color: crmUsers.color
 		})
 		.from(crmMeetingAttendees)
 		.leftJoin(crmUsers, eq(crmMeetingAttendees.userId, crmUsers.id))
@@ -133,7 +138,11 @@ async function attendeesByMeeting(meetingIds: string[]): Promise<Map<string, Mee
 	for (const r of rows) {
 		if (!r.userId) continue; // organizer/attendee set-null after user removal
 		const list = map.get(r.meetingId) ?? [];
-		list.push({ userId: r.userId, name: r.name ?? '' });
+		list.push({
+			userId: r.userId,
+			name: r.firstName ? formatFullName(r.firstName, r.lastName) : '',
+			color: r.color ?? null
+		});
 		map.set(r.meetingId, list);
 	}
 	return map;
@@ -147,7 +156,9 @@ export async function getMeetingDetail(id: string): Promise<Meeting | null> {
 	const [row] = await db
 		.select({
 			meeting: crmMeetings,
-			organizerName: crmUsers.name,
+			organizerFirstName: crmUsers.firstName,
+			organizerLastName: crmUsers.lastName,
+			organizerColor: crmUsers.color,
 			leadName: crmLeads.name,
 			leadOrganizerName: crmOrganizers.name
 		})
@@ -163,9 +174,10 @@ export async function getMeetingDetail(id: string): Promise<Meeting | null> {
 	return dbRowToMeeting(
 		row.meeting,
 		attMap.get(id) ?? [],
-		row.organizerName,
+		row.organizerFirstName ? formatFullName(row.organizerFirstName, row.organizerLastName) : null,
 		row.leadName,
-		row.leadOrganizerName
+		row.leadOrganizerName,
+		row.organizerColor ?? null
 	);
 }
 
@@ -177,7 +189,9 @@ export async function listMeetingsForLead(leadId: string): Promise<Meeting[]> {
 	const rows = await db
 		.select({
 			meeting: crmMeetings,
-			organizerName: crmUsers.name,
+			organizerFirstName: crmUsers.firstName,
+			organizerLastName: crmUsers.lastName,
+			organizerColor: crmUsers.color,
 			leadOrganizerName: crmOrganizers.name
 		})
 		.from(crmMeetings)
@@ -191,16 +205,23 @@ export async function listMeetingsForLead(leadId: string): Promise<Meeting[]> {
 		dbRowToMeeting(
 			r.meeting,
 			attMap.get(r.meeting.id) ?? [],
-			r.organizerName,
+			r.organizerFirstName ? formatFullName(r.organizerFirstName, r.organizerLastName) : null,
 			null,
-			r.leadOrganizerName
+			r.leadOrganizerName,
+			r.organizerColor ?? null
 		)
 	);
 }
 
 export async function listAllMeetings(): Promise<Meeting[]> {
 	const rows = await db
-		.select({ meeting: crmMeetings, organizerName: crmUsers.name, leadName: crmLeads.name })
+		.select({
+			meeting: crmMeetings,
+			organizerFirstName: crmUsers.firstName,
+			organizerLastName: crmUsers.lastName,
+			organizerColor: crmUsers.color,
+			leadName: crmLeads.name
+		})
 		.from(crmMeetings)
 		.leftJoin(crmUsers, eq(crmMeetings.organizerId, crmUsers.id))
 		.innerJoin(crmLeads, eq(crmMeetings.leadId, crmLeads.id))
@@ -209,7 +230,14 @@ export async function listAllMeetings(): Promise<Meeting[]> {
 
 	const attMap = await attendeesByMeeting(rows.map((r) => r.meeting.id));
 	return rows.map((r) =>
-		dbRowToMeeting(r.meeting, attMap.get(r.meeting.id) ?? [], r.organizerName, r.leadName)
+		dbRowToMeeting(
+			r.meeting,
+			attMap.get(r.meeting.id) ?? [],
+			r.organizerFirstName ? formatFullName(r.organizerFirstName, r.organizerLastName) : null,
+			r.leadName,
+			undefined,
+			r.organizerColor ?? null
+		)
 	);
 }
 
@@ -255,7 +283,9 @@ export async function listMeetingsPaginated(
 		db
 			.select({
 				meeting: crmMeetings,
-				organizerName: crmUsers.name,
+				organizerFirstName: crmUsers.firstName,
+				organizerLastName: crmUsers.lastName,
+				organizerColor: crmUsers.color,
 				leadName: crmLeads.name,
 				leadOrganizerName: crmOrganizers.name
 			})
@@ -276,9 +306,10 @@ export async function listMeetingsPaginated(
 		dbRowToMeeting(
 			r.meeting,
 			attMap.get(r.meeting.id) ?? [],
-			r.organizerName,
+			r.organizerFirstName ? formatFullName(r.organizerFirstName, r.organizerLastName) : null,
 			r.leadName,
-			r.leadOrganizerName
+			r.leadOrganizerName,
+			r.organizerColor ?? null
 		)
 	);
 	return { meetings, total };

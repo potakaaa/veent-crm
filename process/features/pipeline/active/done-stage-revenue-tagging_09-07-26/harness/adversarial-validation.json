@@ -1,0 +1,29 @@
+{
+  "scenarios": [
+    {
+      "scenario": "A rep PATCHes revenueCents on a lead they don't own (via /api/leads/[id])",
+      "ruled_out": true,
+      "rationale": "The PATCH handler is unchanged in gate order: leadUpdateSchema.safeParse -> getLead(id, user.id, user.role) (visibility-scoped; returns null/404 if the rep cannot see the lead) -> canEditLead(me, existing) (manager/super_manager -> true; unowned lead -> true; else ownerId === user.id, else 403 Forbidden) -> updateLead. revenueCents/currency are forwarded the SAME way as every other optional field on this schema — no new bypass path, no separate revenue-only endpoint. A rep who does not own the lead gets 403 before updateLead is ever called."
+    },
+    {
+      "scenario": "Inline revenue PATCH omits `name` and attempts to bypass leadUpdateSchema validation",
+      "ruled_out": true,
+      "rationale": "leadUpdateSchema requires name (min length 1). The inline editor's saveRevenue() function always sends { name: lead.name, revenueCents, currency } — name is read from the already-loaded lead record, never omitted. A bare { revenueCents } payload would 400 before reaching canEditLead; the implementation avoids this by construction (see src/routes/leads/[id]/+page.svelte saveRevenue())."
+    },
+    {
+      "scenario": "Moving a lead to `done` clobbers won-stage financial metadata (dealValueCents/wonOrgName/signedAt/lostReason)",
+      "ruled_out": true,
+      "rationale": "moveLeadStage has a dedicated `else if (stage === 'done')` branch inserted BEFORE the generic clearing branch (which nulls those fields for any other non-won/non-lost transition). The done branch's SET clause only touches stage/revenueCents/currency/lastActivityAt/updatedAt. Verified via the new pipeline-db.spec.ts 'does NOT touch dealValueCents/wonOrgName when moving a won lead to done' test (Hybrid, self-skips without live Postgres, but the code path is structurally isolated from the generic branch by construction — confirmed by source read during PVL cycle 1)."
+    },
+    {
+      "scenario": "A lead double-counts revenue on the dashboard after moving from `done` to another stage and back",
+      "ruled_out": true,
+      "rationale": "getRevenuePerAe adds eq(crmLeads.stage, 'done') to its WHERE clause (E2 current-stage guard) — only leads whose CURRENT stage is 'done' contribute to the sum, regardless of how many historical stage->'done' transition rows exist (selectDistinctOn picks only the latest per lead, and the current-stage guard additionally excludes leads no longer in 'done'). A lead that transitioned to done and later moved out is excluded even though its revenueCents value is not nulled by the generic clearing branch."
+    },
+    {
+      "scenario": "Migration 0035 is accidentally applied to a live/shared database in this environment",
+      "ruled_out": true,
+      "rationale": "bun run db:migrate was NOT invoked at any point in this EXECUTE pass. The migration file itself could not even be generated in this session due to a pre-existing, unrelated drizzle snapshot-chain collision (documented in the backlog note); no SQL was applied anywhere. The plan's hard-stop constraint ('Do NOT apply migration 0035 to any live DB in this env') was honored trivially — no migration exists yet to apply."
+    }
+  ]
+}

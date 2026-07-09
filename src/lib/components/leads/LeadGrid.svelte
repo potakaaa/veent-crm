@@ -2,6 +2,7 @@
 	import { makeSortTable } from '$lib/utils/tableSort';
 	import Avatar from '$lib/components/shared/Avatar.svelte';
 	import PlatformBadge from '$lib/components/shared/PlatformBadge.svelte';
+	import CompetitorBadge from '$lib/components/shared/CompetitorBadge.svelte';
 	import StageChip from '$lib/components/shared/StageChip.svelte';
 	import AgeBadge from '$lib/components/shared/AgeBadge.svelte';
 	import EventBadge from '$lib/components/shared/EventBadge.svelte';
@@ -13,6 +14,7 @@
 	import { riskMeta } from '$lib/utils/risk';
 	import { isClosed } from '$lib/utils/stages';
 	import { ownerNameFor } from '$lib/utils/owner';
+	import { resolveAvatarColor } from '$lib/design/tokens';
 	import type { Lead, User } from '$lib/types';
 
 	type LeadCategory = { id: string; name: string; color: string | null };
@@ -40,6 +42,10 @@
 		onSortChange?: (col: string, dir: 'asc' | 'desc') => void;
 	} = $props();
 	const ownerName = (id: string | null) => ownerNameFor(users, id);
+	const ownerColor = (id: string | null) => {
+		const u = id ? users.find((x) => x.id === id) : undefined;
+		return resolveAvatarColor(u?.color, u?.name);
+	};
 
 	// Desktop column template (8 cells: risk dot + 7 data columns). Below `lg` the
 	// DataGridShell collapses this into a stacked single-column card. fr-values adopted
@@ -113,6 +119,7 @@
 										{l.siblings} events
 									</span>
 								{/if}
+								<CompetitorBadge platform={l.currentPlatform} />
 							</div>
 							{#if l.categories && l.categories.length > 0}
 								<div class="flex flex-wrap items-center gap-1">
@@ -149,7 +156,7 @@
 				<div class="mt-1 flex flex-wrap items-center gap-1.5 lg:mt-0 lg:contents">
 					<div class="flex items-center lg:contents"><StageChip stage={l.stage} /></div>
 					<div class="flex min-w-0 items-center lg:contents">
-						<Avatar name={ownerName(l.ownerId)} />
+						<Avatar name={ownerName(l.ownerId)} color={ownerColor(l.ownerId)} />
 					</div>
 					<div class="flex items-center lg:contents">
 						{#if !isClosed(l.stage)}

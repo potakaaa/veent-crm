@@ -22,6 +22,7 @@ export const STAGE_TOKENS = [
 	},
 	{ key: 'won', label: 'Won', color: 'var(--color-stage-won)', hex: '#059669' },
 	{ key: 'live', label: 'Live', color: 'var(--color-stage-live)', hex: '#16a34a' },
+	{ key: 'done', label: 'Done', color: 'var(--color-stage-done)', hex: '#0891b2' },
 	{ key: 'lost', label: 'Lost', color: 'var(--color-stage-lost)', hex: '#9ca3af' }
 ] as const;
 
@@ -104,3 +105,12 @@ export const avatarColor = (name: string | null | undefined): string => {
 	for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
 	return AVATAR_PALETTE[h % AVATAR_PALETTE.length];
 };
+
+/**
+ * Resolve the display color for a user: prefer the manager-set stored color
+ * (GitHub #275), else fall back to the deterministic name hash. Never throws.
+ */
+export const resolveAvatarColor = (
+	stored: string | null | undefined,
+	name: string | null | undefined
+): string => stored ?? avatarColor(name);

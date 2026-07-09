@@ -6,14 +6,14 @@
  */
 import { db } from './index';
 import { crmNotes, crmUsers } from './schema';
-import { eq, and, desc } from 'drizzle-orm';
+import { eq, and, desc, sql } from 'drizzle-orm';
 import type { Note } from '$lib/types';
 
 const noteSelection = {
 	id: crmNotes.id,
 	content: crmNotes.content,
 	authorId: crmNotes.authorId,
-	authorName: crmUsers.name,
+	authorName: sql<string>`${crmUsers.firstName} || case when ${crmUsers.lastName} is null or ${crmUsers.lastName} = '' then '' else ' ' || ${crmUsers.lastName} end`,
 	leadId: crmNotes.leadId,
 	organizerId: crmNotes.organizerId,
 	createdAt: crmNotes.createdAt

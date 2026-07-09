@@ -36,10 +36,14 @@ export type AgeType = 'overdue' | 'due' | 'stale' | 'fresh' | 'normal';
 export interface User {
 	id: string;
 	name: string;
+	firstName: string;
+	lastName: string | null;
 	email: string;
 	role: Role;
 	active: boolean;
 	location?: string;
+	/** Manager-editable display color (hex); null/undefined falls back to avatarColor(name) hash. */
+	color?: string | null;
 	/** Count of currently-owned leads (denormalized for the team view). */
 	leadCount?: number;
 }
@@ -97,6 +101,9 @@ export interface Lead {
 	dealValue?: number;
 	currency?: Currency;
 	signedDate?: string;
+
+	// Done-stage post-event revenue capture (GitHub #273); nullable until captured
+	revenueCents?: number | null;
 
 	// Onboarding capture (post-won; manual)
 	onboardingNotes?: string;
@@ -170,6 +177,7 @@ export interface Notification {
 export interface MeetingAttendee {
 	userId: string;
 	name: string;
+	color?: string | null;
 }
 
 export interface Meeting {
@@ -179,6 +187,7 @@ export interface Meeting {
 	leadName?: string;
 	organizerId: string | null;
 	organizerName?: string;
+	organizerColor?: string | null;
 	/**
 	 * The lead's linked recurring-organizer entity (crm_organizers, GitHub #188) — DISTINCT
 	 * from `organizerId` (internal crm_users organizer). Pre-filled from the lead on create,
@@ -288,6 +297,7 @@ export interface FunnelStage {
 export interface LeaderboardRow {
 	repId: string;
 	name: string;
+	color?: string | null;
 	touches: number;
 	replies: number;
 	wins: number;
@@ -341,6 +351,8 @@ export interface MoveStagePayload {
 	dealValueCents?: number;
 	currency?: Currency;
 	signedAt?: string;
+	// Required when moving to `done` (GitHub #273)
+	revenueCents?: number;
 	// Required when moving to `lost`
 	lostReason?: LostReason;
 }

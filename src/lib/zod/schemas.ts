@@ -2,6 +2,7 @@
 // See sales-crm.md §Stack (Superforms + Zod) and §Lead ingestion (ingest contract).
 
 import { z } from 'zod';
+import { TEMPLATE_CATEGORIES } from '$lib/data/template-categories';
 
 export const LEAD_STAGES = [
 	'new',
@@ -10,6 +11,7 @@ export const LEAD_STAGES = [
 	'in_discussion',
 	'won',
 	'live',
+	'done',
 	'lost'
 ] as const;
 
@@ -125,7 +127,11 @@ export const leadUpdateSchema = z
 		// Recurring-organizer / future-events prospect flag (GitHub #94).
 		hasFutureEvents: z.boolean().optional(),
 		currentPlatform: z.string().optional(),
-		competitorNotes: z.string().optional()
+		competitorNotes: z.string().optional(),
+		// Done-stage post-event revenue (GitHub #273) — inline-editable on /leads/[id];
+		// both optional so a normal edit that omits them is unaffected.
+		revenueCents: z.number().int().nonnegative().optional(),
+		currency: z.enum(CURRENCIES).optional()
 	})
 	.refine((d) => d.visibility !== 'selected' || (d.selectedUserIds?.length ?? 0) > 0, {
 		message: 'Pick at least one teammate when visibility is "Selected people".',
@@ -292,23 +298,35 @@ export type ReassignForm = z.infer<typeof reassignFormSchema>;
 
 // --- Add / edit a team member (the magic-link allowlist) -------------------
 export const userFormSchema = z.object({
-	name: z.string().min(1, 'Name is required'),
+	firstName: z.string().min(1, 'First name is required'),
+	lastName: z.string().optional(),
 	email: z.string().email('A valid work email is required'),
 	role: z.enum(USER_ROLES).default('rep'),
-	active: z.boolean().default(true)
+	active: z.boolean().default(true),
+	// Manager-only display color (GitHub #275); null clears to hash fallback.
+	color: z
+		.string()
+		.regex(/^#[0-9a-fA-F]{6}$/, 'Color must be a hex value like #a1b2c3')
+		.nullable()
+		.optional()
 });
 export type UserForm = z.infer<typeof userFormSchema>;
 
 // --- Edit an existing team member's name (managers editing others, or self) ---
-export const userNameEditSchema = userFormSchema.pick({ name: true });
+export const userNameEditSchema = userFormSchema.pick({ firstName: true, lastName: true });
 export type UserNameEditForm = z.infer<typeof userNameEditSchema>;
+
+// --- Edit an existing team member's color (manager-only, GitHub #275) ---
+export const userColorEditSchema = userFormSchema.pick({ color: true });
+export type UserColorEditForm = z.infer<typeof userColorEditSchema>;
 
 // --- Add / edit an outreach message template (Superforms) ------------------
 export const templateFormSchema = z.object({
 	title: z.string().min(1, 'Title is required'),
 	// Template category vocabulary is the frozen TEMPLATE_CATEGORIES list (CAT-1), not the
-	// editable crm_categories table — validated as a non-empty string on the wire.
-	category: z.string().min(1, 'Category is required'),
+	// editable crm_categories table. Tightened to an enum (GitHub #274 Option A) so an
+	// off-list category is rejected rather than silently accepted as free text.
+	category: z.enum(TEMPLATE_CATEGORIES, { error: 'Choose a valid category' }),
 	body: z.string().min(1, 'Message body is required')
 });
 export type TemplateForm = z.infer<typeof templateFormSchema>;
@@ -331,6 +349,12 @@ export const moveStageSchema = z.discriminatedUnion('stage', [
 	z.object({
 		// GitHub #194 — a won lead can advance to `live` (no extra capture required).
 		stage: z.literal('live')
+	}),
+	z.object({
+		// GitHub #273 — moving to Done requires post-event revenue + currency.
+		stage: z.literal('done'),
+		revenueCents: z.number().int().nonnegative(),
+		currency: z.enum(CURRENCIES).default('PHP')
 	}),
 	z.object({
 		stage: z.literal('lost'),

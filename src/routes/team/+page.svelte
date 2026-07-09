@@ -26,6 +26,7 @@
 	import { canManageUsers, isSuperManager, canPromoteToSuperManager } from '$lib/utils/permissions';
 	import { roleLabel, statusLabel } from '$lib/utils/roles';
 	import { userFormSchema, userNameEditSchema, USER_ROLES } from '$lib/zod/schemas';
+	import { resolveAvatarColor } from '$lib/design/tokens';
 	import type { Role, User } from '$lib/types';
 
 	let { data } = $props();
@@ -113,7 +114,8 @@
 	);
 
 	let addOpen = $state(false);
-	let name = $state('');
+	let firstName = $state('');
+	let lastName = $state('');
 	let email = $state('');
 	let role = $state<string>('rep');
 	// #227 — the add-user modal copy must reflect the selected role.
@@ -124,7 +126,7 @@
 	let fieldErrors = $state<Record<string, string[] | undefined>>({});
 
 	async function addRep() {
-		const parsed = userFormSchema.safeParse({ name, email, role, active: true });
+		const parsed = userFormSchema.safeParse({ firstName, lastName, email, role, active: true });
 		if (!parsed.success) {
 			fieldErrors = parsed.error.flatten().fieldErrors as Record<string, string[] | undefined>;
 			formError = '';
@@ -135,7 +137,7 @@
 			const res = await fetch('/api/users', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ name, email, role })
+				body: JSON.stringify({ firstName, lastName, email, role })
 			});
 			if (res.status === 409) {
 				formError = 'This email is already registered.';
@@ -146,7 +148,7 @@
 				return;
 			}
 			addOpen = false;
-			name = email = formError = '';
+			firstName = lastName = email = formError = '';
 			fieldErrors = {};
 			role = 'rep';
 			await invalidateAll();
@@ -195,22 +197,31 @@
 	let roleChanging = $state(false);
 	let deactivating = $state<Record<string, boolean>>({});
 
-	// --- Edit a team member's name -------------------------------------------
+	// --- Edit a team member's name + color (color is manager-only, GitHub #275) --
 	let editTarget = $state<User | null>(null);
-	let editName = $state('');
+	let editFirstName = $state('');
+	let editLastName = $state('');
+	let editColor = $state('#9ca3af');
 	let editSaving = $state(false);
 	let editFieldErrors = $state<Record<string, string[] | undefined>>({});
 
 	function openEdit(u: User) {
 		editTarget = u;
-		editName = u.name;
+		editFirstName = u.firstName;
+		editLastName = u.lastName ?? '';
+		// Seed the native color input with a valid hex swatch even when no color
+		// is stored yet — <input type="color"> cannot represent null.
+		editColor = resolveAvatarColor(u.color, u.name);
 		editFieldErrors = {};
 	}
 
 	async function saveEditName() {
 		const target = editTarget;
 		if (!target) return;
-		const parsed = userNameEditSchema.safeParse({ name: editName });
+		const parsed = userNameEditSchema.safeParse({
+			firstName: editFirstName,
+			lastName: editLastName
+		});
 		if (!parsed.success) {
 			editFieldErrors = parsed.error.flatten().fieldErrors as Record<string, string[] | undefined>;
 			return;
@@ -218,10 +229,15 @@
 		editFieldErrors = {};
 		editSaving = true;
 		try {
+			const body: Record<string, unknown> = { firstName: editFirstName, lastName: editLastName };
+			// Color is manager-only — only send it when the actor can manage users,
+			// mirroring the endpoint's authorization gate (defense-in-depth, not the
+			// sole gate: the endpoint itself rejects reps regardless of this check).
+			if (canManage) body.color = editColor;
 			const res = await fetch(`/api/users/${target.id}`, {
 				method: 'PATCH',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ name: editName })
+				body: JSON.stringify(body)
 			});
 			if (!res.ok) {
 				toasts.push(
@@ -234,7 +250,7 @@
 			}
 			editTarget = null;
 			await invalidateAll();
-			toasts.success('Name updated');
+			toasts.success('Member updated');
 		} catch (err) {
 			toasts.push(err instanceof Error ? err.message : `Unable to update ${target.name}`, {
 				tone: 'warn'
@@ -403,7 +419,7 @@
 							<TableRow style="opacity:{u.active ? 1 : 0.55}">
 								<TableCell>
 									<div class="flex items-center gap-2.5">
-										<Avatar name={u.name} size="md" />
+										<Avatar name={u.name} size="md" color={u.color} />
 										<span class="text-[13px] font-semibold">{u.name}</span>
 									</div>
 								</TableCell>
@@ -556,14 +572,24 @@
 >
 	<div class="flex flex-col gap-3">
 		<div class="grid gap-1.5">
-			<Label for="rep-name">Name</Label>
+			<Label for="rep-first-name">First name</Label>
 			<Input
-				id="rep-name"
-				bind:value={name}
+				id="rep-first-name"
+				bind:value={firstName}
 				placeholder="Marites"
-				{...fieldErrorAttrs('rep-name', fieldErrors.name)}
+				{...fieldErrorAttrs('rep-first-name', fieldErrors.firstName)}
 			/>
-			<FieldError id="rep-name" errors={fieldErrors.name} />
+			<FieldError id="rep-first-name" errors={fieldErrors.firstName} />
+		</div>
+		<div class="grid gap-1.5">
+			<Label for="rep-last-name">Last name (optional)</Label>
+			<Input
+				id="rep-last-name"
+				bind:value={lastName}
+				placeholder="Santos"
+				{...fieldErrorAttrs('rep-last-name', fieldErrors.lastName)}
+			/>
+			<FieldError id="rep-last-name" errors={fieldErrors.lastName} />
 		</div>
 		<div class="grid gap-1.5">
 			<Label for="rep-email">Work email</Label>
@@ -639,16 +665,44 @@
 	{/snippet}
 </Modal>
 
-<Modal open={editTarget !== null} title="Edit name" width={420} onclose={() => (editTarget = null)}>
-	<div class="grid gap-1.5">
-		<Label for="edit-name">Name</Label>
-		<Input
-			id="edit-name"
-			bind:value={editName}
-			placeholder="Marites"
-			{...fieldErrorAttrs('edit-name', editFieldErrors.name)}
-		/>
-		<FieldError id="edit-name" errors={editFieldErrors.name} />
+<Modal
+	open={editTarget !== null}
+	title="Edit member"
+	width={420}
+	onclose={() => (editTarget = null)}
+>
+	<div class="flex flex-col gap-3">
+		<div class="grid gap-1.5">
+			<Label for="edit-first-name">First name</Label>
+			<Input
+				id="edit-first-name"
+				bind:value={editFirstName}
+				placeholder="Marites"
+				{...fieldErrorAttrs('edit-first-name', editFieldErrors.firstName)}
+			/>
+			<FieldError id="edit-first-name" errors={editFieldErrors.firstName} />
+		</div>
+		<div class="grid gap-1.5">
+			<Label for="edit-last-name">Last name (optional)</Label>
+			<Input
+				id="edit-last-name"
+				bind:value={editLastName}
+				placeholder="Santos"
+				{...fieldErrorAttrs('edit-last-name', editFieldErrors.lastName)}
+			/>
+			<FieldError id="edit-last-name" errors={editFieldErrors.lastName} />
+		</div>
+		{#if canManage}
+			<div class="grid gap-1.5">
+				<Label for="edit-color">Display color</Label>
+				<input
+					id="edit-color"
+					type="color"
+					bind:value={editColor}
+					class="h-9 w-16 cursor-pointer rounded-control border border-border bg-transparent p-0.5"
+				/>
+			</div>
+		{/if}
 	</div>
 	{#snippet footer()}
 		<Button variant="outline" class="flex-1" onclick={() => (editTarget = null)}>Cancel</Button>

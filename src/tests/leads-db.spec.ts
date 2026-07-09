@@ -428,6 +428,7 @@ function makeMapperRow(overrides: Partial<Parameters<typeof dbRowToLead>[0]> = {
 		notes: null,
 		currentPlatform: null,
 		competitorNotes: null,
+		revenueCents: null,
 		// NCAL-3 — UID storage columns (nullable, no default)
 		nextcloudGoLiveUid: null,
 		nextcloudEventUid: null,

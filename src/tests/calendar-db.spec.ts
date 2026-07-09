@@ -273,20 +273,18 @@ describe('CAL3-AC8 — meetings always team-wide (never narrowed by the rep filt
 		expect(listAllMeetings.length).toBe(0);
 	});
 
-	it('the calendar route never threads filterRepId into the listAllMeetings(...) call (route-source guard)', () => {
-		// Static-source guard (item 17b): closes the arity-only blind spot. An optional
-		// filterRepId? param would keep listAllMeetings.length === 0 yet still be threaded at
-		// the route; read the route source and assert the listAllMeetings() call is argument-free.
+	it('NCAL-5: the calendar route no longer calls listAllMeetings — meetings come from CalDAV (route-source guard)', () => {
+		// NCAL-5: listAllMeetings was removed from the calendar route. Meetings, go-live dates, and
+		// event starts are now read exclusively from Nextcloud via classifyCalDavEvents.
+		// This guard confirms the route source contains zero listAllMeetings calls.
 		const src = readFileSync('src/routes/calendar/+page.server.ts', 'utf8');
-		// Strip JS comments before matching so comment text cannot satisfy the assertion.
 		const executableSrc = src.replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, '');
-		// Collect argument lists from every real listAllMeetings(...) call site.
 		const callArgs = [...executableSrc.matchAll(/\blistAllMeetings\(([^)]*)\)/g)].map((m) =>
 			m[1].trim()
 		);
-		// There must be exactly one call, and it must be argument-free.
-		expect(callArgs).toEqual(['']);
-		// And filterRepId must never appear inside a listAllMeetings( ... ) call anywhere.
+		// Zero calls — CalDAV is now the sole source of truth.
+		expect(callArgs).toEqual([]);
+		// filterRepId must never appear inside a listAllMeetings( ... ) call.
 		expect(/listAllMeetings\([^)]*filterRepId/.test(executableSrc)).toBe(false);
 	});
 });

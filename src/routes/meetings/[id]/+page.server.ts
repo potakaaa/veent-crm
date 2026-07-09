@@ -1,6 +1,6 @@
 import type { PageServerLoad } from './$types';
 import { error } from '@sveltejs/kit';
-import { getMeetingDetail } from '$lib/server/db/meetings';
+import { getMeeting, getMeetingDetail } from '$lib/server/db/meetings';
 import { listUsers } from '$lib/server/db/leads';
 import type { User } from '$lib/types';
 
@@ -16,7 +16,11 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 	// the `uuid` column comparison in getMeetingDetail() and crash with a raw Postgres error.
 	if (!UUID_RE.test(params.id)) throw error(400, 'Invalid meeting ID');
 
-	const [meeting, users] = await Promise.all([getMeetingDetail(params.id), listUsers()]);
+	const [meeting, meetingMeta, users] = await Promise.all([
+		getMeetingDetail(params.id),
+		getMeeting(params.id),
+		listUsers()
+	]);
 
 	// 404 (not a crash) for a missing or soft-deleted meeting — meetings-detail-route-404-on-missing.
 	if (!meeting) throw error(404, 'Meeting not found');
@@ -31,5 +35,5 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		active: true
 	};
 
-	return { meeting, users, me };
+	return { meeting, synced: !!meetingMeta?.nextcloudUid, users, me };
 };

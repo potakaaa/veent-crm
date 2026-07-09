@@ -134,6 +134,9 @@ export function dbRowToLead(
 		bankChargesAbsorbed: row.bankChargesAbsorbed ?? undefined,
 		hasFutureEvents: row.hasFutureEvents ?? false,
 		lostReason: (row.lostReason as Lead['lostReason']) ?? undefined,
+		// NCAL-3 — Nextcloud calendar UID fields (nullable; set after first successful sync)
+		nextcloudGoLiveUid: row.nextcloudGoLiveUid ?? null,
+		nextcloudEventUid: row.nextcloudEventUid ?? null,
 		createdAt,
 		lastActivityAt,
 		followUpAt: followUpIso,
@@ -2161,4 +2164,33 @@ export async function getLeadHeatmapData(
 		.from(crmLeads)
 		.where(and(isNull(crmLeads.deletedAt), sql`${crmLeads.createdAt} >= ${pastStr}`))
 		.groupBy(sql`DATE(${crmLeads.createdAt})`, crmLeads.stage);
+}
+
+/**
+ * Writes Nextcloud UIDs back to a lead row after a successful CalDAV create,
+ * or clears them (null) after a successful CalDAV delete. Called by calendar-sync.ts only.
+ * Only the fields present in `patch` are updated (partial patch — others untouched).
+ */
+export async function updateLeadNextcloudUids(
+	id: string,
+	patch: { nextcloudGoLiveUid?: string | null; nextcloudEventUid?: string | null }
+): Promise<void> {
+	await db
+		.update(crmLeads)
+		.set(patch)
+		.where(and(eq(crmLeads.id, id), isNull(crmLeads.deletedAt)));
+}
+
+/**
+ * Batch-fetches lead ownership for CalDAV filtering (NCAL-5).
+ * Returns a Map<leadId, ownerId> for the given lead IDs (excluding soft-deleted).
+ * Unknown / soft-deleted leads are absent from the map — callers apply exclusive-default.
+ */
+export async function getLeadOwners(leadIds: string[]): Promise<Map<string, string>> {
+	if (leadIds.length === 0) return new Map();
+	const rows = await db
+		.select({ id: crmLeads.id, ownerId: crmLeads.ownerId })
+		.from(crmLeads)
+		.where(and(inArray(crmLeads.id, leadIds), isNull(crmLeads.deletedAt)));
+	return new Map(rows.filter((r) => r.ownerId).map((r) => [r.id, r.ownerId as string]));
 }

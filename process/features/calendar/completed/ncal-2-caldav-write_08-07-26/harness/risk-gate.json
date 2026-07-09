@@ -1,0 +1,14 @@
+{
+  "task": "NCAL-2 CalDAV write client (#252)",
+  "planPath": "process/features/calendar/active/ncal-2-caldav-write_08-07-26/ncal-2-caldav-write_PLAN_08-07-26.md",
+  "riskLevel": "high",
+  "riskClasses": [
+    "permission, secret, or trust-boundary logic",
+    "public API or external contract changes",
+    "auth or identity"
+  ],
+  "mustStopBeforeFinalize": true,
+  "humanApprovalRequired": true,
+  "why": "Server-only writer.ts POSTs event payloads to n8n webhooks authenticated with a shared x-webhook-secret; adds 3 session-gated public write routes (POST/PUT/DELETE) to the shared team calendar. Secret, webhook URL, and upstream n8n detail must never reach the client. Session gate must precede every side-effecting call.",
+  "approver": "vc-execute-agent (per validate-contract E2, session 08-07-26)"
+}

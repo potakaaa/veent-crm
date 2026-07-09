@@ -27,6 +27,29 @@ export function basicAuthHeader(): string {
 }
 
 /**
+ * n8n webhook URL for create/update event writes (NCAL-2). SERVER-ONLY.
+ * The CRM POSTs event payloads here; n8n performs the actual CalDAV PUT. This URL
+ * and the shared secret must NEVER reach the client or any client-visible error.
+ */
+export function n8nCalendarWebhookUrl(): string | undefined {
+	return env.N8N_CALENDAR_WEBHOOK_URL;
+}
+
+/** n8n webhook URL for delete event writes (NCAL-2). SERVER-ONLY. */
+export function n8nCalendarDeleteWebhookUrl(): string | undefined {
+	return env.N8N_CALENDAR_DELETE_WEBHOOK_URL;
+}
+
+/**
+ * Shared secret sent as `x-webhook-secret` to authenticate the CRM → n8n call
+ * (NCAL-2). SERVER-ONLY — must NEVER appear in any thrown error, log line, or
+ * client-visible response body.
+ */
+export function n8nWebhookSecret(): string | undefined {
+	return env.N8N_WEBHOOK_SECRET;
+}
+
+/**
  * Maps a raw iCal `CATEGORIES` value (case-insensitive) to a canonical CRM category.
  * Returns `null` for unmapped/absent categories (see `parser.ts`).
  */
@@ -48,5 +71,6 @@ export const CATEGORY_COLORS: Record<string, string> = {
 	meeting: '#3b82f6',
 	golive: '#22c55e',
 	eventstart: '#f59e0b',
-	'team-event': '#8b5cf6'
+	'team-event': '#8b5cf6',
+	travel: '#0ea5e9'
 };

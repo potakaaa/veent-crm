@@ -321,9 +321,13 @@ export async function listMeetingsPaginated(
  */
 export async function getMeeting(
 	id: string
-): Promise<{ id: string; organizerId: string | null } | null> {
+): Promise<{ id: string; organizerId: string | null; nextcloudUid: string | null } | null> {
 	const [row] = await db
-		.select({ id: crmMeetings.id, organizerId: crmMeetings.organizerId })
+		.select({
+			id: crmMeetings.id,
+			organizerId: crmMeetings.organizerId,
+			nextcloudUid: crmMeetings.nextcloudUid
+		})
 		.from(crmMeetings)
 		.where(and(eq(crmMeetings.id, id), isNull(crmMeetings.deletedAt)))
 		.limit(1);
@@ -463,6 +467,27 @@ export async function softDeleteMeeting(id: string): Promise<boolean> {
  * (GitHub #249, MTG-5) — suggestions layered on top of a field that stays fully free-text.
  * Read-only; filters soft-deleted rows and drops null venues.
  */
+/**
+ * Writes the Nextcloud UID back to a meeting row after a successful CalDAV create,
+ * or clears it (null) after a successful CalDAV delete. Called by calendar-sync.ts only.
+ */
+export async function updateMeetingNextcloudUid(id: string, uid: string | null): Promise<void> {
+	await db
+		.update(crmMeetings)
+		.set({ nextcloudUid: uid })
+		.where(and(eq(crmMeetings.id, id), isNull(crmMeetings.deletedAt)));
+}
+
+/** Returns the meeting row id if an active (non-deleted) meeting is already linked to this Nextcloud uid. */
+export async function getMeetingByNextcloudUid(uid: string): Promise<{ id: string } | null> {
+	const [row] = await db
+		.select({ id: crmMeetings.id })
+		.from(crmMeetings)
+		.where(and(eq(crmMeetings.nextcloudUid, uid), isNull(crmMeetings.deletedAt)))
+		.limit(1);
+	return row ?? null;
+}
+
 export async function searchVenues(q: string | null | undefined, limit = 20): Promise<string[]> {
 	const term = (q ?? '').trim();
 	const where: SQL | undefined = and(
@@ -477,4 +502,18 @@ export async function searchVenues(q: string | null | undefined, limit = 20): Pr
 		.orderBy(asc(crmMeetings.venue))
 		.limit(limit);
 	return rows.map((r) => r.venue).filter((v): v is string => v != null);
+}
+
+/** Returns a map of meetingId → organizerUserId for rep-scoping CalDAV meeting entries. */
+export async function getMeetingOwners(ids: string[]): Promise<Map<string, string>> {
+	if (!ids.length) return new Map();
+	const rows = await db
+		.select({ id: crmMeetings.id, organizerId: crmMeetings.organizerId })
+		.from(crmMeetings)
+		.where(and(inArray(crmMeetings.id, ids), isNull(crmMeetings.deletedAt)));
+	const map = new Map<string, string>();
+	for (const row of rows) {
+		if (row.organizerId) map.set(row.id, row.organizerId);
+	}
+	return map;
 }

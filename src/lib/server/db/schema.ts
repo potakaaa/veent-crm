@@ -209,7 +209,11 @@ export const crmLeads = pgTable(
 		currentPlatform: text('current_platform'),
 		competitorNotes: text('competitor_notes'),
 		createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-		updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
+		updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+
+		// NCAL-3 — Nextcloud calendar UID storage (nullable; set after first successful sync)
+		nextcloudGoLiveUid: text('nextcloud_go_live_uid'),
+		nextcloudEventUid: text('nextcloud_event_uid')
 	},
 	(t) => [
 		index('crm_leads_normalized_handle_idx').on(t.normalizedHandle),
@@ -371,7 +375,10 @@ export const crmMeetings = pgTable(
 		dayReminderSentAt: timestamp('day_reminder_sent_at', { withTimezone: true }),
 		hourReminderSentAt: timestamp('hour_reminder_sent_at', { withTimezone: true }),
 		createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-		updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
+		updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+
+		// NCAL-3 — Nextcloud calendar UID storage (nullable; set after first successful sync)
+		nextcloudUid: text('nextcloud_uid')
 	},
 	(t) => [index('crm_meetings_lead_idx').on(t.leadId)]
 );

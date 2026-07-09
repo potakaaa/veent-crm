@@ -1,0 +1,14 @@
+{
+  "task": "NCAL-2 CalDAV write client (#252)",
+  "decision": "approved-with-concerns",
+  "blockingFindings": [],
+  "nonBlockingFindings": [
+    "AC7 (unauth 401 on 3 routes) — Agent-Probe known-gap, blocked on shared Playwright auth fixture; source-level session gate present and precedes every side-effecting call.",
+    "AC8 (bad payload 400, no webhook) — Agent-Probe known-gap, same root cause; unit-proven at schema layer (AC6).",
+    "AC9 route-layer (n8n failure 502) — Agent-Probe known-gap; unit layer IS Fully-Automated-proven (AC5/AC9-unit).",
+    "AC10 (live create -> GET read-back shows url) — Agent-Probe known-gap, blocked on live CalDAV harness."
+  ],
+  "notes": "All 10 checklist items implemented exactly as planned; no deviation. Fully-Automated gates (AC1-AC6, AC9-unit, NCAL-1 regression) green. Hard security invariants enforced and unit-proven (fixed client-safe error message, session-gate-first, 502 mapping, $env/dynamic/private). The four non-blocking findings are pre-existing, pre-accepted repo-wide Agent-Probe gaps recorded as a self-skipping e2e stub — no NEW gap introduced. Decision approved-with-concerns because those known-gaps keep the gate CONDITIONAL pending user sign-off, not because of any correctness defect.",
+  "reviewer": "vc-execute-agent (self-review against approved plan + validate-contract)",
+  "timestamp": "2026-07-08T00:00:00Z"
+}

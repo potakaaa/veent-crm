@@ -1,0 +1,34 @@
+{
+  "scenarios": [
+    {
+      "scenario": "Attacker triggers an n8n 500 to leak upstream stack trace / internal detail via the write route error body",
+      "ruled_out": true,
+      "rationale": "Writer never reads res.text() on failure; CalDavWebhookError carries only the fixed 'Calendar service unavailable' message. Route maps it to error(502) with the same generic string. AC5 unit test asserts the upstream body text is absent from every serialized error field."
+    },
+    {
+      "scenario": "Shared webhook secret exfiltrated via a thrown error or logged output",
+      "ruled_out": true,
+      "rationale": "Secret is read from env inside postWebhook and only ever placed in the x-webhook-secret request header. It is never interpolated into the error message or any response. AC5 asserts the secret string is absent from the serialized error."
+    },
+    {
+      "scenario": "Webhook URL disclosed to the client via error message",
+      "ruled_out": true,
+      "rationale": "URLs come from env accessors and are only passed to fetch(). Never included in CalDavWebhookError. AC5 asserts the WEBHOOK_URL string is absent from the serialized error."
+    },
+    {
+      "scenario": "Unauthenticated caller writes to the shared team calendar",
+      "ruled_out": true,
+      "rationale": "if (!locals.user) throw error(401) is the FIRST statement in POST, PUT, and DELETE — before request.json(), Zod validation, or any writer call. Full route-level 401 proof (AC7) is a pre-accepted Agent-Probe known-gap (no auth e2e fixture yet), but the gate is present in source and precedes every side-effecting call."
+    },
+    {
+      "scenario": "XML / header injection through user-supplied event fields",
+      "ruled_out": true,
+      "rationale": "Payload is sent to n8n as JSON (JSON.stringify), not XML; the CRM never builds CalDAV XML for writes. The x-webhook-secret header value is a constant env string, never request-derived. Zod validates the payload shape before send."
+    },
+    {
+      "scenario": "Missing env wiring causes an unhandled crash or silent open-write",
+      "ruled_out": true,
+      "rationale": "postWebhook fails closed: when url or secret is undefined it throws CalDavWebhookError (mapped to 502), so a misconfigured deploy degrades to 'service unavailable' rather than crashing or bypassing the webhook."
+    }
+  ]
+}

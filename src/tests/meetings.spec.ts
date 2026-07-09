@@ -101,6 +101,8 @@ describe('dbRowToMeeting', () => {
 			deletedAt: null,
 			dayReminderSentAt: null,
 			hourReminderSentAt: null,
+			// NCAL-3 — UID storage column (nullable, no default)
+			nextcloudUid: null,
 			createdAt: new Date('2026-07-01T09:00:00.000Z'),
 			updatedAt: new Date('2026-07-01T09:00:00.000Z'),
 			...overrides

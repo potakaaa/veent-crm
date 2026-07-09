@@ -3,6 +3,7 @@ import type { RequestHandler } from './$types';
 import { leadUpdateSchema } from '$lib/zod/schemas';
 import { getLead, updateLead } from '$lib/server/db/leads';
 import { canEditLead } from '$lib/utils/permissions';
+import { syncLeadDatesToNextcloud } from '$lib/server/n8n/calendar-sync';
 
 export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 	if (!locals.user) throw error(401, 'Unauthorized');
@@ -78,5 +79,20 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 	);
 
 	if (!lead) throw error(404, 'Lead not found');
+
+	// Only sync when date fields changed or existing UIDs need to be cleared.
+	const datesChanged =
+		lead.goLiveDate !== (existing.goLiveDate ?? null) ||
+		lead.eventDate !== (existing.eventDate ?? null);
+	const hasUids = !!(existing.nextcloudGoLiveUid || existing.nextcloudEventUid);
+	if (datesChanged || hasUids) {
+		void syncLeadDatesToNextcloud(lead, {
+			goLiveDate: existing.goLiveDate ?? null,
+			eventDate: existing.eventDate ?? null,
+			nextcloudGoLiveUid: existing.nextcloudGoLiveUid ?? null,
+			nextcloudEventUid: existing.nextcloudEventUid ?? null
+		}).catch((e) => console.error('[NCAL-3] lead date sync failed:', e));
+	}
+
 	return json({ id: lead.id, name: lead.name });
 };

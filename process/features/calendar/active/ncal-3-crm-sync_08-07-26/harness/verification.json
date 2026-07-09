@@ -1,0 +1,80 @@
+{
+  "phase_records": [
+    {
+      "phase": "NCAL-3 Phase 1",
+      "evl_run": "2026-07-08T13:49Z",
+      "run_type": "EVL confirmation (unconditional re-run of validate-contract gates)",
+      "gates": [
+        {
+          "gate": "bun run test:unit:ci",
+          "status": "PASS",
+          "detail": "51 test files passed, 9 skipped; 547 tests passed, 165 skipped. schema-ncal3.spec.ts: 3/3 passed (verified via scoped re-run)."
+        },
+        {
+          "gate": "bun run check",
+          "status": "PASS",
+          "detail": "0 errors, 5 warnings. All warnings are pre-existing state_referenced_locally in unrelated files (ImportWizard, leads/[id], pipeline, profile) — none in NCAL-3 blast radius."
+        },
+        {
+          "gate": "bun run lint",
+          "status": "PASS",
+          "detail": "prettier: all files pass. eslint: 0 errors, 1 pre-existing warning (svelte/require-each-key in calendar/+page.svelte:264, unrelated to Phase 1 schema/migration scope)."
+        }
+      ],
+      "artifact_checks": [
+        { "artifact": "src/tests/schema-ncal3.spec.ts", "status": "PASS", "detail": "exists; 3 tests pass" },
+        { "artifact": "drizzle/0033_ncal3_uid_columns.sql", "status": "PASS", "detail": "exists; ADD COLUMN for nextcloud_uid (crm_meetings), nextcloud_go_live_uid (crm_leads), nextcloud_event_uid (crm_leads)" },
+        { "artifact": "drizzle/meta/_journal.json idx 33", "status": "PASS", "detail": "idx 33 entry present" }
+      ],
+      "overall": "DONE",
+      "notes": "All 3 gates green. Migration 0033 is additive (generated, not applied to any live DB in this env — deploy-time step). Pre-existing check/lint warnings are outside the NCAL-3 blast radius."
+    },
+    {
+      "phase": "NCAL-3 Phase 2",
+      "evl_run": "2026-07-08T14:13Z",
+      "run_type": "EVL confirmation (unconditional re-run of validate-contract gates)",
+      "gates": [
+        {
+          "gate": "bun run test:unit:ci",
+          "status": "PASS",
+          "detail": "53 test files passed, 9 skipped; 582 tests passed, 165 skipped, 0 failed. Duration 8.32s."
+        },
+        {
+          "gate": "bun run check",
+          "status": "PASS",
+          "detail": "0 errors, 5 pre-existing state_referenced_locally warnings in unrelated files — none in NCAL-3 blast radius."
+        },
+        {
+          "gate": "bun run lint",
+          "status": "PASS",
+          "detail": "prettier: all files pass. eslint: 0 errors, 1 pre-existing warning (svelte/require-each-key in calendar/+page.svelte:264, unrelated to NCAL-3)."
+        }
+      ],
+      "artifact_checks": [
+        {
+          "artifact": "src/lib/server/n8n/calendar-sync.ts",
+          "status": "PASS",
+          "detail": "exists; exports manilaAllDayRange, buildMeetingPayload, buildGoLiveDatePayload, buildEventDatePayload, syncMeetingToNextcloud, deleteMeetingFromNextcloud, syncLeadDatesToNextcloud (all 7 present)"
+        },
+        {
+          "artifact": "src/tests/ncal3-meeting-sync.spec.ts",
+          "status": "PASS",
+          "detail": "exists; zero skip/only markers; passes within full suite"
+        },
+        {
+          "artifact": "src/tests/ncal3-lead-sync.spec.ts",
+          "status": "PASS",
+          "detail": "exists; zero skip/only markers; passes within full suite"
+        },
+        {
+          "artifact": "AC3 manilaAllDayRange('2026-08-15')",
+          "status": "PASS",
+          "detail": "asserted at ncal3-lead-sync.spec.ts:235-237 -> start 2026-08-15T16:00:00Z, end 2026-08-16T15:59:59Z; suite green"
+        }
+      ],
+      "overall": "DONE",
+      "fix_cycles": 0,
+      "notes": "All 3 gates green on first run — zero EVL fix cycles. Pre-existing check/lint warnings are outside the NCAL-3 blast radius (same set as Phase 1)."
+    }
+  ]
+}

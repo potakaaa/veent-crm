@@ -118,6 +118,10 @@ export interface Lead {
 	// Lost capture
 	lostReason?: LostReason;
 
+	// NCAL-3 — Nextcloud calendar UID storage (nullable; set after first successful sync)
+	nextcloudGoLiveUid?: string | null;
+	nextcloudEventUid?: string | null;
+
 	// Timestamps (ISO) + a precomputed age badge for design fidelity
 	createdAt: string;
 	lastActivityAt: string;

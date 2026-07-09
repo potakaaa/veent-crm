@@ -210,6 +210,31 @@
 	// Single shared mutation guard — prevents any two actions from running concurrently.
 	let mutating = $state(false);
 
+	// Sync-dates-to-calendar state
+	let syncingDates = $state(false);
+	let syncDatesLabel = $state<'idle' | 'syncing' | 'synced' | 'error'>('idle');
+
+	async function syncDatesToCalendar() {
+		if (syncingDates) return;
+		syncingDates = true;
+		syncDatesLabel = 'syncing';
+		try {
+			const res = await fetch(`/api/leads/${lead.id}/sync`, { method: 'POST' });
+			if (!res.ok) {
+				syncDatesLabel = 'error';
+				return;
+			}
+			syncDatesLabel = 'synced';
+			setTimeout(() => {
+				syncDatesLabel = 'idle';
+			}, 2000);
+		} catch {
+			syncDatesLabel = 'error';
+		} finally {
+			syncingDates = false;
+		}
+	}
+
 	// Remove a category assignment from this lead (CAT-1). invalidateAll() refreshes
 	// data.assignedCategories so the chip disappears.
 	async function removeCategory(categoryId: string) {
@@ -582,6 +607,28 @@
 						>
 							Discard
 						</Button>
+					{/if}
+					{#if lead.goLiveDate || lead.eventDate}
+						<div class="flex flex-col items-start gap-0.5">
+							<Button
+								variant="outline"
+								size="sm"
+								onclick={syncDatesToCalendar}
+								disabled={syncingDates}
+								class="gap-1.5"
+							>
+								{#if syncDatesLabel === 'syncing'}
+									Syncing…
+								{:else if syncDatesLabel === 'synced'}
+									Synced
+								{:else}
+									Sync dates to Calendar
+								{/if}
+							</Button>
+							{#if syncDatesLabel === 'error'}
+								<span class="text-[11px] text-red-600">Calendar sync failed — try again</span>
+							{/if}
+						</div>
 					{/if}
 					<div class="flex items-center gap-2 text-[12.5px] text-ink-500">
 						owner <Avatar name={ownerName} />

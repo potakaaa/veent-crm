@@ -1,6 +1,6 @@
 {
-  "id": "2ff4ed1f-6f74-40cd-9546-3fa965b2f19f",
-  "prevId": "3115ddc5-84ab-4c90-97bd-d1b43b0a91c0",
+  "id": "150a8aa9-4f26-44f4-b180-d58872e10567",
+  "prevId": "2ff4ed1f-6f74-40cd-9546-3fa965b2f19f",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -732,14 +732,6 @@
           "primaryKey": false,
           "notNull": true
         },
-        "category": {
-          "name": "category",
-          "type": "crm_lead_category",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'Other'"
-        },
         "location": {
           "name": "location",
           "type": "text",
@@ -1025,6 +1017,30 @@
           "primaryKey": false,
           "notNull": true,
           "default": "now()"
+        },
+        "current_platform": {
+          "name": "current_platform",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "competitor_notes": {
+          "name": "competitor_notes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "nextcloud_go_live_uid": {
+          "name": "nextcloud_go_live_uid",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "nextcloud_event_uid": {
+          "name": "nextcloud_event_uid",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
         }
       },
       "indexes": {
@@ -1347,6 +1363,12 @@
           "primaryKey": false,
           "notNull": true,
           "default": "now()"
+        },
+        "nextcloud_uid": {
+          "name": "nextcloud_uid",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
         }
       },
       "indexes": {
@@ -1426,8 +1448,7 @@
         },
         "category": {
           "name": "category",
-          "type": "crm_lead_category",
-          "typeSchema": "public",
+          "type": "text",
           "primaryKey": false,
           "notNull": true,
           "default": "'Other'"
@@ -1839,6 +1860,324 @@
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
+    },
+    "public.crm_categories": {
+      "name": "crm_categories",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "color": {
+          "name": "color",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_by": {
+          "name": "created_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "deleted_at": {
+          "name": "deleted_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "crm_categories_name_lower_idx": {
+          "name": "crm_categories_name_lower_idx",
+          "columns": [
+            {
+              "expression": "lower(\"name\")",
+              "isExpression": true,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {},
+          "where": "\"crm_categories\".\"deleted_at\" is null"
+        },
+        "crm_categories_deleted_at_idx": {
+          "name": "crm_categories_deleted_at_idx",
+          "columns": [
+            {
+              "expression": "deleted_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "crm_categories_created_by_crm_users_id_fk": {
+          "name": "crm_categories_created_by_crm_users_id_fk",
+          "tableFrom": "crm_categories",
+          "tableTo": "crm_users",
+          "schemaTo": "public",
+          "columnsFrom": [
+            "created_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.crm_lead_categories": {
+      "name": "crm_lead_categories",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "lead_id": {
+          "name": "lead_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "category_id": {
+          "name": "category_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "crm_lead_categories_pair_idx": {
+          "name": "crm_lead_categories_pair_idx",
+          "columns": [
+            {
+              "expression": "lead_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "category_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "crm_lead_categories_lead_id_crm_leads_id_fk": {
+          "name": "crm_lead_categories_lead_id_crm_leads_id_fk",
+          "tableFrom": "crm_lead_categories",
+          "tableTo": "crm_leads",
+          "schemaTo": "public",
+          "columnsFrom": [
+            "lead_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "crm_lead_categories_category_id_crm_categories_id_fk": {
+          "name": "crm_lead_categories_category_id_crm_categories_id_fk",
+          "tableFrom": "crm_lead_categories",
+          "tableTo": "crm_categories",
+          "schemaTo": "public",
+          "columnsFrom": [
+            "category_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.crm_notifications": {
+      "name": "crm_notifications",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "lead_id": {
+          "name": "lead_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "type": {
+          "name": "type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "message": {
+          "name": "message",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "read_at": {
+          "name": "read_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "crm_notifications_user_idx": {
+          "name": "crm_notifications_user_idx",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "crm_notifications_user_unread_idx": {
+          "name": "crm_notifications_user_unread_idx",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "read_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "crm_notifications_user_id_crm_users_id_fk": {
+          "name": "crm_notifications_user_id_crm_users_id_fk",
+          "tableFrom": "crm_notifications",
+          "tableTo": "crm_users",
+          "schemaTo": "public",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "crm_notifications_lead_id_crm_leads_id_fk": {
+          "name": "crm_notifications_lead_id_crm_leads_id_fk",
+          "tableFrom": "crm_notifications",
+          "tableTo": "crm_leads",
+          "schemaTo": "public",
+          "columnsFrom": [
+            "lead_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
     }
   },
   "enums": {
@@ -1865,32 +2204,6 @@
         "no_response",
         "rejected",
         "other"
-      ]
-    },
-    "public.crm_lead_category": {
-      "name": "crm_lead_category",
-      "schema": "public",
-      "values": [
-        "Sports",
-        "Workshop",
-        "Church",
-        "Theater",
-        "Bar/DJ",
-        "Conference",
-        "Music Fest",
-        "Fan Fair",
-        "School",
-        "Concert",
-        "Live Band",
-        "Expo",
-        "Screening",
-        "Camp",
-        "Competition",
-        "Convention",
-        "Film",
-        "Modelling",
-        "Resort",
-        "Other"
       ]
     },
     "public.crm_lead_platform": {

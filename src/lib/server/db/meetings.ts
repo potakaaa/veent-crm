@@ -290,9 +290,13 @@ export async function listMeetingsPaginated(
  */
 export async function getMeeting(
 	id: string
-): Promise<{ id: string; organizerId: string | null } | null> {
+): Promise<{ id: string; organizerId: string | null; nextcloudUid: string | null } | null> {
 	const [row] = await db
-		.select({ id: crmMeetings.id, organizerId: crmMeetings.organizerId })
+		.select({
+			id: crmMeetings.id,
+			organizerId: crmMeetings.organizerId,
+			nextcloudUid: crmMeetings.nextcloudUid
+		})
 		.from(crmMeetings)
 		.where(and(eq(crmMeetings.id, id), isNull(crmMeetings.deletedAt)))
 		.limit(1);
@@ -432,6 +436,17 @@ export async function softDeleteMeeting(id: string): Promise<boolean> {
  * (GitHub #249, MTG-5) — suggestions layered on top of a field that stays fully free-text.
  * Read-only; filters soft-deleted rows and drops null venues.
  */
+/**
+ * Writes the Nextcloud UID back to a meeting row after a successful CalDAV create,
+ * or clears it (null) after a successful CalDAV delete. Called by calendar-sync.ts only.
+ */
+export async function updateMeetingNextcloudUid(id: string, uid: string | null): Promise<void> {
+	await db
+		.update(crmMeetings)
+		.set({ nextcloudUid: uid })
+		.where(and(eq(crmMeetings.id, id), isNull(crmMeetings.deletedAt)));
+}
+
 export async function searchVenues(q: string | null | undefined, limit = 20): Promise<string[]> {
 	const term = (q ?? '').trim();
 	const where: SQL | undefined = and(

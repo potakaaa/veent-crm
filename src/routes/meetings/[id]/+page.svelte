@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { invalidateAll } from '$app/navigation';
+	import { invalidateAll, goto } from '$app/navigation';
 	import { Button, buttonVariants } from '$lib/components/ui/button';
 	import Icon from '$lib/components/shared/Icon.svelte';
 	import Avatar from '$lib/components/shared/Avatar.svelte';
@@ -9,6 +9,7 @@
 		type MeetingFormPayload
 	} from '$lib/components/meetings/MeetingFormModal.svelte';
 	import { isManagerRole } from '$lib/utils/permissions';
+	import Modal from '$lib/components/shared/Modal.svelte';
 
 	let { data } = $props();
 
@@ -53,6 +54,51 @@
 
 	let modalOpen = $state(false);
 	let saving = $state(false);
+	let deleteOpen = $state(false);
+	let deleting = $state(false);
+
+	// Sync-to-calendar state
+	let syncing = $state(false);
+	let syncLabel = $state<'idle' | 'syncing' | 'synced' | 'error'>(data.synced ? 'synced' : 'idle');
+
+	async function syncToCalendar() {
+		if (syncing) return;
+		syncing = true;
+		syncLabel = 'syncing';
+		try {
+			const res = await fetch(`/api/meetings/${meeting.id}/sync`, { method: 'POST' });
+			if (!res.ok) {
+				syncLabel = 'error';
+				return;
+			}
+			syncLabel = 'synced';
+		} catch {
+			syncLabel = 'error';
+		} finally {
+			syncing = false;
+		}
+	}
+
+	async function deleteMeeting() {
+		if (deleting) return;
+		deleting = true;
+		try {
+			const res = await fetch(`/api/meetings/${meeting.id}`, { method: 'DELETE' });
+			if (!res.ok) {
+				const msg = await res.text().catch(() => 'Server error');
+				toasts.push(`Delete failed: ${msg}`);
+				return;
+			}
+		} catch {
+			toasts.push('Delete failed — server error');
+			return;
+		} finally {
+			deleting = false;
+			deleteOpen = false;
+		}
+		toasts.success('Meeting deleted');
+		goto('/meetings');
+	}
 
 	async function submit(payload: MeetingFormPayload) {
 		if (saving) return;
@@ -145,6 +191,19 @@
 						<Icon name="video" size={15} stroke={2} /> Join meeting
 					</a>
 				{/if}
+				<Button variant="outline" onclick={syncToCalendar} disabled={syncing} class="gap-1.5">
+					<Icon name="calendar" size={14} stroke={2} />
+					{#if syncLabel === 'syncing'}
+						Syncing…
+					{:else if syncLabel === 'synced'}
+						Re-sync to Calendar
+					{:else}
+						Sync to Calendar
+					{/if}
+				</Button>
+				{#if syncLabel === 'error'}
+					<span class="text-[12.5px] text-red-600">Calendar sync failed — try again</span>
+				{/if}
 				{#if canManage}
 					<Button
 						variant={meeting.meetingUrl ? 'outline' : 'default'}
@@ -152,6 +211,9 @@
 						class="gap-1.5"
 					>
 						<Icon name="edit" size={14} stroke={2} /> Edit
+					</Button>
+					<Button variant="destructive" onclick={() => (deleteOpen = true)} class="gap-1.5">
+						<Icon name="trash" size={14} stroke={2} /> Delete
 					</Button>
 				{/if}
 			</div>
@@ -249,4 +311,36 @@
 		onclose={() => (modalOpen = false)}
 		onsubmit={submit}
 	/>
+
+	<Modal
+		open={deleteOpen}
+		title="Delete this meeting?"
+		width={420}
+		onclose={() => (deleteOpen = false)}
+	>
+		<p class="text-[13.5px] leading-relaxed text-ink-600">
+			Are you sure you want to delete the meeting on
+			<strong class="text-ink">{formatDay(meeting.startAt)}</strong>? This cannot be undone.
+		</p>
+		{#snippet footer()}
+			<Button
+				variant="outline"
+				class="flex-1"
+				onclick={() => (deleteOpen = false)}
+				disabled={deleting}
+			>
+				Cancel
+			</Button>
+			<Button
+				variant="destructive"
+				class="flex-[2]"
+				disabled={deleting}
+				loading={deleting}
+				loadingText="Deleting…"
+				onclick={deleteMeeting}
+			>
+				Yes, delete
+			</Button>
+		{/snippet}
+	</Modal>
 {/if}

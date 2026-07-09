@@ -71,5 +71,6 @@ export const CATEGORY_COLORS: Record<string, string> = {
 	meeting: '#3b82f6',
 	golive: '#22c55e',
 	eventstart: '#f59e0b',
-	'team-event': '#8b5cf6'
+	'team-event': '#8b5cf6',
+	travel: '#0ea5e9'
 };

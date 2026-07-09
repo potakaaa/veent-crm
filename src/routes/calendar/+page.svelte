@@ -100,12 +100,6 @@
 		navigate({ repId });
 	}
 
-	// Legend toggle — client-side filter for team events
-	let showTeamEvents = $state(true);
-	const visibleEntries = $derived(
-		showTeamEvents ? data.entries : data.entries.filter((e) => e.type !== 'team-event')
-	);
-
 	// --- Team-event modal state ---
 	let createOpen = $state(false);
 	let createSaving = $state(false);
@@ -120,21 +114,26 @@
 	async function handleCreateEvent(payload: EventFormPayload) {
 		createSaving = true;
 		createError = '';
-		const res = await fetch('/api/calendar/events', {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({
-				...payload,
-				categories: 'team-event',
-				source: 'sales-crm'
-			})
-		});
-		createSaving = false;
-		if (res.ok) {
-			createOpen = false;
-			await invalidateAll();
-		} else {
-			createError = 'Failed to create event. Please try again.';
+		try {
+			const res = await fetch('/api/calendar/events', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					...payload,
+					categories: 'team-event',
+					source: 'sales-crm'
+				})
+			});
+			if (res.ok) {
+				createOpen = false;
+				await invalidateAll();
+			} else {
+				createError = 'Failed to create event. Please try again.';
+			}
+		} catch {
+			createError = 'Network error. Please try again.';
+		} finally {
+			createSaving = false;
 		}
 	}
 
@@ -142,51 +141,66 @@
 		if (!selectedEvent?.uid) return;
 		detailSaving = true;
 		editError = '';
-		const res = await fetch(`/api/calendar/events/${selectedEvent.uid}`, {
-			method: 'PUT',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify(payload)
-		});
-		detailSaving = false;
-		if (res.ok) {
-			editOpen = false;
-			detailOpen = false;
-			selectedEvent = null;
-			await invalidateAll();
-		} else {
-			editError = 'Failed to save changes. Please try again.';
+		try {
+			const res = await fetch(`/api/calendar/events/${selectedEvent.uid}`, {
+				method: 'PUT',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(payload)
+			});
+			if (res.ok) {
+				editOpen = false;
+				detailOpen = false;
+				selectedEvent = null;
+				await invalidateAll();
+			} else {
+				editError = 'Failed to save changes. Please try again.';
+			}
+		} catch {
+			editError = 'Network error. Please try again.';
+		} finally {
+			detailSaving = false;
 		}
 	}
 
 	async function handleDeleteEvent(uid: string) {
 		detailSaving = true;
 		detailError = '';
-		const res = await fetch(`/api/calendar/events/${uid}`, { method: 'DELETE' });
-		detailSaving = false;
-		if (res.ok) {
-			detailOpen = false;
-			selectedEvent = null;
-			await invalidateAll();
-		} else {
-			detailError = 'Failed to delete event. Please try again.';
+		try {
+			const res = await fetch(`/api/calendar/events/${uid}`, { method: 'DELETE' });
+			if (res.ok) {
+				detailOpen = false;
+				selectedEvent = null;
+				await invalidateAll();
+			} else {
+				detailError = 'Failed to delete event. Please try again.';
+			}
+		} catch {
+			detailError = 'Network error. Please try again.';
+		} finally {
+			detailSaving = false;
 		}
 	}
 
 	async function handleLinkToLead(uid: string, leadId: string, startAt: string) {
 		detailSaving = true;
 		detailError = '';
-		const res = await fetch(`/api/calendar/events/${uid}/link`, {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ leadId, startAt })
-		});
-		detailSaving = false;
-		if (res.ok) {
-			detailOpen = false;
-			selectedEvent = null;
-			await invalidateAll();
-		} else {
-			detailError = 'Failed to link event to lead. Please try again.';
+		try {
+			const res = await fetch(`/api/calendar/events/${uid}/link`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ leadId, startAt })
+			});
+			if (res.ok) {
+				detailOpen = false;
+				selectedEvent = null;
+				await invalidateAll();
+			} else {
+				detailError = 'Failed to link event to lead. Please try again.';
+			}
+		} catch {
+			detailError = 'Network error. Please try again.';
+		} finally {
+			detailSaving = false;
 		}
 	}
 </script>
@@ -363,7 +377,7 @@
 	{/if}
 
 	<div class="mb-3 flex flex-wrap items-center gap-2" aria-label="Calendar legend">
-		{#each [{ label: 'Meeting', bg: 'bg-blue-50', text: 'text-blue-700', dot: 'bg-blue-400' }, { label: 'Follow-up', bg: 'bg-amber-50', text: 'text-amber-700', dot: 'bg-amber-400' }, { label: 'Sale Opens', bg: 'bg-green-50', text: 'text-green-700', dot: 'bg-green-500' }, { label: 'Event Start', bg: 'bg-purple-50', text: 'text-purple-700', dot: 'bg-purple-500' }] as item}
+		{#each [{ label: 'Meeting', bg: 'bg-blue-50', text: 'text-blue-700', dot: 'bg-blue-400' }, { label: 'Follow-up', bg: 'bg-amber-50', text: 'text-amber-700', dot: 'bg-amber-400' }, { label: 'Sale Opens', bg: 'bg-green-50', text: 'text-green-700', dot: 'bg-green-500' }, { label: 'Event Start', bg: 'bg-purple-50', text: 'text-purple-700', dot: 'bg-purple-500' }, { label: 'Travel', bg: 'bg-sky-50', text: 'text-sky-700', dot: 'bg-sky-400' }] as item (item.label)}
 			<span
 				class="flex items-center gap-1 rounded-[4px] px-1.5 py-0.5 text-[11px] font-medium {item.bg} {item.text}"
 			>
@@ -371,27 +385,14 @@
 				{item.label}
 			</span>
 		{/each}
-		<label
-			class="flex cursor-pointer items-center gap-1.5 rounded-[4px] px-1.5 py-0.5 text-[11px] font-medium transition-opacity select-none"
-			style="background:#f3f0ff; color:#6d28d9; opacity:{showTeamEvents ? 1 : 0.45}"
-		>
-			<input
-				type="checkbox"
-				class="accent-[#7c3aed]"
-				checked={showTeamEvents}
-				onchange={() => (showTeamEvents = !showTeamEvents)}
-			/>
-			<span class="h-1.5 w-1.5 rounded-full" style="background:#7c3aed"></span>
-			Team Event
-		</label>
 	</div>
 
 	<div class={navLoading ? 'opacity-60 transition-opacity' : 'transition-opacity'}>
 		<CalendarGrid
 			{view}
-			entries={visibleEntries}
+			entries={data.entries}
 			visibleDate={anchor}
-			onteameventclick={(entry) => {
+			onentryclick={(entry) => {
 				selectedEvent = entry;
 				detailOpen = true;
 			}}

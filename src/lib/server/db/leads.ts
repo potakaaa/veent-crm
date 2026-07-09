@@ -2135,3 +2135,17 @@ export async function updateLeadNextcloudUids(
 		.set(patch)
 		.where(and(eq(crmLeads.id, id), isNull(crmLeads.deletedAt)));
 }
+
+/**
+ * Batch-fetches lead ownership for CalDAV filtering (NCAL-5).
+ * Returns a Map<leadId, ownerId> for the given lead IDs (excluding soft-deleted).
+ * Unknown / soft-deleted leads are absent from the map — callers apply exclusive-default.
+ */
+export async function getLeadOwners(leadIds: string[]): Promise<Map<string, string>> {
+	if (leadIds.length === 0) return new Map();
+	const rows = await db
+		.select({ id: crmLeads.id, ownerId: crmLeads.ownerId })
+		.from(crmLeads)
+		.where(and(inArray(crmLeads.id, leadIds), isNull(crmLeads.deletedAt)));
+	return new Map(rows.filter((r) => r.ownerId).map((r) => [r.id, r.ownerId as string]));
+}

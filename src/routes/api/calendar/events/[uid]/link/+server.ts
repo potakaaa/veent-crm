@@ -17,9 +17,11 @@ import type { RequestHandler } from './$types';
 import { z } from 'zod';
 import {
 	createMeeting,
+	getMeetingByNextcloudUid,
 	softDeleteMeeting,
 	updateMeetingNextcloudUid
 } from '$lib/server/db/meetings';
+import { getLead } from '$lib/server/db/leads';
 import { directPatchEvent, CalDavWebhookError } from '$lib/caldav/writer';
 
 const linkBodySchema = z.object({
@@ -46,6 +48,14 @@ export const POST: RequestHandler = async ({ locals, request, params }) => {
 	const { leadId, startAt } = parsed.data;
 	const uid = params.uid; // server-extracted path param — never from body
 	if (!/^[\w.\-@]+$/.test(uid)) throw error(400, 'Invalid event UID');
+
+	// Auth gate: verify the requesting user can see this lead (applies rep-scoping / visibility)
+	const lead = await getLead(leadId, locals.user.id, locals.user.role);
+	if (!lead) throw error(404, 'Lead not found');
+
+	// Idempotency guard: reject if this CalDAV event is already linked to an active meeting
+	const existing = await getMeetingByNextcloudUid(uid);
+	if (existing) return json({ success: true, meetingId: existing.id });
 
 	// Step 1: Insert crm_meetings row
 	let meeting: Awaited<ReturnType<typeof createMeeting>>;

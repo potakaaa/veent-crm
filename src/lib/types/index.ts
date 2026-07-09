@@ -206,7 +206,7 @@ export interface Meeting {
  */
 export interface CalendarEntry {
 	id: string;
-	type: 'meeting' | 'followup' | 'golive' | 'eventstart' | 'team-event';
+	type: 'meeting' | 'followup' | 'golive' | 'eventstart' | 'team-event' | 'travel';
 	/** ISO datetime the entry falls on (meeting start, or follow-up due date). */
 	startAt: string;
 	title: string;

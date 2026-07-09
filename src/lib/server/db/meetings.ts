@@ -447,6 +447,16 @@ export async function updateMeetingNextcloudUid(id: string, uid: string | null):
 		.where(and(eq(crmMeetings.id, id), isNull(crmMeetings.deletedAt)));
 }
 
+/** Returns the meeting row id if an active (non-deleted) meeting is already linked to this Nextcloud uid. */
+export async function getMeetingByNextcloudUid(uid: string): Promise<{ id: string } | null> {
+	const [row] = await db
+		.select({ id: crmMeetings.id })
+		.from(crmMeetings)
+		.where(and(eq(crmMeetings.nextcloudUid, uid), isNull(crmMeetings.deletedAt)))
+		.limit(1);
+	return row ?? null;
+}
+
 export async function searchVenues(q: string | null | undefined, limit = 20): Promise<string[]> {
 	const term = (q ?? '').trim();
 	const where: SQL | undefined = and(
@@ -461,4 +471,18 @@ export async function searchVenues(q: string | null | undefined, limit = 20): Pr
 		.orderBy(asc(crmMeetings.venue))
 		.limit(limit);
 	return rows.map((r) => r.venue).filter((v): v is string => v != null);
+}
+
+/** Returns a map of meetingId → organizerUserId for rep-scoping CalDAV meeting entries. */
+export async function getMeetingOwners(ids: string[]): Promise<Map<string, string>> {
+	if (!ids.length) return new Map();
+	const rows = await db
+		.select({ id: crmMeetings.id, organizerId: crmMeetings.organizerId })
+		.from(crmMeetings)
+		.where(and(inArray(crmMeetings.id, ids), isNull(crmMeetings.deletedAt)));
+	const map = new Map<string, string>();
+	for (const row of rows) {
+		if (row.organizerId) map.set(row.id, row.organizerId);
+	}
+	return map;
 }

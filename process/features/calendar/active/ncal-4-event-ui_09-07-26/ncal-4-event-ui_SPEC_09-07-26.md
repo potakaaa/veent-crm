@@ -56,7 +56,7 @@ As a CRM user, I want to use a lead picker inside the event detail modal to clai
 **Link-to-lead claim flow:**
 - Inside the event detail modal, when the event has no linked lead, a "Link to lead" section shows a lead search combobox (same free-text combobox pattern used elsewhere in the CRM).
 - The user searches by lead name or organizer name and picks one result.
-- Confirming creates a `crm_meetings` row for that lead (via a new server action or API route) and patches the Nextcloud event directly via CalDAV PUT to write `CATEGORIES:crm-meeting` and `URL:<CRM-HREF>` — this direct PUT path is required because n8n silently discards the CATEGORIES field.
+- Confirming creates a `crm_meetings` row for that lead (via a new server action or API route) and patches the Nextcloud event directly via CalDAV PUT to write `CATEGORIES:crm-meeting` and prepend `CRM-HREF:` in `DESCRIPTION` — this direct PUT path is required because n8n silently discards the CATEGORIES field.
 - After success, the detail modal shows the linked lead's name as a clickable link.
 - If either the DB insert or the CalDAV PATCH fails, the user sees an error and the link is not saved.
 

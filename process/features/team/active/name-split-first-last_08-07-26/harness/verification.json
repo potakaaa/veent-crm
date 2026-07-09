@@ -1,0 +1,67 @@
+{
+	"steps": [
+		{
+			"step": "bun run check (svelte-check + tsc across all 2545 files)",
+			"command": "bun run check",
+			"result": "PASS",
+			"notes": "0 ERRORS, 6 pre-existing warnings unrelated to this change (Svelte 5 state-reference style warnings in ImportWizard.svelte, leads/[id]/+page.svelte, pipeline/+page.svelte, profile/+page.svelte). Confirms every crmUsers.name / row.name reference across the codebase (G3 mapper sites + all 21 G8 SQL read-sites across 8 files) was migrated — a dropped-column reference would surface as a compile error here."
+		},
+		{
+			"step": "bun run test:unit:ci (full unit/regression suite)",
+			"command": "bun run test:unit:ci",
+			"result": "PASS",
+			"notes": "541 passed, 165 skipped (pre-existing DB/live-fixture self-skips, not introduced by this change), 0 failed, 49 test files passed / 9 skipped. Includes: format-name.spec.ts (AC8 derived-name equivalence + 5 edge cases), templates.spec.ts (AC5/6/7 — new token substitution, blank-lastName degrade, repName regression unchanged), schemas.spec.ts (userNameEditSchema first/last cases updated), hooks-server.spec.ts (session hydration updated for firstName/lastName)."
+		},
+		{
+			"step": "bun run lint (prettier --check + eslint) on all files touched by this plan",
+			"command": "bunx eslint <34 touched files, listed individually>",
+			"result": "PASS",
+			"notes": "0 eslint problems on any file touched by this plan. Repo-wide `bun run lint` (prettier --check .) reports pre-existing formatting drift in 11 files NONE of which were touched by this plan (package.json, src/lib/caldav/*, LeadGrid.svelte, PipelineBoard.svelte, api/calendar/events/+server.ts, organizers/[id]/+page.svelte, 3 caldav test files) — matches the known pre-existing drift class documented in process/general-plans/backlog/lint-drift-pre-existing-files_07-07-26_NOTE.md."
+		},
+		{
+			"step": "Migration diff review — confirm 0033 touches ONLY crm_users, no Better Auth tables",
+			"command": "cat drizzle/0033_name_split_first_last.sql",
+			"result": "PASS",
+			"notes": "File contains exactly 5 statements, all against \"crm_users\": ADD COLUMN first_name (nullable) -> UPDATE SET first_name=name (backfill) -> ALTER COLUMN first_name SET NOT NULL -> ADD COLUMN last_name (nullable) -> DROP COLUMN name. No user/account/session/verification statements present (AC10). --> statement-breakpoint markers present between every statement pair."
+		},
+		{
+			"step": "Migration journal registration preflight + postflight",
+			"command": "cat drizzle/meta/_journal.json (before and after edit)",
+			"result": "PASS",
+			"notes": "Journal last idx was 32 before this session (confirmed, matching the plan's stated preflight). bun run db:generate could not be used — it hard-errors repo-wide on the pre-existing snapshot-chain drift (duplicate parent-snapshot collision documented in process/general-plans/backlog/drizzle-migration-journal-drift_02-07-26.md), same blocker that forced CAT-1 (migrations 0026-0028) to be hand-written and snapshot-less. Followed the same established precedent: hand-wrote 0033_name_split_first_last.sql and registered it in drizzle/meta/_journal.json at idx=33, snapshot-less by intent (consistent with 0016/0017/0026-0029)."
+		},
+		{
+			"step": "bun run db:migrate against a live database",
+			"command": "N/A — not run",
+			"result": "SKIP",
+			"notes": "No live Postgres available in this dev environment. Migration apply is explicitly a deploy-time step per the plan's hard safety constraints. This is a known, accepted, pre-existing gap (live-DB CI harness) tracked in process/context/tests/all-tests.md Known Gaps."
+		}
+	],
+	"evl_confirmation": {
+		"run_by": "vc-tester (independent EVL confirmation sweep, unconditional re-run per orchestration.md — execute-agent self-report treated as unconfirmed hypothesis)",
+		"timestamp": "2026-07-08T13:46:00Z",
+		"gates": [
+			{
+				"command": "bun run check",
+				"result": "PASS",
+				"notes": "0 ERRORS, 6 pre-existing style warnings (4 files). Independently re-run — confirms every crmUsers.name / row.name reference migrated (a dropped-column ref would be a compile error). Matches self-report."
+			},
+			{
+				"command": "bun run test:unit:ci",
+				"result": "PASS",
+				"notes": "541 passed | 165 skipped | 0 failed (49 files passed / 9 skipped). Exactly matches self-report. format-name.spec.ts, templates.spec.ts, schemas.spec.ts all present with real assertions (not stubs) — read directly."
+			},
+			{
+				"command": "bun run lint (scoped to #277-touched files, per validate-contract 'lint on touched files')",
+				"result": "PASS",
+				"notes": "prettier --check on all 23 #277-touched files: 'All matched files use Prettier code style'. Full-repo bun run lint exits 1 on 11 files, ALL pre-existing or sibling-feature drift: 9 unrelated (package.json, caldav/*, api/calendar/events, organizers, 3 caldav specs) + LeadGrid.svelte + PipelineBoard.svelte (modified this session by the SIBLING competitor-badges-restore feature — they import untracked CompetitorBadge.svelte — NOT by #277). Validate-contract scopes the lint gate to touched files (plan lines 189/197/355); scoped gate is GREEN."
+			},
+			{
+				"command": "migration + schema + journal + Better Auth direct-read verification",
+				"result": "PASS",
+				"notes": "0033 SQL: exact 5-step safe sequence (add first_name nullable -> UPDATE backfill -> SET NOT NULL -> add last_name nullable -> DROP name), each --> statement-breakpoint present, only crm_users touched, no user/account/session/verification refs. Journal idx 33 well-formed, no duplicate-idx collision. schema.ts crm_users now has firstName (NOT NULL) + lastName (nullable), no name column. Better Auth untouched (no BA migration files, no BA table refs in schema diff). G8 sites (auth.ts, team, dashboard.ts, leads.ts) spot-checked — all rewrite crmUsers.name -> firstName/lastName + formatFullName() per plan G8. templates.ts {{repName}} substitution UNCHANGED (regression preserved). No db:migrate run against any live DB."
+			}
+		],
+		"verdict": "DONE — all fully-automated gates green; findings match execute-agent self-report with no discrepancies. Remaining CONDITIONAL known-gaps (AC1-4/AC8-hybrid/AC9) are pre-existing harness-blocked (live-DB + Playwright auth fixture), accepted on record, block only VERIFIED state."
+	}
+}

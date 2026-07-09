@@ -17,7 +17,10 @@ export const load: PageServerLoad = async ({ locals }) => {
 	// order (active first, then name); each /team section owns its own
 	// client-side sort state independently (see +page.svelte).
 	const [rows, { leads }] = await Promise.all([
-		db.select().from(crmUsers).orderBy(desc(crmUsers.active), asc(crmUsers.name), asc(crmUsers.id)),
+		db
+			.select()
+			.from(crmUsers)
+			.orderBy(desc(crmUsers.active), asc(crmUsers.firstName), asc(crmUsers.id)),
 		listPipelineLeads()
 	]);
 

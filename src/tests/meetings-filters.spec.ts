@@ -36,8 +36,8 @@ describe.skipIf(SKIP_DB)('listMeetingsPaginated — filter/sort (DB)', () => {
 		await db
 			.insert(crmUsers)
 			.values([
-				{ id: ORG_A, name: `${SEED} OrgA`, role: 'rep' },
-				{ id: ORG_B, name: `${SEED} OrgB`, role: 'rep' }
+				{ id: ORG_A, firstName: `${SEED} OrgA`, role: 'rep' },
+				{ id: ORG_B, firstName: `${SEED} OrgB`, role: 'rep' }
 			])
 			.onConflictDoNothing();
 		userIds.push(ORG_A, ORG_B);

@@ -22,12 +22,16 @@
 		lead,
 		templates,
 		repName,
+		repFirstName,
+		repLastName,
 		onSubmit,
 		disabled = false
 	}: {
 		lead: Pick<Lead, 'name' | 'eventName'>;
 		templates: MessageTemplate[];
 		repName: string;
+		repFirstName: string;
+		repLastName: string;
 		onSubmit: (input: AddActivityInput) => void | Promise<void>;
 		disabled?: boolean;
 	} = $props();
@@ -56,7 +60,9 @@
 		const vars: TemplateVars = {
 			organizerName: lead.name,
 			eventName: lead.eventName ?? '',
-			repName
+			repName,
+			repFirstName,
+			repLastName
 		};
 		return fillTemplate(t.body, vars);
 	}

@@ -13,11 +13,19 @@
  * Callers pass `''` for an absent value (missing values degrade to blank —
  * a literal token is never left behind, and this never throws).
  */
-export type TemplateVars = { organizerName: string; eventName: string; repName: string };
+export type TemplateVars = {
+	organizerName: string;
+	eventName: string;
+	repName: string;
+	repFirstName: string;
+	repLastName: string;
+};
 
 export function fillTemplate(body: string, vars: TemplateVars): string {
 	return body
 		.replaceAll('{{organizerName}}', vars.organizerName)
 		.replaceAll('{{eventName}}', vars.eventName)
-		.replaceAll('{{repName}}', vars.repName);
+		.replaceAll('{{repName}}', vars.repName)
+		.replaceAll('{{repFirstName}}', vars.repFirstName)
+		.replaceAll('{{repLastName}}', vars.repLastName);
 }

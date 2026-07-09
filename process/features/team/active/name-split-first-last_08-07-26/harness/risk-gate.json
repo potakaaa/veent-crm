@@ -1,0 +1,6 @@
+{
+	"riskClass": "schema/data migration",
+	"workDescription": "GitHub #277 — split crm_users.name into first_name (NOT NULL, backfilled verbatim) + last_name (nullable); drop the name column via drizzle migration 0033; update all downstream mappers, Zod schemas, API endpoints, UI edit surfaces, and template tokens.",
+	"approver": "vc-execute-agent (autonomous, per CONDITIONAL validate-contract acceptance recorded in the plan)",
+	"mustStopBeforeFinalize": true
+}

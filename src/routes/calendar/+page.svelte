@@ -103,13 +103,17 @@
 	// --- Team-event modal state ---
 	let createOpen = $state(false);
 	let createSaving = $state(false);
+	let createError = $state('');
 	let detailOpen = $state(false);
 	let selectedEvent = $state<CalendarEntry | null>(null);
 	let detailSaving = $state(false);
+	let detailError = $state('');
 	let editOpen = $state(false);
+	let editError = $state('');
 
 	async function handleCreateEvent(payload: EventFormPayload) {
 		createSaving = true;
+		createError = '';
 		const res = await fetch('/api/calendar/events', {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
@@ -123,12 +127,15 @@
 		if (res.ok) {
 			createOpen = false;
 			await invalidateAll();
+		} else {
+			createError = 'Failed to create event. Please try again.';
 		}
 	}
 
 	async function handleEditEvent(payload: EventFormPayload) {
 		if (!selectedEvent?.uid) return;
 		detailSaving = true;
+		editError = '';
 		const res = await fetch(`/api/calendar/events/${selectedEvent.uid}`, {
 			method: 'PUT',
 			headers: { 'Content-Type': 'application/json' },
@@ -137,23 +144,31 @@
 		detailSaving = false;
 		if (res.ok) {
 			editOpen = false;
+			detailOpen = false;
+			selectedEvent = null;
 			await invalidateAll();
+		} else {
+			editError = 'Failed to save changes. Please try again.';
 		}
 	}
 
 	async function handleDeleteEvent(uid: string) {
 		detailSaving = true;
+		detailError = '';
 		const res = await fetch(`/api/calendar/events/${uid}`, { method: 'DELETE' });
 		detailSaving = false;
 		if (res.ok) {
 			detailOpen = false;
 			selectedEvent = null;
 			await invalidateAll();
+		} else {
+			detailError = 'Failed to delete event. Please try again.';
 		}
 	}
 
 	async function handleLinkToLead(uid: string, leadId: string, startAt: string) {
 		detailSaving = true;
+		detailError = '';
 		const res = await fetch(`/api/calendar/events/${uid}/link`, {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
@@ -161,7 +176,11 @@
 		});
 		detailSaving = false;
 		if (res.ok) {
+			detailOpen = false;
+			selectedEvent = null;
 			await invalidateAll();
+		} else {
+			detailError = 'Failed to link event to lead. Please try again.';
 		}
 	}
 </script>
@@ -375,7 +394,11 @@
 <EventFormModal
 	open={createOpen}
 	saving={createSaving}
-	onclose={() => (createOpen = false)}
+	serverError={createError}
+	onclose={() => {
+		createOpen = false;
+		createError = '';
+	}}
 	onsubmit={handleCreateEvent}
 />
 
@@ -384,11 +407,16 @@
 	open={detailOpen}
 	event={selectedEvent}
 	saving={detailSaving}
+	serverError={detailError}
 	onclose={() => {
 		detailOpen = false;
 		selectedEvent = null;
+		detailError = '';
 	}}
-	onedit={() => (editOpen = true)}
+	onedit={() => {
+		detailOpen = false;
+		editOpen = true;
+	}}
 	ondelete={handleDeleteEvent}
 	onlink={handleLinkToLead}
 />
@@ -398,6 +426,10 @@
 	open={editOpen}
 	event={selectedEvent}
 	saving={detailSaving}
-	onclose={() => (editOpen = false)}
+	serverError={editError}
+	onclose={() => {
+		editOpen = false;
+		editError = '';
+	}}
 	onsubmit={handleEditEvent}
 />

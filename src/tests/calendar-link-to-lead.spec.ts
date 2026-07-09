@@ -51,6 +51,7 @@ function makeFetchMock(getStatus: number, putStatus: number, getBody = MINIMAL_I
 			return Promise.resolve({
 				ok: getStatus >= 200 && getStatus < 300,
 				status: getStatus,
+				headers: { get: (_h: string) => null },
 				text: () => Promise.resolve(getBody)
 			});
 		}

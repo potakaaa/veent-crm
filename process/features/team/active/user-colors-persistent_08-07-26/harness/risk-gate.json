@@ -3,7 +3,7 @@
   "planPath": "process/features/team/active/user-colors-persistent_08-07-26/user-colors-persistent_PLAN_08-07-26.md",
   "riskLevel": "high",
   "riskClasses": ["schema/data migration", "public API contract/authorization"],
-  "mustStopBeforeFinalize": false,
+  "mustStopBeforeFinalize": true,
   "humanApprovalRequired": true,
-  "why": "Schema/data migration (nullable crm_users.color, migration 0034) and manager-only PATCH /api/users/[id] color field with rep-blocked authorization gate. Migration 0034 has since been applied live to the dev/staging DB this session (bun run db:migrate succeeded) — crm_users.color column confirmed present. Human approval still required before merge given the auth-adjacent PATCH surface and threading through 10 render call sites."
+  "why": "Schema/data migration (nullable crm_users.color, migration 0034) and manager-only PATCH /api/users/[id] color field with rep-blocked authorization gate. Migration 0034 was applied via `bun run db:migrate` against whatever DATABASE_URL pointed at during this dev session — that is NOT confirmed to be the actual deployment target environment, only a reachable dev/staging DB used for this session's verification. mustStopBeforeFinalize stays true until 0034_user_color.sql is confirmed applied against the real target environment before/at deploy. Human approval required before merge given the auth-adjacent PATCH surface, the unconfirmed migration target, and threading through 10 render call sites."
 }

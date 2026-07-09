@@ -226,7 +226,14 @@ export const createCalendarEventSchema = z
 		location: z.string().optional(),
 		description: z.string().optional(),
 		categories: z.string().optional(),
-		leadHref: z.string().optional()
+		leadHref: z.string().optional(),
+		attendees: z.array(z.string().email()).optional(),
+		color: z
+			.string()
+			.regex(/^#[0-9a-fA-F]{6}$/)
+			.optional(),
+		status: z.enum(['confirmed', 'tentative', 'cancelled']).optional(),
+		rrule: z.string().optional()
 	})
 	.refine((v) => new Date(v.end) > new Date(v.start), {
 		message: 'end must be after start',
@@ -243,7 +250,14 @@ export const updateCalendarEventSchema = z
 		location: z.string().optional(),
 		description: z.string().optional(),
 		categories: z.string().optional(),
-		leadHref: z.string().optional()
+		leadHref: z.string().optional(),
+		attendees: z.array(z.string().email()).optional(),
+		color: z
+			.string()
+			.regex(/^#[0-9a-fA-F]{6}$/)
+			.optional(),
+		status: z.enum(['confirmed', 'tentative', 'cancelled']).optional(),
+		rrule: z.string().optional()
 	})
 	.refine((v) => new Date(v.end) > new Date(v.start), {
 		message: 'end must be after start',

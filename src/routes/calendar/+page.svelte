@@ -1,8 +1,13 @@
 <script lang="ts">
-	import { goto } from '$app/navigation';
+	import { goto, invalidateAll } from '$app/navigation';
 	import { page, navigating } from '$app/state';
 	import { SvelteURLSearchParams } from 'svelte/reactivity';
 	import CalendarGrid from '$lib/components/calendar/CalendarGrid.svelte';
+	import EventFormModal, {
+		type EventFormPayload
+	} from '$lib/components/calendar/EventFormModal.svelte';
+	import EventDetailModal from '$lib/components/calendar/EventDetailModal.svelte';
+	import type { CalendarEntry } from '$lib/types';
 	import EmptyState from '$lib/components/shared/EmptyState.svelte';
 	import Icon from '$lib/components/shared/Icon.svelte';
 	import PageHeader from '$lib/components/shared/PageHeader.svelte';
@@ -94,6 +99,96 @@
 	function navigateRepFilter(repId: string | undefined) {
 		navigate({ repId });
 	}
+
+	// Legend toggle — client-side filter for team events
+	let showTeamEvents = $state(true);
+	const visibleEntries = $derived(
+		showTeamEvents ? data.entries : data.entries.filter((e) => e.type !== 'team-event')
+	);
+
+	// --- Team-event modal state ---
+	let createOpen = $state(false);
+	let createSaving = $state(false);
+	let createError = $state('');
+	let detailOpen = $state(false);
+	let selectedEvent = $state<CalendarEntry | null>(null);
+	let detailSaving = $state(false);
+	let detailError = $state('');
+	let editOpen = $state(false);
+	let editError = $state('');
+
+	async function handleCreateEvent(payload: EventFormPayload) {
+		createSaving = true;
+		createError = '';
+		const res = await fetch('/api/calendar/events', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({
+				...payload,
+				categories: 'team-event',
+				source: 'sales-crm'
+			})
+		});
+		createSaving = false;
+		if (res.ok) {
+			createOpen = false;
+			await invalidateAll();
+		} else {
+			createError = 'Failed to create event. Please try again.';
+		}
+	}
+
+	async function handleEditEvent(payload: EventFormPayload) {
+		if (!selectedEvent?.uid) return;
+		detailSaving = true;
+		editError = '';
+		const res = await fetch(`/api/calendar/events/${selectedEvent.uid}`, {
+			method: 'PUT',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify(payload)
+		});
+		detailSaving = false;
+		if (res.ok) {
+			editOpen = false;
+			detailOpen = false;
+			selectedEvent = null;
+			await invalidateAll();
+		} else {
+			editError = 'Failed to save changes. Please try again.';
+		}
+	}
+
+	async function handleDeleteEvent(uid: string) {
+		detailSaving = true;
+		detailError = '';
+		const res = await fetch(`/api/calendar/events/${uid}`, { method: 'DELETE' });
+		detailSaving = false;
+		if (res.ok) {
+			detailOpen = false;
+			selectedEvent = null;
+			await invalidateAll();
+		} else {
+			detailError = 'Failed to delete event. Please try again.';
+		}
+	}
+
+	async function handleLinkToLead(uid: string, leadId: string, startAt: string) {
+		detailSaving = true;
+		detailError = '';
+		const res = await fetch(`/api/calendar/events/${uid}/link`, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ leadId, startAt })
+		});
+		detailSaving = false;
+		if (res.ok) {
+			detailOpen = false;
+			selectedEvent = null;
+			await invalidateAll();
+		} else {
+			detailError = 'Failed to link event to lead. Please try again.';
+		}
+	}
 </script>
 
 {#snippet spinner(size: number)}
@@ -149,6 +244,13 @@
 					Week
 				</button>
 			</div>
+			<button
+				data-testid="calendar-create-event"
+				onclick={() => (createOpen = true)}
+				class="flex h-[26px] items-center rounded-[6px] bg-ink px-3 text-[12.5px] font-medium text-white hover:bg-ink/90"
+			>
+				Create event
+			</button>
 		{/snippet}
 	</PageHeader>
 
@@ -269,10 +371,31 @@
 				{item.label}
 			</span>
 		{/each}
+		<label
+			class="flex cursor-pointer items-center gap-1.5 rounded-[4px] px-1.5 py-0.5 text-[11px] font-medium transition-opacity select-none"
+			style="background:#f3f0ff; color:#6d28d9; opacity:{showTeamEvents ? 1 : 0.45}"
+		>
+			<input
+				type="checkbox"
+				class="accent-[#7c3aed]"
+				checked={showTeamEvents}
+				onchange={() => (showTeamEvents = !showTeamEvents)}
+			/>
+			<span class="h-1.5 w-1.5 rounded-full" style="background:#7c3aed"></span>
+			Team Event
+		</label>
 	</div>
 
 	<div class={navLoading ? 'opacity-60 transition-opacity' : 'transition-opacity'}>
-		<CalendarGrid {view} entries={data.entries} visibleDate={anchor} />
+		<CalendarGrid
+			{view}
+			entries={visibleEntries}
+			visibleDate={anchor}
+			onteameventclick={(entry) => {
+				selectedEvent = entry;
+				detailOpen = true;
+			}}
+		/>
 		{#if data.entries.length === 0}
 			<!-- C2: empty-state messaging for a {view} with no meetings or follow-ups. The grid
 			     above still renders (AC9) — this is an additive "no data yet" cue below it. -->
@@ -285,3 +408,47 @@
 		{/if}
 	</div>
 </div>
+
+<!-- Create event modal -->
+<EventFormModal
+	open={createOpen}
+	saving={createSaving}
+	serverError={createError}
+	onclose={() => {
+		createOpen = false;
+		createError = '';
+	}}
+	onsubmit={handleCreateEvent}
+/>
+
+<!-- Event detail modal -->
+<EventDetailModal
+	open={detailOpen}
+	event={selectedEvent}
+	saving={detailSaving}
+	serverError={detailError}
+	onclose={() => {
+		detailOpen = false;
+		selectedEvent = null;
+		detailError = '';
+	}}
+	onedit={() => {
+		detailOpen = false;
+		editOpen = true;
+	}}
+	ondelete={handleDeleteEvent}
+	onlink={handleLinkToLead}
+/>
+
+<!-- Edit event modal (reuses EventFormModal in edit mode) -->
+<EventFormModal
+	open={editOpen}
+	event={selectedEvent}
+	saving={detailSaving}
+	serverError={editError}
+	onclose={() => {
+		editOpen = false;
+		editError = '';
+	}}
+	onsubmit={handleEditEvent}
+/>

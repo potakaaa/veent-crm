@@ -10,6 +10,9 @@ import {
 import { listAllMeetings } from '$lib/server/db/meetings';
 import { computeRange, parseDateParam, toDateParam, type CalendarView } from '$lib/utils/calendar';
 import type { CalendarEntry } from '$lib/types';
+import { fetchCalendarReport } from '$lib/caldav/reader';
+import { parseIcsToEvents } from '$lib/caldav/parser';
+import { mapTeamEvents } from '$lib/caldav/team-events';
 
 export const load: PageServerLoad = async ({ url, locals }) => {
 	if (!locals.user) throw error(401, 'Unauthorized');
@@ -86,11 +89,22 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 		href: `/leads/${l.id}`
 	}));
 
+	// Team events from Nextcloud (type: 'team-event') — graceful degradation on error
+	let teamEventEntries: CalendarEntry[] = [];
+	try {
+		const blobs = await fetchCalendarReport({ start, end });
+		const allEvents = blobs.flatMap((blob) => parseIcsToEvents(blob, { start, end }));
+		teamEventEntries = mapTeamEvents(allEvents, { start, end });
+	} catch {
+		// Degrade gracefully — calendar still loads without Nextcloud events
+	}
+
 	const entries = [
 		...meetingEntries,
 		...followUpEntries,
 		...goLiveEntries,
-		...eventStartEntries
+		...eventStartEntries,
+		...teamEventEntries
 	].sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime());
 
 	return {

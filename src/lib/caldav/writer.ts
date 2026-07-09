@@ -13,7 +13,14 @@
  *    appear in the thrown message. The internal `upstreamStatus` is for server-side
  *    logging discipline only.
  */
-import { n8nCalendarWebhookUrl, n8nCalendarDeleteWebhookUrl, n8nWebhookSecret } from './constants';
+import {
+	n8nCalendarWebhookUrl,
+	n8nCalendarDeleteWebhookUrl,
+	n8nWebhookSecret,
+	calendarCollectionUrl,
+	basicAuthHeader
+} from './constants';
+import ICAL from 'ical.js';
 
 /**
  * Typed CalDAV write error. Its `message` is always client-safe (no secret, no webhook
@@ -161,4 +168,82 @@ export async function updateEvent(
 /** Deletes an event via the n8n delete webhook (POSTs `{ uid }`). */
 export async function deleteEvent(uid: string): Promise<void> {
 	await postWebhook(n8nCalendarDeleteWebhookUrl(), n8nWebhookSecret(), { uid });
+}
+
+/**
+ * Directly patches a Nextcloud ICS event via CalDAV GET → mutate → PUT.
+ * Used for link-to-lead: writes CATEGORIES and CRM-HREF to DESCRIPTION,
+ * bypassing n8n which silently drops CATEGORIES.
+ *
+ * Throws CalDavWebhookError('Event not found') on 404 GET.
+ * Throws CalDavWebhookError (client-safe message) on any other non-2xx.
+ * NEVER surfaces credentials in the thrown message.
+ */
+export async function directPatchEvent(
+	uid: string,
+	options: { categories: string; leadHref?: string }
+): Promise<void> {
+	const icsUrl = `${calendarCollectionUrl()}${encodeURIComponent(uid)}.ics`;
+	const authHeader = basicAuthHeader();
+
+	// Step A: GET the existing ICS
+	let getRes: Response;
+	try {
+		getRes = await fetch(icsUrl, {
+			method: 'GET',
+			headers: { Authorization: authHeader, Accept: 'text/calendar' },
+			signal: AbortSignal.timeout(10_000)
+		});
+	} catch {
+		throw new CalDavWebhookError(CLIENT_SAFE_MESSAGE);
+	}
+	if (getRes.status === 404) throw new CalDavWebhookError('Event not found', 404);
+	if (!getRes.ok) throw new CalDavWebhookError(CLIENT_SAFE_MESSAGE, getRes.status);
+
+	const etag = getRes.headers.get('ETag');
+	const icsText = await getRes.text();
+
+	// Step B: Parse + patch
+	const jcal = ICAL.parse(icsText);
+	const comp = new ICAL.Component(jcal);
+	const vevent = comp.getFirstSubcomponent('vevent');
+	if (!vevent) throw new CalDavWebhookError(CLIENT_SAFE_MESSAGE);
+
+	vevent.updatePropertyWithValue('categories', options.categories);
+
+	// Rebuild DESCRIPTION: strip existing CRM-HREF: line, prepend new one
+	const existingDesc = vevent.getFirstPropertyValue('description') ?? '';
+	const strippedDesc = String(existingDesc)
+		.split('\n')
+		.filter((l: string) => !/^CRM-HREF:/i.test(l.trim()))
+		.join('\n')
+		.trim();
+	const newDesc = options.leadHref
+		? `CRM-HREF:${options.leadHref}${strippedDesc ? `\n${strippedDesc}` : ''}`
+		: strippedDesc || undefined;
+	if (newDesc !== undefined) {
+		vevent.updatePropertyWithValue('description', newDesc);
+	} else {
+		vevent.removeAllProperties('description');
+	}
+
+	const patchedIcs = ICAL.stringify(jcal);
+
+	// Step C: PUT back
+	let putRes: Response;
+	try {
+		putRes = await fetch(icsUrl, {
+			method: 'PUT',
+			headers: {
+				Authorization: authHeader,
+				'Content-Type': 'text/calendar; charset=utf-8',
+				...(etag ? { 'If-Match': etag } : {})
+			},
+			body: patchedIcs,
+			signal: AbortSignal.timeout(10_000)
+		});
+	} catch {
+		throw new CalDavWebhookError(CLIENT_SAFE_MESSAGE);
+	}
+	if (!putRes.ok) throw new CalDavWebhookError(CLIENT_SAFE_MESSAGE, putRes.status);
 }

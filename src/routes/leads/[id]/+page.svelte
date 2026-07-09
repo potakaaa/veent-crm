@@ -18,6 +18,7 @@
 	import NotesPanel from '$lib/components/shared/NotesPanel.svelte';
 	import StageControl from '$lib/components/leads/StageControl.svelte';
 	import WonCaptureModal from '$lib/components/leads/WonCaptureModal.svelte';
+	import DoneCaptureModal from '$lib/components/leads/DoneCaptureModal.svelte';
 	import LostReasonModal from '$lib/components/leads/LostReasonModal.svelte';
 	import ReassignModal from '$lib/components/leads/ReassignModal.svelte';
 	import OrganizerTagModal from '$lib/components/leads/OrganizerTagModal.svelte';
@@ -29,15 +30,17 @@
 	import CategoryManager from '$lib/components/categories/CategoryManager.svelte';
 	import { Tabs } from '$lib/components/ui/tabs';
 	import * as Popover from '$lib/components/ui/popover';
+	import { Input } from '$lib/components/ui/input';
+	import { Select, SelectTrigger, SelectContent, SelectItem } from '$lib/components/ui/select';
 	import { toasts } from '$lib/stores/toasts.svelte';
 	import { canEditLead, canReassign } from '$lib/utils/permissions';
 	import { riskMeta } from '$lib/utils/risk';
 	import { createNoteHandlers } from '$lib/utils/note-actions';
 	import { formatDate, followUpDate } from '$lib/utils/dates';
 	import { stageColor, stageLabel, isClosed } from '$lib/utils/stages';
-	import type { AddActivityInput, LostReason, MoveStagePayload, Stage } from '$lib/types';
+	import type { AddActivityInput, Currency, LostReason, MoveStagePayload, Stage } from '$lib/types';
 	import { FieldError, fieldErrorAttrs } from '$lib/components/ui/field-error';
-	import { leadUpdateSchema } from '$lib/zod/schemas';
+	import { leadUpdateSchema, CURRENCIES } from '$lib/zod/schemas';
 
 	let { data } = $props();
 
@@ -47,6 +50,7 @@
 	let lead = $derived(data.lead);
 	const canEdit = $derived(canEditLead(data.me, lead));
 	const ownerName = $derived(data.users.find((u) => u.id === lead.ownerId)?.name ?? null);
+	const ownerColor = $derived(data.users.find((u) => u.id === lead.ownerId)?.color ?? null);
 	const risk = $derived(riskMeta(lead.urgency));
 
 	// Most recent ownership change (LEAD-2). leadHistory is ascending by `at`, so reversing
@@ -201,6 +205,7 @@
 	}
 
 	let wonOpen = $state(false);
+	let doneOpen = $state(false);
 	let lostOpen = $state(false);
 	let reassignOpen = $state(false);
 	let organizerTagOpen = $state(false);
@@ -318,6 +323,7 @@
 	async function selectStage(stage: Stage) {
 		if (stage === lead.stage) return;
 		if (stage === 'won') return void (wonOpen = true);
+		if (stage === 'done') return void (doneOpen = true);
 		if (stage === 'lost') return void (lostOpen = true);
 		if (mutating) return; // duplicate-submit guard
 		mutating = true;
@@ -376,6 +382,110 @@
 		await invalidateAll();
 		activeTab = 'onboarding';
 		toasts.success('Deal won — fill in onboarding details below 🎉');
+	}
+
+	async function confirmDone(payload: MoveStagePayload) {
+		if (mutating) return;
+		mutating = true;
+		// Don't close doneOpen yet — modal stays open (showing "Saving…") so the user's
+		// revenue input is preserved if the request fails.
+		const snapshot = lead;
+		lead = patchRecord(lead, { stage: 'done' }); // optimistic stage update
+		try {
+			const res = await fetch(`/api/leads/${lead.id}/stage`, {
+				method: 'PATCH',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ stage: 'done', ...payload })
+			});
+			if (!res.ok) {
+				const msg = await res.text().catch(() => 'Server error');
+				lead = snapshot; // rollback
+				toasts.push(`Done capture failed: ${msg}`);
+				return; // doneOpen stays true → modal remains with user's data intact
+			}
+		} catch {
+			lead = snapshot; // rollback on network error
+			toasts.push('Done capture failed — server error');
+			return;
+		} finally {
+			mutating = false;
+		}
+		doneOpen = false; // close modal only on success
+		await invalidateAll();
+		toasts.success('Marked done — revenue captured');
+	}
+
+	// --- Inline revenue editor (GitHub #273 AC4) --------------------------------
+	// Net-new UI — display → edit → save/cancel, scoped to this one field row only.
+	// Never re-triggers the Done transition or opens DoneCaptureModal.
+	let revenueEditing = $state(false);
+	let revenueDraft = $state('');
+	let revenueCurrencyDraft = $state<Currency>('PHP');
+	let revenueError = $state('');
+	let savingRevenue = $state(false);
+
+	function enterRevenueEdit() {
+		if (!canEdit || mutating || savingRevenue) return;
+		revenueDraft = lead.revenueCents != null ? String(lead.revenueCents / 100) : '';
+		revenueCurrencyDraft = lead.currency ?? 'PHP';
+		revenueError = '';
+		revenueEditing = true;
+	}
+
+	function cancelRevenueEdit() {
+		revenueEditing = false;
+		revenueError = '';
+	}
+
+	function onRevenueKeydown(e: KeyboardEvent) {
+		if (e.key === 'Escape') {
+			e.preventDefault();
+			cancelRevenueEdit();
+		} else if (e.key === 'Enter') {
+			e.preventDefault();
+			void saveRevenue();
+		}
+	}
+
+	async function saveRevenue() {
+		if (savingRevenue) return; // concurrency guard, mirrors selectStage
+		const normalized = revenueDraft.replace(/[^0-9.]/g, '');
+		const amount = normalized === '' ? NaN : Number(normalized);
+		if (!Number.isFinite(amount) || amount < 0) {
+			revenueError = 'Enter a valid, non-negative amount';
+			return;
+		}
+		const revenueCents = Math.round(amount * 100);
+
+		savingRevenue = true;
+		const snapshot = lead;
+		lead = patchRecord(lead, { revenueCents, currency: revenueCurrencyDraft }); // optimistic
+		try {
+			const res = await fetch(`/api/leads/${lead.id}`, {
+				method: 'PATCH',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					name: lead.name,
+					revenueCents,
+					currency: revenueCurrencyDraft
+				})
+			});
+			if (!res.ok) {
+				const msg = await res.text().catch(() => 'Server error');
+				lead = snapshot; // rollback
+				revenueError = `Save failed: ${msg}`;
+				return; // stay in edit mode, preserve input
+			}
+		} catch {
+			lead = snapshot; // rollback on network error
+			revenueError = 'Save failed — server error';
+			return;
+		} finally {
+			savingRevenue = false;
+		}
+		revenueEditing = false;
+		await invalidateAll();
+		toasts.success('Revenue saved');
 	}
 
 	async function confirmLost(reason: LostReason, note?: string) {
@@ -549,7 +659,7 @@
 					class="flex flex-wrap items-center justify-between gap-2 border-t border-hairline pt-3 lg:hidden"
 				>
 					<div class="flex items-center gap-2 text-[12.5px] text-ink-500">
-						owner <Avatar name={ownerName} />
+						owner <Avatar name={ownerName} color={ownerColor} />
 					</div>
 					<div class="text-right">
 						<div class="font-mono text-[9.5px] uppercase tracking-[0.6px] text-ink-200">
@@ -584,7 +694,7 @@
 						</Button>
 					{/if}
 					<div class="flex items-center gap-2 text-[12.5px] text-ink-500">
-						owner <Avatar name={ownerName} />
+						owner <Avatar name={ownerName} color={ownerColor} />
 					</div>
 				</div>
 
@@ -1061,6 +1171,8 @@
 						{lead}
 						templates={data.templates}
 						repName={data.me.name}
+						repFirstName={data.me.firstName}
+						repLastName={data.me.lastName ?? ''}
 						onSubmit={logTouch}
 					/>
 				{/if}
@@ -1091,6 +1203,83 @@
 						Mark lost
 					</Button>
 				</div>
+
+				{#if lead.stage === 'done' || lead.revenueCents != null}
+					<div class="rounded-control border border-hairline bg-panel p-4">
+						<div class="mb-3 font-mono text-[11px] uppercase tracking-[0.5px] text-ink-300">
+							Revenue
+						</div>
+						{#if revenueEditing}
+							<div class="flex flex-col gap-2">
+								<div class="flex gap-2">
+									<Input
+										bind:value={revenueDraft}
+										inputmode="decimal"
+										autofocus
+										disabled={savingRevenue}
+										onkeydown={onRevenueKeydown}
+										aria-label="Revenue amount"
+										class="flex-1 font-mono"
+									/>
+									<Select type="single" bind:value={revenueCurrencyDraft}>
+										<SelectTrigger class="w-[90px] font-mono">{revenueCurrencyDraft}</SelectTrigger>
+										<SelectContent>
+											{#each CURRENCIES as c (c)}<SelectItem value={c} label={c}>{c}</SelectItem
+												>{/each}
+										</SelectContent>
+									</Select>
+								</div>
+								{#if revenueError}
+									<span class="text-[12px] text-red-500">{revenueError}</span>
+								{/if}
+								<div class="flex gap-2">
+									<Button
+										variant="success"
+										size="sm"
+										class="flex-1"
+										onclick={saveRevenue}
+										loading={savingRevenue}
+										loadingText="Saving…"
+										disabled={savingRevenue}>Save</Button
+									>
+									<Button
+										variant="outline"
+										size="sm"
+										class="flex-1"
+										onclick={cancelRevenueEdit}
+										disabled={savingRevenue}>Cancel</Button
+									>
+								</div>
+							</div>
+						{:else}
+							<div
+								role="button"
+								tabindex={canEdit ? 0 : -1}
+								aria-label="Edit revenue"
+								class={canEdit
+									? 'cursor-pointer text-[13px] underline decoration-dotted underline-offset-2 hover:text-primary'
+									: 'text-[13px]'}
+								onclick={enterRevenueEdit}
+								onkeydown={(e) => {
+									if (canEdit && (e.key === 'Enter' || e.key === ' ')) {
+										e.preventDefault();
+										enterRevenueEdit();
+									}
+								}}
+							>
+								{#if lead.revenueCents != null}
+									Revenue: {(lead.revenueCents / 100).toLocaleString(undefined, {
+										minimumFractionDigits: 2,
+										maximumFractionDigits: 2
+									})}
+									{lead.currency ?? 'PHP'}
+								{:else}
+									Revenue: — {canEdit ? '(Add)' : ''}
+								{/if}
+							</div>
+						{/if}
+					</div>
+				{/if}
 
 				<div class="rounded-control border border-hairline bg-panel p-4">
 					<div class="mb-3 flex items-center justify-between">
@@ -1126,7 +1315,7 @@
 						{/if}
 					</div>
 					<div class="mb-3 flex items-center gap-2.5">
-						<Avatar name={ownerName} size="lg" />
+						<Avatar name={ownerName} size="lg" color={ownerColor} />
 						<div class="flex flex-col gap-0.5">
 							<span class="flex items-center gap-1.5 text-[13px] font-semibold">
 								{ownerName ?? 'Unassigned'}
@@ -1189,6 +1378,16 @@
 		saving={mutating}
 		onclose={() => (wonOpen = false)}
 		onconfirm={confirmWon}
+	/>
+{/if}
+{#if doneOpen}
+	<DoneCaptureModal
+		open={true}
+		leadName={lead.name}
+		defaultCurrency={lead.currency ?? 'PHP'}
+		saving={mutating}
+		onclose={() => (doneOpen = false)}
+		onconfirm={confirmDone}
 	/>
 {/if}
 {#if lostOpen}

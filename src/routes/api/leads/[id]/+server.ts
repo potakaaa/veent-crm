@@ -27,6 +27,8 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 		id: locals.user.id,
 		email: locals.user.email,
 		name: locals.user.name,
+		firstName: locals.user.firstName,
+		lastName: locals.user.lastName,
 		role: locals.user.role,
 		active: true
 	};
@@ -72,7 +74,13 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			hasFutureEvents: data.hasFutureEvents,
 			currentPlatform:
 				data.currentPlatform === undefined ? undefined : data.currentPlatform || null,
-			competitorNotes: data.competitorNotes === undefined ? undefined : data.competitorNotes || null
+			competitorNotes:
+				data.competitorNotes === undefined ? undefined : data.competitorNotes || null,
+			// Done-stage post-event revenue (GitHub #273) — forward only when present so a
+			// normal edit never wipes it. No change to canEditLead gate above — it now
+			// covers revenue edits automatically.
+			revenueCents: data.revenueCents === undefined ? undefined : data.revenueCents,
+			currency: data.currency === undefined ? undefined : data.currency
 		},
 		locals.user.id
 	);

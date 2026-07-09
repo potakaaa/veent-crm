@@ -9,6 +9,7 @@
 	import { matchesQuery } from './pipeline-search';
 	import { CardSkeleton } from '$lib/components/shared/skeletons';
 	import WonCaptureModal from '$lib/components/leads/WonCaptureModal.svelte';
+	import DoneCaptureModal from '$lib/components/leads/DoneCaptureModal.svelte';
 	import LostReasonModal from '$lib/components/leads/LostReasonModal.svelte';
 	import { toasts } from '$lib/stores/toasts.svelte';
 	import { stageLabel, BOARD_STAGES } from '$lib/utils/stages';
@@ -156,8 +157,10 @@
 	const navLoading = $derived(navigating.to?.url.pathname === '/pipeline');
 
 	let wonLead = $state<Lead | null>(null);
+	let doneLead = $state<Lead | null>(null);
 	let lostLead = $state<Lead | null>(null);
 	let savingWon = $state(false);
+	let savingDone = $state(false);
 	let savingLost = $state(false);
 	let moving = $state<Record<string, boolean>>({});
 
@@ -197,6 +200,7 @@
 		const lead = allLeads.find((l: Lead) => l.id === leadId);
 		if (!lead || lead.stage === stage) return;
 		if (stage === 'won') return void (wonLead = lead);
+		if (stage === 'done') return void (doneLead = lead);
 		if (stage === 'lost') return void (lostLead = lead);
 		if (moving[leadId]) return;
 		moving = { ...moving, [leadId]: true };
@@ -261,6 +265,39 @@
 		wonLead = null;
 		await invalidateAll();
 		toasts.success(`${lead.name} — deal won 🎉`);
+	}
+
+	async function confirmDone(payload: MoveStagePayload) {
+		if (!doneLead || savingDone) return;
+		const lead = doneLead;
+		savingDone = true;
+		const prevStage = lead.stage;
+		shadowLeads = patchInList(shadowLeads, lead.id, { stage: 'done' });
+		extraLeads = patchInList(extraLeads, lead.id, { stage: 'done' });
+		try {
+			const res = await fetch(`/api/leads/${lead.id}/stage`, {
+				method: 'PATCH',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ stage: 'done', ...payload })
+			});
+			if (!res.ok) {
+				const msg = await res.text().catch(() => 'Server error');
+				shadowLeads = patchInList(shadowLeads, lead.id, { stage: prevStage });
+				extraLeads = patchInList(extraLeads, lead.id, { stage: prevStage });
+				toasts.push(`Done capture failed: ${msg}`);
+				return;
+			}
+		} catch {
+			shadowLeads = patchInList(shadowLeads, lead.id, { stage: prevStage });
+			extraLeads = patchInList(extraLeads, lead.id, { stage: prevStage });
+			toasts.push('Done capture failed — server error');
+			return;
+		} finally {
+			savingDone = false;
+		}
+		doneLead = null;
+		await invalidateAll();
+		toasts.success(`${lead.name} — marked done`);
 	}
 
 	async function confirmLost(reason: LostReason) {
@@ -370,6 +407,16 @@
 		saving={savingWon}
 		onclose={() => (wonLead = null)}
 		onconfirm={confirmWon}
+	/>
+{/if}
+{#if doneLead}
+	<DoneCaptureModal
+		open={true}
+		leadName={doneLead.name}
+		defaultCurrency={doneLead.currency ?? 'PHP'}
+		saving={savingDone}
+		onclose={() => (doneLead = null)}
+		onconfirm={confirmDone}
 	/>
 {/if}
 {#if lostLead}

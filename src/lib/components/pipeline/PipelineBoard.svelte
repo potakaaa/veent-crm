@@ -2,10 +2,12 @@
 	import Avatar from '$lib/components/shared/Avatar.svelte';
 	import PlatformBadge from '$lib/components/shared/PlatformBadge.svelte';
 	import EventBadge from '$lib/components/shared/EventBadge.svelte';
+	import CompetitorBadge from '$lib/components/shared/CompetitorBadge.svelte';
 	import AppealScoreBadge from '$lib/components/AppealScoreBadge.svelte';
 	import StageSelect from './StageSelect.svelte';
 	import { BOARD_STAGES, stageColor, stageLabel } from '$lib/utils/stages';
 	import { riskMeta } from '$lib/utils/risk';
+	import { resolveAvatarColor } from '$lib/design/tokens';
 	import type { Lead, Stage, User } from '$lib/types';
 
 	// Loader attaches derived `appealScore` to each lead at runtime (spread + extra field);
@@ -33,6 +35,11 @@
 	const ownerName = (id: string | null) => users.find((u) => u.id === id)?.name ?? null;
 	const ownerActive = (id: string | null) =>
 		id ? (users.find((u) => u.id === id)?.active ?? false) : false;
+	// Per-AE color-coding accent bar (GitHub #275 — supersedes never-built PIPE-4 Section B).
+	const ownerColor = (id: string | null) => {
+		const u = id ? users.find((x) => x.id === id) : undefined;
+		return resolveAvatarColor(u?.color, u?.name);
+	};
 
 	const columns = $derived(
 		BOARD_STAGES.map((stage) => {
@@ -126,7 +133,14 @@
 							draggable="true"
 							ondragstart={() => (dragId = c.id)}
 							class="cursor-grab rounded-[10px] border border-hairline bg-panel shadow-frame hover:shadow-raised"
+							style={c.ownerId
+								? `border-left-width:3px;border-left-color:${ownerColor(c.ownerId)}`
+								: undefined}
 						>
+							<!-- Per-AE accent bar (GitHub #275) — expressed as the card's own left
+							     border (not an absolutely-positioned overlay), so it naturally follows
+							     rounded-[10px] with zero overflow/clipping risk; top/right/bottom stay
+							     border-hairline via the class, only left is overridden inline. -->
 							<a
 								href="/leads/{c.id}"
 								draggable="false"
@@ -149,6 +163,7 @@
 										>{c.eventName ?? '—'}{c.eventDate ? ` · ${c.eventDate}` : ''}</span
 									>
 									<EventBadge date={c.eventDate} />
+									<CompetitorBadge platform={c.currentPlatform} />
 								</div>
 								{#if risk.atRisk}
 									<div class="mt-2.5 flex items-center gap-[7px]">
@@ -165,7 +180,7 @@
 								{/if}
 								<div class="mt-2.5 flex items-center gap-[7px] border-t border-panel-sunken pt-2.5">
 									<span class="relative shrink-0">
-										<Avatar name={ownerName(c.ownerId)} />
+										<Avatar name={ownerName(c.ownerId)} color={ownerColor(c.ownerId)} />
 										<span
 											class="absolute -bottom-px -right-px h-[7px] w-[7px] rounded-full border-[1.5px] border-white"
 											style="background:{ownerActive(c.ownerId) ? '#22c55e' : '#b7b1bc'}"

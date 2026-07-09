@@ -9,6 +9,9 @@ import {
 	categoryRenameSchema,
 	assignCategoriesSchema,
 	userNameEditSchema,
+	userFormSchema,
+	templateFormSchema,
+	moveStageSchema,
 	LEAD_STAGES,
 	USER_ROLES
 } from '$lib/zod/schemas';
@@ -31,10 +34,45 @@ describe('zod schemas (stub)', () => {
 		expect(r.success).toBe(true);
 	});
 
-	it('has the seven pipeline stages', () => {
+	it('has the eight pipeline stages, done ordered immediately after live (GitHub #273 AC1)', () => {
 		expect(LEAD_STAGES).toContain('in_discussion');
 		expect(LEAD_STAGES).toContain('live');
-		expect(LEAD_STAGES.length).toBe(7);
+		expect(LEAD_STAGES).toContain('done');
+		expect(LEAD_STAGES.length).toBe(8);
+		expect(LEAD_STAGES.indexOf('done')).toBe(LEAD_STAGES.indexOf('live') + 1);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// moveStageSchema — done branch (GitHub #273 AC2)
+// ---------------------------------------------------------------------------
+describe('moveStageSchema done branch (GitHub #273 AC2)', () => {
+	it('accepts a valid done payload with revenueCents + currency', () => {
+		const r = moveStageSchema.safeParse({ stage: 'done', revenueCents: 50000, currency: 'PHP' });
+		expect(r.success).toBe(true);
+	});
+
+	it('defaults currency to PHP when omitted', () => {
+		const r = moveStageSchema.safeParse({ stage: 'done', revenueCents: 50000 });
+		expect(r.success).toBe(true);
+		if (r.success && r.data.stage === 'done') {
+			expect(r.data.currency).toBe('PHP');
+		}
+	});
+
+	it('rejects a done payload missing revenueCents', () => {
+		const r = moveStageSchema.safeParse({ stage: 'done' });
+		expect(r.success).toBe(false);
+	});
+
+	it('rejects a done payload with negative revenueCents', () => {
+		const r = moveStageSchema.safeParse({ stage: 'done', revenueCents: -1, currency: 'PHP' });
+		expect(r.success).toBe(false);
+	});
+
+	it('rejects a done payload with a non-integer revenueCents', () => {
+		const r = moveStageSchema.safeParse({ stage: 'done', revenueCents: 500.5, currency: 'PHP' });
+		expect(r.success).toBe(false);
 	});
 });
 
@@ -126,16 +164,65 @@ describe('super_manager role (GitHub #73)', () => {
 });
 
 // ---------------------------------------------------------------------------
-// userNameEditSchema — name-only edit (team member profile edit)
+// userNameEditSchema — first/last name edit (team member profile edit, AC5)
 // ---------------------------------------------------------------------------
-describe('userNameEditSchema (name-only edit)', () => {
-	it('rejects an empty name', () => {
-		const r = userNameEditSchema.safeParse({ name: '' });
+describe('userNameEditSchema (first/last name edit)', () => {
+	it('rejects an empty firstName', () => {
+		const r = userNameEditSchema.safeParse({ firstName: '', lastName: '' });
 		expect(r.success).toBe(false);
 	});
 
-	it('accepts a valid name', () => {
-		const r = userNameEditSchema.safeParse({ name: 'Marites' });
+	it('accepts a valid firstName with blank lastName', () => {
+		const r = userNameEditSchema.safeParse({ firstName: 'Marites', lastName: '' });
+		expect(r.success).toBe(true);
+	});
+
+	it('accepts both firstName and lastName filled', () => {
+		const r = userNameEditSchema.safeParse({ firstName: 'Marites', lastName: 'Santos' });
+		expect(r.success).toBe(true);
+	});
+
+	it('accepts firstName with lastName omitted entirely (optional)', () => {
+		const r = userNameEditSchema.safeParse({ firstName: 'Marites' });
+		expect(r.success).toBe(true);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// userFormSchema.color — persistent manager-editable per-user colors (GitHub #275)
+// ---------------------------------------------------------------------------
+describe('userFormSchema color (GitHub #275 AC2)', () => {
+	const base = { firstName: 'Marites', email: 'marites@veent.io' };
+
+	it('accepts a valid 6-digit hex color', () => {
+		const r = userFormSchema.safeParse({ ...base, color: '#a1b2c3' });
+		expect(r.success).toBe(true);
+		if (r.success) expect(r.data.color).toBe('#a1b2c3');
+	});
+
+	it('accepts an uppercase-hex color', () => {
+		const r = userFormSchema.safeParse({ ...base, color: '#ABCDEF' });
+		expect(r.success).toBe(true);
+	});
+
+	it('rejects a malformed hex color (too short)', () => {
+		const r = userFormSchema.safeParse({ ...base, color: '#abc' });
+		expect(r.success).toBe(false);
+	});
+
+	it('rejects a non-hex color string', () => {
+		const r = userFormSchema.safeParse({ ...base, color: 'red' });
+		expect(r.success).toBe(false);
+	});
+
+	it('accepts null (clears to hash fallback)', () => {
+		const r = userFormSchema.safeParse({ ...base, color: null });
+		expect(r.success).toBe(true);
+		if (r.success) expect(r.data.color).toBeNull();
+	});
+
+	it('accepts color omitted entirely (optional)', () => {
+		const r = userFormSchema.safeParse(base);
 		expect(r.success).toBe(true);
 	});
 });
@@ -378,6 +465,34 @@ describe('categoryRenameSchema (CAT-1 AC-8)', () => {
 
 	it('rejects a name that is too long (> 50 chars)', () => {
 		expect(categoryRenameSchema.safeParse({ name: 'a'.repeat(51) }).success).toBe(false);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// templateFormSchema.category — enum tightening (GitHub #274 Option A, AC4)
+// ---------------------------------------------------------------------------
+describe('templateFormSchema category (GitHub #274 AC4)', () => {
+	const base = { title: 'Intro message', body: 'Hi {{organizerName}}' };
+
+	it('accepts a valid on-list category', () => {
+		const r = templateFormSchema.safeParse({ ...base, category: 'Conference' });
+		expect(r.success).toBe(true);
+		if (r.success) expect(r.data.category).toBe('Conference');
+	});
+
+	it('rejects an off-list category', () => {
+		const r = templateFormSchema.safeParse({ ...base, category: 'Sportz' });
+		expect(r.success).toBe(false);
+	});
+
+	it('still rejects a missing title (no regression)', () => {
+		const r = templateFormSchema.safeParse({ category: 'Other', body: 'x' });
+		expect(r.success).toBe(false);
+	});
+
+	it('still rejects a missing body (no regression)', () => {
+		const r = templateFormSchema.safeParse({ title: 'x', category: 'Other' });
+		expect(r.success).toBe(false);
 	});
 });
 

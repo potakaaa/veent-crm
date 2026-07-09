@@ -43,6 +43,7 @@ import type {
 	Visibility
 } from '$lib/types';
 import { computeAge } from '$lib/utils/dates';
+import { formatFullName } from '$lib/utils/format-name';
 
 type DbLead = typeof crmLeads.$inferSelect;
 type DbUser = typeof crmUsers.$inferSelect;
@@ -120,6 +121,7 @@ export function dbRowToLead(
 		dealValue: row.dealValueCents != null ? row.dealValueCents / 100 : undefined,
 		currency: ((row.currency as Lead['currency']) ?? 'PHP') || 'PHP',
 		signedDate: row.signedAt?.toISOString(),
+		revenueCents: row.revenueCents ?? undefined,
 		onboardingNotes: row.onboardingNotes ?? undefined,
 		contractUrl: row.contractUrl ?? undefined,
 		onboardingStartDate: row.onboardingStartDate ?? undefined,
@@ -143,10 +145,13 @@ export function dbRowToLead(
 export function dbUserToUser(row: DbUser): User {
 	return {
 		id: row.id,
-		name: row.name,
+		name: formatFullName(row.firstName, row.lastName),
+		firstName: row.firstName,
+		lastName: row.lastName,
 		email: row.email ?? '',
 		role: row.role as User['role'],
-		active: row.active
+		active: row.active,
+		color: row.color ?? null
 	};
 }
 
@@ -756,7 +761,7 @@ export async function getLeadVisibilityGrants(leadId: string): Promise<string[]>
 }
 
 export async function listUsers(): Promise<User[]> {
-	const rows = await db.select().from(crmUsers).orderBy(crmUsers.name);
+	const rows = await db.select().from(crmUsers).orderBy(crmUsers.firstName);
 	return rows.map(dbUserToUser);
 }
 
@@ -767,11 +772,12 @@ export async function listUsers(): Promise<User[]> {
  * manager/super_manager session; never exposed to a rep.
  */
 export async function listActiveReps(): Promise<{ id: string; name: string }[]> {
-	return db
-		.select({ id: crmUsers.id, name: crmUsers.name })
+	const rows = await db
+		.select({ id: crmUsers.id, firstName: crmUsers.firstName, lastName: crmUsers.lastName })
 		.from(crmUsers)
 		.where(and(eq(crmUsers.role, 'rep'), eq(crmUsers.active, true)))
-		.orderBy(crmUsers.name);
+		.orderBy(crmUsers.firstName);
+	return rows.map((r) => ({ id: r.id, name: formatFullName(r.firstName, r.lastName) }));
 }
 
 export async function listActivities(leadId: string): Promise<Activity[]> {
@@ -1002,6 +1008,10 @@ export async function updateLead(
 		hasFutureEvents?: boolean;
 		currentPlatform?: string | null;
 		competitorNotes?: string | null;
+		// Done-stage post-event revenue (GitHub #273) — inline-editable on /leads/[id];
+		// both optional so a normal edit that omits them is unaffected.
+		revenueCents?: number;
+		currency?: string;
 	},
 	actorId: string
 ): Promise<Lead | null> {
@@ -1074,6 +1084,8 @@ export async function updateLead(
 				...(input.competitorNotes !== undefined
 					? { competitorNotes: input.competitorNotes || null }
 					: {}),
+				...(input.revenueCents !== undefined ? { revenueCents: input.revenueCents } : {}),
+				...(input.currency !== undefined ? { currency: input.currency } : {}),
 				updatedAt: now
 			})
 			.where(and(eq(crmLeads.id, id), isNull(crmLeads.deletedAt)))
@@ -1148,7 +1160,12 @@ export async function updateLead(
 				updated.hasFutureEvents != null ? String(updated.hasFutureEvents) : null
 			],
 			['current_platform', existing.currentPlatform ?? null, updated.currentPlatform ?? null],
-			['competitor_notes', existing.competitorNotes ?? null, updated.competitorNotes ?? null]
+			['competitor_notes', existing.competitorNotes ?? null, updated.competitorNotes ?? null],
+			[
+				'revenue_cents',
+				existing.revenueCents != null ? String(existing.revenueCents) : null,
+				updated.revenueCents != null ? String(updated.revenueCents) : null
+			]
 		];
 
 		const changed = tracked.filter(([, oldVal, newVal]) => oldVal !== newVal);
@@ -1254,7 +1271,8 @@ export async function moveLeadStage(
 				ownerId: crmLeads.ownerId,
 				wonOrgName: crmLeads.wonOrgName,
 				dealValueCents: crmLeads.dealValueCents,
-				lostReason: crmLeads.lostReason
+				lostReason: crmLeads.lostReason,
+				revenueCents: crmLeads.revenueCents
 			})
 			.from(crmLeads)
 			.where(and(eq(crmLeads.id, id), isNull(crmLeads.deletedAt)))
@@ -1279,6 +1297,23 @@ export async function moveLeadStage(
 					currency: payload.currency ?? 'PHP',
 					signedAt: payload.signedAt ? new Date(payload.signedAt) : now,
 					lostReason: null, // clear stale lost metadata
+					lastActivityAt: now,
+					updatedAt: now
+				})
+				.where(and(eq(crmLeads.id, id), isNull(crmLeads.deletedAt)))
+				.returning();
+		} else if (stage === 'done') {
+			// GitHub #273 — dedicated branch so revenue/currency are written WITHOUT
+			// touching won/lost metadata (dealValueCents/wonOrgName/signedAt/lostReason
+			// are left exactly as they were). `done` is NOT terminal — a lead may still
+			// move on from here via the generic branch below, which does not null
+			// revenueCents (see the current-stage guard in getRevenuePerAe, E2).
+			rows = await tx
+				.update(crmLeads)
+				.set({
+					stage: 'done',
+					revenueCents: payload.revenueCents ?? null,
+					currency: payload.currency ?? 'PHP',
 					lastActivityAt: now,
 					updatedAt: now
 				})
@@ -1346,6 +1381,16 @@ export async function moveLeadStage(
 					newValue: String(payload.dealValueCents)
 				});
 			}
+		}
+
+		if (stage === 'done' && payload.revenueCents !== undefined) {
+			historyRows.push({
+				leadId: id,
+				actorUserId: actorId,
+				field: 'revenue_cents',
+				oldValue: existing.revenueCents !== null ? String(existing.revenueCents) : null,
+				newValue: String(payload.revenueCents)
+			});
 		}
 
 		if (stage === 'lost' && payload.lostReason !== undefined) {
@@ -1914,11 +1959,11 @@ export async function enrichWithOwnerNames(leads: Lead[]): Promise<Lead[]> {
 	}
 
 	const owners = await db
-		.select({ id: crmUsers.id, name: crmUsers.name })
+		.select({ id: crmUsers.id, firstName: crmUsers.firstName, lastName: crmUsers.lastName })
 		.from(crmUsers)
 		.where(inArray(crmUsers.id, ownerIds));
 
-	const nameMap = new Map(owners.map((o) => [o.id, o.name]));
+	const nameMap = new Map(owners.map((o) => [o.id, formatFullName(o.firstName, o.lastName)]));
 
 	return leads.map((l) => ({
 		...l,

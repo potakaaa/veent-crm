@@ -67,6 +67,7 @@ function makeLeadRow(overrides: Partial<Parameters<typeof dbRowToLead>[0]> = {})
 		notes: null,
 		currentPlatform: null,
 		competitorNotes: null,
+		revenueCents: null,
 		createdAt: now,
 		updatedAt: now,
 		...overrides

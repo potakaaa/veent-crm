@@ -1,18 +1,12 @@
 import type { PageServerLoad } from './$types';
 import { error } from '@sveltejs/kit';
-import {
-	getFollowUpsInRange,
-	getGoLiveDatesInRange,
-	getEventDatesInRange,
-	listActiveReps,
-	isWithinRange
-} from '$lib/server/db/leads';
-import { listAllMeetings } from '$lib/server/db/meetings';
+import { getFollowUpsInRange, listActiveReps, getLeadOwners } from '$lib/server/db/leads';
+import { getMeetingOwners } from '$lib/server/db/meetings';
 import { computeRange, parseDateParam, toDateParam, type CalendarView } from '$lib/utils/calendar';
 import type { CalendarEntry } from '$lib/types';
 import { fetchCalendarReport } from '$lib/caldav/reader';
 import { parseIcsToEvents } from '$lib/caldav/parser';
-import { mapTeamEvents } from '$lib/caldav/team-events';
+import { classifyCalDavEvents, filterByOwnership } from '$lib/caldav/classify';
 
 export const load: PageServerLoad = async ({ url, locals }) => {
 	if (!locals.user) throw error(401, 'Unauthorized');
@@ -34,33 +28,12 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 	const rawRepId = isManager ? url.searchParams.get('repId') : null;
 	const filterRepId = rawRepId && UUID_RE.test(rawRepId) ? rawRepId : undefined;
 
-	// Meetings are team-shared (no owner/organizer scoping — AC8); they are NEVER narrowed by the
-	// rep filter. Follow-ups and milestones are owner-scoped per CAL-3 (rep → own only; manager →
-	// team-wide by default or narrowed to filterRepId).
-	//
-	// Step-10 decision (recorded in phase report): range-filter meetings POST-fetch via the
-	// shared `isWithinRange` helper rather than adding a param to listAllMeetings(). This keeps
-	// the merged meetings module untouched (zero regression surface for /meetings), is backward
-	// compatible, and is adequate for v0's small dataset. Server-side param filtering remains a
-	// future optimization if the meeting volume grows.
-	const [followUps, meetings, goLives, eventStarts, activeReps] = await Promise.all([
+	// NCAL-5: CalDAV is the single source of truth for meetings, go-live dates, and event starts.
+	// DB queries now only provide follow-ups (owner-scoped) and active reps (for the filter UI).
+	const [followUps, activeReps] = await Promise.all([
 		getFollowUpsInRange(id, start, end, role, filterRepId),
-		listAllMeetings(),
-		getGoLiveDatesInRange(start, end, id, role, filterRepId),
-		getEventDatesInRange(start, end, id, role, filterRepId),
 		isManager ? listActiveReps() : Promise.resolve([])
 	]);
-
-	const meetingEntries: CalendarEntry[] = meetings
-		.filter((m) => isWithinRange(m.startAt, start, end))
-		.map((m) => ({
-			id: `meeting-${m.id}`,
-			type: 'meeting',
-			startAt: m.startAt,
-			title: m.leadName ?? 'Meeting',
-			subtitle: m.organizerName ?? 'Unassigned',
-			href: `/meetings/${m.id}`
-		}));
 
 	const followUpEntries: CalendarEntry[] = followUps
 		.filter((l): l is typeof l & { followUpAt: string } => !!l.followUpAt)
@@ -73,39 +46,54 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 			href: `/leads/${l.id}`
 		}));
 
-	const goLiveEntries: CalendarEntry[] = goLives.map((l) => ({
-		id: `golive-${l.id}`,
-		type: 'golive',
-		startAt: l.goLiveIso,
-		title: l.name,
-		href: `/leads/${l.id}`
-	}));
-
-	const eventStartEntries: CalendarEntry[] = eventStarts.map((l) => ({
-		id: `eventstart-${l.id}`,
-		type: 'eventstart',
-		startAt: l.eventStartIso,
-		title: l.name,
-		href: `/leads/${l.id}`
-	}));
-
-	// Team events from Nextcloud (type: 'team-event') — graceful degradation on error
-	let teamEventEntries: CalendarEntry[] = [];
+	// CalDAV events — graceful degradation on error (AC17: degrade to [] on failure)
+	let calDavEntries: CalendarEntry[] = [];
 	try {
 		const blobs = await fetchCalendarReport({ start, end });
 		const allEvents = blobs.flatMap((blob) => parseIcsToEvents(blob, { start, end }));
-		teamEventEntries = mapTeamEvents(allEvents, { start, end });
+
+		const classified = classifyCalDavEvents(allEvents);
+
+		// Batch-fetch lead ownership (leadId → ownerId)
+		const leadIds = [
+			...new Set(
+				classified
+					.map((e) => {
+						const m = e.href.match(/\/leads\/([^/?#]+)/);
+						return m ? m[1] : null;
+					})
+					.filter((id): id is string => id !== null)
+			)
+		];
+		const ownerMap = await getLeadOwners(leadIds);
+
+		// Batch-fetch meeting ownership (meetingId → organizerUserId)
+		const meetingIds = [
+			...new Set(
+				classified
+					.map((e) => {
+						const m = e.href.match(/\/meetings\/([^/?#]+)/);
+						return m ? m[1] : null;
+					})
+					.filter((id): id is string => id !== null)
+			)
+		];
+		const meetingOwnerMap = await getMeetingOwners(meetingIds);
+
+		calDavEntries = filterByOwnership(classified, {
+			userId: id,
+			role,
+			filterRepId,
+			ownerMap,
+			meetingOwnerMap
+		});
 	} catch {
 		// Degrade gracefully — calendar still loads without Nextcloud events
 	}
 
-	const entries = [
-		...meetingEntries,
-		...followUpEntries,
-		...goLiveEntries,
-		...eventStartEntries,
-		...teamEventEntries
-	].sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime());
+	const entries = [...followUpEntries, ...calDavEntries].sort(
+		(a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime()
+	);
 
 	return {
 		entries,

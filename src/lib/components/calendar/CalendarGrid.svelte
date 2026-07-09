@@ -9,12 +9,12 @@
 		view,
 		entries,
 		visibleDate,
-		onteameventclick = undefined
+		onentryclick = undefined
 	}: {
 		view: CalendarView;
 		entries: CalendarEntry[];
 		visibleDate: Date;
-		onteameventclick?: (entry: CalendarEntry) => void;
+		onentryclick?: (entry: CalendarEntry) => void;
 	} = $props();
 
 	const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -106,20 +106,11 @@
 					</div>
 					<div class="flex flex-col gap-0.5">
 						{#each visibleEntries as entry (entry.id)}
-							{#if entry.type === 'team-event'}
-								<button
-									data-entry-type="team-event"
-									data-testid="calendar-entry"
-									class="w-full rounded-[5px] px-1.5 py-0.5 text-left text-[11px] font-medium text-white truncate"
-									style="background-color: #7c3aed;"
-									onclick={() => onteameventclick?.(entry)}
-									title={entry.title}
-								>
-									{entry.title}
-								</button>
-							{:else}
-								<CalendarEntryChip {entry} detailed={view === 'week'} />
-							{/if}
+							<CalendarEntryChip
+								{entry}
+								detailed={view === 'week'}
+								onentryclick={onentryclick ? () => onentryclick(entry) : undefined}
+							/>
 						{/each}
 						{#if overflowEntries.length > 0}
 							<Popover.Root>
@@ -135,20 +126,11 @@
 									class="flex max-h-72 w-56 flex-col gap-0.5 overflow-y-auto"
 								>
 									{#each overflowEntries as entry (entry.id)}
-										{#if entry.type === 'team-event'}
-											<button
-												data-entry-type="team-event"
-												data-testid="calendar-entry"
-												class="w-full rounded-[5px] px-1.5 py-0.5 text-left text-[11px] font-medium text-white truncate"
-												style="background-color: #7c3aed;"
-												onclick={() => onteameventclick?.(entry)}
-												title={entry.title}
-											>
-												{entry.title}
-											</button>
-										{:else}
-											<CalendarEntryChip {entry} detailed />
-										{/if}
+										<CalendarEntryChip
+											{entry}
+											detailed
+											onentryclick={onentryclick ? () => onentryclick(entry) : undefined}
+										/>
 									{/each}
 								</Popover.Content>
 							</Popover.Root>

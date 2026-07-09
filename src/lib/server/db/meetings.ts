@@ -462,3 +462,17 @@ export async function searchVenues(q: string | null | undefined, limit = 20): Pr
 		.limit(limit);
 	return rows.map((r) => r.venue).filter((v): v is string => v != null);
 }
+
+/** Returns a map of meetingId → organizerUserId for rep-scoping CalDAV meeting entries. */
+export async function getMeetingOwners(ids: string[]): Promise<Map<string, string>> {
+	if (!ids.length) return new Map();
+	const rows = await db
+		.select({ id: crmMeetings.id, organizerId: crmMeetings.organizerId })
+		.from(crmMeetings)
+		.where(and(inArray(crmMeetings.id, ids), isNull(crmMeetings.deletedAt)));
+	const map = new Map<string, string>();
+	for (const row of rows) {
+		if (row.organizerId) map.set(row.id, row.organizerId);
+	}
+	return map;
+}

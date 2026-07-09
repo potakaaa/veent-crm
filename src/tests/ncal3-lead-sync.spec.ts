@@ -127,34 +127,35 @@ describe('buildGoLiveDatePayload (AC3)', () => {
 		expect(payload.title).toContain('Ticket Sale Start');
 	});
 
-	it('title uses organizerName when present', () => {
+	it('title uses organizerName when present, with 🎟️ prefix (NCAL-5)', () => {
 		const payload = buildGoLiveDatePayload({
 			id: 'lead-001',
 			organizerName: 'Summer Fest',
 			eventName: 'Other Name',
 			goLiveDate: '2026-08-15'
 		});
-		expect(payload.title).toBe('Summer Fest — Ticket Sale Start');
+		expect(payload.title).toBe('\u{1F39F}\u{FE0F} Summer Fest — Ticket Sale Start');
+		expect(payload.title.startsWith('\u{1F39F}')).toBe(true);
 	});
 
-	it('falls back to eventName when organizerName is null', () => {
+	it('falls back to eventName when organizerName is null, with 🎟️ prefix (NCAL-5)', () => {
 		const payload = buildGoLiveDatePayload({
 			id: 'lead-001',
 			organizerName: null,
 			eventName: 'Rock Night',
 			goLiveDate: '2026-08-15'
 		});
-		expect(payload.title).toBe('Rock Night — Ticket Sale Start');
+		expect(payload.title).toBe('\u{1F39F}\u{FE0F} Rock Night — Ticket Sale Start');
 	});
 
-	it('falls back to "Lead" when both organizerName and eventName are null', () => {
+	it('falls back to "Lead" when both organizerName and eventName are null, with 🎟️ prefix (NCAL-5)', () => {
 		const payload = buildGoLiveDatePayload({
 			id: 'lead-001',
 			organizerName: null,
 			eventName: null,
 			goLiveDate: '2026-08-15'
 		});
-		expect(payload.title).toBe('Lead — Ticket Sale Start');
+		expect(payload.title).toBe('\u{1F39F}\u{FE0F} Lead — Ticket Sale Start');
 	});
 
 	it('handles month-boundary correctly (Aug 31: start=Aug 30 T16, end=Aug 31 T15:59:59)', () => {
@@ -206,24 +207,25 @@ describe('buildEventDatePayload (AC4)', () => {
 		expect(payload.title).toContain('Event Date');
 	});
 
-	it('title uses organizerName when present', () => {
+	it('title uses organizerName when present, with 🚀 prefix (NCAL-5)', () => {
 		const payload = buildEventDatePayload({
 			id: 'lead-001',
 			organizerName: 'Jazz Night',
 			eventName: 'Other',
 			eventDate: '2026-10-20'
 		});
-		expect(payload.title).toBe('Jazz Night — Event Date');
+		expect(payload.title).toBe('🚀 Jazz Night — Event Date');
+		expect(payload.title.startsWith('🚀')).toBe(true);
 	});
 
-	it('falls back to eventName when organizerName is null', () => {
+	it('falls back to eventName when organizerName is null, with 🚀 prefix (NCAL-5)', () => {
 		const payload = buildEventDatePayload({
 			id: 'lead-001',
 			organizerName: null,
 			eventName: 'Big Festival',
 			eventDate: '2026-10-20'
 		});
-		expect(payload.title).toBe('Big Festival — Event Date');
+		expect(payload.title).toBe('🚀 Big Festival — Event Date');
 	});
 });
 

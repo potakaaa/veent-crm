@@ -58,8 +58,8 @@ export function manilaAllDayRange(dateStr: string): { start: string; end: string
  *
  * - Title is `"Meeting with {leadOrganizerName ?? leadName}"`, falling back to `'Team Meeting'`.
  * - End = startAt + 1 hour (no endAt column exists on crm_meetings).
- * - Embeds `CRM-HREF:/leads/{leadId}` into the description (falls back to `/meetings/{id}`
- *   when the meeting has no associated lead) via `embedCrmHref`.
+ * - Embeds `CRM-HREF:/meetings/{id}` into the description so the calendar entry navigates
+ *   to the meeting detail page regardless of whether a lead is associated.
  */
 export function buildMeetingPayload(meeting: {
 	id: string;
@@ -92,14 +92,14 @@ export function buildMeetingPayload(meeting: {
 	if (meeting.outcome) lines.push(`Outcome: ${meeting.outcome}`);
 
 	const body = lines.length ? lines.join('\n') : undefined;
-	// Link back to the lead when available; fall back to the meeting URL for standalone meetings.
-	const crmHref = meeting.leadId ? `/leads/${meeting.leadId}` : `/meetings/${meeting.id}`;
+	// Always link to the meeting page so the calendar entry navigates to meeting detail.
+	const crmHref = `/meetings/${meeting.id}`;
 	const description = embedCrmHref(crmHref, body);
 
 	const label = meeting.leadOrganizerName ?? meeting.leadName ?? null;
 	const payload: CalendarEventPayload = {
 		uid,
-		title: label ? `Meeting with ${label}` : 'Team Meeting',
+		title: label ? `💼 Meeting with ${label}` : '👥 Team Meeting',
 		start: startIso,
 		end: endIso
 	};
@@ -133,7 +133,9 @@ export function buildGoLiveDatePayload(lead: {
 	eventName?: string | null;
 	goLiveDate: string;
 }): CalendarEventPayload {
-	return buildLeadDatePayload(lead, lead.goLiveDate, 'Ticket Sale Start');
+	const payload = buildLeadDatePayload(lead, lead.goLiveDate, 'Ticket Sale Start');
+	payload.title = `\u{1F39F}\u{FE0F} ${payload.title}`;
+	return payload;
 }
 
 /**
@@ -146,7 +148,9 @@ export function buildEventDatePayload(lead: {
 	eventName?: string | null;
 	eventDate: string;
 }): CalendarEventPayload {
-	return buildLeadDatePayload(lead, lead.eventDate, 'Event Date');
+	const payload = buildLeadDatePayload(lead, lead.eventDate, 'Event Date');
+	payload.title = `\u{1F680} ${payload.title}`;
+	return payload;
 }
 
 // ---------------------------------------------------------------------------

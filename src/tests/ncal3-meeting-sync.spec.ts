@@ -77,9 +77,10 @@ describe('buildMeetingPayload (AC2)', () => {
 		nextcloudUid: null
 	};
 
-	it('sets title to "Team Meeting"', () => {
+	it('sets title to "👥 Team Meeting" (emoji prefix added by NCAL-5)', () => {
 		const payload = buildMeetingPayload(BASE);
-		expect(payload.title).toBe('Team Meeting');
+		expect(payload.title).toBe('👥 Team Meeting');
+		expect(payload.title.startsWith('👥')).toBe(true);
 	});
 
 	it('sets end to exactly startAt + 1 hour', () => {
@@ -96,12 +97,12 @@ describe('buildMeetingPayload (AC2)', () => {
 		expect(payload.location).toBe('Makati Ballroom');
 	});
 
-	it('description contains CRM-HREF:/leads/[leadId] when leadId is present', () => {
+	it('description always contains CRM-HREF:/meetings/[id] (navigates to meeting page)', () => {
 		const payload = buildMeetingPayload(BASE);
-		expect(payload.description).toContain('CRM-HREF:/leads/lead-456');
+		expect(payload.description).toContain('CRM-HREF:/meetings/mtg-123');
 	});
 
-	it('description falls back to CRM-HREF:/meetings/[id] when leadId is null', () => {
+	it('description uses CRM-HREF:/meetings/[id] even when leadId is null', () => {
 		const payload = buildMeetingPayload({ ...BASE, leadId: null });
 		expect(payload.description).toContain('CRM-HREF:/meetings/mtg-123');
 	});
@@ -133,6 +134,17 @@ describe('buildMeetingPayload (AC2)', () => {
 		expect(new Date(payload.end).getTime() - new Date(payload.start).getTime()).toBe(
 			60 * 60 * 1000
 		);
+	});
+
+	it('sets title to "💼 Meeting with X" when leadOrganizerName is provided (NCAL-5)', () => {
+		const payload = buildMeetingPayload({ ...BASE, leadOrganizerName: 'Aria Music' });
+		expect(payload.title).toBe('💼 Meeting with Aria Music');
+		expect(payload.title.startsWith('💼')).toBe(true);
+	});
+
+	it('sets title to "💼 Meeting with X" using leadName as fallback (NCAL-5)', () => {
+		const payload = buildMeetingPayload({ ...BASE, leadName: 'Fallback Name' });
+		expect(payload.title).toBe('💼 Meeting with Fallback Name');
 	});
 });
 

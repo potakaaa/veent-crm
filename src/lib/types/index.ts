@@ -206,13 +206,25 @@ export interface Meeting {
  */
 export interface CalendarEntry {
 	id: string;
-	type: 'meeting' | 'followup' | 'golive' | 'eventstart';
+	type: 'meeting' | 'followup' | 'golive' | 'eventstart' | 'team-event';
 	/** ISO datetime the entry falls on (meeting start, or follow-up due date). */
 	startAt: string;
 	title: string;
 	href: string;
 	/** Optional secondary line (e.g. organizer name, lead handle). */
 	subtitle?: string;
+	/** Nextcloud event UID (team-event only). */
+	uid?: string;
+	/** CRM deep-link extracted from CRM-HREF: (team-event only). */
+	url?: string;
+	/** Raw event description (team-event only). */
+	description?: string;
+	/** Location field (team-event only). */
+	location?: string;
+	/** VEVENT STATUS (team-event only). */
+	status?: string;
+	/** VEVENT CATEGORIES (team-event only). */
+	categories?: string;
 }
 
 /**

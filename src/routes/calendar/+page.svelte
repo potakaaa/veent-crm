@@ -114,21 +114,26 @@
 	async function handleCreateEvent(payload: EventFormPayload) {
 		createSaving = true;
 		createError = '';
-		const res = await fetch('/api/calendar/events', {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({
-				...payload,
-				categories: 'team-event',
-				source: 'sales-crm'
-			})
-		});
-		createSaving = false;
-		if (res.ok) {
-			createOpen = false;
-			await invalidateAll();
-		} else {
-			createError = 'Failed to create event. Please try again.';
+		try {
+			const res = await fetch('/api/calendar/events', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					...payload,
+					categories: 'team-event',
+					source: 'sales-crm'
+				})
+			});
+			if (res.ok) {
+				createOpen = false;
+				await invalidateAll();
+			} else {
+				createError = 'Failed to create event. Please try again.';
+			}
+		} catch {
+			createError = 'Network error. Please try again.';
+		} finally {
+			createSaving = false;
 		}
 	}
 
@@ -136,51 +141,66 @@
 		if (!selectedEvent?.uid) return;
 		detailSaving = true;
 		editError = '';
-		const res = await fetch(`/api/calendar/events/${selectedEvent.uid}`, {
-			method: 'PUT',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify(payload)
-		});
-		detailSaving = false;
-		if (res.ok) {
-			editOpen = false;
-			detailOpen = false;
-			selectedEvent = null;
-			await invalidateAll();
-		} else {
-			editError = 'Failed to save changes. Please try again.';
+		try {
+			const res = await fetch(`/api/calendar/events/${selectedEvent.uid}`, {
+				method: 'PUT',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(payload)
+			});
+			if (res.ok) {
+				editOpen = false;
+				detailOpen = false;
+				selectedEvent = null;
+				await invalidateAll();
+			} else {
+				editError = 'Failed to save changes. Please try again.';
+			}
+		} catch {
+			editError = 'Network error. Please try again.';
+		} finally {
+			detailSaving = false;
 		}
 	}
 
 	async function handleDeleteEvent(uid: string) {
 		detailSaving = true;
 		detailError = '';
-		const res = await fetch(`/api/calendar/events/${uid}`, { method: 'DELETE' });
-		detailSaving = false;
-		if (res.ok) {
-			detailOpen = false;
-			selectedEvent = null;
-			await invalidateAll();
-		} else {
-			detailError = 'Failed to delete event. Please try again.';
+		try {
+			const res = await fetch(`/api/calendar/events/${uid}`, { method: 'DELETE' });
+			if (res.ok) {
+				detailOpen = false;
+				selectedEvent = null;
+				await invalidateAll();
+			} else {
+				detailError = 'Failed to delete event. Please try again.';
+			}
+		} catch {
+			detailError = 'Network error. Please try again.';
+		} finally {
+			detailSaving = false;
 		}
 	}
 
 	async function handleLinkToLead(uid: string, leadId: string, startAt: string) {
 		detailSaving = true;
 		detailError = '';
-		const res = await fetch(`/api/calendar/events/${uid}/link`, {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ leadId, startAt })
-		});
-		detailSaving = false;
-		if (res.ok) {
-			detailOpen = false;
-			selectedEvent = null;
-			await invalidateAll();
-		} else {
-			detailError = 'Failed to link event to lead. Please try again.';
+		try {
+			const res = await fetch(`/api/calendar/events/${uid}/link`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ leadId, startAt })
+			});
+			if (res.ok) {
+				detailOpen = false;
+				selectedEvent = null;
+				await invalidateAll();
+			} else {
+				detailError = 'Failed to link event to lead. Please try again.';
+			}
+		} catch {
+			detailError = 'Network error. Please try again.';
+		} finally {
+			detailSaving = false;
 		}
 	}
 </script>

@@ -447,6 +447,16 @@ export async function updateMeetingNextcloudUid(id: string, uid: string | null):
 		.where(and(eq(crmMeetings.id, id), isNull(crmMeetings.deletedAt)));
 }
 
+/** Returns the meeting row id if an active (non-deleted) meeting is already linked to this Nextcloud uid. */
+export async function getMeetingByNextcloudUid(uid: string): Promise<{ id: string } | null> {
+	const [row] = await db
+		.select({ id: crmMeetings.id })
+		.from(crmMeetings)
+		.where(and(eq(crmMeetings.nextcloudUid, uid), isNull(crmMeetings.deletedAt)))
+		.limit(1);
+	return row ?? null;
+}
+
 export async function searchVenues(q: string | null | undefined, limit = 20): Promise<string[]> {
 	const term = (q ?? '').trim();
 	const where: SQL | undefined = and(

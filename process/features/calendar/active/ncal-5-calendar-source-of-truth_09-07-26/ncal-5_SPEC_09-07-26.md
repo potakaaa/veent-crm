@@ -94,7 +94,7 @@ CalDAV returns all events in the time window — there is no server-side owner f
 
 Rep-scoping strategy:
 - Extract lead IDs from CalDAV events that carry `CRM-HREF:/leads/<id>`.
-- Batch-query those lead rows from the DB (a single `SELECT id, owner_id FROM crm_leads WHERE id IN (...)`).
+- Batch-query those lead rows from the DB (a single `SELECT id, owner_id FROM crm_leads WHERE id IN (...) AND deleted_at IS NULL`).
 - Filter: reps see only entries whose lead's `ownerId` matches their own user ID; managers see all (or filtered by `filterRepId`).
 - Events without a lead link (`team-event` type) bypass the ownership filter entirely.
 

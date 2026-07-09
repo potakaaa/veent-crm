@@ -79,7 +79,8 @@ function classifyTitle(rawTitle: string): ClassifyResult {
  *
  * AC2-AC8: emoji and suffix classification rules.
  * AC10: `id` format is `{type}-{uid}`.
- * AC11: field mapping mirrors mapTeamEvents (href, url, description, location, status, categories).
+ * AC11: field mapping matches mapTeamEvents — includes href, url, description, location,
+ *       status, categories, endAt, allDay.
  */
 export function classifyCalDavEvents(events: CalendarEvent[]): CalendarEntry[] {
 	return events.map((e) => {
@@ -89,6 +90,8 @@ export function classifyCalDavEvents(events: CalendarEvent[]): CalendarEntry[] {
 			id: `${type}-${e.uid}`,
 			type,
 			startAt: e.start,
+			endAt: e.end,
+			allDay: e.allDay,
 			title: displayTitle || '(No title)',
 			href: e.url ?? '',
 			uid: e.uid,
@@ -146,13 +149,13 @@ export function filterByOwnership(
 		if (hasLeadUrl) {
 			const match = entry.href.match(/\/leads\/([^/?#]+)/);
 			const leadId = match ? match[1] : null;
-			if (!leadId) return true; // Malformed URL — keep
+			if (!leadId) return false; // Malformed CRM URL — ownership unverifiable, hide
 			ownerId = ownerMap.get(leadId);
 		} else {
 			// /meetings/ entry
 			const match = entry.href.match(/\/meetings\/([^/?#]+)/);
 			const meetingId = match ? match[1] : null;
-			if (!meetingId) return true; // Malformed URL — keep
+			if (!meetingId) return false; // Malformed CRM URL — ownership unverifiable, hide
 			ownerId = meetingOwnerMap?.get(meetingId);
 		}
 

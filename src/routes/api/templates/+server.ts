@@ -7,13 +7,6 @@ import {
 	softDeleteTemplate,
 	TemplateTitleConflictError
 } from '$lib/server/db/templates';
-import { isManager } from '$lib/utils/permissions';
-
-function requireManager(locals: App.Locals): void {
-	if (!locals.user || !isManager(locals.user)) {
-		throw error(403, 'Manager only');
-	}
-}
 
 // POST — create a template. 201 + row / 400 invalid / 401 unauthed.
 // GitHub #199: any authenticated user (reps included) may create; edit/delete stay manager-only.
@@ -35,9 +28,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	}
 };
 
-// PATCH — edit a template. 200 + row / 400 invalid / 403 non-manager / 404 missing.
+// PATCH — edit a template. 200 + row / 400 invalid / 401 unauthed / 404 missing.
 export const PATCH: RequestHandler = async ({ request, locals }) => {
-	requireManager(locals);
+	if (!locals.user) throw error(401, 'Unauthorized');
 
 	const raw = (await request.json().catch(() => null)) as
 		| (Record<string, unknown> & { id?: unknown })
@@ -64,9 +57,9 @@ export const PATCH: RequestHandler = async ({ request, locals }) => {
 	}
 };
 
-// DELETE — soft-delete a template. 204 / 403 non-manager / 404 missing.
+// DELETE — soft-delete a template. 204 / 401 unauthed / 404 missing.
 export const DELETE: RequestHandler = async ({ request, locals }) => {
-	requireManager(locals);
+	if (!locals.user) throw error(401, 'Unauthorized');
 
 	const raw = (await request.json().catch(() => null)) as { id?: unknown } | null;
 	const id = raw && typeof raw.id === 'string' ? raw.id : null;

@@ -23,12 +23,14 @@
 		open,
 		event = null,
 		saving = false,
+		serverError = '',
 		onclose,
 		onsubmit
 	}: {
 		open: boolean;
 		event?: CalendarEntry | null;
 		saving?: boolean;
+		serverError?: string;
 		onclose: () => void;
 		onsubmit: (payload: EventFormPayload) => void;
 	} = $props();
@@ -54,9 +56,9 @@
 				title = event.title ?? '';
 				const s = event.startAt ? new Date(event.startAt) : new Date();
 				start = toDatetimeLocal(s);
-				const eMs = s.getTime() + 60 * 60 * 1000; // default +1h if no end
-				end = toDatetimeLocal(new Date(eMs));
-				allDay = false;
+				const eEnd = event.endAt ? new Date(event.endAt) : new Date(s.getTime() + 60 * 60 * 1000);
+				end = toDatetimeLocal(eEnd);
+				allDay = event.allDay ?? false;
 				location = event.location ?? '';
 				description = event.description ?? '';
 				color = '#7c3aed';
@@ -121,15 +123,14 @@
 		onsubmit(payload);
 	}
 
-	// allDay toggle: adjust times
-	$effect(() => {
+	function handleAllDayToggle() {
 		if (allDay && start) {
 			const d = new Date(start);
 			const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 			start = `${dateStr}T00:00`;
 			end = `${dateStr}T23:59`;
 		}
-	});
+	}
 
 	const isEditMode = $derived(event != null);
 </script>
@@ -160,6 +161,7 @@
 				id="event-allday"
 				type="checkbox"
 				bind:checked={allDay}
+				onchange={handleAllDayToggle}
 				disabled={saving}
 				class="h-4 w-4 rounded border-border"
 			/>
@@ -276,6 +278,9 @@
 	</div>
 
 	{#snippet footer()}
+		{#if serverError}
+			<p class="mr-auto text-[12px] text-destructive">{serverError}</p>
+		{/if}
 		<Button variant="outline" onclick={onclose} disabled={saving}>Cancel</Button>
 		<Button onclick={handleSubmit} disabled={saving}>
 			{#if saving}Saving…{:else}{isEditMode ? 'Save changes' : 'Create event'}{/if}

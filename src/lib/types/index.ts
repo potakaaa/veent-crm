@@ -225,6 +225,10 @@ export interface CalendarEntry {
 	status?: string;
 	/** VEVENT CATEGORIES (team-event only). */
 	categories?: string;
+	/** ISO datetime end (team-event only). */
+	endAt?: string;
+	/** Whether this is an all-day event (team-event only). */
+	allDay?: boolean;
 }
 
 /**

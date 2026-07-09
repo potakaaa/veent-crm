@@ -45,6 +45,7 @@ export const POST: RequestHandler = async ({ locals, request, params }) => {
 
 	const { leadId, startAt } = parsed.data;
 	const uid = params.uid; // server-extracted path param — never from body
+	if (!/^[\w.\-@]+$/.test(uid)) throw error(400, 'Invalid event UID');
 
 	// Step 1: Insert crm_meetings row
 	let meeting: Awaited<ReturnType<typeof createMeeting>>;
@@ -67,7 +68,7 @@ export const POST: RequestHandler = async ({ locals, request, params }) => {
 	} catch (e) {
 		// OQ3: CalDAV failed → roll back the DB insert before returning error
 		await softDeleteMeeting(meeting.id).catch(() => {
-			// Log rollback failure server-side only — never surface to client
+			console.error('[link/+server] softDeleteMeeting rollback failed for meeting', meeting.id);
 		});
 		if (e instanceof CalDavWebhookError && e.upstreamStatus === 404) {
 			throw error(404, 'Calendar event not found');
@@ -77,7 +78,7 @@ export const POST: RequestHandler = async ({ locals, request, params }) => {
 
 	// Step 3: Record the Nextcloud UID on the meeting row (non-fatal if it fails)
 	await updateMeetingNextcloudUid(meeting.id, uid).catch(() => {
-		// Non-fatal: UID wiring failed but the link itself succeeded
+		console.error('[link/+server] updateMeetingNextcloudUid failed for meeting', meeting.id);
 	});
 
 	return json({ success: true, meetingId: meeting.id });

@@ -3,7 +3,14 @@ import type { CalendarEntry } from '$lib/types';
 
 // CRM-synced events already appear as blue meeting chips from the DB query.
 // Exclude them here to avoid duplicates.
-const CRM_CATEGORIES = new Set(['meeting', 'golive', 'go-live', 'eventstart', 'event-start']);
+const CRM_CATEGORIES = new Set([
+	'meeting',
+	'golive',
+	'go-live',
+	'eventstart',
+	'event-start',
+	'crm-meeting'
+]);
 
 /**
  * Maps parsed CalendarEvent[] to CalendarEntry[] for team-event chips.
@@ -22,6 +29,8 @@ export function mapTeamEvents(
 			id: `team-event-${e.uid}`,
 			type: 'team-event' as const,
 			startAt: e.start,
+			endAt: e.end,
+			allDay: e.allDay,
 			title: e.title ?? '(No title)',
 			href: e.url ?? '',
 			uid: e.uid,

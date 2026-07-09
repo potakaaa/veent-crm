@@ -183,7 +183,7 @@ export async function directPatchEvent(
 	uid: string,
 	options: { categories: string; leadHref?: string }
 ): Promise<void> {
-	const icsUrl = `${calendarCollectionUrl()}${uid}.ics`;
+	const icsUrl = `${calendarCollectionUrl()}${encodeURIComponent(uid)}.ics`;
 	const authHeader = basicAuthHeader();
 
 	// Step A: GET the existing ICS
@@ -200,6 +200,7 @@ export async function directPatchEvent(
 	if (getRes.status === 404) throw new CalDavWebhookError('Event not found', 404);
 	if (!getRes.ok) throw new CalDavWebhookError(CLIENT_SAFE_MESSAGE, getRes.status);
 
+	const etag = getRes.headers.get('ETag');
 	const icsText = await getRes.text();
 
 	// Step B: Parse + patch
@@ -235,7 +236,8 @@ export async function directPatchEvent(
 			method: 'PUT',
 			headers: {
 				Authorization: authHeader,
-				'Content-Type': 'text/calendar; charset=utf-8'
+				'Content-Type': 'text/calendar; charset=utf-8',
+				...(etag ? { 'If-Match': etag } : {})
 			},
 			body: patchedIcs,
 			signal: AbortSignal.timeout(10_000)

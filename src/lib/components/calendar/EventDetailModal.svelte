@@ -8,6 +8,7 @@
 		open,
 		event,
 		saving = false,
+		serverError = '',
 		onclose,
 		onedit,
 		ondelete,
@@ -16,6 +17,7 @@
 		open: boolean;
 		event: CalendarEntry | null;
 		saving?: boolean;
+		serverError?: string;
 		onclose: () => void;
 		onedit: () => void;
 		ondelete: (uid: string) => void;
@@ -175,6 +177,9 @@
 	{/if}
 
 	{#snippet footer()}
+		{#if serverError}
+			<p class="mr-auto text-[12px] text-destructive">{serverError}</p>
+		{/if}
 		{#if !confirmingDelete}
 			<Button variant="outline" onclick={onclose} disabled={saving}>Close</Button>
 			<Button variant="outline" onclick={onedit} disabled={saving}>Edit</Button>

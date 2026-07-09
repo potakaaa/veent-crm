@@ -9,7 +9,7 @@
  */
 import { db } from './index';
 import { crmLeads, crmUsers, crmLeadHistory } from './schema';
-import { eq, isNull, and, count, desc, gte, sql, ilike } from 'drizzle-orm';
+import { eq, isNull, and, or, count, desc, gte, sql, ilike } from 'drizzle-orm';
 import { formatFullName } from '$lib/utils/format-name';
 
 /** The four date-range buckets the dashboard supports. */
@@ -77,7 +77,8 @@ export async function getActiveAeList(
 	const conds = [eq(crmUsers.role, 'rep'), eq(crmUsers.active, true)];
 	const term = (search ?? '').trim();
 	if (term) {
-		conds.push(ilike(crmUsers.firstName, `%${term.replace(/[\\%_]/g, '\\$&')}%`));
+		const escaped = `%${term.replace(/[\\%_]/g, '\\$&')}%`;
+		conds.push(or(ilike(crmUsers.firstName, escaped), ilike(crmUsers.lastName, escaped))!);
 	}
 
 	const rows = await db

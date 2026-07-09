@@ -105,7 +105,9 @@
 	function openEdit(t: MessageTemplate) {
 		editingId = t.id;
 		title = t.title;
-		category = t.category;
+		category = TEMPLATE_CATEGORIES.includes(t.category as (typeof TEMPLATE_CATEGORIES)[number])
+			? t.category
+			: 'Other';
 		body = t.body;
 		formError = '';
 		formOpen = true;

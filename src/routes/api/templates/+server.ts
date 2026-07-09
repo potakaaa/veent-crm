@@ -9,7 +9,7 @@ import {
 } from '$lib/server/db/templates';
 
 // POST — create a template. 201 + row / 400 invalid / 401 unauthed.
-// GitHub #199: any authenticated user (reps included) may create; edit/delete stay manager-only.
+// GitHub #199: any authenticated user (reps included) may create. GitHub #276: edit/delete are also open to all authenticated users (manager-only gate removed).
 // `createdBy` is sourced server-side from the session, never from the request body.
 export const POST: RequestHandler = async ({ request, locals }) => {
 	if (!locals.user) throw error(401, 'Unauthorized');

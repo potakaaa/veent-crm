@@ -1,19 +1,12 @@
 {
-  "invocation": "EVL confirmation run",
-  "issue": "#280 competitor-badges-restore",
-  "date": "2026-07-08",
-  "gates": [
-    { "command": "bun run check", "result": "PASS", "detail": "2543 files, 0 ERRORS, 5 WARNINGS (all pre-existing, unrelated files)" },
-    { "command": "bun run test:unit:ci (vitest --run)", "result": "PASS", "detail": "48 files passed / 9 skipped; 530 tests passed / 165 skipped / 0 failed" }
+  "task": "GitHub #280 competitor-badges-restore — EVL confirmation",
+  "commands": ["bun run check", "bun run test:unit:ci (vitest --run)"],
+  "manualChecks": [
+    "CompetitorBadge.svelte — new file, platform?: string|null prop, {#if platform} guard, amber chip classes exact — PASS",
+    "PipelineBoard.svelte — imports + renders <CompetitorBadge platform={c.currentPlatform}/> after EventBadge; existing badges intact — PASS",
+    "LeadGrid.svelte — imports + renders <CompetitorBadge platform={l.currentPlatform}/> inside existing name-column flex cell; no new top-level grid cell — PASS",
+    "unassigned/+page.svelte — byte-for-byte unchanged (git diff empty) — PASS"
   ],
-  "file_verification": {
-    "CompetitorBadge.svelte": "PASS — new file, platform?: string|null prop, {#if platform} guard, amber chip classes exact",
-    "PipelineBoard.svelte": "PASS — imports + renders <CompetitorBadge platform={c.currentPlatform}/> after EventBadge; existing badges intact",
-    "LeadGrid.svelte": "PASS — imports + renders <CompetitorBadge platform={l.currentPlatform}/> inside existing name-column flex cell; no new top-level grid cell",
-    "unassigned/+page.svelte": "PASS — byte-for-byte unchanged (git diff empty)"
-  },
-  "changeset": "1 new file (CompetitorBadge.svelte) + 2 edits (PipelineBoard.svelte, LeadGrid.svelte). No extra changes.",
-  "known_gaps": ["Badge visual render AC1-AC4 is Agent-Probe/manual-only per accepted CONDITIONAL gate — not testable via automated gates"],
-  "discrepancies_vs_prior_report": "none",
-  "overall": "DONE"
+  "result": "PASS",
+  "notes": "Changeset: 1 new file (CompetitorBadge.svelte) + 2 edits (PipelineBoard.svelte, LeadGrid.svelte). Known gap: badge visual render AC1-AC4 is Agent-Probe/manual-only per accepted CONDITIONAL gate. No discrepancies vs prior report."
 }

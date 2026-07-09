@@ -1,6 +1,9 @@
 {
-  "riskClass": "schema/data migration (HIGH) + public API contract/authorization (HIGH)",
-  "workDescription": "GitHub #275 — add nullable crm_users.color (migration 0034), manager-only PATCH /api/users/[id] color field with rep-blocked authorization gate, and thread stored color through Avatar.svelte + 10 render call sites incl. new Pipeline per-AE accent bar.",
-  "approver": "vc-execute-agent (session, delegated by orchestrator under outer-pvl CONDITIONAL acceptance)",
-  "mustStopBeforeFinalize": true
+  "task": "GitHub #275 — persistent editable user colors across all color-coded surfaces",
+  "planPath": "process/features/team/active/user-colors-persistent_08-07-26/user-colors-persistent_PLAN_08-07-26.md",
+  "riskLevel": "high",
+  "riskClasses": ["schema/data migration", "public API contract/authorization"],
+  "mustStopBeforeFinalize": false,
+  "humanApprovalRequired": true,
+  "why": "Schema/data migration (nullable crm_users.color, migration 0034) and manager-only PATCH /api/users/[id] color field with rep-blocked authorization gate. Migration 0034 has since been applied live to the dev/staging DB this session (bun run db:migrate succeeded) — crm_users.color column confirmed present. Human approval still required before merge given the auth-adjacent PATCH surface and threading through 10 render call sites."
 }

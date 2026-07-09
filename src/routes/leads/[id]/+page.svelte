@@ -448,8 +448,8 @@
 	}
 
 	async function saveRevenue() {
-		if (savingRevenue) return; // concurrency guard, mirrors selectStage
-		const normalized = revenueDraft.replace(/[^0-9.]/g, '');
+		if (mutating || savingRevenue) return; // concurrency guard, shared with all other mutations
+		const normalized = revenueDraft.replace(/[^0-9.-]/g, '');
 		const amount = normalized === '' ? NaN : Number(normalized);
 		if (!Number.isFinite(amount) || amount < 0) {
 			revenueError = 'Enter a valid, non-negative amount';
@@ -457,6 +457,7 @@
 		}
 		const revenueCents = Math.round(amount * 100);
 
+		mutating = true;
 		savingRevenue = true;
 		const snapshot = lead;
 		lead = patchRecord(lead, { revenueCents, currency: revenueCurrencyDraft }); // optimistic
@@ -481,6 +482,7 @@
 			revenueError = 'Save failed — server error';
 			return;
 		} finally {
+			mutating = false;
 			savingRevenue = false;
 		}
 		revenueEditing = false;

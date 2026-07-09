@@ -272,7 +272,7 @@ export const templateFormSchema = z.object({
 	// Template category vocabulary is the frozen TEMPLATE_CATEGORIES list (CAT-1), not the
 	// editable crm_categories table. Tightened to an enum (GitHub #274 Option A) so an
 	// off-list category is rejected rather than silently accepted as free text.
-	category: z.enum(TEMPLATE_CATEGORIES, { message: 'Choose a valid category' }),
+	category: z.enum(TEMPLATE_CATEGORIES, { error: 'Choose a valid category' }),
 	body: z.string().min(1, 'Message body is required')
 });
 export type TemplateForm = z.infer<typeof templateFormSchema>;

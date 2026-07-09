@@ -11,7 +11,7 @@ feature: pipeline
 
 ## Symptom
 
-```
+```text
 Error: [drizzle\meta\0026_snapshot.json, drizzle\meta\0030_snapshot.json] are pointing to a
 parent snapshot: drizzle\meta\0026_snapshot.json/snapshot.json which is a collision.
 ```

@@ -243,7 +243,6 @@ export async function promoteSuperManager(actorId: string, newId: string): Promi
 export function sessionToUser(u: {
 	id: string;
 	email: string;
-	name: string;
 	firstName: string;
 	lastName: string | null;
 	role: import('$lib/types').Role;

@@ -100,22 +100,22 @@ function makeLead(overrides: Partial<Lead> = {}): Lead {
 // AC3: buildGoLiveDatePayload — Manila all-day UTC range + title
 // ---------------------------------------------------------------------------
 describe('buildGoLiveDatePayload (AC3)', () => {
-	it('produces exact UTC start T16:00:00Z for the given date', () => {
+	it('produces exact UTC start T16:00:00Z for the PREVIOUS calendar day (Manila midnight = UTC prev-day 16:00)', () => {
 		const payload = buildGoLiveDatePayload({
 			id: 'lead-001',
 			organizerName: 'Test Organizer',
 			goLiveDate: '2026-08-15'
 		});
-		expect(payload.start).toBe('2026-08-15T16:00:00Z');
+		expect(payload.start).toBe('2026-08-14T16:00:00Z');
 	});
 
-	it('produces exact UTC end T15:59:59Z on the NEXT calendar day', () => {
+	it('produces exact UTC end T15:59:59Z on the SAME calendar day (Manila end-of-day = UTC dateStr 15:59:59)', () => {
 		const payload = buildGoLiveDatePayload({
 			id: 'lead-001',
 			organizerName: 'Test Organizer',
 			goLiveDate: '2026-08-15'
 		});
-		expect(payload.end).toBe('2026-08-16T15:59:59Z');
+		expect(payload.end).toBe('2026-08-15T15:59:59Z');
 	});
 
 	it('title contains "Ticket Sale Start"', () => {
@@ -157,22 +157,22 @@ describe('buildGoLiveDatePayload (AC3)', () => {
 		expect(payload.title).toBe('Lead — Ticket Sale Start');
 	});
 
-	it('handles month-end rollover correctly (Aug 31 → Sep 01)', () => {
+	it('handles month-boundary correctly (Aug 31: start=Aug 30 T16, end=Aug 31 T15:59:59)', () => {
 		const payload = buildGoLiveDatePayload({
 			id: 'lead-001',
 			goLiveDate: '2026-08-31'
 		});
-		expect(payload.start).toBe('2026-08-31T16:00:00Z');
-		expect(payload.end).toBe('2026-09-01T15:59:59Z');
+		expect(payload.start).toBe('2026-08-30T16:00:00Z');
+		expect(payload.end).toBe('2026-08-31T15:59:59Z');
 	});
 
-	it('handles year-end rollover correctly (Dec 31 → Jan 01)', () => {
+	it('handles year-boundary correctly (Dec 31: start=Dec 30 T16, end=Dec 31 T15:59:59)', () => {
 		const payload = buildGoLiveDatePayload({
 			id: 'lead-001',
 			goLiveDate: '2026-12-31'
 		});
-		expect(payload.start).toBe('2026-12-31T16:00:00Z');
-		expect(payload.end).toBe('2027-01-01T15:59:59Z');
+		expect(payload.start).toBe('2026-12-30T16:00:00Z');
+		expect(payload.end).toBe('2026-12-31T15:59:59Z');
 	});
 });
 
@@ -180,21 +180,21 @@ describe('buildGoLiveDatePayload (AC3)', () => {
 // AC4: buildEventDatePayload — same shape, '— Event Date' suffix
 // ---------------------------------------------------------------------------
 describe('buildEventDatePayload (AC4)', () => {
-	it('produces exact UTC start T16:00:00Z for the given date', () => {
+	it('produces exact UTC start T16:00:00Z for the PREVIOUS calendar day (Manila midnight = UTC prev-day 16:00)', () => {
 		const payload = buildEventDatePayload({
 			id: 'lead-001',
 			organizerName: 'Jazz Night',
 			eventDate: '2026-10-20'
 		});
-		expect(payload.start).toBe('2026-10-20T16:00:00Z');
+		expect(payload.start).toBe('2026-10-19T16:00:00Z');
 	});
 
-	it('produces exact UTC end T15:59:59Z on the NEXT calendar day', () => {
+	it('produces exact UTC end T15:59:59Z on the SAME calendar day (Manila end-of-day = UTC dateStr 15:59:59)', () => {
 		const payload = buildEventDatePayload({
 			id: 'lead-001',
 			eventDate: '2026-10-20'
 		});
-		expect(payload.end).toBe('2026-10-21T15:59:59Z');
+		expect(payload.end).toBe('2026-10-20T15:59:59Z');
 	});
 
 	it('title contains "Event Date"', () => {
@@ -231,10 +231,12 @@ describe('buildEventDatePayload (AC4)', () => {
 // manilaAllDayRange edge cases (supports AC3 + AC4)
 // ---------------------------------------------------------------------------
 describe('manilaAllDayRange', () => {
-	it('converts YYYY-MM-DD to correct UTC start/end bounds', () => {
+	it('converts YYYY-MM-DD to correct UTC bounds (Manila midnight = prev-day T16:00Z, end-of-day = same-day T15:59:59Z)', () => {
 		const { start, end } = manilaAllDayRange('2026-08-15');
-		expect(start).toBe('2026-08-15T16:00:00Z');
-		expect(end).toBe('2026-08-16T15:59:59Z');
+		// Manila midnight Aug 15 (UTC+8) = UTC Aug 14 16:00
+		expect(start).toBe('2026-08-14T16:00:00Z');
+		// Manila end-of-day Aug 15 = UTC Aug 15 15:59:59
+		expect(end).toBe('2026-08-15T15:59:59Z');
 	});
 });
 

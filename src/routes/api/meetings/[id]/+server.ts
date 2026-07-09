@@ -78,14 +78,19 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
 		throw error(403, 'Forbidden');
 	}
 
+	// CalDAV delete BEFORE soft-delete — prevents an orphaned Nextcloud event when the
+	// webhook fails (a soft-deleted meeting has no retry path since getMeeting filters deletedAt).
+	if (meeting.nextcloudUid) {
+		try {
+			await deleteMeetingFromNextcloud(meeting.id, meeting.nextcloudUid);
+		} catch (e) {
+			console.error('[NCAL-3] meeting delete sync failed:', e);
+			throw error(502, 'Calendar service unavailable');
+		}
+	}
+
 	const ok = await softDeleteMeeting(params.id);
 	if (!ok) throw error(404, 'Meeting not found');
-
-	if (meeting.nextcloudUid) {
-		void deleteMeetingFromNextcloud(meeting.id, meeting.nextcloudUid).catch((e) =>
-			console.error('[NCAL-3] meeting delete sync failed:', e)
-		);
-	}
 
 	return json({ ok: true });
 };

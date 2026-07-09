@@ -2130,5 +2130,8 @@ export async function updateLeadNextcloudUids(
 	id: string,
 	patch: { nextcloudGoLiveUid?: string | null; nextcloudEventUid?: string | null }
 ): Promise<void> {
-	await db.update(crmLeads).set(patch).where(eq(crmLeads.id, id));
+	await db
+		.update(crmLeads)
+		.set(patch)
+		.where(and(eq(crmLeads.id, id), isNull(crmLeads.deletedAt)));
 }

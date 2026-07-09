@@ -33,20 +33,22 @@ import type { Lead } from '$lib/types';
  * Converts a `YYYY-MM-DD` Manila calendar date to UTC start/end bounds.
  *
  * Manila is UTC+8 with no DST. Manila midnight on `dateStr` equals
- * `dateStr T16:00:00Z` (same UTC calendar date, 16:00). Manila 23:59:59
- * equals the NEXT UTC calendar date at `T15:59:59Z`.
+ * `(dateStr − 1 day) T16:00:00Z` in UTC (8 hours before local midnight).
+ * Manila 23:59:59 on `dateStr` equals `dateStr T15:59:59Z` in UTC.
  *
- * Example: `'2026-08-15'` → `{ start: '2026-08-15T16:00:00Z', end: '2026-08-16T15:59:59Z' }`
+ * Example: `'2026-08-15'` → `{ start: '2026-08-14T16:00:00Z', end: '2026-08-15T15:59:59Z' }`
  */
 export function manilaAllDayRange(dateStr: string): { start: string; end: string } {
-	const start = `${dateStr}T16:00:00Z`;
-
-	// Next UTC calendar day for the end bound.
-	const [year, month, day] = dateStr.split('-').map(Number);
-	const nextDay = new Date(Date.UTC(year, month - 1, day + 1));
 	const pad = (n: number) => String(n).padStart(2, '0');
-	const nextDateStr = `${nextDay.getUTCFullYear()}-${pad(nextDay.getUTCMonth() + 1)}-${pad(nextDay.getUTCDate())}`;
-	const end = `${nextDateStr}T15:59:59Z`;
+	const [year, month, day] = dateStr.split('-').map(Number);
+
+	// Manila midnight on dateStr = UTC (dateStr - 1 day) at T16:00:00Z
+	const prevDay = new Date(Date.UTC(year, month - 1, day - 1));
+	const prevDateStr = `${prevDay.getUTCFullYear()}-${pad(prevDay.getUTCMonth() + 1)}-${pad(prevDay.getUTCDate())}`;
+	const start = `${prevDateStr}T16:00:00Z`;
+
+	// Manila end-of-day on dateStr = UTC dateStr at T15:59:59Z
+	const end = `${dateStr}T15:59:59Z`;
 
 	return { start, end };
 }
@@ -56,8 +58,8 @@ export function manilaAllDayRange(dateStr: string): { start: string; end: string
  *
  * - Title is `"Meeting with {leadOrganizerName ?? leadName}"`, falling back to `'Team Meeting'`.
  * - End = startAt + 1 hour (no endAt column exists on crm_meetings).
- * - Embeds `CRM-HREF:/meetings/{id}` into the description via `embedCrmHref`.
- * - Also embeds the lead href into description when leadId is present.
+ * - Embeds `CRM-HREF:/leads/{leadId}` into the description (falls back to `/meetings/{id}`
+ *   when the meeting has no associated lead) via `embedCrmHref`.
  */
 export function buildMeetingPayload(meeting: {
 	id: string;
@@ -90,7 +92,9 @@ export function buildMeetingPayload(meeting: {
 	if (meeting.outcome) lines.push(`Outcome: ${meeting.outcome}`);
 
 	const body = lines.length ? lines.join('\n') : undefined;
-	const description = embedCrmHref(`/meetings/${meeting.id}`, body);
+	// Link back to the lead when available; fall back to the meeting URL for standalone meetings.
+	const crmHref = meeting.leadId ? `/leads/${meeting.leadId}` : `/meetings/${meeting.id}`;
+	const description = embedCrmHref(crmHref, body);
 
 	const label = meeting.leadOrganizerName ?? meeting.leadName ?? null;
 	const payload: CalendarEventPayload = {
@@ -100,6 +104,21 @@ export function buildMeetingPayload(meeting: {
 		end: endIso
 	};
 	if (meeting.venue != null) payload.location = meeting.venue;
+	if (description !== undefined) payload.description = description;
+	return payload;
+}
+
+/** Shared builder for lead all-day calendar events. */
+function buildLeadDatePayload(
+	lead: { id: string; organizerName?: string | null; eventName?: string | null },
+	dateStr: string,
+	titleSuffix: string
+): CalendarEventPayload {
+	const { start, end } = manilaAllDayRange(dateStr);
+	const label = lead.organizerName ?? lead.eventName ?? 'Lead';
+	const uid = crypto.randomUUID();
+	const description = embedCrmHref(`/leads/${lead.id}`, undefined);
+	const payload: CalendarEventPayload = { uid, title: `${label} — ${titleSuffix}`, start, end };
 	if (description !== undefined) payload.description = description;
 	return payload;
 }
@@ -114,18 +133,7 @@ export function buildGoLiveDatePayload(lead: {
 	eventName?: string | null;
 	goLiveDate: string;
 }): CalendarEventPayload {
-	const { start, end } = manilaAllDayRange(lead.goLiveDate);
-	const label = lead.organizerName ?? lead.eventName ?? 'Lead';
-	const uid = crypto.randomUUID();
-	const description = embedCrmHref(`/leads/${lead.id}`, undefined);
-	const payload: CalendarEventPayload = {
-		uid,
-		title: `${label} — Ticket Sale Start`,
-		start,
-		end
-	};
-	if (description !== undefined) payload.description = description;
-	return payload;
+	return buildLeadDatePayload(lead, lead.goLiveDate, 'Ticket Sale Start');
 }
 
 /**
@@ -138,18 +146,7 @@ export function buildEventDatePayload(lead: {
 	eventName?: string | null;
 	eventDate: string;
 }): CalendarEventPayload {
-	const { start, end } = manilaAllDayRange(lead.eventDate);
-	const label = lead.organizerName ?? lead.eventName ?? 'Lead';
-	const uid = crypto.randomUUID();
-	const description = embedCrmHref(`/leads/${lead.id}`, undefined);
-	const payload: CalendarEventPayload = {
-		uid,
-		title: `${label} — Event Date`,
-		start,
-		end
-	};
-	if (description !== undefined) payload.description = description;
-	return payload;
+	return buildLeadDatePayload(lead, lead.eventDate, 'Event Date');
 }
 
 // ---------------------------------------------------------------------------
@@ -285,7 +282,10 @@ export async function syncLeadDatesToNextcloud(
 		errors.push(e);
 	}
 
-	if (errors.length > 0) {
+	if (errors.length === 1) {
 		throw errors[0];
+	} else if (errors.length > 1) {
+		const msgs = errors.map((e) => (e instanceof Error ? e.message : String(e))).join('; ');
+		throw new Error(`Calendar sync failed (${errors.length} errors): ${msgs}`);
 	}
 }

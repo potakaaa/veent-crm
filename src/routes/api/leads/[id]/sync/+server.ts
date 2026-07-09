@@ -2,6 +2,7 @@ import { error, json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getLead } from '$lib/server/db/leads';
 import { syncLeadDatesToNextcloud } from '$lib/server/n8n/calendar-sync';
+import { CalDavWebhookError } from '$lib/caldav/writer';
 
 export const POST: RequestHandler = async ({ params, locals }) => {
 	if (!locals.user) throw error(401, 'Unauthorized');
@@ -20,7 +21,10 @@ export const POST: RequestHandler = async ({ params, locals }) => {
 		});
 		return json({ success: true });
 	} catch (e) {
-		console.error('[NCAL-3] manual lead sync failed:', e);
-		return json({ success: false, error: 'Calendar sync failed' }, { status: 502 });
+		if (e instanceof CalDavWebhookError) {
+			console.error('[NCAL-3] manual lead sync failed:', e);
+			return json({ success: false, error: 'Calendar sync failed' }, { status: 502 });
+		}
+		throw e;
 	}
 };

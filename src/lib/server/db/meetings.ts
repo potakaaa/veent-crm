@@ -441,7 +441,10 @@ export async function softDeleteMeeting(id: string): Promise<boolean> {
  * or clears it (null) after a successful CalDAV delete. Called by calendar-sync.ts only.
  */
 export async function updateMeetingNextcloudUid(id: string, uid: string | null): Promise<void> {
-	await db.update(crmMeetings).set({ nextcloudUid: uid }).where(eq(crmMeetings.id, id));
+	await db
+		.update(crmMeetings)
+		.set({ nextcloudUid: uid })
+		.where(and(eq(crmMeetings.id, id), isNull(crmMeetings.deletedAt)));
 }
 
 export async function searchVenues(q: string | null | undefined, limit = 20): Promise<string[]> {

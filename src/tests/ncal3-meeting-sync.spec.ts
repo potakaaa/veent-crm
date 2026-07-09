@@ -96,8 +96,13 @@ describe('buildMeetingPayload (AC2)', () => {
 		expect(payload.location).toBe('Makati Ballroom');
 	});
 
-	it('description contains CRM-HREF:/meetings/[id]', () => {
+	it('description contains CRM-HREF:/leads/[leadId] when leadId is present', () => {
 		const payload = buildMeetingPayload(BASE);
+		expect(payload.description).toContain('CRM-HREF:/leads/lead-456');
+	});
+
+	it('description falls back to CRM-HREF:/meetings/[id] when leadId is null', () => {
+		const payload = buildMeetingPayload({ ...BASE, leadId: null });
 		expect(payload.description).toContain('CRM-HREF:/meetings/mtg-123');
 	});
 

@@ -10,6 +10,7 @@ import { db } from './index';
 import { crmUsers, crmLeads, crmLeadHistory, crmLeadVisibilityGrants } from './schema';
 import { dbUserToUser } from './leads';
 import { isManager, isSuperManager } from '$lib/utils/permissions';
+import { formatFullName } from '$lib/utils/format-name';
 import type { Role, User } from '$lib/types';
 
 /**
@@ -35,14 +36,16 @@ export class PermissionError extends Error {
  * `promoteSuperManager`, which enforces the singleton invariant transactionally.
  */
 export async function createUser(input: {
-	name: string;
+	firstName: string;
+	lastName?: string | null;
 	email: string;
 	role: Role;
 }): Promise<User> {
 	const [row] = await db
 		.insert(crmUsers)
 		.values({
-			name: input.name,
+			firstName: input.firstName,
+			lastName: input.lastName ?? null,
 			email: input.email,
 			role: input.role
 		})
@@ -241,7 +244,17 @@ export function sessionToUser(u: {
 	id: string;
 	email: string;
 	name: string;
+	firstName: string;
+	lastName: string | null;
 	role: import('$lib/types').Role;
 }): User {
-	return { id: u.id, email: u.email, name: u.name, role: u.role, active: true };
+	return {
+		id: u.id,
+		email: u.email,
+		name: formatFullName(u.firstName, u.lastName),
+		firstName: u.firstName,
+		lastName: u.lastName,
+		role: u.role,
+		active: true
+	};
 }

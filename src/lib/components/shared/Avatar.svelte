@@ -1,9 +1,16 @@
 <script lang="ts">
-	import { avatarColor } from '$lib/design/tokens';
+	import { resolveAvatarColor } from '$lib/design/tokens';
 	import { Avatar, AvatarFallback } from '$lib/components/ui/avatar';
 
-	let { name, size = 'sm' }: { name: string | null | undefined; size?: 'sm' | 'md' | 'lg' } =
-		$props();
+	let {
+		name,
+		size = 'sm',
+		color
+	}: {
+		name: string | null | undefined;
+		size?: 'sm' | 'md' | 'lg';
+		color?: string | null;
+	} = $props();
 
 	const dim = $derived(
 		size === 'lg'
@@ -12,7 +19,7 @@
 				? 'size-7 text-[12px]'
 				: 'size-[22px] text-[10px]'
 	);
-	const hex = $derived(avatarColor(name));
+	const hex = $derived(resolveAvatarColor(color, name));
 </script>
 
 {#if name}

@@ -1,0 +1,95 @@
+{
+  "steps": [
+    {
+      "step": "Phase A — color hex accept/reject/null validation (userFormSchema)",
+      "command": "bun run test:unit -- src/tests/schemas.spec.ts",
+      "result": "PASS",
+      "notes": "65 tests passed incl. 6 new color cases: valid hex, uppercase hex, malformed (too short), non-hex string, null, omitted"
+    },
+    {
+      "step": "Phase A — typecheck after schema/type/zod changes",
+      "command": "bun run check",
+      "result": "PASS",
+      "notes": "0 errors, 6 pre-existing unrelated warnings"
+    },
+    {
+      "step": "Phase B — resolveAvatarColor branch coverage",
+      "command": "bun run test:unit -- src/tests/avatar-color.spec.ts",
+      "result": "PASS",
+      "notes": "3/3: stored-present, null-fallback, undefined-null-fallback"
+    },
+    {
+      "step": "Phase C — manager-only color authorization gate (4 cases)",
+      "command": "bun run test:unit -- src/tests/users-color-gate.spec.ts",
+      "result": "PASS",
+      "notes": "4/4: rep-self-403, rep-other-403, manager-other-200-with-color-threaded, invalid-hex-400"
+    },
+    {
+      "step": "Migration journal pre-check before generating 0034",
+      "command": "manual inspection of drizzle/meta/_journal.json + drizzle/ listing",
+      "result": "PASS",
+      "notes": "Confirmed idx===33 (0033_name_split_first_last) before adding idx 34. Discovered pre-existing drizzle-kit generate blocker (snapshot-chain drift, documented in process/general-plans/backlog/drizzle-migration-journal-drift_02-07-26.md) — same blocker #277 hit; followed the same hand-written-migration precedent (0033 also hand-written) for 0034."
+    },
+    {
+      "step": "Final regression — full typecheck",
+      "command": "bun run check",
+      "result": "PASS",
+      "notes": "0 errors after all phases (A-E)"
+    },
+    {
+      "step": "Final regression — full Vitest suite",
+      "command": "bun run test:unit:ci",
+      "result": "PASS",
+      "notes": "556 passed | 165 skipped (721 total) — up from prior baseline (>=263 target met); 1 pre-existing meetings.spec.ts assertion updated to include new organizerColor/leadOrganizerName/venue fields (additive, non-behavioral test fixture update)"
+    },
+    {
+      "step": "Final regression — lint (scoped to touched files)",
+      "command": "npx prettier --check <touched files> && npx eslint <touched files>",
+      "result": "PASS",
+      "notes": "Prettier auto-fixed formatting in 4 files (team/+page.svelte, PipelineBoard.svelte, LeadGrid.svelte, users-color-gate.spec.ts) via --write, then re-verified check+test green. ESLint clean, zero errors."
+    },
+    {
+      "step": "Live-DB migration apply + persistence round-trip",
+      "command": "bun run db:migrate",
+      "result": "SKIP",
+      "notes": "Asked orchestrator/user per plan's Live-DB Verification Flag — no live DB confirmation available in this session at EXECUTE time; deferred as the pre-accepted Hybrid known-gap (same class as manager-dashboard/calendar). Migration SQL is additive-nullable and safe to apply whenever a live/staging DB is confirmed."
+    },
+    {
+      "step": "Render-dimension verification (picker visibility, avatar render, accent-bar render, manager-only visual gating)",
+      "command": "N/A — no Svelte component-test harness, no shared Playwright auth fixture",
+      "result": "SKIP",
+      "notes": "Pre-accepted Known-Gap per validate-contract resolution D; backlog stub written (see Test Infra Gaps Found in phase report)."
+    }
+  ],
+  "evl_confirmation_run": {
+    "run_by": "vc-tester (EVL Step 3, independent re-verification)",
+    "date": "2026-07-09",
+    "gates": [
+      {
+        "command": "bun run check",
+        "result": "PASS",
+        "notes": "0 ERRORS, 6 pre-existing unrelated warnings (ImportWizard, leads/[id], pipeline, profile). Independently re-run — confirms execute-agent claim."
+      },
+      {
+        "command": "bun run test:unit:ci",
+        "result": "PASS",
+        "notes": "556 passed | 165 skipped (721). 0 failures. Confirms execute-agent's 556 claim exactly."
+      },
+      {
+        "command": "bun run lint",
+        "result": "FAIL (pre-existing drift only)",
+        "notes": "prettier --check exits 1 on 9 pre-existing UNRELATED files (package.json, caldav/*, organizers/[id], calendar test specs) — none are #275 files. All 15 #275-touched files pass `prettier --check` clean AND eslint clean when scoped. Failure is the documented repo-wide pre-existing prettier drift, not a #275 regression."
+      }
+    ],
+    "code_verification": {
+      "auth_asymmetry": "CONFIRMED CORRECT — self-branch rejects rep-self color (L42-44, requires isManagerRole); other-branch rejects rep-other color (L62-64); manager-other threads color into .set() (L74); name self-edit unaffected (only role/active rejected in self-branch).",
+      "auth_tests": "CONFIRMED REAL — 4 substantive assertions in users-color-gate.spec.ts (rep-self-403 + updateMock-not-called, rep-other-403 + updateMock-not-called, manager-other-200 + setMock-called-with-color, invalid-hex-400 + updateMock-not-called). Not stubs.",
+      "migration": "CONFIRMED SAFE — 0034_user_color.sql is a single additive `ALTER TABLE crm_users ADD COLUMN color text;`, no drops/NOT NULL/backfill. Journal idx 34 correctly appended after idx 33 (0033_name_split_first_last), no collision. NOTE: hand-written (not db:generate'd) due to documented pre-existing snapshot-chain drift — same precedent as 0033.",
+      "accent_bar": "CONFIRMED CORRECT — card div keeps `border border-hairline` unchanged, adds `relative`; accent bar (L139-145) is a distinct absolutely-positioned `<span class='absolute inset-y-0 left-0 w-[3px]'>` overlay, NOT inline border-left. VALIDATE concern C-D1 mitigation landed correctly; hairline border intact on all sides.",
+      "avatar_prop": "CONFIRMED — color? prop optional (L12); hex = resolveAvatarColor(color, name); backward-compatible fallback via `stored ?? avatarColor(name)` in tokens.ts (never throws).",
+      "call_sites": "CONFIRMED all 10 thread color — team roster(422), LeadGrid(159), ReassignModal(49), reports(453), leads/[id](553/588/1132), meetings/[id](192/210 organizer+attendee), PipelineBoard(185).",
+      "evidence_pack": "CONFIRMED — all 5 artifacts present and substantive under harness/; adversarial-validation.json documents 5 ruled-out scenarios incl. rep-bypass-manager-gate (direct PATCH), each tied to a Fully-Automated test.",
+      "backlog_stub": "CONFIRMED — process/features/team/backlog/user-colors-render-verification_NOTE_09-07-26.md documents render-dimension known-gap."
+    }
+  }
+}

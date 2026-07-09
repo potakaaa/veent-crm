@@ -5,6 +5,7 @@ import { eq, isNull, isNotNull, gte, lte, count, sum, and, sql } from 'drizzle-o
 import type { ReportData, FunnelStage, Currency, HeatmapDay, OutreachMetrics } from '$lib/types';
 import { getLeadHeatmapData } from '$lib/server/db/leads';
 import { currencyLabel } from '$lib/utils/currency';
+import { formatFullName } from '$lib/utils/format-name';
 
 const STAGE_META: Record<string, { label: string; color: string; order: number }> = {
 	new: { label: 'New', color: '#6366f1', order: 0 },
@@ -39,7 +40,12 @@ async function fetchReport(): Promise<ReportData> {
 			.where(and(isNull(crmLeads.deletedAt), eq(crmLeads.stage, 'won')))
 			.groupBy(crmLeads.ownerId),
 		db
-			.select({ id: crmUsers.id, name: crmUsers.name })
+			.select({
+				id: crmUsers.id,
+				firstName: crmUsers.firstName,
+				lastName: crmUsers.lastName,
+				color: crmUsers.color
+			})
 			.from(crmUsers)
 			.where(eq(crmUsers.active, true)),
 		db
@@ -83,7 +89,8 @@ async function fetchReport(): Promise<ReportData> {
 	const leaderboard = users
 		.map((u) => ({
 			repId: u.id,
-			name: u.name,
+			name: formatFullName(u.firstName, u.lastName),
+			color: u.color ?? null,
 			touches: touchMap[u.id]?.total ?? 0,
 			replies: touchMap[u.id]?.replies ?? 0,
 			wins: winMap[u.id] ?? 0
@@ -175,11 +182,21 @@ export const load: PageServerLoad = async ({ url }) => {
 	const to = rawTo && ISO_DATE.test(rawTo) ? rawTo : undefined;
 	const repId = url.searchParams.get('repId') || undefined;
 
-	const users = await db
-		.select({ id: crmUsers.id, name: crmUsers.name })
+	const userRows = await db
+		.select({
+			id: crmUsers.id,
+			firstName: crmUsers.firstName,
+			lastName: crmUsers.lastName,
+			color: crmUsers.color
+		})
 		.from(crmUsers)
 		.where(eq(crmUsers.active, true))
-		.orderBy(crmUsers.name);
+		.orderBy(crmUsers.firstName);
+	const users = userRows.map((u) => ({
+		id: u.id,
+		name: formatFullName(u.firstName, u.lastName),
+		color: u.color ?? null
+	}));
 
 	return {
 		heatMetric,

@@ -46,7 +46,7 @@
 						: ''}"
 					onclick={() => (selected = u.id)}
 				>
-					<Avatar name={u.name} size="md" />
+					<Avatar name={u.name} size="md" color={u.color} />
 					<span class="text-[13px] font-semibold">{u.name}</span>
 					<span class="ml-auto font-mono text-[11px] text-ink-300">{u.role}</span>
 				</Button>

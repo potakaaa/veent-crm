@@ -1,0 +1,6 @@
+{
+  "riskClass": "schema/data migration (HIGH) + public API contract/authorization (HIGH)",
+  "workDescription": "GitHub #275 — add nullable crm_users.color (migration 0034), manager-only PATCH /api/users/[id] color field with rep-blocked authorization gate, and thread stored color through Avatar.svelte + 10 render call sites incl. new Pipeline per-AE accent bar.",
+  "approver": "vc-execute-agent (session, delegated by orchestrator under outer-pvl CONDITIONAL acceptance)",
+  "mustStopBeforeFinalize": true
+}

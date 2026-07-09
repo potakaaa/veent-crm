@@ -1,0 +1,40 @@
+{
+  "snippets": [
+    {
+      "file": "src/lib/server/db/schema.ts",
+      "lines": "85-86",
+      "description": "Nullable additive color column on crmUsers",
+      "content": "// manager-editable display color (hex); null falls back to avatarColor(name) hash (GitHub #275)\ncolor: text('color'),"
+    },
+    {
+      "file": "drizzle/0034_user_color.sql",
+      "lines": "1-4",
+      "description": "Hand-written additive migration (drizzle-kit generate blocked by pre-existing snapshot-chain drift, same class as migration 0033/#277)",
+      "content": "ALTER TABLE \"crm_users\" ADD COLUMN \"color\" text;"
+    },
+    {
+      "file": "src/routes/api/users/[id]/+server.ts",
+      "lines": "18-30",
+      "description": "Self-branch: rep cannot set own color, mirrors role/active rejection",
+      "content": "if (isSelf) {\n  if (role !== undefined || active !== undefined) throw error(403, ...);\n  if (color !== undefined && !isManagerRole(locals.user.role)) throw error(403, 'Only managers can change color');\n}"
+    },
+    {
+      "file": "src/routes/api/users/[id]/+server.ts",
+      "lines": "32-58",
+      "description": "Other-branch: setting another user's color requires manager/super_manager (mirrors rename gate)",
+      "content": "if (color !== undefined && !isManagerRole(locals.user.role)) throw error(403, 'Forbidden');\n... set: { ...(color !== undefined ? { color } : {}) }"
+    },
+    {
+      "file": "src/lib/design/tokens.ts",
+      "lines": "108-113",
+      "description": "resolveAvatarColor pure fallback helper",
+      "content": "export const resolveAvatarColor = (stored, name) => stored ?? avatarColor(name);"
+    },
+    {
+      "file": "src/lib/components/pipeline/PipelineBoard.svelte",
+      "lines": "126-140",
+      "description": "Per-AE accent bar rendered as a distinct absolutely-positioned overlay element, NOT inline border-left, keeping the existing uniform hairline card border intact",
+      "content": "<div class=\"relative cursor-grab rounded-[10px] border border-hairline ...\">\n  {#if c.ownerId}<span class=\"absolute inset-y-0 left-0 w-[3px] rounded-l-[10px]\" style=\"background:{ownerColor(c.ownerId)}\" aria-hidden=\"true\"></span>{/if}"
+    }
+  ]
+}

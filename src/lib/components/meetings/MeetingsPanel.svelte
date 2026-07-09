@@ -248,8 +248,8 @@
 			return;
 		} finally {
 			mutating = false;
-			deleteTarget = null;
 		}
+		deleteTarget = null;
 		await invalidateAll();
 		toasts.success('Meeting deleted');
 	}

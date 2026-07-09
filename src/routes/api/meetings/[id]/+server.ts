@@ -9,6 +9,7 @@ import {
 } from '$lib/server/db/meetings';
 import { isManagerRole } from '$lib/utils/permissions';
 import { syncMeetingToNextcloud, deleteMeetingFromNextcloud } from '$lib/server/n8n/calendar-sync';
+import { CalDavWebhookError } from '$lib/caldav/writer';
 
 export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 	if (!locals.user) throw error(401, 'Unauthorized');
@@ -84,8 +85,12 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
 		try {
 			await deleteMeetingFromNextcloud(meeting.id, meeting.nextcloudUid);
 		} catch (e) {
-			console.error('[NCAL-3] meeting delete sync failed:', e);
-			throw error(502, 'Calendar service unavailable');
+			if (e instanceof CalDavWebhookError && e.upstreamStatus === 404) {
+				// Event already gone on Nextcloud — proceed with CRM soft-delete.
+			} else {
+				console.error('[NCAL-3] meeting delete sync failed:', e);
+				throw error(502, 'Calendar service unavailable');
+			}
 		}
 	}
 

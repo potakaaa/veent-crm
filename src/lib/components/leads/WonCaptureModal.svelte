@@ -3,9 +3,10 @@
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
 	import { Button } from '$lib/components/ui/button';
-	import { Select, SelectTrigger, SelectContent, SelectItem } from '$lib/components/ui/select';
-	import { CURRENCIES } from '$lib/zod/schemas';
-	import type { Currency, MoveStagePayload } from '$lib/types';
+	// TODO(#279): restore deal value + currency input once Done-stage revenue tagging (#273) ships
+	// import { Select, SelectTrigger, SelectContent, SelectItem } from '$lib/components/ui/select';
+	// import { CURRENCIES } from '$lib/zod/schemas';
+	import type { MoveStagePayload } from '$lib/types';
 
 	let {
 		open,
@@ -22,29 +23,30 @@
 	} = $props();
 
 	let signedOrg = $state('');
-	let dealValue = $state('');
-	let currency = $state<string>('PHP');
+	// TODO(#279): restore deal value + currency input once Done-stage revenue tagging (#273) ships
+	// let dealValue = $state('');
+	// let currency = $state<string>('PHP');
 	const manilaDate = () => new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Manila' });
 	let signedDate = $state(manilaDate());
 
 	$effect(() => {
 		if (open) {
 			signedOrg = leadName;
-			dealValue = '';
-			currency = 'PHP';
+			// TODO(#279): restore deal value + currency input once Done-stage revenue tagging (#273) ships
+			// dealValue = '';
+			// currency = 'PHP';
 			signedDate = manilaDate();
 		}
 	});
 
 	function confirm() {
-		const normalized = dealValue.replace(/[^0-9.]/g, '');
-		const parsedDealValue = normalized === '' ? undefined : Number(normalized);
-		if (parsedDealValue !== undefined && !Number.isFinite(parsedDealValue)) return;
+		// TODO(#279): restore deal value + currency input once Done-stage revenue tagging (#273) ships
+		// const normalized = dealValue.replace(/[^0-9.]/g, '');
+		// const parsedDealValue = normalized === '' ? undefined : Number(normalized);
+		// if (parsedDealValue !== undefined && !Number.isFinite(parsedDealValue)) return;
 
 		onconfirm({
 			wonOrgName: signedOrg.trim() || undefined,
-			dealValueCents: parsedDealValue !== undefined ? Math.round(parsedDealValue * 100) : undefined,
-			currency: currency as Currency,
 			signedAt: signedDate
 		});
 	}
@@ -60,6 +62,7 @@
 			class="font-mono"
 		/>
 	</div>
+	<!-- TODO(#279): restore deal value + currency input once Done-stage revenue tagging (#273) ships
 	<div class="mb-3.5 flex gap-3">
 		<div class="grid flex-1 gap-1.5">
 			<Label for="won-value"
@@ -77,6 +80,7 @@
 			</Select>
 		</div>
 	</div>
+	-->
 	<div class="grid gap-1.5">
 		<Label for="won-date"
 			>Signed date <span class="font-normal text-ink-400">(optional)</span></Label

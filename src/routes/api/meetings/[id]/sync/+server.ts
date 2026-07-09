@@ -25,9 +25,15 @@ export const POST: RequestHandler = async ({ params, locals }) => {
 		const uid = await syncMeetingToNextcloud({
 			id: meeting.id,
 			leadId: meeting.leadId ?? null,
+			leadName: meeting.leadName ?? null,
+			leadOrganizerName: meeting.leadOrganizerName ?? null,
+			organizerName: meeting.organizerName ?? null,
+			attendees: meeting.attendees,
+			meetingUrl: meeting.meetingUrl ?? null,
 			startAt: meeting.startAt,
 			venue: meeting.venue ?? null,
 			notes: meeting.notes ?? null,
+			outcome: meeting.outcome ?? null,
 			nextcloudUid: guard.nextcloudUid ?? null
 		});
 		return json({ success: true, uid });

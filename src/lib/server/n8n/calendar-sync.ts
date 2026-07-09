@@ -54,7 +54,7 @@ export function manilaAllDayRange(dateStr: string): { start: string; end: string
 /**
  * Builds a `CalendarEventPayload` for a CRM meeting.
  *
- * - Title is always `'Team Meeting'` (safe fixed fallback — meetings don't have a title field).
+ * - Title is `"Meeting with {leadOrganizerName ?? leadName}"`, falling back to `'Team Meeting'`.
  * - End = startAt + 1 hour (no endAt column exists on crm_meetings).
  * - Embeds `CRM-HREF:/meetings/{id}` into the description via `embedCrmHref`.
  * - Also embeds the lead href into description when leadId is present.
@@ -62,9 +62,15 @@ export function manilaAllDayRange(dateStr: string): { start: string; end: string
 export function buildMeetingPayload(meeting: {
 	id: string;
 	leadId: string | null;
+	leadName?: string | null;
+	leadOrganizerName?: string | null;
+	organizerName?: string | null;
+	attendees?: Array<{ name: string }>;
+	meetingUrl?: string | null;
 	startAt: Date | string;
 	venue: string | null | undefined;
 	notes: string | null | undefined;
+	outcome?: string | null;
 	nextcloudUid?: string | null;
 }): CalendarEventPayload {
 	const uid = meeting.nextcloudUid ?? crypto.randomUUID();
@@ -73,12 +79,23 @@ export function buildMeetingPayload(meeting: {
 	const endMs = new Date(startIso).getTime() + 60 * 60 * 1000;
 	const endIso = new Date(endMs).toISOString();
 
-	// Embed CRM-HREF:/meetings/{id} as the primary deep-link; notes are the base description.
-	const description = embedCrmHref(`/meetings/${meeting.id}`, meeting.notes ?? undefined);
+	// Build structured description body.
+	const lines: string[] = [];
+	if (meeting.organizerName) lines.push(`Host: ${meeting.organizerName}`);
+	if (meeting.attendees?.length) {
+		lines.push(`Attendees: ${meeting.attendees.map((a) => a.name).join(', ')}`);
+	}
+	if (meeting.meetingUrl) lines.push(`Meeting link: ${meeting.meetingUrl}`);
+	if (meeting.notes) lines.push(`Notes: ${meeting.notes}`);
+	if (meeting.outcome) lines.push(`Outcome: ${meeting.outcome}`);
 
+	const body = lines.length ? lines.join('\n') : undefined;
+	const description = embedCrmHref(`/meetings/${meeting.id}`, body);
+
+	const label = meeting.leadOrganizerName ?? meeting.leadName ?? null;
 	const payload: CalendarEventPayload = {
 		uid,
-		title: 'Team Meeting',
+		title: label ? `Meeting with ${label}` : 'Team Meeting',
 		start: startIso,
 		end: endIso
 	};
@@ -160,9 +177,15 @@ function withoutUid(payload: CalendarEventPayload): Omit<CalendarEventPayload, '
 export async function syncMeetingToNextcloud(meeting: {
 	id: string;
 	leadId: string | null;
+	leadName?: string | null;
+	leadOrganizerName?: string | null;
+	organizerName?: string | null;
+	attendees?: Array<{ name: string }>;
+	meetingUrl?: string | null;
 	startAt: Date | string;
 	venue: string | null | undefined;
 	notes: string | null | undefined;
+	outcome?: string | null;
 	nextcloudUid?: string | null;
 }): Promise<string> {
 	const payload = buildMeetingPayload(meeting);

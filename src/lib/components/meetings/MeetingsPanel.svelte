@@ -21,6 +21,7 @@
 	import { Skeleton } from '$lib/components/ui/skeleton';
 	import { isManagerRole } from '$lib/utils/permissions';
 	import type { Meeting, User } from '$lib/types';
+	import Modal from '$lib/components/shared/Modal.svelte';
 
 	let {
 		meetings,
@@ -161,6 +162,7 @@
 	let editing = $state<Meeting | null>(null);
 	let saving = $state(false);
 	let mutating = $state(false);
+	let deleteTarget = $state<Meeting | null>(null);
 
 	function canManage(m: Meeting): boolean {
 		return isManagerRole(me.role) || (m.organizerId != null && m.organizerId === me.id);
@@ -230,12 +232,12 @@
 		toasts.success(editingId ? 'Meeting updated' : 'Meeting created');
 	}
 
-	async function remove(m: Meeting) {
-		if (mutating) return;
-		if (!confirm('Delete this meeting?')) return;
+	async function confirmDelete() {
+		if (!deleteTarget || mutating) return;
 		mutating = true;
+		const target = deleteTarget;
 		try {
-			const res = await fetch(`/api/meetings/${m.id}`, { method: 'DELETE' });
+			const res = await fetch(`/api/meetings/${target.id}`, { method: 'DELETE' });
 			if (!res.ok) {
 				const msg = await res.text().catch(() => 'Server error');
 				toasts.push(`Delete failed: ${msg}`);
@@ -246,9 +248,10 @@
 			return;
 		} finally {
 			mutating = false;
+			deleteTarget = null;
 		}
 		await invalidateAll();
-		toasts.push('Meeting deleted');
+		toasts.success('Meeting deleted');
 	}
 </script>
 
@@ -503,7 +506,7 @@
 									disabled={mutating}
 									onclick={(e) => {
 										e.stopPropagation();
-										remove(m);
+										deleteTarget = m;
 									}}
 									class="rounded-control border border-hairline bg-panel px-2.5 py-1 text-[12px] font-medium text-red-500 hover:border-red-300 hover:bg-red-50 disabled:opacity-50"
 								>
@@ -542,3 +545,34 @@
 	}}
 	onsubmit={submit}
 />
+
+<Modal
+	open={!!deleteTarget}
+	title="Delete this meeting?"
+	width={420}
+	onclose={() => (deleteTarget = null)}
+>
+	<p class="text-[13.5px] leading-relaxed text-ink-600">
+		Are you sure you want to delete this meeting? This cannot be undone.
+	</p>
+	{#snippet footer()}
+		<Button
+			variant="outline"
+			class="flex-1"
+			onclick={() => (deleteTarget = null)}
+			disabled={mutating}
+		>
+			Cancel
+		</Button>
+		<Button
+			variant="destructive"
+			class="flex-[2]"
+			disabled={mutating}
+			loading={mutating}
+			loadingText="Deleting…"
+			onclick={confirmDelete}
+		>
+			Yes, delete
+		</Button>
+	{/snippet}
+</Modal>

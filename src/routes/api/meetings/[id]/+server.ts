@@ -1,7 +1,12 @@
 import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { meetingUpdateSchema } from '$lib/zod/schemas';
-import { getMeeting, updateMeeting, softDeleteMeeting } from '$lib/server/db/meetings';
+import {
+	getMeeting,
+	getMeetingDetail,
+	updateMeeting,
+	softDeleteMeeting
+} from '$lib/server/db/meetings';
 import { isManagerRole } from '$lib/utils/permissions';
 import { syncMeetingToNextcloud, deleteMeetingFromNextcloud } from '$lib/server/n8n/calendar-sync';
 
@@ -41,14 +46,25 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 
 	if (!updated) throw error(404, 'Meeting not found');
 
-	void syncMeetingToNextcloud({
-		id: updated.id,
-		leadId: updated.leadId,
-		startAt: updated.startAt,
-		venue: updated.venue ?? null,
-		notes: updated.notes ?? null,
-		nextcloudUid: meeting.nextcloudUid ?? null
-	}).catch((e) => console.error('[NCAL-3] meeting update sync failed:', e));
+	void getMeetingDetail(params.id)
+		.then((full) => {
+			if (!full) return;
+			return syncMeetingToNextcloud({
+				id: full.id,
+				leadId: full.leadId ?? null,
+				leadName: full.leadName ?? null,
+				leadOrganizerName: full.leadOrganizerName ?? null,
+				organizerName: full.organizerName ?? null,
+				attendees: full.attendees,
+				meetingUrl: full.meetingUrl ?? null,
+				startAt: full.startAt,
+				venue: full.venue ?? null,
+				notes: full.notes ?? null,
+				outcome: full.outcome ?? null,
+				nextcloudUid: meeting.nextcloudUid ?? null
+			});
+		})
+		.catch((e) => console.error('[NCAL-3] meeting update sync failed:', e));
 
 	return json(updated);
 };

@@ -1,0 +1,35 @@
+{
+  "phase": "EVL",
+  "run_type": "evl-confirmation",
+  "date": "2026-07-10",
+  "agent": "vc-tester",
+  "plan": "process/features/outreach-templates/active/outreach-templates-slash-tokens_10-07-26/outreach-templates-slash-tokens_PLAN_10-07-26.md",
+  "gates": [
+    {
+      "id": "G1",
+      "command": "bun run test:unit:ci",
+      "status": "PASS",
+      "detail": "61 files passed, 9 skipped; 704 tests passed, 172 skipped; 0 failures"
+    },
+    {
+      "id": "G2",
+      "command": "bun run check",
+      "status": "PASS",
+      "detail": "svelte-check: 0 ERRORS, 7 WARNINGS (all pre-existing state_referenced_locally in unrelated files, none in changed files)"
+    },
+    {
+      "id": "G3",
+      "command": "bun run seed-templates --dry-run",
+      "status": "PASS",
+      "detail": "9 legacy rows mapped, all bodies use /orgname + /event slash tokens, no DB connection opened"
+    }
+  ],
+  "content_spotchecks": {
+    "fillTemplate_ordering": "PASS - 5 brace + 5 slash replaceAll; /repfirst & /replast before /rep",
+    "AC4_ordering_test": "PASS - body '/repfirst /replast /rep', repName 'Jane Diaz'/repFirst 'Jane'/repLast 'Diaz', expected 'Jane Diaz Jane Diaz'; 7 original brace tests intact",
+    "seed_spec_positive_assert": "PASS - positively asserts bodies include /orgname and /event",
+    "seed_script_legacy_entries": "PASS - 9 bodies use /orgname//event; rewriteTokens() unchanged"
+  },
+  "overall": "DONE",
+  "discrepancies": "none"
+}

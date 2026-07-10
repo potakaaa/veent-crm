@@ -37,39 +37,39 @@ export type LegacyEntry = { label: string; body: string };
 export const LEGACY_ENTRIES: LegacyEntry[] = [
 	{
 		label: 'Warm intro',
-		body: "Hi! Following up from {{organizerName}} — saw you're organizing {{eventName}} and wanted to introduce our services."
+		body: "Hi! Following up from /orgname — saw you're organizing /event and wanted to introduce our services."
 	},
 	{
 		label: 'Referral opener',
-		body: 'Hey! Came across {{organizerName}} while looking into {{eventName}}. Would love to share how we can help.'
+		body: 'Hey! Came across /orgname while looking into /event. Would love to share how we can help.'
 	},
 	{
 		label: 'Short hello',
-		body: 'Hi from Veent! Noticed {{organizerName}} is behind {{eventName}} — mind if I share a quick overview?'
+		body: 'Hi from Veent! Noticed /orgname is behind /event — mind if I share a quick overview?'
 	},
 	{
 		label: 'Gentle check-in',
-		body: 'Hey, just checking in on {{eventName}} for {{organizerName}} — any updates on your end?'
+		body: 'Hey, just checking in on /event for /orgname — any updates on your end?'
 	},
 	{
 		label: 'Nudge after silence',
-		body: 'Circling back on {{eventName}} — happy to answer any questions {{organizerName}} still has.'
+		body: 'Circling back on /event — happy to answer any questions /orgname still has.'
 	},
 	{
 		label: 'Last touch',
-		body: 'Wanted to close the loop on {{eventName}} for {{organizerName}}. Should I follow up later or is now a good time?'
+		body: 'Wanted to close the loop on /event for /orgname. Should I follow up later or is now a good time?'
 	},
 	{
 		label: 'Pricing breakdown',
-		body: "Here's our pricing breakdown for {{eventName}}. Let me know if you'd like a custom quote for {{organizerName}}."
+		body: "Here's our pricing breakdown for /event. Let me know if you'd like a custom quote for /orgname."
 	},
 	{
 		label: 'Custom quote offer',
-		body: 'For {{eventName}}, I can put together a tailored quote for {{organizerName}} — what package size are you thinking?'
+		body: 'For /event, I can put together a tailored quote for /orgname — what package size are you thinking?'
 	},
 	{
 		label: 'Discount nudge',
-		body: 'Booking {{eventName}} early for {{organizerName}} unlocks our best rate — want me to send the details?'
+		body: 'Booking /event early for /orgname unlocks our best rate — want me to send the details?'
 	}
 ];
 

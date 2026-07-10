@@ -88,4 +88,48 @@ describe('fillTemplate (5-key signature)', () => {
 		});
 		expect(out).toBe('Regards, Jane Diaz');
 	});
+
+	it('fills all 5 slash tokens', () => {
+		const out = fillTemplate('/orgname /event /rep /repfirst /replast', {
+			organizerName: 'USWAG Davao',
+			eventName: 'Kadayawan Fair',
+			repName: 'Jane Diaz',
+			repFirstName: 'Jane',
+			repLastName: 'Diaz'
+		});
+		expect(out).toBe('USWAG Davao Kadayawan Fair Jane Diaz Jane Diaz');
+	});
+
+	it('fills a mixed old+new body', () => {
+		const out = fillTemplate('Hi {{organizerName}}, about /event — /rep', {
+			organizerName: 'Acme',
+			eventName: 'Expo',
+			repName: 'Sam',
+			repFirstName: 'Sam',
+			repLastName: ''
+		});
+		expect(out).toBe('Hi Acme, about Expo — Sam');
+	});
+
+	it('/rep does not corrupt /repfirst or /replast', () => {
+		const out = fillTemplate('/repfirst /replast /rep', {
+			organizerName: '',
+			eventName: '',
+			repName: 'Jane Diaz',
+			repFirstName: 'Jane',
+			repLastName: 'Diaz'
+		});
+		expect(out).toBe('Jane Diaz Jane Diaz');
+	});
+
+	it('unknown /slash token is left untouched', () => {
+		const out = fillTemplate('Ping /slash here', {
+			organizerName: 'X',
+			eventName: 'Y',
+			repName: 'Z',
+			repFirstName: 'Z',
+			repLastName: ''
+		});
+		expect(out).toBe('Ping /slash here');
+	});
 });

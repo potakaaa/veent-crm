@@ -1,7 +1,6 @@
 <script lang="ts">
-	import { goto, invalidateAll } from '$app/navigation';
-	import { navigating, page } from '$app/state';
-	import { SvelteURLSearchParams } from 'svelte/reactivity';
+	import { invalidateAll } from '$app/navigation';
+	import { navigating } from '$app/state';
 	import { makeSortTable } from '$lib/utils/tableSort';
 	import { Skeleton } from '$lib/components/ui/skeleton';
 	import PageHeader from '$lib/components/shared/PageHeader.svelte';
@@ -26,7 +25,8 @@
 	import { toasts } from '$lib/stores/toasts.svelte';
 	import { canManageUsers, isSuperManager, canPromoteToSuperManager } from '$lib/utils/permissions';
 	import { roleLabel, statusLabel } from '$lib/utils/roles';
-	import { userFormSchema, USER_ROLES } from '$lib/zod/schemas';
+	import { userFormSchema, userNameEditSchema, USER_ROLES } from '$lib/zod/schemas';
+	import { resolveAvatarColor } from '$lib/design/tokens';
 	import type { Role, User } from '$lib/types';
 
 	let { data } = $props();
@@ -35,53 +35,98 @@
 	const canPromote = $derived(canPromoteToSuperManager(data.currentUser));
 
 	const navLoading = $derived(navigating.to?.url.pathname === '/team');
-	let paging = $state(false);
-	$effect(() => {
-		if (!navigating.to) paging = false;
-	});
 
-	function navigate(patch: Record<string, string | number | boolean | undefined>) {
-		const params = new SvelteURLSearchParams(page.url.searchParams);
-		for (const [k, v] of Object.entries(patch)) {
-			if (v === undefined || v === '' || v === false || v === 0) {
-				params.delete(k);
+	// --- Per-section sort ----------------------------------------------------
+	// makeSortTable renders rows in the order it is given; the actual sort now
+	// happens client-side, per section, from local state (no URL persistence —
+	// 3 small role-partitioned lists don't need it).
+	type SectionSort = { sort: string; dir: 'asc' | 'desc' };
+	const SECTION_COLUMNS = [
+		{ id: 'name', header: 'Name' },
+		{ id: 'email', header: 'Email' },
+		{ id: 'active', header: 'Status' },
+		{ id: '_leads', header: 'Leads', enableSorting: false },
+		{ id: '_actions', header: '', enableSorting: false }
+	];
+
+	let sortSuper = $state<SectionSort>({ sort: 'name', dir: 'asc' });
+	let sortManagers = $state<SectionSort>({ sort: 'name', dir: 'asc' });
+	let sortReps = $state<SectionSort>({ sort: 'name', dir: 'asc' });
+
+	function sortRows(rows: User[], state: SectionSort): User[] {
+		const { sort, dir } = state;
+		const factor = dir === 'asc' ? 1 : -1;
+		return [...rows].sort((a, b) => {
+			// #261 — deactivated members always sort below active ones when sorting by any
+			// column other than Status itself. Sorting by Status is the one case where the
+			// chosen direction should actually control which group comes first — otherwise
+			// toggling that column's sort direction would be a no-op.
+			if (sort !== 'active' && a.active !== b.active) return a.active ? -1 : 1;
+			let av: string | number;
+			let bv: string | number;
+			if (sort === 'active') {
+				av = a.active ? 1 : 0;
+				bv = b.active ? 1 : 0;
 			} else {
-				params.set(k, String(v));
+				av = String((a as unknown as Record<string, unknown>)[sort] ?? '').toLowerCase();
+				bv = String((b as unknown as Record<string, unknown>)[sort] ?? '').toLowerCase();
 			}
-		}
-		goto(`?${params}`, { keepFocus: true });
+			if (av < bv) return -1 * factor;
+			if (av > bv) return 1 * factor;
+			return 0;
+		});
 	}
 
-	const table = $derived(
+	const superTable = $derived(
 		makeSortTable({
-			data: data.users,
-			columns: [
-				{ id: 'name', header: 'Name' },
-				{ id: 'email', header: 'Email' },
-				{ id: 'role', header: 'Role' },
-				{ id: 'active', header: 'Status' },
-				{ id: '_leads', header: 'Leads', enableSorting: false },
-				{ id: '_actions', header: '', enableSorting: false }
-			],
-			sort: data.sort ?? '',
-			dir: data.dir,
+			data: sortRows(data.superManager, sortSuper),
+			columns: SECTION_COLUMNS,
+			sort: sortSuper.sort,
+			dir: sortSuper.dir,
 			onToggle(id, descDir) {
-				navigate({ sort: id, dir: descDir ? 'desc' : 'asc', page: undefined });
+				sortSuper = { sort: id, dir: descDir ? 'desc' : 'asc' };
+			}
+		})
+	);
+
+	const managersTable = $derived(
+		makeSortTable({
+			data: sortRows(data.managers, sortManagers),
+			columns: SECTION_COLUMNS,
+			sort: sortManagers.sort,
+			dir: sortManagers.dir,
+			onToggle(id, descDir) {
+				sortManagers = { sort: id, dir: descDir ? 'desc' : 'asc' };
+			}
+		})
+	);
+
+	const repsTable = $derived(
+		makeSortTable({
+			data: sortRows(data.reps, sortReps),
+			columns: SECTION_COLUMNS,
+			sort: sortReps.sort,
+			dir: sortReps.dir,
+			onToggle(id, descDir) {
+				sortReps = { sort: id, dir: descDir ? 'desc' : 'asc' };
 			}
 		})
 	);
 
 	let addOpen = $state(false);
-	let name = $state('');
+	let firstName = $state('');
+	let lastName = $state('');
 	let email = $state('');
 	let role = $state<string>('rep');
+	// #227 — the add-user modal copy must reflect the selected role.
+	const addLabel = $derived(role === 'manager' ? 'Add a manager' : 'Add a rep');
 	let formError = $state('');
 	// Per-field validation errors for the add-a-rep form, keyed by userFormSchema
 	// field name (Phase 4 — shared field-error component).
 	let fieldErrors = $state<Record<string, string[] | undefined>>({});
 
 	async function addRep() {
-		const parsed = userFormSchema.safeParse({ name, email, role, active: true });
+		const parsed = userFormSchema.safeParse({ firstName, lastName, email, role, active: true });
 		if (!parsed.success) {
 			fieldErrors = parsed.error.flatten().fieldErrors as Record<string, string[] | undefined>;
 			formError = '';
@@ -92,7 +137,7 @@
 			const res = await fetch('/api/users', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ name, email, role })
+				body: JSON.stringify({ firstName, lastName, email, role })
 			});
 			if (res.status === 409) {
 				formError = 'This email is already registered.';
@@ -103,7 +148,7 @@
 				return;
 			}
 			addOpen = false;
-			name = email = formError = '';
+			firstName = lastName = email = formError = '';
 			fieldErrors = {};
 			role = 'rep';
 			await invalidateAll();
@@ -135,7 +180,7 @@
 			await invalidateAll();
 			toasts.push(
 				u.active
-					? `Deactivated ${u.name} — their workable leads moved to Up for grabs`
+					? `Deactivated ${u.name} — their workable leads moved to Unassigned Leads`
 					: `Reactivated ${u.name}`
 			);
 		} catch (err) {
@@ -151,6 +196,69 @@
 	let confirmRoleChange = $state<{ user: User; newRole: 'rep' | 'manager' } | null>(null);
 	let roleChanging = $state(false);
 	let deactivating = $state<Record<string, boolean>>({});
+
+	// --- Edit a team member's name + color (color is manager-only, GitHub #275) --
+	let editTarget = $state<User | null>(null);
+	let editFirstName = $state('');
+	let editLastName = $state('');
+	let editColor = $state('#9ca3af');
+	let editSaving = $state(false);
+	let editFieldErrors = $state<Record<string, string[] | undefined>>({});
+
+	function openEdit(u: User) {
+		editTarget = u;
+		editFirstName = u.firstName;
+		editLastName = u.lastName ?? '';
+		// Seed the native color input with a valid hex swatch even when no color
+		// is stored yet — <input type="color"> cannot represent null.
+		editColor = resolveAvatarColor(u.color, u.name);
+		editFieldErrors = {};
+	}
+
+	async function saveEditName() {
+		const target = editTarget;
+		if (!target) return;
+		const parsed = userNameEditSchema.safeParse({
+			firstName: editFirstName,
+			lastName: editLastName
+		});
+		if (!parsed.success) {
+			editFieldErrors = parsed.error.flatten().fieldErrors as Record<string, string[] | undefined>;
+			return;
+		}
+		editFieldErrors = {};
+		editSaving = true;
+		try {
+			const body: Record<string, unknown> = { firstName: editFirstName, lastName: editLastName };
+			// Color is manager-only — only send it when the actor can manage users,
+			// mirroring the endpoint's authorization gate (defense-in-depth, not the
+			// sole gate: the endpoint itself rejects reps regardless of this check).
+			if (canManage) body.color = editColor;
+			const res = await fetch(`/api/users/${target.id}`, {
+				method: 'PATCH',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(body)
+			});
+			if (!res.ok) {
+				toasts.push(
+					res.status === 403
+						? 'You do not have permission to do that.'
+						: `Unable to update ${target.name} — try again.`,
+					{ tone: 'warn' }
+				);
+				return;
+			}
+			editTarget = null;
+			await invalidateAll();
+			toasts.success('Member updated');
+		} catch (err) {
+			toasts.push(err instanceof Error ? err.message : `Unable to update ${target.name}`, {
+				tone: 'warn'
+			});
+		} finally {
+			editSaving = false;
+		}
+	}
 
 	async function applyRoleChange() {
 		const pending = confirmRoleChange;
@@ -225,7 +333,8 @@
 		{#snippet actions()}
 			{#if canManage}
 				<Button onclick={() => (addOpen = true)}>
-					<Icon name="plus" size={15} stroke={2.2} /> Add a rep
+					<Icon name="plus" size={15} stroke={2.2} />
+					{addLabel}
 				</Button>
 			{/if}
 		{/snippet}
@@ -240,203 +349,247 @@
 		</div>
 	{/if}
 
-	<Card class="gap-0 overflow-hidden rounded-control py-0">
-		<Table>
-			<TableHeader>
-				{#each table.getHeaderGroups() as headerGroup, i (i)}
-					<TableRow class="bg-[#faf9fb] hover:bg-[#faf9fb]">
-						{#each headerGroup.headers as header (header.id)}
-							{#if header.id === '_leads'}
-								<TableHead class="text-right">{header.column.columnDef.header}</TableHead>
-							{:else if header.id === '_actions'}
-								<TableHead></TableHead>
-							{:else if header.column.getCanSort()}
-								<TableHead
-									aria-sort={header.column.getIsSorted() === 'asc'
-										? 'ascending'
-										: header.column.getIsSorted() === 'desc'
-											? 'descending'
-											: 'none'}
-								>
-									<button
-										onclick={header.column.getToggleSortingHandler()}
-										class={header.column.getIsSorted()
-											? 'cursor-pointer font-semibold text-ink-600 underline underline-offset-2'
-											: 'cursor-pointer text-ink-300 hover:text-ink-600 hover:underline hover:underline-offset-2'}
-									>
-										{header.column.columnDef.header}{header.column.getIsSorted() === 'asc'
-											? ' ↑'
+	{#snippet sectionTable(
+		tbl: ReturnType<typeof makeSortTable<User>>,
+		rowCount: number,
+		emptyKind: 'plain' | 'super',
+		emptyMsg: string
+	)}
+		<Card class="gap-0 overflow-hidden rounded-control py-0">
+			<Table>
+				<TableHeader>
+					{#each tbl.getHeaderGroups() as headerGroup, i (i)}
+						<TableRow class="bg-[#faf9fb] hover:bg-[#faf9fb]">
+							{#each headerGroup.headers as header (header.id)}
+								{#if header.id === '_leads'}
+									<TableHead class="text-right">{header.column.columnDef.header}</TableHead>
+								{:else if header.id === '_actions'}
+									<TableHead></TableHead>
+								{:else if header.column.getCanSort()}
+									<TableHead
+										aria-sort={header.column.getIsSorted() === 'asc'
+											? 'ascending'
 											: header.column.getIsSorted() === 'desc'
-												? ' ↓'
-												: ''}
-									</button>
-								</TableHead>
-							{:else}
-								<TableHead>{header.column.columnDef.header}</TableHead>
-							{/if}
-						{/each}
-					</TableRow>
-				{/each}
-			</TableHeader>
-			<TableBody>
-				{#if navLoading}
-					{#each Array(6) as _, i (i)}
-						<TableRow>
-							{#each Array(6) as _, c (c)}
-								<TableCell><Skeleton class="h-3.5 w-full" /></TableCell>
+												? 'descending'
+												: 'none'}
+									>
+										<button
+											onclick={header.column.getToggleSortingHandler()}
+											class={header.column.getIsSorted()
+												? 'cursor-pointer font-semibold text-ink-600 underline underline-offset-2'
+												: 'cursor-pointer text-ink-300 hover:text-ink-600 hover:underline hover:underline-offset-2'}
+										>
+											{header.column.columnDef.header}{header.column.getIsSorted() === 'asc'
+												? ' ↑'
+												: header.column.getIsSorted() === 'desc'
+													? ' ↓'
+													: ''}
+										</button>
+									</TableHead>
+								{:else}
+									<TableHead>{header.column.columnDef.header}</TableHead>
+								{/if}
 							{/each}
 						</TableRow>
 					{/each}
-				{:else}
-					{#each table.getRowModel().rows as row (row.original.id)}
-						{@const u = row.original}
-						<TableRow style="opacity:{u.active ? 1 : 0.55}">
-							<TableCell>
-								<div class="flex items-center gap-2.5">
-									<Avatar name={u.name} size="md" />
-									<span class="text-[13px] font-semibold">{u.name}</span>
-								</div>
-							</TableCell>
-							<TableCell class="font-mono text-[12px] text-ink-600">{u.email}</TableCell>
-							<TableCell>
-								<Badge
-									variant="outline"
-									class="font-mono text-[11px]"
-									style={u.role === 'super_manager'
-										? 'color:#7c3aed;background:#f3effe;border-color:transparent'
-										: u.role === 'manager'
-											? 'color:#e11d2a;background:#fdeceb;border-color:transparent'
-											: 'color:#6b6470;background:#f1eff3;border-color:transparent'}
-								>
-									{roleLabel(u.role)}
-								</Badge>
-							</TableCell>
-							<TableCell>
-								<Badge
-									variant="outline"
-									class="font-mono text-[11px]"
-									style={u.active
-										? 'color:#059669;background:#f0fbf5;border-color:transparent'
-										: 'color:#b7b1bc;background:#f1eff3;border-color:transparent'}
-								>
-									{statusLabel(u.active)}
-								</Badge>
-							</TableCell>
-							<TableCell class="text-right font-mono text-[13px]">{u.leadCount ?? '—'}</TableCell>
-							<TableCell class="text-right">
-								{#if canManage}
-									{@const isSelf = u.id === data.currentUser.id}
-									<div class="flex items-center justify-end gap-2">
-										{#if isSuper && u.role === 'rep'}
-											<Button
-												variant="outline"
-												size="icon"
-												title="Promote to Manager"
-												onclick={() => (confirmRoleChange = { user: u, newRole: 'manager' })}
-											>
-												<Icon name="arrowUp" size={14} stroke={2.2} />
-											</Button>
-										{/if}
-										{#if isSuper && u.role === 'manager'}
-											<Button
-												variant="outline"
-												size="icon"
-												title="Demote to Rep"
-												onclick={() => (confirmRoleChange = { user: u, newRole: 'rep' })}
-											>
-												<Icon name="arrowDown" size={14} stroke={2.2} />
-											</Button>
-										{/if}
-										{#if canPromote && u.role === 'manager' && u.active}
-											<Button
-												variant="outline"
-												size="icon"
-												title="Promote to Super Manager"
-												onclick={() => (promoteTarget = u)}
-											>
-												<Icon name="crown" size={14} stroke={2} />
-											</Button>
-										{/if}
-										<!-- Deactivate/reactivate: reps always (for a manager); managers &
-										     super_managers only by a super_manager, never on themselves. -->
-										{#if u.role === 'rep' || (isSuper && !isSelf)}
-											<Button
-												variant="outline"
-												size="sm"
-												disabled={deactivating[u.id]}
-												onclick={() => toggleActive(u)}
-											>
-												{#if deactivating[u.id]}
-													{u.active ? 'Deactivating…' : 'Reactivating…'}
-												{:else}
-													{u.active ? 'Deactivate' : 'Reactivate'}
-												{/if}
-											</Button>
-										{/if}
-									</div>
-								{/if}
+				</TableHeader>
+				<TableBody>
+					{#if navLoading}
+						{#each Array(3) as _, i (i)}
+							<TableRow>
+								{#each Array(5) as _, c (c)}
+									<TableCell><Skeleton class="h-3.5 w-full" /></TableCell>
+								{/each}
+							</TableRow>
+						{/each}
+					{:else if rowCount === 0}
+						<TableRow class="hover:bg-transparent">
+							<TableCell
+								colspan={5}
+								class={emptyKind === 'super'
+									? 'py-4 text-center text-[13px] text-ink-500'
+									: 'py-3.5 text-center text-[12.5px] text-ink-200'}
+							>
+								{emptyMsg}
 							</TableCell>
 						</TableRow>
-					{/each}
-				{/if}
-			</TableBody>
-		</Table>
-	</Card>
+					{:else}
+						{#each tbl.getRowModel().rows as row (row.original.id)}
+							{@const u = row.original}
+							<TableRow style="opacity:{u.active ? 1 : 0.55}">
+								<TableCell>
+									<div class="flex items-center gap-2.5">
+										<Avatar name={u.name} size="md" color={u.color} />
+										<span class="text-[13px] font-semibold">{u.name}</span>
+									</div>
+								</TableCell>
+								<TableCell class="font-mono text-[12px] text-ink-600">{u.email}</TableCell>
+								<TableCell>
+									<Badge
+										variant="outline"
+										class="font-mono text-[11px]"
+										style={u.active
+											? 'color:#059669;background:#f0fbf5;border-color:transparent'
+											: 'color:#b7b1bc;background:#f1eff3;border-color:transparent'}
+									>
+										{statusLabel(u.active)}
+									</Badge>
+								</TableCell>
+								<TableCell class="text-right font-mono text-[13px]">{u.leadCount ?? '—'}</TableCell>
+								<TableCell class="text-right">
+									{#if canManage}
+										{@const isSelf = u.id === data.currentUser.id}
+										<div class="flex items-center justify-end gap-2">
+											<Button
+												variant="outline"
+												size="icon"
+												title="Edit name"
+												onclick={() => openEdit(u)}
+											>
+												<Icon name="edit" size={14} stroke={2.2} />
+											</Button>
+											{#if isSuper && u.role === 'rep'}
+												<Button
+													variant="outline"
+													size="icon"
+													title="Promote to Manager"
+													onclick={() => (confirmRoleChange = { user: u, newRole: 'manager' })}
+												>
+													<Icon name="arrowUp" size={14} stroke={2.2} />
+												</Button>
+											{/if}
+											{#if isSuper && u.role === 'manager'}
+												<Button
+													variant="outline"
+													size="icon"
+													title="Demote to Rep"
+													onclick={() => (confirmRoleChange = { user: u, newRole: 'rep' })}
+												>
+													<Icon name="arrowDown" size={14} stroke={2.2} />
+												</Button>
+											{/if}
+											{#if canPromote && u.role === 'manager' && u.active}
+												<Button
+													variant="outline"
+													size="icon"
+													title="Promote to Super Manager"
+													onclick={() => (promoteTarget = u)}
+												>
+													<Icon name="crown" size={14} stroke={2} />
+												</Button>
+											{/if}
+											<!-- Deactivate/reactivate: reps always (for a manager); managers &
+											     super_managers only by a super_manager, never on themselves. -->
+											{#if u.role === 'rep' || (isSuper && !isSelf)}
+												<Button
+													variant="outline"
+													size="sm"
+													disabled={deactivating[u.id]}
+													onclick={() => toggleActive(u)}
+												>
+													{#if deactivating[u.id]}
+														{u.active ? 'Deactivating…' : 'Reactivating…'}
+													{:else}
+														{u.active ? 'Deactivate' : 'Reactivate'}
+													{/if}
+												</Button>
+											{/if}
+										</div>
+									{/if}
+								</TableCell>
+							</TableRow>
+						{/each}
+					{/if}
+				</TableBody>
+			</Table>
+		</Card>
+	{/snippet}
 
-	{#if data.pagination.totalPages > 1}
-		{@const { page: pg, pageSize, total, totalPages } = data.pagination}
-		{@const start = (pg - 1) * pageSize + 1}
-		{@const end = Math.min(pg * pageSize, total)}
-		<div class="mt-5 flex items-center justify-between text-[13px] text-ink-300">
-			<span class="font-mono">{start}–{end} of {total}</span>
-			<div class="flex items-center gap-2">
-				<Button
-					variant="outline"
-					size="sm"
-					disabled={pg <= 1 || paging}
-					onclick={() => {
-						paging = true;
-						navigate({ page: pg - 1 });
-					}}>← Prev</Button
-				>
-				<span class="font-mono">Page {pg} of {totalPages}</span>
-				<Button
-					variant="outline"
-					size="sm"
-					disabled={pg >= totalPages || paging}
-					onclick={() => {
-						paging = true;
-						navigate({ page: pg + 1 });
-					}}>Next →</Button
-				>
-			</div>
+	<!-- Super Manager -->
+	<div class="mb-5">
+		<div class="mb-2.5 flex flex-wrap items-center gap-x-2.5 gap-y-1">
+			<span class="h-2 w-2 shrink-0 rounded-full" style="background:#7c3aed"></span>
+			<Icon name="crown" size={15} stroke={2} />
+			<h2 class="whitespace-nowrap font-serif text-[15px] font-semibold text-ink">Super Manager</h2>
+			<span
+				class="shrink-0 rounded-[5px] bg-panel-sunken px-[7px] py-0.5 font-mono text-[11px] text-ink-300"
+				>{data.superManager.length}</span
+			>
 		</div>
-	{/if}
+		<div class="overflow-x-auto">
+			{@render sectionTable(
+				superTable,
+				data.superManager.length,
+				'super',
+				'No Super Manager assigned — promote a manager below.'
+			)}
+		</div>
+	</div>
+
+	<!-- Managers -->
+	<div class="mb-5">
+		<div class="mb-2.5 flex flex-wrap items-center gap-x-2.5 gap-y-1">
+			<span class="h-2 w-2 shrink-0 rounded-full" style="background:#e11d2a"></span>
+			<h2 class="whitespace-nowrap font-serif text-[15px] font-semibold text-ink">Managers</h2>
+			<span
+				class="shrink-0 rounded-[5px] bg-panel-sunken px-[7px] py-0.5 font-mono text-[11px] text-ink-300"
+				>{data.managers.length}</span
+			>
+		</div>
+		<div class="overflow-x-auto">
+			{@render sectionTable(managersTable, data.managers.length, 'plain', 'No managers yet')}
+		</div>
+	</div>
+
+	<!-- Reps -->
+	<div class="mb-5">
+		<div class="mb-2.5 flex flex-wrap items-center gap-x-2.5 gap-y-1">
+			<span class="h-2 w-2 shrink-0 rounded-full" style="background:#6b6470"></span>
+			<h2 class="whitespace-nowrap font-serif text-[15px] font-semibold text-ink">Reps</h2>
+			<span
+				class="shrink-0 rounded-[5px] bg-panel-sunken px-[7px] py-0.5 font-mono text-[11px] text-ink-300"
+				>{data.reps.length}</span
+			>
+		</div>
+		<div class="overflow-x-auto">
+			{@render sectionTable(repsTable, data.reps.length, 'plain', 'No reps yet')}
+		</div>
+	</div>
 
 	<div class="mt-3.5 flex items-center gap-2 text-[12.5px] text-ink-200">
 		<Icon name="info" size={14} stroke={2} />
 		Deactivating a rep keeps their history but moves their workable leads to
-		<a href="/unassigned" class="font-semibold text-primary">Up for grabs</a>.
+		<a href="/unassigned" class="font-semibold text-primary">Unassigned Leads</a>.
 	</div>
 </div>
 
 <Modal
 	open={addOpen}
-	title="Add a rep"
+	title={addLabel}
 	subtitle="They'll receive a welcome email with a sign-in link."
 	width={420}
 	onclose={() => (addOpen = false)}
 >
 	<div class="flex flex-col gap-3">
 		<div class="grid gap-1.5">
-			<Label for="rep-name">Name</Label>
+			<Label for="rep-first-name">First name</Label>
 			<Input
-				id="rep-name"
-				bind:value={name}
+				id="rep-first-name"
+				bind:value={firstName}
 				placeholder="Marites"
-				{...fieldErrorAttrs('rep-name', fieldErrors.name)}
+				{...fieldErrorAttrs('rep-first-name', fieldErrors.firstName)}
 			/>
-			<FieldError id="rep-name" errors={fieldErrors.name} />
+			<FieldError id="rep-first-name" errors={fieldErrors.firstName} />
+		</div>
+		<div class="grid gap-1.5">
+			<Label for="rep-last-name">Last name (optional)</Label>
+			<Input
+				id="rep-last-name"
+				bind:value={lastName}
+				placeholder="Santos"
+				{...fieldErrorAttrs('rep-last-name', fieldErrors.lastName)}
+			/>
+			<FieldError id="rep-last-name" errors={fieldErrors.lastName} />
 		</div>
 		<div class="grid gap-1.5">
 			<Label for="rep-email">Work email</Label>
@@ -465,7 +618,7 @@
 	</div>
 	{#snippet footer()}
 		<Button variant="outline" class="flex-1" onclick={() => (addOpen = false)}>Cancel</Button>
-		<Button class="flex-[2]" onclick={addRep}>Add rep</Button>
+		<Button class="flex-[2]" onclick={addRep}>{addLabel}</Button>
 	{/snippet}
 </Modal>
 
@@ -508,6 +661,53 @@
 		<Button variant="outline" class="flex-1" onclick={() => (promoteTarget = null)}>Cancel</Button>
 		<Button class="flex-[2]" onclick={confirmPromote} disabled={promoting}>
 			{promoting ? 'Transferring…' : 'Transfer role'}
+		</Button>
+	{/snippet}
+</Modal>
+
+<Modal
+	open={editTarget !== null}
+	title="Edit member"
+	width={420}
+	onclose={() => (editTarget = null)}
+>
+	<div class="flex flex-col gap-3">
+		<div class="grid gap-1.5">
+			<Label for="edit-first-name">First name</Label>
+			<Input
+				id="edit-first-name"
+				bind:value={editFirstName}
+				placeholder="Marites"
+				{...fieldErrorAttrs('edit-first-name', editFieldErrors.firstName)}
+			/>
+			<FieldError id="edit-first-name" errors={editFieldErrors.firstName} />
+		</div>
+		<div class="grid gap-1.5">
+			<Label for="edit-last-name">Last name (optional)</Label>
+			<Input
+				id="edit-last-name"
+				bind:value={editLastName}
+				placeholder="Santos"
+				{...fieldErrorAttrs('edit-last-name', editFieldErrors.lastName)}
+			/>
+			<FieldError id="edit-last-name" errors={editFieldErrors.lastName} />
+		</div>
+		{#if canManage}
+			<div class="grid gap-1.5">
+				<Label for="edit-color">Display color</Label>
+				<input
+					id="edit-color"
+					type="color"
+					bind:value={editColor}
+					class="h-9 w-16 cursor-pointer rounded-control border border-border bg-transparent p-0.5"
+				/>
+			</div>
+		{/if}
+	</div>
+	{#snippet footer()}
+		<Button variant="outline" class="flex-1" onclick={() => (editTarget = null)}>Cancel</Button>
+		<Button class="flex-[2]" onclick={saveEditName} disabled={editSaving}>
+			{editSaving ? 'Saving…' : 'Save'}
 		</Button>
 	{/snippet}
 </Modal>

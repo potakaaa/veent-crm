@@ -22,6 +22,7 @@ export const STAGE_TOKENS = [
 	},
 	{ key: 'won', label: 'Won', color: 'var(--color-stage-won)', hex: '#059669' },
 	{ key: 'live', label: 'Live', color: 'var(--color-stage-live)', hex: '#16a34a' },
+	{ key: 'done', label: 'Done', color: 'var(--color-stage-done)', hex: '#0891b2' },
 	{ key: 'lost', label: 'Lost', color: 'var(--color-stage-lost)', hex: '#9ca3af' }
 ] as const;
 
@@ -65,8 +66,8 @@ export const OUTCOME_TOKENS: Record<string, { label: string; hex: string }> = {
 };
 
 /**
- * Message-template / lead category accents — one curated hue per `LEAD_CATEGORIES`
- * entry (see `src/lib/zod/schemas.ts`). Desaturated "-600" tones spread across the
+ * Message-template / lead category accents — one curated hue per `TEMPLATE_CATEGORIES`
+ * entry (see `src/lib/data/template-categories.ts`). Desaturated "-600" tones spread across the
  * hue wheel, matching the weight of `STAGE_TOKENS` above. Pure red is intentionally
  * excluded (reserved for `--color-primary` / `--color-overdue`) so a category chip
  * is never mistaken for a signal/brand color.
@@ -104,3 +105,12 @@ export const avatarColor = (name: string | null | undefined): string => {
 	for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
 	return AVATAR_PALETTE[h % AVATAR_PALETTE.length];
 };
+
+/**
+ * Resolve the display color for a user: prefer the manager-set stored color
+ * (GitHub #275), else fall back to the deterministic name hash. Never throws.
+ */
+export const resolveAvatarColor = (
+	stored: string | null | undefined,
+	name: string | null | undefined
+): string => stored ?? avatarColor(name);

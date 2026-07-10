@@ -1,0 +1,17 @@
+{
+  "task": "NCAL-2 CalDAV write client (#252)",
+  "result": "PASS",
+  "commands": [
+    { "command": "bun run check", "result": "PASS", "notes": "0 errors, 2560 files; 5 pre-existing warnings in unrelated files." },
+    { "command": "bun run test:unit:ci", "result": "PASS", "notes": "50 files passed, 544 tests passed, 165 skipped (pre-existing self-skips)." },
+    { "command": "bun run test:unit -- src/tests/caldav-parser.spec.ts", "result": "PASS", "notes": "NCAL-1 regression; URL:-only fixture assertion updated to url:null per E1 (deliberate contract change)." },
+    { "command": "bun run test:unit -- src/tests/caldav-writer.spec.ts", "result": "PASS", "notes": "AC4/AC5/AC6/AC9-unit — request shape, error-leak invariant, schema rejection." }
+  ],
+  "manualChecks": [
+    { "check": "CalDavWebhookError message is a fixed client-safe constant; secret/URL/upstream body never attached", "result": "PASS", "notes": "Verified by reading writer.ts + AC5 assertions (serialized error contains no secret/URL/upstream text)." },
+    { "check": "Session gate (if (!locals.user) throw error(401)) is the FIRST statement in POST, PUT, DELETE", "result": "PASS", "notes": "Confirmed by reading both route files." },
+    { "check": "Every writer throw maps to error(502, 'Calendar service unavailable') — no upstream status/body echoed", "result": "PASS", "notes": "Confirmed in all 3 handlers." },
+    { "check": "Env read via $env/dynamic/private, never process.env", "result": "PASS", "notes": "constants.ts n8n accessors use env from $env/dynamic/private." },
+    { "check": "Route-layer 401/400/502 end-to-end (AC7/AC8/AC9-route/AC10)", "result": "SKIP", "notes": "Pre-accepted Agent-Probe known-gaps; blocked on shared Playwright auth fixture + live CalDAV harness. Recorded as self-skipping e2e/caldav-write.e2e.ts." }
+  ]
+}

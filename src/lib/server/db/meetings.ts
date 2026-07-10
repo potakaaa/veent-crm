@@ -6,10 +6,11 @@
  * `inArray` query for attendees, grouped in memory.
  */
 import { db } from './index';
-import { crmMeetings, crmMeetingAttendees, crmUsers, crmLeads } from './schema';
-import { eq, and, isNull, desc, asc, inArray, count, sql } from 'drizzle-orm';
+import { crmMeetings, crmMeetingAttendees, crmUsers, crmLeads, crmOrganizers } from './schema';
+import { eq, and, isNull, isNotNull, desc, asc, inArray, count, sql, ilike } from 'drizzle-orm';
 import type { SQL } from 'drizzle-orm';
 import type { Meeting, MeetingAttendee } from '$lib/types';
+import { formatFullName } from '$lib/utils/format-name';
 
 type DbMeeting = typeof crmMeetings.$inferSelect;
 
@@ -25,6 +26,7 @@ export interface MeetingListFilters {
 	dateFrom?: string;
 	dateTo?: string;
 	sortDir?: 'asc' | 'desc';
+	outcome?: string;
 }
 
 /**
@@ -48,6 +50,7 @@ export function parseMeetingFilterParams(
 	dateFrom?: string;
 	dateTo?: string;
 	sortDir: 'asc' | 'desc';
+	outcome?: string;
 } {
 	const rawOrganizer = searchParams.get('organizer');
 	const organizerId =
@@ -70,7 +73,11 @@ export function parseMeetingFilterParams(
 
 	const sortDir: 'asc' | 'desc' = searchParams.get('sortDir') === 'asc' ? 'asc' : 'desc';
 
-	return { organizerId, leadId, dateFrom, dateTo, sortDir };
+	// Free-text outcome filter: trim and coerce empty → undefined (mirrors dateFrom/dateTo).
+	const rawOutcome = searchParams.get('outcome')?.trim();
+	const outcome = rawOutcome ? rawOutcome : undefined;
+
+	return { organizerId, leadId, dateFrom, dateTo, sortDir, outcome };
 }
 
 // ---------------------------------------------------------------------------
@@ -81,7 +88,9 @@ export function dbRowToMeeting(
 	row: DbMeeting,
 	attendees: MeetingAttendee[],
 	organizerName?: string | null,
-	leadName?: string | null
+	leadName?: string | null,
+	leadOrganizerName?: string | null,
+	organizerColor?: string | null
 ): Meeting {
 	return {
 		id: row.id,
@@ -89,8 +98,12 @@ export function dbRowToMeeting(
 		leadName: leadName ?? undefined,
 		organizerId: row.organizerId,
 		organizerName: organizerName ?? undefined,
+		organizerColor: organizerColor ?? null,
+		leadOrganizerId: row.leadOrganizerId ?? null,
+		leadOrganizerName: leadOrganizerName ?? undefined,
 		startAt: row.startAt.toISOString(),
 		meetingUrl: row.meetingUrl ?? undefined,
+		venue: row.venue ?? undefined,
 		notes: row.notes ?? undefined,
 		outcome: row.outcome ?? undefined,
 		attendees,
@@ -114,7 +127,9 @@ async function attendeesByMeeting(meetingIds: string[]): Promise<Map<string, Mee
 		.select({
 			meetingId: crmMeetingAttendees.meetingId,
 			userId: crmMeetingAttendees.userId,
-			name: crmUsers.name
+			firstName: crmUsers.firstName,
+			lastName: crmUsers.lastName,
+			color: crmUsers.color
 		})
 		.from(crmMeetingAttendees)
 		.leftJoin(crmUsers, eq(crmMeetingAttendees.userId, crmUsers.id))
@@ -123,7 +138,11 @@ async function attendeesByMeeting(meetingIds: string[]): Promise<Map<string, Mee
 	for (const r of rows) {
 		if (!r.userId) continue; // organizer/attendee set-null after user removal
 		const list = map.get(r.meetingId) ?? [];
-		list.push({ userId: r.userId, name: r.name ?? '' });
+		list.push({
+			userId: r.userId,
+			name: r.firstName ? formatFullName(r.firstName, r.lastName) : '',
+			color: r.color ?? null
+		});
 		map.set(r.meetingId, list);
 	}
 	return map;
@@ -135,16 +154,31 @@ async function attendeesByMeeting(meetingIds: string[]): Promise<Map<string, Mee
  */
 export async function getMeetingDetail(id: string): Promise<Meeting | null> {
 	const [row] = await db
-		.select({ meeting: crmMeetings, organizerName: crmUsers.name, leadName: crmLeads.name })
+		.select({
+			meeting: crmMeetings,
+			organizerFirstName: crmUsers.firstName,
+			organizerLastName: crmUsers.lastName,
+			organizerColor: crmUsers.color,
+			leadName: crmLeads.name,
+			leadOrganizerName: crmOrganizers.name
+		})
 		.from(crmMeetings)
 		.leftJoin(crmUsers, eq(crmMeetings.organizerId, crmUsers.id))
 		.innerJoin(crmLeads, eq(crmMeetings.leadId, crmLeads.id))
+		.leftJoin(crmOrganizers, eq(crmMeetings.leadOrganizerId, crmOrganizers.id))
 		.where(and(eq(crmMeetings.id, id), isNull(crmMeetings.deletedAt)))
 		.limit(1);
 
 	if (!row) return null;
 	const attMap = await attendeesByMeeting([id]);
-	return dbRowToMeeting(row.meeting, attMap.get(id) ?? [], row.organizerName, row.leadName);
+	return dbRowToMeeting(
+		row.meeting,
+		attMap.get(id) ?? [],
+		row.organizerFirstName ? formatFullName(row.organizerFirstName, row.organizerLastName) : null,
+		row.leadName,
+		row.leadOrganizerName,
+		row.organizerColor ?? null
+	);
 }
 
 // ---------------------------------------------------------------------------
@@ -153,21 +187,41 @@ export async function getMeetingDetail(id: string): Promise<Meeting | null> {
 
 export async function listMeetingsForLead(leadId: string): Promise<Meeting[]> {
 	const rows = await db
-		.select({ meeting: crmMeetings, organizerName: crmUsers.name })
+		.select({
+			meeting: crmMeetings,
+			organizerFirstName: crmUsers.firstName,
+			organizerLastName: crmUsers.lastName,
+			organizerColor: crmUsers.color,
+			leadOrganizerName: crmOrganizers.name
+		})
 		.from(crmMeetings)
 		.leftJoin(crmUsers, eq(crmMeetings.organizerId, crmUsers.id))
+		.leftJoin(crmOrganizers, eq(crmMeetings.leadOrganizerId, crmOrganizers.id))
 		.where(and(eq(crmMeetings.leadId, leadId), isNull(crmMeetings.deletedAt)))
 		.orderBy(desc(crmMeetings.startAt));
 
 	const attMap = await attendeesByMeeting(rows.map((r) => r.meeting.id));
 	return rows.map((r) =>
-		dbRowToMeeting(r.meeting, attMap.get(r.meeting.id) ?? [], r.organizerName)
+		dbRowToMeeting(
+			r.meeting,
+			attMap.get(r.meeting.id) ?? [],
+			r.organizerFirstName ? formatFullName(r.organizerFirstName, r.organizerLastName) : null,
+			null,
+			r.leadOrganizerName,
+			r.organizerColor ?? null
+		)
 	);
 }
 
 export async function listAllMeetings(): Promise<Meeting[]> {
 	const rows = await db
-		.select({ meeting: crmMeetings, organizerName: crmUsers.name, leadName: crmLeads.name })
+		.select({
+			meeting: crmMeetings,
+			organizerFirstName: crmUsers.firstName,
+			organizerLastName: crmUsers.lastName,
+			organizerColor: crmUsers.color,
+			leadName: crmLeads.name
+		})
 		.from(crmMeetings)
 		.leftJoin(crmUsers, eq(crmMeetings.organizerId, crmUsers.id))
 		.innerJoin(crmLeads, eq(crmMeetings.leadId, crmLeads.id))
@@ -176,7 +230,14 @@ export async function listAllMeetings(): Promise<Meeting[]> {
 
 	const attMap = await attendeesByMeeting(rows.map((r) => r.meeting.id));
 	return rows.map((r) =>
-		dbRowToMeeting(r.meeting, attMap.get(r.meeting.id) ?? [], r.organizerName, r.leadName)
+		dbRowToMeeting(
+			r.meeting,
+			attMap.get(r.meeting.id) ?? [],
+			r.organizerFirstName ? formatFullName(r.organizerFirstName, r.organizerLastName) : null,
+			r.leadName,
+			undefined,
+			r.organizerColor ?? null
+		)
 	);
 }
 
@@ -209,6 +270,10 @@ export async function listMeetingsPaginated(
 		conditions.push(
 			sql`${crmMeetings.startAt} < ((${filters.dateTo}::date + INTERVAL '1 day') AT TIME ZONE 'UTC')`
 		);
+	// Case-insensitive substring match on outcome. `ilike` is parameterized (no
+	// injection risk). Rows with NULL outcome are excluded naturally — ILIKE against
+	// NULL evaluates to NULL (falsy) in Postgres, so no explicit isNotNull guard needed.
+	if (filters.outcome) conditions.push(ilike(crmMeetings.outcome, `%${filters.outcome}%`) as SQL);
 	// Single shared `where` applied to BOTH the page query and the count() query so
 	// `total` (and therefore hasMore) reflects the filtered set.
 	const where = and(...conditions);
@@ -216,10 +281,18 @@ export async function listMeetingsPaginated(
 	const offset = (Math.max(1, page) - 1) * limit;
 	const [rows, [{ total }]] = await Promise.all([
 		db
-			.select({ meeting: crmMeetings, organizerName: crmUsers.name, leadName: crmLeads.name })
+			.select({
+				meeting: crmMeetings,
+				organizerFirstName: crmUsers.firstName,
+				organizerLastName: crmUsers.lastName,
+				organizerColor: crmUsers.color,
+				leadName: crmLeads.name,
+				leadOrganizerName: crmOrganizers.name
+			})
 			.from(crmMeetings)
 			.leftJoin(crmUsers, eq(crmMeetings.organizerId, crmUsers.id))
 			.innerJoin(crmLeads, eq(crmMeetings.leadId, crmLeads.id))
+			.leftJoin(crmOrganizers, eq(crmMeetings.leadOrganizerId, crmOrganizers.id))
 			.where(where)
 			// asc(id) tiebreaker ALWAYS present (both directions) so pages never dup/skip.
 			.orderBy(sortFn(crmMeetings.startAt), asc(crmMeetings.id))
@@ -230,7 +303,14 @@ export async function listMeetingsPaginated(
 
 	const attMap = await attendeesByMeeting(rows.map((r) => r.meeting.id));
 	const meetings = rows.map((r) =>
-		dbRowToMeeting(r.meeting, attMap.get(r.meeting.id) ?? [], r.organizerName, r.leadName)
+		dbRowToMeeting(
+			r.meeting,
+			attMap.get(r.meeting.id) ?? [],
+			r.organizerFirstName ? formatFullName(r.organizerFirstName, r.organizerLastName) : null,
+			r.leadName,
+			r.leadOrganizerName,
+			r.organizerColor ?? null
+		)
 	);
 	return { meetings, total };
 }
@@ -241,9 +321,13 @@ export async function listMeetingsPaginated(
  */
 export async function getMeeting(
 	id: string
-): Promise<{ id: string; organizerId: string | null } | null> {
+): Promise<{ id: string; organizerId: string | null; nextcloudUid: string | null } | null> {
 	const [row] = await db
-		.select({ id: crmMeetings.id, organizerId: crmMeetings.organizerId })
+		.select({
+			id: crmMeetings.id,
+			organizerId: crmMeetings.organizerId,
+			nextcloudUid: crmMeetings.nextcloudUid
+		})
 		.from(crmMeetings)
 		.where(and(eq(crmMeetings.id, id), isNull(crmMeetings.deletedAt)))
 		.limit(1);
@@ -258,7 +342,9 @@ export async function createMeeting(input: {
 	leadId: string;
 	startAt: Date;
 	organizerId?: string | null;
+	leadOrganizerId?: string | null;
 	meetingUrl?: string | null;
+	venue?: string | null;
 	notes?: string | null;
 	outcome?: string | null;
 	attendeeIds?: string[];
@@ -270,7 +356,9 @@ export async function createMeeting(input: {
 				leadId: input.leadId,
 				startAt: input.startAt,
 				organizerId: input.organizerId ?? null,
+				leadOrganizerId: input.leadOrganizerId ?? null,
 				meetingUrl: input.meetingUrl ?? null,
+				venue: input.venue ?? null,
 				notes: input.notes ?? null,
 				outcome: input.outcome ?? null
 			})
@@ -298,7 +386,9 @@ export async function updateMeeting(
 	patch: {
 		startAt?: Date;
 		organizerId?: string | null;
+		leadOrganizerId?: string | null;
 		meetingUrl?: string | null;
+		venue?: string | null;
 		notes?: string | null;
 		outcome?: string | null;
 		attendeeIds?: string[];
@@ -308,7 +398,10 @@ export async function updateMeeting(
 		const set: Partial<typeof crmMeetings.$inferInsert> = { updatedAt: new Date() };
 		if (patch.startAt !== undefined) set.startAt = patch.startAt;
 		if (patch.organizerId !== undefined) set.organizerId = patch.organizerId;
+		// undefined leaves the saved link untouched; explicit null clears it (mirrors organizerId).
+		if (patch.leadOrganizerId !== undefined) set.leadOrganizerId = patch.leadOrganizerId;
 		if (patch.meetingUrl !== undefined) set.meetingUrl = patch.meetingUrl;
+		if (patch.venue !== undefined) set.venue = patch.venue;
 		if (patch.notes !== undefined) set.notes = patch.notes;
 		if (patch.outcome !== undefined) set.outcome = patch.outcome;
 
@@ -366,4 +459,61 @@ export async function softDeleteMeeting(id: string): Promise<boolean> {
 		.where(and(eq(crmMeetings.id, id), isNull(crmMeetings.deletedAt)))
 		.returning({ id: crmMeetings.id });
 	return rows.length > 0;
+}
+
+/**
+ * Case-insensitive DISTINCT venue search over crm_meetings. Empty/blank query returns the
+ * first `limit` venues alphabetically. Backs the meeting-create/edit venue free-text combobox
+ * (GitHub #249, MTG-5) — suggestions layered on top of a field that stays fully free-text.
+ * Read-only; filters soft-deleted rows and drops null venues.
+ */
+/**
+ * Writes the Nextcloud UID back to a meeting row after a successful CalDAV create,
+ * or clears it (null) after a successful CalDAV delete. Called by calendar-sync.ts only.
+ */
+export async function updateMeetingNextcloudUid(id: string, uid: string | null): Promise<void> {
+	await db
+		.update(crmMeetings)
+		.set({ nextcloudUid: uid })
+		.where(and(eq(crmMeetings.id, id), isNull(crmMeetings.deletedAt)));
+}
+
+/** Returns the meeting row id if an active (non-deleted) meeting is already linked to this Nextcloud uid. */
+export async function getMeetingByNextcloudUid(uid: string): Promise<{ id: string } | null> {
+	const [row] = await db
+		.select({ id: crmMeetings.id })
+		.from(crmMeetings)
+		.where(and(eq(crmMeetings.nextcloudUid, uid), isNull(crmMeetings.deletedAt)))
+		.limit(1);
+	return row ?? null;
+}
+
+export async function searchVenues(q: string | null | undefined, limit = 20): Promise<string[]> {
+	const term = (q ?? '').trim();
+	const where: SQL | undefined = and(
+		isNull(crmMeetings.deletedAt),
+		isNotNull(crmMeetings.venue),
+		term ? ilike(crmMeetings.venue, `%${term.replace(/[\\%_]/g, '\\$&')}%`) : undefined
+	);
+	const rows = await db
+		.selectDistinct({ venue: crmMeetings.venue })
+		.from(crmMeetings)
+		.where(where)
+		.orderBy(asc(crmMeetings.venue))
+		.limit(limit);
+	return rows.map((r) => r.venue).filter((v): v is string => v != null);
+}
+
+/** Returns a map of meetingId → organizerUserId for rep-scoping CalDAV meeting entries. */
+export async function getMeetingOwners(ids: string[]): Promise<Map<string, string>> {
+	if (!ids.length) return new Map();
+	const rows = await db
+		.select({ id: crmMeetings.id, organizerId: crmMeetings.organizerId })
+		.from(crmMeetings)
+		.where(and(inArray(crmMeetings.id, ids), isNull(crmMeetings.deletedAt)));
+	const map = new Map<string, string>();
+	for (const row of rows) {
+		if (row.organizerId) map.set(row.id, row.organizerId);
+	}
+	return map;
 }

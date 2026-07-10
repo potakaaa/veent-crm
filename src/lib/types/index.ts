@@ -9,7 +9,6 @@
 import type {
 	LEAD_STAGES,
 	LEAD_PLATFORMS,
-	LEAD_CATEGORIES,
 	ACTIVITY_CHANNELS,
 	ACTIVITY_OUTCOMES,
 	LOST_REASONS,
@@ -20,7 +19,6 @@ import type {
 
 export type Stage = (typeof LEAD_STAGES)[number];
 export type Platform = (typeof LEAD_PLATFORMS)[number];
-export type Category = (typeof LEAD_CATEGORIES)[number];
 export type ActivityChannel = (typeof ACTIVITY_CHANNELS)[number];
 export type ActivityOutcome = (typeof ACTIVITY_OUTCOMES)[number];
 export type LostReason = (typeof LOST_REASONS)[number];
@@ -38,10 +36,14 @@ export type AgeType = 'overdue' | 'due' | 'stale' | 'fresh' | 'normal';
 export interface User {
 	id: string;
 	name: string;
+	firstName: string;
+	lastName: string | null;
 	email: string;
 	role: Role;
 	active: boolean;
 	location?: string;
+	/** Manager-editable display color (hex); null/undefined falls back to avatarColor(name) hash. */
+	color?: string | null;
 	/** Count of currently-owned leads (denormalized for the team view). */
 	leadCount?: number;
 }
@@ -50,7 +52,6 @@ export interface Lead {
 	id: string;
 	name: string;
 	handle: string;
-	category: Category;
 	location: string;
 	country: string;
 	platform: Platform;
@@ -62,6 +63,16 @@ export interface Lead {
 	 * ("Unassigned" when `ownerId` is null). NOT a DB-native column — undefined until enriched.
 	 */
 	ownerName?: string;
+	/**
+	 * Tagged organizer id (crm_organizers, GitHub #188), or null when the lead is not
+	 * tagged to any organizer. Maps directly from the `crm_leads.organizer_id` column.
+	 */
+	organizerId: string | null;
+	/**
+	 * Organizer display name, resolved at the route-load layer via `getOrganizer()`.
+	 * NOT a DB-native column on the lead — undefined until resolved.
+	 */
+	organizerName?: string;
 	/** Per-lead visibility scope (GitHub #87). Defaults to `everyone`. */
 	visibility: Visibility;
 	/** User ids explicitly granted access when `visibility === 'selected'`. */
@@ -82,12 +93,17 @@ export interface Lead {
 	siblings?: number;
 	source: LeadSource;
 	notes?: string;
+	currentPlatform?: string | null;
+	competitorNotes?: string | null;
 
 	// Won capture (manually entered — never read from external systems)
 	signedOrg?: string;
 	dealValue?: number;
 	currency?: Currency;
 	signedDate?: string;
+
+	// Done-stage post-event revenue capture (GitHub #273); nullable until captured
+	revenueCents?: number | null;
 
 	// Onboarding capture (post-won; manual)
 	onboardingNotes?: string;
@@ -109,6 +125,10 @@ export interface Lead {
 	// Lost capture
 	lostReason?: LostReason;
 
+	// NCAL-3 — Nextcloud calendar UID storage (nullable; set after first successful sync)
+	nextcloudGoLiveUid?: string | null;
+	nextcloudEventUid?: string | null;
+
 	// Timestamps (ISO) + a precomputed age badge for design fidelity
 	createdAt: string;
 	lastActivityAt: string;
@@ -128,9 +148,36 @@ export interface Activity {
 	followUpAt?: string;
 }
 
+/** A freeform note attached to exactly one lead OR one organizer (GitHub #191). */
+export interface Note {
+	id: string;
+	content: string;
+	authorId: string;
+	authorName: string;
+	leadId: string | null;
+	organizerId: string | null;
+	createdAt: string;
+}
+
+/**
+ * An in-app notification to a user (v1: manager lead-assignment only). `readAt`
+ * doubles as read AND dismissed state. `leadName` is join-populated at the DB layer.
+ */
+export interface Notification {
+	id: string;
+	userId: string;
+	leadId: string | null;
+	leadName: string | null;
+	type: string;
+	message: string;
+	readAt: string | null;
+	createdAt: string;
+}
+
 export interface MeetingAttendee {
 	userId: string;
 	name: string;
+	color?: string | null;
 }
 
 export interface Meeting {
@@ -140,9 +187,20 @@ export interface Meeting {
 	leadName?: string;
 	organizerId: string | null;
 	organizerName?: string;
+	organizerColor?: string | null;
+	/**
+	 * The lead's linked recurring-organizer entity (crm_organizers, GitHub #188) — DISTINCT
+	 * from `organizerId` (internal crm_users organizer). Pre-filled from the lead on create,
+	 * overridable/clearable. Null when unset.
+	 */
+	leadOrganizerId?: string | null;
+	/** Linked organizer display name for the saved `leadOrganizerId` (join-populated). */
+	leadOrganizerName?: string;
 	/** ISO datetime the meeting starts. */
 	startAt: string;
 	meetingUrl?: string;
+	/** Free-text meeting venue (GitHub #250). Undefined when unset (DB null). */
+	venue?: string;
 	notes?: string;
 	outcome?: string;
 	attendees: MeetingAttendee[];
@@ -152,17 +210,34 @@ export interface Meeting {
 /**
  * Unified calendar entry — the common shape both meetings and follow-up reminders
  * map into before reaching the calendar grid. `type` drives visual distinction (AC4)
- * and `href` drives click-through (AC5 meeting → /meetings/[id], AC6 followup → /leads/[id]).
+ * and `href` drives click-through (AC5 meeting → /meetings/[id], AC6 followup → /leads/[id],
+ * golive → /leads/[id], eventstart → /leads/[id]).
  */
 export interface CalendarEntry {
 	id: string;
-	type: 'meeting' | 'followup';
+	type: 'meeting' | 'followup' | 'golive' | 'eventstart' | 'team-event' | 'travel';
 	/** ISO datetime the entry falls on (meeting start, or follow-up due date). */
 	startAt: string;
 	title: string;
 	href: string;
 	/** Optional secondary line (e.g. organizer name, lead handle). */
 	subtitle?: string;
+	/** Nextcloud event UID (team-event only). */
+	uid?: string;
+	/** CRM deep-link extracted from CRM-HREF: (team-event only). */
+	url?: string;
+	/** Raw event description (team-event only). */
+	description?: string;
+	/** Location field (team-event only). */
+	location?: string;
+	/** VEVENT STATUS (team-event only). */
+	status?: string;
+	/** VEVENT CATEGORIES (team-event only). */
+	categories?: string;
+	/** ISO datetime end (team-event only). */
+	endAt?: string;
+	/** Whether this is an all-day event (team-event only). */
+	allDay?: boolean;
 }
 
 /**
@@ -171,22 +246,12 @@ export interface CalendarEntry {
  */
 export interface MessageTemplate {
 	id: string;
-	category: Category;
+	/** Frozen TEMPLATE_CATEGORIES vocabulary (CAT-1) — plain string, not the crm_categories table. */
+	category: string;
 	title: string;
 	body: string;
 	createdAt: string;
 	updatedAt: string;
-}
-
-/** A row from the sheet import that needs a human before it joins the pool. */
-export interface ReviewItem {
-	id: string;
-	issue: string;
-	raw: string;
-	rowNo: number;
-	name: string;
-	category: Category | 'Uncategorized';
-	platform: Platform;
 }
 
 // --- Filters & query shapes -------------------------------------------------
@@ -197,7 +262,6 @@ export interface LeadFilters {
 	segment?: LeadSegment;
 	stage?: Stage;
 	platform?: Platform;
-	category?: Category;
 	staleOnly?: boolean;
 	hasFutureEvents?: boolean;
 	search?: string;
@@ -233,6 +297,7 @@ export interface FunnelStage {
 export interface LeaderboardRow {
 	repId: string;
 	name: string;
+	color?: string | null;
 	touches: number;
 	replies: number;
 	wins: number;
@@ -262,7 +327,6 @@ export interface ReportData {
 
 export interface CreateLeadInput {
 	name: string;
-	category: Category;
 	platform?: Platform;
 	location?: string;
 	pageUrl?: string;
@@ -273,6 +337,8 @@ export interface CreateLeadInput {
 	source?: LeadSource;
 	visibility?: Visibility;
 	selectedUserIds?: string[];
+	currentPlatform?: string;
+	competitorNotes?: string;
 }
 
 export type UpdateLeadInput = Partial<
@@ -285,6 +351,8 @@ export interface MoveStagePayload {
 	dealValueCents?: number;
 	currency?: Currency;
 	signedAt?: string;
+	// Required when moving to `done` (GitHub #273)
+	revenueCents?: number;
 	// Required when moving to `lost`
 	lostReason?: LostReason;
 }

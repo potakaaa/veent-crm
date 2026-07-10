@@ -2,6 +2,7 @@
 // See sales-crm.md §Stack (Superforms + Zod) and §Lead ingestion (ingest contract).
 
 import { z } from 'zod';
+import { TEMPLATE_CATEGORIES } from '$lib/data/template-categories';
 
 export const LEAD_STAGES = [
 	'new',
@@ -10,33 +11,11 @@ export const LEAD_STAGES = [
 	'in_discussion',
 	'won',
 	'live',
+	'done',
 	'lost'
 ] as const;
 
 export const LEAD_PLATFORMS = ['Facebook', 'Instagram', 'Twitter/X', 'TikTok', 'Other'] as const;
-
-export const LEAD_CATEGORIES = [
-	'Sports',
-	'Workshop',
-	'Church',
-	'Theater',
-	'Bar/DJ',
-	'Conference',
-	'Music Fest',
-	'Fan Fair',
-	'School',
-	'Concert',
-	'Live Band',
-	'Expo',
-	'Screening',
-	'Camp',
-	'Competition',
-	'Convention',
-	'Film',
-	'Modelling',
-	'Resort',
-	'Other'
-] as const;
 
 export const ACTIVITY_CHANNELS = [
 	'fb_dm',
@@ -64,13 +43,12 @@ export const LEAD_VISIBILITIES = ['only_me', 'everyone', 'selected'] as const;
 // (e.g. 00000000-…-0001) intentionally violate RFC 4122 variant bits, which
 // z.string().uuid() would reject. Grant target ids come from listUsers(), so they
 // must accept those seeded rows too.
-const LOOSE_UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+export const LOOSE_UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 // --- Add / edit a lead (Superforms) ---------------------------------------
 export const leadFormSchema = z
 	.object({
 		name: z.string().trim().min(1, 'Page / organizer name is required'),
-		category: z.enum(LEAD_CATEGORIES).default('Other'),
 		platform: z.enum(LEAD_PLATFORMS).optional(),
 		location: z.string().optional(),
 		pageUrl: z.string().url().optional().or(z.literal('')),
@@ -81,8 +59,13 @@ export const leadFormSchema = z
 		firstAnnouncedDate: z.iso.date().or(z.literal('')).optional(),
 		firstReachedOutDate: z.iso.date().or(z.literal('')).optional(),
 		notes: z.string().optional(),
+		currentPlatform: z.string().optional(),
+		competitorNotes: z.string().optional(),
 		visibility: z.enum(LEAD_VISIBILITIES).default('everyone'),
-		selectedUserIds: z.array(z.string().regex(LOOSE_UUID_RE)).optional()
+		selectedUserIds: z.array(z.string().regex(LOOSE_UUID_RE)).optional(),
+		// Recurring-organizer tag pre-fill (GitHub #190). Optional, shape-only UUID check;
+		// existence is enforced server-side in the POST handler (see api/leads/+server.ts).
+		organizerId: z.string().regex(LOOSE_UUID_RE).optional()
 	})
 	.refine((d) => d.visibility !== 'selected' || (d.selectedUserIds?.length ?? 0) > 0, {
 		message: 'Pick at least one teammate when visibility is "Selected people".',
@@ -94,7 +77,6 @@ export type LeadForm = z.infer<typeof leadFormSchema>;
 export const leadUpdateSchema = z
 	.object({
 		name: z.string().trim().min(1, 'Page / organizer name is required'),
-		category: z.enum(LEAD_CATEGORIES),
 		platform: z.enum(LEAD_PLATFORMS).optional(),
 		location: z.string().optional(),
 		pageUrl: z.string().url().optional().or(z.literal('')),
@@ -106,7 +88,8 @@ export const leadUpdateSchema = z
 		eventDate: z
 			.string()
 			.regex(/^\d{4}-\d{2}-\d{2}$/, 'eventDate must be YYYY-MM-DD')
-			.optional(),
+			.optional()
+			.or(z.literal('')),
 		eventDateRaw: z.string().optional(),
 		eventLink: z.string().url().optional().or(z.literal('')),
 		firstAnnouncedDate: z
@@ -142,7 +125,13 @@ export const leadUpdateSchema = z
 		serviceFeePerTicketPesos: z.number().min(0).optional(),
 		bankChargesAbsorbed: z.boolean().optional(),
 		// Recurring-organizer / future-events prospect flag (GitHub #94).
-		hasFutureEvents: z.boolean().optional()
+		hasFutureEvents: z.boolean().optional(),
+		currentPlatform: z.string().optional(),
+		competitorNotes: z.string().optional(),
+		// Done-stage post-event revenue (GitHub #273) — inline-editable on /leads/[id];
+		// both optional so a normal edit that omits them is unaffected.
+		revenueCents: z.number().int().nonnegative().optional(),
+		currency: z.enum(CURRENCIES).optional()
 	})
 	.refine((d) => d.visibility !== 'selected' || (d.selectedUserIds?.length ?? 0) > 0, {
 		message: 'Pick at least one teammate when visibility is "Selected people".',
@@ -160,6 +149,11 @@ export const onboardingUpdateSchema = z.object({
 		.optional()
 		.or(z.literal('')),
 	goLiveDate: z
+		.string()
+		.regex(/^\d{4}-\d{2}-\d{2}$/)
+		.optional()
+		.or(z.literal('')),
+	eventDate: z
 		.string()
 		.regex(/^\d{4}-\d{2}-\d{2}$/)
 		.optional()
@@ -191,7 +185,13 @@ export const meetingFormSchema = z.object({
 	leadId: z.string().uuid(),
 	startAt: z.string().datetime(), // ISO datetime
 	organizerId: z.string().uuid().optional(),
+	// Lead's linked recurring-organizer entity (crm_organizers, GitHub #188). Distinct from
+	// organizerId (internal crm_users). Optional + nullable so create-without-organizer and
+	// explicit-clear both validate.
+	leadOrganizerId: z.string().uuid().optional().nullable(),
 	meetingUrl: z.string().url().optional().or(z.literal('')),
+	// Free-text meeting venue (GitHub #250) — no format/enum/length constraint.
+	venue: z.string().optional(),
 	notes: z.string().optional(),
 	outcome: z.string().optional(),
 	attendeeIds: z.array(z.string().uuid()).default([])
@@ -205,12 +205,71 @@ export const meetingUpdateSchema = z.object({
 	startAt: z.string().datetime().optional(),
 	// Accept null so the unassign path (organizer cleared on edit) reaches the DB layer.
 	organizerId: z.string().uuid().nullable().optional(),
+	// Lead's linked recurring-organizer entity (crm_organizers). Nullable-optional mirrors
+	// organizerId: null clears the saved link on edit, undefined leaves it untouched.
+	leadOrganizerId: z.string().uuid().nullable().optional(),
 	meetingUrl: z.string().url().optional().or(z.literal('')),
+	// Free-text meeting venue (GitHub #250) — no format/enum/length constraint.
+	venue: z.string().optional(),
 	notes: z.string().optional(),
 	outcome: z.string().optional(),
 	attendeeIds: z.array(z.string().uuid()).optional()
 });
 export type MeetingUpdate = z.infer<typeof meetingUpdateSchema>;
+
+// --- Create / update a Nextcloud calendar event (NCAL-2, GitHub #252) -------
+// POST /api/calendar/events + PUT /api/calendar/events/[uid]. The CRM never holds
+// CalDAV write credentials — these payloads are POSTed to an n8n webhook which
+// performs the actual CalDAV PUT. `leadHref` is embedded as a `CRM-HREF:` line in
+// the event DESCRIPTION (n8n's ICS builder cannot emit the `URL:` property), and the
+// NCAL-1 parser reads it back so calendar cards can deep-link to the lead.
+// `z.iso.datetime()` is the Zod v4 ISO-8601 date-time validator (confirmed v4.4.3).
+export const createCalendarEventSchema = z
+	.object({
+		title: z.string().trim().min(1),
+		start: z.iso.datetime(),
+		end: z.iso.datetime(),
+		location: z.string().optional(),
+		description: z.string().optional(),
+		categories: z.string().optional(),
+		leadHref: z.string().optional(),
+		attendees: z.array(z.string().email()).optional(),
+		color: z
+			.string()
+			.regex(/^#[0-9a-fA-F]{6}$/)
+			.optional(),
+		status: z.enum(['confirmed', 'tentative', 'cancelled']).optional(),
+		rrule: z.string().optional()
+	})
+	.refine((v) => new Date(v.end) > new Date(v.start), {
+		message: 'end must be after start',
+		path: ['end']
+	});
+export type CreateCalendarEvent = z.infer<typeof createCalendarEventSchema>;
+
+// Same shape as create; `uid` comes from the path param, never the body.
+export const updateCalendarEventSchema = z
+	.object({
+		title: z.string().trim().min(1),
+		start: z.iso.datetime(),
+		end: z.iso.datetime(),
+		location: z.string().optional(),
+		description: z.string().optional(),
+		categories: z.string().optional(),
+		leadHref: z.string().optional(),
+		attendees: z.array(z.string().email()).optional(),
+		color: z
+			.string()
+			.regex(/^#[0-9a-fA-F]{6}$/)
+			.optional(),
+		status: z.enum(['confirmed', 'tentative', 'cancelled']).optional(),
+		rrule: z.string().optional()
+	})
+	.refine((v) => new Date(v.end) > new Date(v.start), {
+		message: 'end must be after start',
+		path: ['end']
+	});
+export type UpdateCalendarEvent = z.infer<typeof updateCalendarEventSchema>;
 
 // --- Won capture (manual) --------------------------------------------------
 export const wonFormSchema = z.object({
@@ -239,17 +298,35 @@ export type ReassignForm = z.infer<typeof reassignFormSchema>;
 
 // --- Add / edit a team member (the magic-link allowlist) -------------------
 export const userFormSchema = z.object({
-	name: z.string().min(1, 'Name is required'),
+	firstName: z.string().min(1, 'First name is required'),
+	lastName: z.string().optional(),
 	email: z.string().email('A valid work email is required'),
 	role: z.enum(USER_ROLES).default('rep'),
-	active: z.boolean().default(true)
+	active: z.boolean().default(true),
+	// Manager-only display color (GitHub #275); null clears to hash fallback.
+	color: z
+		.string()
+		.regex(/^#[0-9a-fA-F]{6}$/, 'Color must be a hex value like #a1b2c3')
+		.nullable()
+		.optional()
 });
 export type UserForm = z.infer<typeof userFormSchema>;
+
+// --- Edit an existing team member's name (managers editing others, or self) ---
+export const userNameEditSchema = userFormSchema.pick({ firstName: true, lastName: true });
+export type UserNameEditForm = z.infer<typeof userNameEditSchema>;
+
+// --- Edit an existing team member's color (manager-only, GitHub #275) ---
+export const userColorEditSchema = userFormSchema.pick({ color: true });
+export type UserColorEditForm = z.infer<typeof userColorEditSchema>;
 
 // --- Add / edit an outreach message template (Superforms) ------------------
 export const templateFormSchema = z.object({
 	title: z.string().min(1, 'Title is required'),
-	category: z.enum(LEAD_CATEGORIES),
+	// Template category vocabulary is the frozen TEMPLATE_CATEGORIES list (CAT-1), not the
+	// editable crm_categories table. Tightened to an enum (GitHub #274 Option A) so an
+	// off-list category is rejected rather than silently accepted as free text.
+	category: z.enum(TEMPLATE_CATEGORIES, { error: 'Choose a valid category' }),
 	body: z.string().min(1, 'Message body is required')
 });
 export type TemplateForm = z.infer<typeof templateFormSchema>;
@@ -272,6 +349,12 @@ export const moveStageSchema = z.discriminatedUnion('stage', [
 	z.object({
 		// GitHub #194 — a won lead can advance to `live` (no extra capture required).
 		stage: z.literal('live')
+	}),
+	z.object({
+		// GitHub #273 — moving to Done requires post-event revenue + currency.
+		stage: z.literal('done'),
+		revenueCents: z.number().int().nonnegative(),
+		currency: z.enum(CURRENCIES).default('PHP')
 	}),
 	z.object({
 		stage: z.literal('lost'),
@@ -319,6 +402,13 @@ export const snoozeSchema = z.object({
 });
 export type SnoozeInput = z.infer<typeof snoozeSchema>;
 
+// --- Add a note (GitHub #191/#192/#193): POST /api/leads/[id]/notes,
+// POST /api/organizers/[id]/notes ------------------------------------------------
+export const addNoteSchema = z.object({
+	content: z.string().trim().min(1, 'Note cannot be empty').max(5000, 'Note is too long')
+});
+export type AddNoteInput = z.infer<typeof addNoteSchema>;
+
 // --- Scraper ingest contract (future; reused as the /api/leads/ingest validator) ---
 export const ingestLeadSchema = z.object({
 	pageName: z.string().min(1),
@@ -327,7 +417,7 @@ export const ingestLeadSchema = z.object({
 	facebookUrl: z.string().url().optional(),
 	instagramUrl: z.string().url().optional(),
 	platform: z.enum(LEAD_PLATFORMS).optional(),
-	category: z.enum(LEAD_CATEGORIES).optional(),
+	category: z.string().min(1).optional(),
 	location: z.string().optional(),
 	eventName: z.string().optional(),
 	eventDate: dateString.optional(),
@@ -336,7 +426,8 @@ export const ingestLeadSchema = z.object({
 	sourceRef: z.string().optional(),
 	scraperOrgId: z.number().int().positive().optional(),
 	email: z.string().email().optional(),
-	phone: z.string().optional()
+	phone: z.string().optional(),
+	currentPlatform: z.string().optional()
 });
 export const ingestBatchSchema = z.object({
 	leads: z.array(ingestLeadSchema).max(1000)
@@ -384,3 +475,78 @@ export const tsvRowSchema = z.object({
 	venue_longitude: z.string()
 });
 export type TsvRow = z.infer<typeof tsvRowSchema>;
+
+// --- Custom lead categories (CAT-1, GitHub #248) --------------------------------
+// Create/rename an editable category; `color` is an optional 6-digit hex (e.g. #1a2b3c).
+export const categoryCreateSchema = z.object({
+	// trim BEFORE length checks so a blank/whitespace-only name is rejected (not coerced to '').
+	name: z.string().trim().min(1).max(50),
+	color: z
+		.string()
+		.regex(/^#[0-9a-fA-F]{6}$/)
+		.optional()
+		.nullable()
+});
+export type CategoryCreate = z.infer<typeof categoryCreateSchema>;
+
+export const categoryRenameSchema = z.object({
+	name: z.string().trim().min(1).max(50),
+	color: z
+		.string()
+		.regex(/^#[0-9a-fA-F]{6}$/)
+		.optional()
+		.nullable()
+});
+export type CategoryRename = z.infer<typeof categoryRenameSchema>;
+
+// Assign/remove a single category to/from a lead.
+export const assignCategoriesSchema = z.object({
+	categoryId: z.string().uuid()
+});
+export type AssignCategories = z.infer<typeof assignCategoriesSchema>;
+
+// --- CSV / Google Sheets import UI (GitHub #210, #211) --------------------------
+// Server-side re-validation for the /api/import/preview and /api/import/commit endpoints. Client
+// data is UX-only and NEVER a trust boundary — both endpoints re-run these schemas on every
+// request. `rows` is capped at 2000 (E4) to bound the batched dedup query and batch insert,
+// mirroring ingestBatchSchema.leads.max(1000).
+
+const IMPORT_ROW_CAP = 2000;
+
+// Strict per-target mapped-row shape: only `name` (DB notNull) is hard-required; every other
+// mapped column is an optional string. `category` is intentionally not a recognized field.
+export const importLeadRowSchema = z
+	.object({ name: z.string().trim().min(1, 'Name is required') })
+	.catchall(z.string());
+export const importOrganizerRowSchema = z
+	.object({ name: z.string().trim().min(1, 'Name is required') })
+	.catchall(z.string());
+
+// Lenient row shape for the commit payload: skipped rows may be incomplete, so the request-level
+// schema only checks the {data, skip} envelope. Non-skipped rows are strictly re-validated per-row
+// in the handler (drives the `errored` count).
+const importCommitRowSchema = z.object({
+	data: z.record(z.string(), z.string()),
+	skip: z.boolean()
+});
+
+export const importPreviewRequestSchema = z.discriminatedUnion('target', [
+	z.object({ target: z.literal('leads'), rows: z.array(importLeadRowSchema).max(IMPORT_ROW_CAP) }),
+	z.object({
+		target: z.literal('organizers'),
+		rows: z.array(importOrganizerRowSchema).max(IMPORT_ROW_CAP)
+	})
+]);
+export type ImportPreviewRequest = z.infer<typeof importPreviewRequestSchema>;
+
+export const importCommitRequestSchema = z.discriminatedUnion('target', [
+	z.object({
+		target: z.literal('leads'),
+		rows: z.array(importCommitRowSchema).max(IMPORT_ROW_CAP)
+	}),
+	z.object({
+		target: z.literal('organizers'),
+		rows: z.array(importCommitRowSchema).max(IMPORT_ROW_CAP)
+	})
+]);
+export type ImportCommitRequest = z.infer<typeof importCommitRequestSchema>;

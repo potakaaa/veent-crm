@@ -1,0 +1,12 @@
+{
+  "task": "GitHub #280 competitor-badges-restore — EVL confirmation",
+  "commands": ["bun run check", "bun run test:unit:ci (vitest --run)"],
+  "manualChecks": [
+    "CompetitorBadge.svelte — new file, platform?: string|null prop, {#if platform} guard, amber chip classes exact — PASS",
+    "PipelineBoard.svelte — imports + renders <CompetitorBadge platform={c.currentPlatform}/> after EventBadge; existing badges intact — PASS",
+    "LeadGrid.svelte — imports + renders <CompetitorBadge platform={l.currentPlatform}/> inside existing name-column flex cell; no new top-level grid cell — PASS",
+    "unassigned/+page.svelte — byte-for-byte unchanged (git diff empty) — PASS"
+  ],
+  "result": "PASS",
+  "notes": "Changeset: 1 new file (CompetitorBadge.svelte) + 2 edits (PipelineBoard.svelte, LeadGrid.svelte). Known gap: badge visual render AC1-AC4 is Agent-Probe/manual-only per accepted CONDITIONAL gate. No discrepancies vs prior report."
+}

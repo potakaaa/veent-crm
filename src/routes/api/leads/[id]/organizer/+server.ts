@@ -4,9 +4,12 @@ import { eq } from 'drizzle-orm';
 import { organizerTagSchema } from '$lib/zod/schemas';
 import { db } from '$lib/server/db/index';
 import { crmLeads, crmOrganizers, crmLeadHistory } from '$lib/server/db/schema';
+import { getLead } from '$lib/server/db/leads';
+import { canEditLead } from '$lib/utils/permissions';
 
 // PATCH — tag/untag a lead to a recurring organizer (GitHub #188).
-// 200 + updated lead / 400 invalid / 401 unauthed / 404 lead missing / 422 organizer missing.
+// 200 + updated lead / 400 invalid / 401 unauthed / 403 not editable by caller /
+// 404 lead missing / 422 organizer missing.
 export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 	if (!locals.user) throw error(401, 'Unauthorized');
 
@@ -38,13 +41,21 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 		if (!org) throw error(422, 'Organizer not found');
 	}
 
-	const [existing] = await db
-		.select({ organizerId: crmLeads.organizerId })
-		.from(crmLeads)
-		.where(eq(crmLeads.id, params.id))
-		.limit(1);
-	if (!existing) throw error(404, 'Lead not found');
+	const existingLead = await getLead(params.id, locals.user.id, locals.user.role);
+	if (!existingLead) throw error(404, 'Lead not found');
 
+	const me = {
+		id: locals.user.id,
+		email: locals.user.email,
+		name: locals.user.name,
+		firstName: locals.user.firstName,
+		lastName: locals.user.lastName,
+		role: locals.user.role,
+		active: true
+	};
+	if (!canEditLead(me, existingLead)) throw error(403, 'Forbidden');
+
+	const existing = { organizerId: existingLead.organizerId };
 	const actorUserId = locals.user.id;
 	const updated = await db.transaction(async (tx) => {
 		const [row] = await tx

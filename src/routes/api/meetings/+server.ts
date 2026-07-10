@@ -4,8 +4,10 @@ import { meetingFormSchema } from '$lib/zod/schemas';
 import {
 	listMeetingsPaginated,
 	createMeeting,
+	getMeetingDetail,
 	parseMeetingFilterParams
 } from '$lib/server/db/meetings';
+import { syncMeetingToNextcloud } from '$lib/server/n8n/calendar-sync';
 
 export const GET: RequestHandler = async ({ url, locals }) => {
 	if (!locals.user) throw error(401, 'Unauthorized');
@@ -38,11 +40,34 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		startAt: new Date(data.startAt),
 		// Any authenticated user may create; organizer defaults to the creator.
 		organizerId: data.organizerId ?? locals.user.id,
+		// Lead's linked recurring-organizer (crm_organizers) — pre-filled from the lead, nullable.
+		leadOrganizerId: data.leadOrganizerId ?? null,
 		meetingUrl: data.meetingUrl || undefined,
+		venue: data.venue || undefined,
 		notes: data.notes || undefined,
 		outcome: data.outcome || undefined,
 		attendeeIds: data.attendeeIds
 	});
+
+	void getMeetingDetail(meeting.id)
+		.then((full) => {
+			if (!full) return;
+			return syncMeetingToNextcloud({
+				id: full.id,
+				leadId: full.leadId ?? null,
+				leadName: full.leadName ?? null,
+				leadOrganizerName: full.leadOrganizerName ?? null,
+				organizerName: full.organizerName ?? null,
+				attendees: full.attendees,
+				meetingUrl: full.meetingUrl ?? null,
+				startAt: full.startAt,
+				venue: full.venue ?? null,
+				notes: full.notes ?? null,
+				outcome: full.outcome ?? null,
+				nextcloudUid: null
+			});
+		})
+		.catch((e) => console.error('[NCAL-3] meeting create sync failed:', e));
 
 	return json(meeting, { status: 201 });
 };

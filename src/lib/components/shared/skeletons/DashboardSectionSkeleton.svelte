@@ -15,7 +15,9 @@
 			</div>
 			<div class="overflow-hidden rounded-control border border-hairline bg-panel">
 				{#each Array(rows) as _, r (r)}
-					<div class="flex items-center gap-3 border-b border-hairline px-4 py-3 last:border-0">
+					<div
+						class="flex flex-wrap items-center gap-3 border-b border-hairline px-4 py-3 last:border-0 lg:flex-nowrap"
+					>
 						<Skeleton class="h-8 w-8 shrink-0 rounded-full" />
 						<div class="min-w-0 flex-1 space-y-1.5">
 							<Skeleton class="h-3.5 w-40" />

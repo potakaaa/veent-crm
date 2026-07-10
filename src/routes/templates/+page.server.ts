@@ -2,7 +2,7 @@ import type { PageServerLoad } from './$types';
 import { error } from '@sveltejs/kit';
 import { listTemplatesPaginated, TEMPLATES_PAGE_SIZE } from '$lib/server/db/templates';
 import { sessionToUser } from '$lib/server/db/users';
-import { LEAD_CATEGORIES } from '$lib/zod/schemas';
+import { TEMPLATE_CATEGORIES } from '$lib/data/template-categories';
 
 // All authenticated users can view templates (reps read-only; managers can add/edit/delete).
 // Write actions are gated in /api/templates.
@@ -24,7 +24,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	const q = url.searchParams.get('q') ?? undefined;
 	const rawCategory = url.searchParams.get('category') ?? undefined;
 	const category =
-		rawCategory && (LEAD_CATEGORIES as readonly string[]).includes(rawCategory)
+		rawCategory && (TEMPLATE_CATEGORIES as readonly string[]).includes(rawCategory)
 			? rawCategory
 			: undefined;
 	const rawSort = url.searchParams.get('sort') ?? 'title';

@@ -16,7 +16,7 @@
 		children
 	}: {
 		user: User | null;
-		counts: { overdue: number; unassigned: number };
+		counts: { overdue: number; unassigned: number; unread: number };
 		sidebarOpen?: boolean;
 		children: Snippet;
 	} = $props();

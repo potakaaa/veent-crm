@@ -1,0 +1,49 @@
+{
+  "snippets": [
+    {
+      "file": "src/lib/server/db/schema.ts",
+      "lines": "35-44",
+      "description": "crm_lead_stage enum gains 'done' after 'live', before 'lost' (additive, non-destructive)"
+    },
+    {
+      "file": "src/lib/server/db/schema.ts",
+      "lines": "176-182",
+      "description": "new nullable revenue_cents integer column, alongside existing dealValueCents/currency"
+    },
+    {
+      "file": "src/lib/zod/schemas.ts",
+      "lines": "278-303",
+      "description": "moveStageSchema gains a `done` discriminated-union branch requiring BOTH revenueCents (nonnegative int) and currency (defaulted PHP) — stricter than won's optional dealValueCents"
+    },
+    {
+      "file": "src/lib/zod/schemas.ts",
+      "lines": "126-135",
+      "description": "leadUpdateSchema gains optional revenueCents/currency fields so the inline editor PATCH runs through the SAME schema + SAME canEditLead gate as every other lead edit"
+    },
+    {
+      "file": "src/lib/server/db/leads.ts",
+      "lines": "1292-1307 (moveLeadStage done branch)",
+      "description": "dedicated `else if (stage === 'done')` branch inserted BEFORE the generic clearing branch — writes stage/revenueCents/currency/lastActivityAt/updatedAt only, leaves dealValueCents/wonOrgName/signedAt/lostReason untouched"
+    },
+    {
+      "file": "src/lib/server/db/leads.ts",
+      "lines": "history rows block, revenue_cents entry added",
+      "description": "audit-trail row written for the done transition: field='revenue_cents', oldValue=existing.revenueCents, newValue=payload.revenueCents"
+    },
+    {
+      "file": "src/lib/server/db/leads.ts",
+      "lines": "updateLead — input type + SET clause + tracked array (step 12/12b)",
+      "description": "revenueCents/currency added to updateLead's forward-only input handling AND to the `tracked` history-diff array (E1) — mirrors the transaction_fee_pct/convenience_fee_pesos tuple pattern exactly, so inline revenue PATCHes are audit-logged"
+    },
+    {
+      "file": "src/routes/api/leads/[id]/+server.ts",
+      "lines": "PATCH handler",
+      "description": "leadUpdateSchema.safeParse -> getLead(visibility-scoped) -> canEditLead(me, existing) -> updateLead — UNCHANGED gate order; revenueCents/currency forwarded forward-only alongside every other optional field"
+    },
+    {
+      "file": "src/lib/server/db/dashboard.ts",
+      "lines": "getRevenuePerAe",
+      "description": "mirrors getWonInRangePerAe's selectDistinctOn shape but ADDS eq(crmLeads.stage, 'done') current-stage guard (E2) so a lead that later moved OUT of done is excluded from the sum"
+    }
+  ]
+}

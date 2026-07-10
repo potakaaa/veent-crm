@@ -11,7 +11,6 @@
 		ActivityChannel,
 		ActivityOutcome,
 		AddActivityInput,
-		Category,
 		Lead,
 		MessageTemplate
 	} from '$lib/types';
@@ -23,32 +22,33 @@
 		lead,
 		templates,
 		repName,
+		repFirstName,
+		repLastName,
 		onSubmit,
 		disabled = false
 	}: {
-		lead: Pick<Lead, 'name' | 'eventName' | 'category'>;
+		lead: Pick<Lead, 'name' | 'eventName'>;
 		templates: MessageTemplate[];
 		repName: string;
+		repFirstName: string;
+		repLastName: string;
 		onSubmit: (input: AddActivityInput) => void | Promise<void>;
 		disabled?: boolean;
 	} = $props();
 
-	// Group DB-backed templates by their lead-category enum value, surfacing the
-	// current lead's own category first (AC-6). Empty categories are simply absent —
-	// never a blocking empty state (the popover still lists every other group).
+	// Group DB-backed templates by their (string) template-category value, alpha-sorted.
+	// Empty categories are simply absent — never a blocking empty state (the popover still
+	// lists every other group). Lead categories are now multi-value (crm_categories) and no
+	// longer drive template ordering (CAT-1).
 	const templateGroups = $derived.by(() => {
-		const byCategory = new SvelteMap<Category, MessageTemplate[]>();
+		const byCategory = new SvelteMap<string, MessageTemplate[]>();
 		for (const t of templates) {
 			const items = byCategory.get(t.category) ?? [];
 			items.push(t);
 			byCategory.set(t.category, items);
 		}
 		return [...byCategory.keys()]
-			.sort((a, b) => {
-				if (a === lead.category) return -1;
-				if (b === lead.category) return 1;
-				return a.localeCompare(b);
-			})
+			.sort((a, b) => a.localeCompare(b))
 			.map((category) => ({ category, items: byCategory.get(category)! }));
 	});
 
@@ -60,7 +60,9 @@
 		const vars: TemplateVars = {
 			organizerName: lead.name,
 			eventName: lead.eventName ?? '',
-			repName
+			repName,
+			repFirstName,
+			repLastName
 		};
 		return fillTemplate(t.body, vars);
 	}
@@ -269,9 +271,7 @@
 						{#each templateGroups as group (group.category)}
 							<div>
 								<div class="mb-1 font-mono text-[10px] uppercase tracking-[0.5px] text-ink-300">
-									{group.category}{#if group.category === lead.category}
-										<span class="text-primary"> · this lead</span>
-									{/if}
+									{group.category}
 								</div>
 								<div class="flex flex-col gap-1">
 									{#each group.items as t (t.id)}

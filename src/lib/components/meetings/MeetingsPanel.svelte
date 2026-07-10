@@ -21,6 +21,7 @@
 	import { Skeleton } from '$lib/components/ui/skeleton';
 	import { isManagerRole } from '$lib/utils/permissions';
 	import type { Meeting, User } from '$lib/types';
+	import Modal from '$lib/components/shared/Modal.svelte';
 
 	let {
 		meetings,
@@ -29,6 +30,10 @@
 		me,
 		// Single-lead mode: leadId fixed (no lead column). Cross-lead mode: leadId omitted.
 		leadId = undefined,
+		// Single-lead mode only: the lead's linked recurring-organizer (crm_organizers,
+		// GitHub #188) — the CREATE-mode pre-fill source passed through to the meeting modal.
+		leadOrganizerId = undefined,
+		leadOrganizerName = undefined,
 		// Cross-lead mode only: server-resolved label for the currently-selected lead filter.
 		selectedLead = undefined,
 		// Cross-lead mode only: hydrates the filter/sort toolbar from the SSR loader.
@@ -39,6 +44,8 @@
 		users: User[];
 		me: User;
 		leadId?: string;
+		leadOrganizerId?: string | null;
+		leadOrganizerName?: string;
 		selectedLead?: { id: string; name: string } | null;
 		filters?: {
 			organizer: string;
@@ -46,6 +53,7 @@
 			dateFrom: string;
 			dateTo: string;
 			sortDir: 'asc' | 'desc';
+			outcome: string;
 		};
 	} = $props();
 
@@ -154,6 +162,7 @@
 	let editing = $state<Meeting | null>(null);
 	let saving = $state(false);
 	let mutating = $state(false);
+	let deleteTarget = $state<Meeting | null>(null);
 
 	function canManage(m: Meeting): boolean {
 		return isManagerRole(me.role) || (m.organizerId != null && m.organizerId === me.id);
@@ -192,7 +201,10 @@
 							// Empty string means "unassign" — send explicit null so JSON.stringify
 							// keeps the key (undefined would be dropped, leaving organizer unchanged).
 							organizerId: payload.organizerId ? payload.organizerId : null,
+							// Explicit null (from the modal) clears the linked organizer on edit.
+							leadOrganizerId: payload.leadOrganizerId ?? null,
 							meetingUrl: payload.meetingUrl ?? '',
+							venue: payload.venue ?? '',
 							notes: payload.notes ?? '',
 							outcome: payload.outcome ?? '',
 							attendeeIds: payload.attendeeIds
@@ -220,12 +232,12 @@
 		toasts.success(editingId ? 'Meeting updated' : 'Meeting created');
 	}
 
-	async function remove(m: Meeting) {
-		if (mutating) return;
-		if (!confirm('Delete this meeting?')) return;
+	async function confirmDelete() {
+		if (!deleteTarget || mutating) return;
 		mutating = true;
+		const target = deleteTarget;
 		try {
-			const res = await fetch(`/api/meetings/${m.id}`, { method: 'DELETE' });
+			const res = await fetch(`/api/meetings/${target.id}`, { method: 'DELETE' });
 			if (!res.ok) {
 				const msg = await res.text().catch(() => 'Server error');
 				toasts.push(`Delete failed: ${msg}`);
@@ -237,8 +249,9 @@
 		} finally {
 			mutating = false;
 		}
+		deleteTarget = null;
 		await invalidateAll();
-		toasts.push('Meeting deleted');
+		toasts.success('Meeting deleted');
 	}
 </script>
 
@@ -390,6 +403,26 @@
 				{#if navLoading && pendingAction === 'sortDir'}{@render spinner(12)}{/if}
 				{filters.sortDir === 'asc' ? 'Oldest first' : 'Newest first'}
 			</Button>
+
+			<div class="relative flex items-center">
+				<input
+					type="text"
+					value={filters.outcome}
+					disabled={navLoading}
+					onchange={(e) => {
+						pendingAction = 'outcome';
+						setFilter('outcome', e.currentTarget.value);
+					}}
+					aria-label="Filter by outcome"
+					placeholder="Search outcome…"
+					class="h-8 rounded-control border border-hairline bg-panel px-2 text-[12.5px] text-ink focus:outline-none focus:ring-1 focus:ring-primary disabled:cursor-wait disabled:opacity-60"
+				/>
+				{#if navLoading && pendingAction === 'outcome'}
+					<span class="pointer-events-none absolute right-2 text-ink-400"
+						>{@render spinner(12)}</span
+					>
+				{/if}
+			</div>
 		</div>
 	{/if}
 
@@ -423,7 +456,14 @@
 						<div class="min-w-0">
 							<div class="text-[13px] font-semibold text-ink">{formatStart(m.startAt)}</div>
 							{#if crossLead && m.leadName}
-								<div class="mt-0.5 text-[12px] text-ink-500">{m.leadName}</div>
+								<a
+									href={`/leads/${m.leadId}`}
+									onclick={(e) => e.stopPropagation()}
+									onkeydown={(e) => e.stopPropagation()}
+									class="mt-0.5 inline-block text-[12px] font-medium text-primary hover:underline"
+								>
+									{m.leadName}
+								</a>
 							{/if}
 							<div class="mt-0.5 text-[12px] text-ink-400">
 								Organizer: {m.organizerName ?? 'Unassigned'}
@@ -466,7 +506,7 @@
 									disabled={mutating}
 									onclick={(e) => {
 										e.stopPropagation();
-										remove(m);
+										deleteTarget = m;
 									}}
 									class="rounded-control border border-hairline bg-panel px-2.5 py-1 text-[12px] font-medium text-red-500 hover:border-red-300 hover:bg-red-50 disabled:opacity-50"
 								>
@@ -495,6 +535,8 @@
 	open={modalOpen}
 	{users}
 	{leadId}
+	{leadOrganizerId}
+	{leadOrganizerName}
 	meeting={editing}
 	{saving}
 	onclose={() => {
@@ -503,3 +545,34 @@
 	}}
 	onsubmit={submit}
 />
+
+<Modal
+	open={!!deleteTarget}
+	title="Delete this meeting?"
+	width={420}
+	onclose={() => (deleteTarget = null)}
+>
+	<p class="text-[13.5px] leading-relaxed text-ink-600">
+		Are you sure you want to delete this meeting? This cannot be undone.
+	</p>
+	{#snippet footer()}
+		<Button
+			variant="outline"
+			class="flex-1"
+			onclick={() => (deleteTarget = null)}
+			disabled={mutating}
+		>
+			Cancel
+		</Button>
+		<Button
+			variant="destructive"
+			class="flex-[2]"
+			disabled={mutating}
+			loading={mutating}
+			loadingText="Deleting…"
+			onclick={confirmDelete}
+		>
+			Yes, delete
+		</Button>
+	{/snippet}
+</Modal>

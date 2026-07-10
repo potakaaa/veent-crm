@@ -19,11 +19,14 @@ import { baUser, baAccount, baSession, baVerification, crmUsers } from '$lib/ser
 import { sendEmail } from './email';
 import { pendingWelcomeEmails, welcomeEmail, loginEmail } from './email-templates';
 import { env } from '$env/dynamic/private';
+import { formatFullName } from '$lib/utils/format-name';
 
 export type SessionUser = {
 	id: string;
 	email: string;
 	name: string;
+	firstName: string;
+	lastName: string | null;
 	role: 'rep' | 'manager' | 'super_manager';
 };
 
@@ -49,11 +52,14 @@ function createAuth() {
 						// welcome template with a personalized name looked up from crm_users.
 						pendingWelcomeEmails.delete(email);
 						const [row] = await db
-							.select({ name: crmUsers.name })
+							.select({ firstName: crmUsers.firstName, lastName: crmUsers.lastName })
 							.from(crmUsers)
 							.where(eq(crmUsers.email, email))
 							.limit(1);
-						await sendEmail({ to: email, ...welcomeEmail(row?.name ?? 'there', url) });
+						await sendEmail({
+							to: email,
+							...welcomeEmail(row ? formatFullName(row.firstName, row.lastName) : 'there', url)
+						});
 					} else {
 						await sendEmail({ to: email, ...loginEmail(url) });
 					}

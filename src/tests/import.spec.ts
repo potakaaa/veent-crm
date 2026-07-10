@@ -63,6 +63,16 @@ describe('normalizeHandle', () => {
 			normalizeHandle(undefined, undefined, 'https://iloilofoodexpo.ph', 'Iloilo Food Expo')
 		).toBe('iloilo-food-expo');
 	});
+	it('derives the handle from a scheme-less FB URL (bare domain paste)', () => {
+		expect(normalizeHandle('facebook.com/AcmeEvents', undefined, undefined, 'Fallback Name')).toBe(
+			'acmeevents'
+		);
+	});
+	it('derives the handle from a scheme-less www IG URL', () => {
+		expect(
+			normalizeHandle(undefined, 'www.instagram.com/AcmeEvents', undefined, 'Fallback Name')
+		).toBe('acmeevents');
+	});
 });
 
 describe('mapCategory', () => {

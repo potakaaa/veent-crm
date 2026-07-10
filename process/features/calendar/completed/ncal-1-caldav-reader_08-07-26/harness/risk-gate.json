@@ -1,0 +1,9 @@
+{
+  "task": "NCAL-1 — CalDAV read client + session-gated GET /api/calendar/events",
+  "planPath": "process/features/calendar/active/ncal-1-caldav-reader_08-07-26/ncal-1-caldav-reader_PLAN_08-07-26.md",
+  "riskLevel": "high",
+  "riskClasses": ["permission, secret, or trust-boundary logic"],
+  "mustStopBeforeFinalize": true,
+  "humanApprovalRequired": true,
+  "why": "Server-only CalDAV client sends Basic Auth credentials to an external Nextcloud instance and exposes results via a session-gated endpoint. Credentials must never reach the browser or a plaintext log; a Nextcloud 401 must be masked as a generic 503; ATTACH/SOUND must be stripped; the CalDAV time-range must be formatted from parsed Date objects (XML-injection guard); and RRULE expansion must be clamped (authenticated-DoS guard)."
+}

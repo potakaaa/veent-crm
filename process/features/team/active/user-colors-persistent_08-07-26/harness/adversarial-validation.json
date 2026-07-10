@@ -1,0 +1,29 @@
+{
+  "scenarios": [
+    {
+      "scenario": "A rep attempts to set their own color via a direct PATCH /api/users/{their-own-id} request (bypassing the UI, which never shows the color picker to non-managers).",
+      "ruled_out": true,
+      "rationale": "The endpoint's self-branch explicitly checks `color !== undefined && !isManagerRole(locals.user.role)` and throws 403 regardless of UI state. Proven by the Fully-Automated test 'rejects a rep setting their own color (403)' in src/tests/users-color-gate.spec.ts, which asserts `updateMock` is never called (no DB write occurs even on the rejected attempt)."
+    },
+    {
+      "scenario": "A rep attempts to set another user's color via a direct PATCH /api/users/{other-user-id} request.",
+      "ruled_out": true,
+      "rationale": "The endpoint's other-user branch requires `isManagerRole(locals.user.role)` when `color !== undefined`, mirroring the existing rename gate. Proven by the Fully-Automated test \"rejects a rep setting another rep's color (403)\" — `updateMock` never called."
+    },
+    {
+      "scenario": "A rep bypasses the manager-only gate by omitting color from the JSON body but injecting it via a different casing/encoding, or via a malformed payload that might slip past zod validation.",
+      "ruled_out": true,
+      "rationale": "patchSchema.safeParse runs before any authorization branch; `color` is only ever read from the parsed, typed `body.data.color`. A non-conforming payload either fails validation (400, before auth) or is coerced into the exact typed shape the auth check inspects — there is no alternate path to set the DB column bypassing the parsed field."
+    },
+    {
+      "scenario": "A manager sets an invalid/malformed hex string as another user's color, potentially reaching the DB as garbage data.",
+      "ruled_out": true,
+      "rationale": "The hex regex (`^#[0-9a-fA-F]{6}$`) is enforced in the zod patchSchema BEFORE any authorization or DB write; invalid hex is rejected with 400 regardless of actor role. Proven by the Fully-Automated test 'rejects an invalid hex color (400)' — `updateMock` never called."
+    },
+    {
+      "scenario": "The client-side /team edit modal seeds the color picker with a value that could leak or misrepresent another user's actual DB state (e.g. showing a stale or wrong swatch).",
+      "ruled_out": true,
+      "rationale": "editColor is always re-seeded from `resolveAvatarColor(u.color, u.name)` on openEdit — the exact same function the Avatar component uses to render — guaranteeing the picker default matches the currently-rendered color for that user. Not a security boundary but a correctness guarantee; no adversarial exposure identified."
+    }
+  ]
+}

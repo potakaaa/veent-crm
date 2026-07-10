@@ -2,6 +2,7 @@
 	import { makeSortTable } from '$lib/utils/tableSort';
 	import Avatar from '$lib/components/shared/Avatar.svelte';
 	import PlatformBadge from '$lib/components/shared/PlatformBadge.svelte';
+	import CompetitorBadge from '$lib/components/shared/CompetitorBadge.svelte';
 	import StageChip from '$lib/components/shared/StageChip.svelte';
 	import AgeBadge from '$lib/components/shared/AgeBadge.svelte';
 	import EventBadge from '$lib/components/shared/EventBadge.svelte';
@@ -9,13 +10,21 @@
 	import AppealScoreBadge from '$lib/components/AppealScoreBadge.svelte';
 	import DataGridShell from '$lib/components/leads/DataGridShell.svelte';
 	import { Button } from '$lib/components/ui/button';
+	import CategoryChip from '$lib/components/categories/CategoryChip.svelte';
 	import { riskMeta } from '$lib/utils/risk';
+	import { isClosed } from '$lib/utils/stages';
 	import { ownerNameFor } from '$lib/utils/owner';
+	import { resolveAvatarColor } from '$lib/design/tokens';
 	import type { Lead, User } from '$lib/types';
 
-	// Loader attaches derived `appealScore` to each lead at runtime (spread + extra field);
-	// widen the prop type to reflect it.
-	type LeadWithAppeal = Lead & { appealScore: number | null };
+	type LeadCategory = { id: string; name: string; color: string | null };
+
+	// Loader attaches derived `appealScore` + assigned `categories` to each lead at runtime
+	// (spread + extra fields); widen the prop type to reflect it.
+	type LeadWithAppeal = Lead & { appealScore: number | null; categories?: LeadCategory[] };
+
+	// List rows show at most this many category chips; the rest collapse into a "+N" pill.
+	const MAX_CHIPS = 3;
 
 	let {
 		leads,
@@ -33,6 +42,10 @@
 		onSortChange?: (col: string, dir: 'asc' | 'desc') => void;
 	} = $props();
 	const ownerName = (id: string | null) => ownerNameFor(users, id);
+	const ownerColor = (id: string | null) => {
+		const u = id ? users.find((x) => x.id === id) : undefined;
+		return resolveAvatarColor(u?.color, u?.name);
+	};
 
 	// Desktop column template (8 cells: risk dot + 7 data columns). Below `lg` the
 	// DataGridShell collapses this into a stacked single-column card. fr-values adopted
@@ -96,14 +109,31 @@
 						title={riskMeta(l.urgency).label}
 					></span>
 					<div class="min-w-0 flex-1 lg:contents">
-						<div class="flex min-w-0 items-center gap-1.5 text-[13px] font-semibold">
-							<span class="truncate">{l.name}</span>
-							{#if l.siblings}
-								<span
-									class="shrink-0 rounded-[4px] bg-[rgba(194,113,12,0.1)] px-[5px] py-px font-mono text-[9.5px] text-stale"
-								>
-									{l.siblings} events
-								</span>
+						<div class="flex min-w-0 flex-col gap-0.5 text-[13px] font-semibold">
+							<div class="flex min-w-0 items-center gap-1.5">
+								<span class="truncate">{l.name}</span>
+								{#if l.siblings}
+									<span
+										class="shrink-0 rounded-[4px] bg-[rgba(194,113,12,0.1)] px-[5px] py-px font-mono text-[9.5px] text-stale"
+									>
+										{l.siblings} events
+									</span>
+								{/if}
+								<CompetitorBadge platform={l.currentPlatform} />
+							</div>
+							{#if l.categories && l.categories.length > 0}
+								<div class="flex flex-wrap items-center gap-1">
+									{#each l.categories.slice(0, MAX_CHIPS) as cat (cat.id)}
+										<CategoryChip category={cat} />
+									{/each}
+									{#if l.categories.length > MAX_CHIPS}
+										<span
+											class="shrink-0 rounded-[4px] bg-panel-sunken px-[5px] py-px font-mono text-[10px] text-ink-400"
+										>
+											+{l.categories.length - MAX_CHIPS} more
+										</span>
+									{/if}
+								</div>
 							{/if}
 						</div>
 					</div>
@@ -126,10 +156,12 @@
 				<div class="mt-1 flex flex-wrap items-center gap-1.5 lg:mt-0 lg:contents">
 					<div class="flex items-center lg:contents"><StageChip stage={l.stage} /></div>
 					<div class="flex min-w-0 items-center lg:contents">
-						<Avatar name={ownerName(l.ownerId)} />
+						<Avatar name={ownerName(l.ownerId)} color={ownerColor(l.ownerId)} />
 					</div>
 					<div class="flex items-center lg:contents">
-						<AgeBadge label={l.age.label} type={l.age.type} />
+						{#if !isClosed(l.stage)}
+							<AgeBadge label={l.age.label} type={l.age.type} />
+						{/if}
 					</div>
 					<div class="flex items-center lg:contents"><PlatformBadge platform={l.platform} /></div>
 					<div class="flex min-w-0 items-center lg:contents">
@@ -144,7 +176,7 @@
 		<EmptyState
 			icon="leads"
 			title="Nothing here yet"
-			hint="No leads match this view — go prospect, or check Up for grabs."
+			hint="No leads match this view — go prospect, or check Unassigned Leads."
 		>
 			{#snippet actions()}
 				<Button
@@ -152,7 +184,7 @@
 					size="sm"
 					href="/unassigned"
 					class="border-stage-contacted text-stage-contacted hover:bg-stage-contacted/10"
-					>Up for grabs</Button
+					>Unassigned Leads</Button
 				>
 				<Button variant="destructive" size="sm" href="/leads/new">Add lead</Button>
 			{/snippet}

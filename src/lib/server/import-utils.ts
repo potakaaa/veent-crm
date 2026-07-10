@@ -3,67 +3,19 @@
 // `scripts/import.ts` CLI (via relative path). Types are derived from the Drizzle enums in
 // db/schema.ts (the single source of truth for the category/platform vocabularies).
 
-import { leadCategory, leadPlatform } from './db/schema';
+import { leadPlatform } from './db/schema';
+import { TEMPLATE_CATEGORIES, type TemplateCategory } from '../data/template-categories';
 
-export type CrmLeadCategory = (typeof leadCategory.enumValues)[number];
+// Pure handle-normalization trio lives in the client-safe `$lib/utils/normalize.ts` (single source
+// of truth) so the import wizard's browser-side MappingStep can reuse it without pulling this
+// server-only module (which imports the Drizzle schema) into the client bundle. Re-exported here so
+// existing server-side importers of `$lib/server/import-utils` keep working unchanged.
+export { slugify, extractHandleFromUrl, normalizeHandle } from '../utils/normalize';
+
+// Category vocabulary is the frozen TEMPLATE_CATEGORIES list (CAT-1) — the leadCategory enum
+// was dropped in migration 0028.
+export type CrmLeadCategory = TemplateCategory;
 export type CrmLeadPlatform = (typeof leadPlatform.enumValues)[number];
-
-export function slugify(name: string): string {
-	return name
-		.toLowerCase()
-		.replace(/\s+/g, '-')
-		.replace(/[^a-z0-9-]/g, '')
-		.replace(/-+/g, '-')
-		.replace(/^-|-$/g, '');
-}
-
-// Known non-account path prefixes on FB/IG that are not organizer handles.
-const NON_ACCOUNT_SEGMENTS = new Set([
-	'groups',
-	'events',
-	'pages',
-	'profile.php',
-	'p',
-	'reel',
-	'reels',
-	'share',
-	'watch',
-	'video',
-	'videos',
-	'photo',
-	'photos',
-	'stories',
-	'hashtag'
-]);
-
-export function extractHandleFromUrl(url: string): string | null {
-	// Extract the first meaningful path segment from an FB/IG/website URL.
-	try {
-		const u = new URL(url);
-		const parts = u.pathname.split('/').filter(Boolean);
-		if (!parts.length) return null;
-		const seg = parts[0].replace(/[^a-z0-9._-]/gi, '').toLowerCase();
-		if (seg.length < 2 || NON_ACCOUNT_SEGMENTS.has(seg)) return null;
-		return seg;
-	} catch {
-		return null;
-	}
-}
-
-export function normalizeHandle(
-	fbUrl?: string,
-	igUrl?: string,
-	website?: string,
-	name?: string
-): string {
-	// Priority: FB → IG → website → slugify(name).
-	for (const url of [fbUrl, igUrl, website]) {
-		if (!url) continue;
-		const h = extractHandleFromUrl(url);
-		if (h) return h;
-	}
-	return slugify(name ?? 'unknown');
-}
 
 // Full category map: scraper agent_categories value → CRM crm_lead_category enum.
 const CATEGORY_MAP: Record<string, CrmLeadCategory> = {
@@ -99,8 +51,8 @@ const CATEGORY_MAP: Record<string, CrmLeadCategory> = {
 
 export function mapCategory(value: string): { category: CrmLeadCategory } {
 	const trimmed = value.trim();
-	// Pass through values already valid in the CRM enum (e.g. Camp, Modelling, Resort).
-	if ((leadCategory.enumValues as readonly string[]).includes(trimmed)) {
+	// Pass through values already valid in the vocabulary (e.g. Camp, Modelling, Resort).
+	if ((TEMPLATE_CATEGORIES as readonly string[]).includes(trimmed)) {
 		return { category: trimmed as CrmLeadCategory };
 	}
 	const mapped = CATEGORY_MAP[trimmed];
@@ -167,4 +119,65 @@ export function normalizeCountry(raw?: string | null): string | null {
 	if (!raw) return null;
 	const key = raw.trim().toLowerCase();
 	return COUNTRY_MAP[key] ?? null;
+}
+
+// Competitor platform inference: map a URL's hostname to the human-readable competitor
+// ticketing/event platform name. Used at ingest time (auto-fill) and in the backfill script.
+// Add entries here as new platforms are confirmed — keep keys lowercase, no leading 'www.'.
+const COMPETITOR_PLATFORM_MAP: Array<[string, string]> = [
+	// Social
+	['facebook.com', 'Facebook Events'],
+	['fb.com', 'Facebook Events'],
+	['instagram.com', 'Instagram'],
+	// Event discovery
+	['allevents.in', 'AllEvents.in'],
+	['happeningnext.com', 'HappeningNext'],
+	['meetup.com', 'Meetup'],
+	['lu.ma', 'Luma'],
+	['luma.com', 'Luma'],
+	['clickthecity.com', 'Click the City'],
+	// Ticketing
+	['eventbrite.com', 'Eventbrite'],
+	['ticket2me.ph', 'Ticket2Me'],
+	['ticketmelon.com', 'Ticketmelon'],
+	['eventbee.com', 'Eventbee'],
+	['ticketspice.com', 'TicketSpice'],
+	['sistic.com.sg', 'SISTIC'],
+	['tessera.ph', 'Tessera'],
+	['eventalways.com', 'EventAlways'],
+	// Event management / booking
+	['myruntime.com', 'MyRuntime'],
+	['planout.ph', 'Planout'],
+	['eventbookings.com', 'EventBookings'],
+	['eventsize.com', 'Eventsize'],
+	// Local / niche
+	['racemeister.com', 'Racemeister']
+];
+
+export function inferCurrentPlatform(
+	pageUrl?: string | null,
+	eventLink?: string | null
+): string | null {
+	for (const url of [eventLink, pageUrl]) {
+		if (!url) continue;
+		let hostname: string;
+		try {
+			hostname = new URL(url).hostname.toLowerCase().replace(/^www\./, '');
+		} catch {
+			continue;
+		}
+		for (const [domain, name] of COMPETITOR_PLATFORM_MAP) {
+			if (hostname === domain || hostname.endsWith('.' + domain)) return name;
+		}
+	}
+	return null;
+}
+
+// Derive a country segment from the free-text location field: take the last comma-separated
+// segment (e.g. "Makati, Philippines" → "Philippines"), or the whole string if no comma.
+export function parseCountryFromLocation(location?: string | null): string | null {
+	if (!location) return null;
+	const parts = location.split(',');
+	const derived = parts.length > 1 ? parts[parts.length - 1].trim() : location.trim();
+	return derived || null;
 }

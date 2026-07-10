@@ -1,0 +1,22 @@
+{
+  "phase": "pipe-4-section-a-ae-filter",
+  "evl_run": "confirmation",
+  "date": "2026-07-07",
+  "runner": "vitest",
+  "gates": [
+    { "gate": "bun run check", "status": "PASS", "detail": "0 errors, 2 pre-existing warnings (leads/[id]+page.svelte:72, pipeline/+page.svelte:41)" },
+    { "gate": "bun run lint", "status": "PASS", "detail": "0 errors, 1 pre-existing warning (calendar/+page.svelte:264)" },
+    { "gate": "bunx vitest run", "status": "PASS", "detail": "427 passed / 148 skipped / 0 failed (34 files passed, 7 skipped)" }
+  ],
+  "targeted_confirmations": {
+    "pipeline_db_collision_check": "PASS — Phase 5 live-DB describe.skipIf(SKIP_DB) blocks (moveLeadStage/reassignLead/won/lost/Phase4-regression) preserved AND new un-skipped 'buildPipelineStageWhereClause — DB-free' block coexist",
+    "buildPipelineStageWhereClause_unskipped": "PASS — 5 .toSQL()-based cases run un-skipped (not gated behind SKIP_DB)",
+    "resolvePipelineRepFilter": "PASS — 6 cases",
+    "pipeline_search_regression": "PASS — 7 search tests pass (src/routes/pipeline/pipeline-search.test.ts)",
+    "leads_ts_composition": "PASS — buildPipelineStageWhereClause pure/exported, AND-composed (and(...conditions)), owner-narrow pushed ONLY for manager/super_manager, applied to BOTH rows + count() queries; rep ignores filterRepId",
+    "both_call_sites_gated": "PASS — +page.server.ts and api/leads/pipeline-stage/+server.ts both manager-gate ?rep= behind isManager and route through resolvePipelineRepFilter",
+    "svelte_gate": "PASS — RepFilterCombobox behind {#if data.isManager}; navigateRepFilter preserves ?q= (only mutates 'rep' param)",
+    "section_b_untouched": "PASS (with note) — no color-coding added; PipelineBoard.svelte has a PIPE-3 search empty-state change only, no border-l-4/legend/color map"
+  },
+  "overall": "DONE"
+}

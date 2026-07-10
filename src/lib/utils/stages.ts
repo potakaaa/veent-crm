@@ -13,6 +13,7 @@ export const STAGE_ORDER: Stage[] = [
 	'in_discussion',
 	'won',
 	'live',
+	'done',
 	'lost'
 ];
 
@@ -23,7 +24,8 @@ export const BOARD_STAGES: Stage[] = [
 	'replied',
 	'in_discussion',
 	'won',
-	'live'
+	'live',
+	'done'
 ];
 
 const meta = (stage: Stage) => STAGE_TOKENS.find((s) => s.key === (stage as StageKey));
@@ -36,3 +38,10 @@ export const isClosed = (stage: Stage): boolean => stage === 'won' || stage === 
 /** Win capture is required when entering `won`; a reason is required for `lost`. */
 export const requiresWonCapture = (stage: Stage): boolean => stage === 'won';
 export const requiresLostReason = (stage: Stage): boolean => stage === 'lost';
+/**
+ * Revenue capture is required when entering `done` (GitHub #273). `done` is NOT
+ * terminal (a lead may still move to another pipeline stage afterward), so it is
+ * deliberately excluded from `isClosed()` (E6) — it is a board column, not a
+ * closed/final state like `won`/`lost`.
+ */
+export const requiresDoneCapture = (stage: Stage): boolean => stage === 'done';

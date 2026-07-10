@@ -28,6 +28,8 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		id: locals.user.id,
 		email: locals.user.email,
 		name: locals.user.name,
+		firstName: locals.user.firstName,
+		lastName: locals.user.lastName,
 		role: locals.user.role,
 		active: true
 	};
@@ -41,7 +43,8 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		dateFrom: url.searchParams.get('dateFrom') ?? '',
 		dateTo: url.searchParams.get('dateTo') ?? '',
 		// Reuse the already-parsed, allow-listed value instead of re-deriving it.
-		sortDir: parsed.sortDir
+		sortDir: parsed.sortDir,
+		outcome: url.searchParams.get('outcome') ?? ''
 	};
 
 	return { meetings, total, users, selectedLead, me, filters };

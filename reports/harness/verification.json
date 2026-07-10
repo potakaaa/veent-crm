@@ -1,0 +1,30 @@
+{
+	"context": "EVL confirmation run",
+	"feature": "NCAL-2 CalDAV write client",
+	"date": "2026-07-08",
+	"agent": "vc-tester",
+	"diff_aware": false,
+	"note": "EVL invocation — exact validate-contract gate commands re-run independently and unconditionally.",
+	"gates": [
+		{
+			"gate": "bun run check",
+			"command": "bun run check",
+			"status": "PASS",
+			"detail": "svelte-check: 0 errors, 5 warnings (pre-existing state_referenced_locally warnings, non-blocking)"
+		},
+		{
+			"gate": "bun run test:unit:ci",
+			"command": "bun run test:unit:ci",
+			"status": "PASS",
+			"detail": "vitest --run: 50 files passed / 9 skipped; 544 tests passed / 165 skipped; 0 failed"
+		},
+		{
+			"gate": "bun run test:unit -- src/tests/caldav-parser.spec.ts",
+			"command": "bun run test:unit -- src/tests/caldav-parser.spec.ts",
+			"status": "PASS",
+			"detail": "vitest scoped: 1 file passed, 9 tests passed"
+		}
+	],
+	"overall": "DONE",
+	"closeout_classification": "CLEAN"
+}

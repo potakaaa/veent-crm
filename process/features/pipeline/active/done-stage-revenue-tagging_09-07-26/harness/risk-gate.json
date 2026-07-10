@@ -1,0 +1,6 @@
+{
+  "riskClass": "schema/data migration or destructive data mutation; billing/financial data; permission/trust-boundary logic (auth-adjacent PATCH surface)",
+  "workDescription": "GitHub #273 — add a `done` pipeline stage (Postgres native-enum ADD VALUE + new nullable `revenue_cents` column), capture post-event revenue via a dedicated moveLeadStage branch, expose an inline revenue editor on /leads/[id] through the existing leadUpdateSchema/canEditLead PATCH path, and surface a per-AE revenue rollup on the manager dashboard.",
+  "approver": "session (autonomous /goal execution) — plan validate-contract Gate: CONDITIONAL (terminal), PVL cycle 1 complete, E1/E2 both source-verified and promoted to explicit checklist steps",
+  "mustStopBeforeFinalize": true
+}

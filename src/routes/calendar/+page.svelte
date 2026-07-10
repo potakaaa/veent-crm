@@ -1,11 +1,25 @@
 <script lang="ts">
-	import { goto } from '$app/navigation';
+	import { goto, invalidateAll } from '$app/navigation';
 	import { page, navigating } from '$app/state';
 	import { SvelteURLSearchParams } from 'svelte/reactivity';
 	import CalendarGrid from '$lib/components/calendar/CalendarGrid.svelte';
+	import EventFormModal, {
+		type EventFormPayload
+	} from '$lib/components/calendar/EventFormModal.svelte';
+	import EventDetailModal from '$lib/components/calendar/EventDetailModal.svelte';
+	import type { CalendarEntry } from '$lib/types';
 	import EmptyState from '$lib/components/shared/EmptyState.svelte';
 	import Icon from '$lib/components/shared/Icon.svelte';
 	import PageHeader from '$lib/components/shared/PageHeader.svelte';
+	import {
+		Command,
+		CommandInput,
+		CommandList,
+		CommandGroup,
+		CommandItem,
+		CommandEmpty
+	} from '$lib/components/ui/command';
+	import { Popover, PopoverTrigger, PopoverContent } from '$lib/components/ui/popover';
 	import {
 		parseDateParam,
 		shiftDate,
@@ -70,6 +84,125 @@
 		pendingAction = 'today';
 		navigate({ date: undefined });
 	}
+
+	// CAL-3 manager rep-filter combobox: popover open state + client-side search over the roster.
+	let repOpen = $state(false);
+	let repQuery = $state('');
+	const filteredReps = $derived(
+		repQuery.trim()
+			? data.activeReps.filter((r) => r.name.toLowerCase().includes(repQuery.trim().toLowerCase()))
+			: data.activeReps
+	);
+
+	// Drive the existing navigate() patch so `view`/`date` params are preserved (AC9).
+	// Passing undefined clears `?repId` and returns to the full team view (AC7).
+	function navigateRepFilter(repId: string | undefined) {
+		navigate({ repId });
+	}
+
+	// --- Team-event modal state ---
+	let createOpen = $state(false);
+	let createSaving = $state(false);
+	let createError = $state('');
+	let detailOpen = $state(false);
+	let selectedEvent = $state<CalendarEntry | null>(null);
+	let detailSaving = $state(false);
+	let detailError = $state('');
+	let editOpen = $state(false);
+	let editError = $state('');
+
+	async function handleCreateEvent(payload: EventFormPayload) {
+		createSaving = true;
+		createError = '';
+		try {
+			const res = await fetch('/api/calendar/events', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					...payload,
+					categories: 'team-event',
+					source: 'sales-crm'
+				})
+			});
+			if (res.ok) {
+				createOpen = false;
+				await invalidateAll();
+			} else {
+				createError = 'Failed to create event. Please try again.';
+			}
+		} catch {
+			createError = 'Network error. Please try again.';
+		} finally {
+			createSaving = false;
+		}
+	}
+
+	async function handleEditEvent(payload: EventFormPayload) {
+		if (!selectedEvent?.uid) return;
+		detailSaving = true;
+		editError = '';
+		try {
+			const res = await fetch(`/api/calendar/events/${selectedEvent.uid}`, {
+				method: 'PUT',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(payload)
+			});
+			if (res.ok) {
+				editOpen = false;
+				detailOpen = false;
+				selectedEvent = null;
+				await invalidateAll();
+			} else {
+				editError = 'Failed to save changes. Please try again.';
+			}
+		} catch {
+			editError = 'Network error. Please try again.';
+		} finally {
+			detailSaving = false;
+		}
+	}
+
+	async function handleDeleteEvent(uid: string) {
+		detailSaving = true;
+		detailError = '';
+		try {
+			const res = await fetch(`/api/calendar/events/${uid}`, { method: 'DELETE' });
+			if (res.ok) {
+				detailOpen = false;
+				selectedEvent = null;
+				await invalidateAll();
+			} else {
+				detailError = 'Failed to delete event. Please try again.';
+			}
+		} catch {
+			detailError = 'Network error. Please try again.';
+		} finally {
+			detailSaving = false;
+		}
+	}
+
+	async function handleLinkToLead(uid: string, leadId: string, startAt: string) {
+		detailSaving = true;
+		detailError = '';
+		try {
+			const res = await fetch(`/api/calendar/events/${uid}/link`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ leadId, startAt })
+			});
+			if (res.ok) {
+				detailOpen = false;
+				selectedEvent = null;
+				await invalidateAll();
+			} else {
+				detailError = 'Failed to link event to lead. Please try again.';
+			}
+		} catch {
+			detailError = 'Network error. Please try again.';
+		} finally {
+			detailSaving = false;
+		}
+	}
 </script>
 
 {#snippet spinner(size: number)}
@@ -90,7 +223,7 @@
 
 <svelte:head><title>Calendar · Veent CRM</title></svelte:head>
 
-<div class="px-7 pb-16 pt-6">
+<div class="overflow-x-hidden px-7 pb-16 pt-6">
 	<PageHeader title="Calendar" subtitle="Team meetings and your follow-ups on one grid.">
 		{#snippet actions()}
 			<div
@@ -125,6 +258,13 @@
 					Week
 				</button>
 			</div>
+			<button
+				data-testid="calendar-create-event"
+				onclick={() => (createOpen = true)}
+				class="flex h-[26px] items-center rounded-[6px] bg-ink px-3 text-[12.5px] font-medium text-white hover:bg-ink/90"
+			>
+				Create event
+			</button>
 		{/snippet}
 	</PageHeader>
 
@@ -172,8 +312,91 @@
 		</div>
 	</div>
 
+	{#if data.isManager}
+		<div class="mb-3 flex flex-wrap items-center gap-2">
+			<span class="text-[12px] font-medium text-ink-500">Filter by rep</span>
+			<Popover bind:open={repOpen}>
+				<PopoverTrigger
+					class="flex h-8 items-center gap-1 rounded-control border border-hairline bg-panel px-2.5 text-[12.5px] text-ink hover:bg-panel-sunken"
+				>
+					{data.filterRepId == null
+						? 'All reps'
+						: data.filterRepId === data.meId
+							? 'Mine'
+							: (data.activeReps.find((r) => r.id === data.filterRepId)?.name ?? 'Rep')}
+				</PopoverTrigger>
+				<PopoverContent class="w-64 p-0" align="start">
+					<!-- shouldFilter disabled so the pinned Quick filters stay visible while typing;
+					     the reps list is filtered client-side via filteredReps. -->
+					<Command shouldFilter={false}>
+						<CommandInput
+							placeholder="Search reps…"
+							value={repQuery}
+							oninput={(e) => (repQuery = e.currentTarget.value)}
+						/>
+						<CommandList>
+							<CommandGroup heading="Quick filters">
+								<CommandItem
+									value="__mine__"
+									data-chosen={data.filterRepId === data.meId ? '' : undefined}
+									onSelect={() => {
+										navigateRepFilter(data.meId);
+										repOpen = false;
+									}}>Mine</CommandItem
+								>
+								<CommandItem
+									value="__all__"
+									data-chosen={data.filterRepId == null ? '' : undefined}
+									onSelect={() => {
+										navigateRepFilter(undefined);
+										repOpen = false;
+									}}>All reps</CommandItem
+								>
+							</CommandGroup>
+							<CommandGroup heading="Search reps">
+								{#if filteredReps.length === 0}
+									<CommandEmpty>No reps found.</CommandEmpty>
+								{:else}
+									{#each filteredReps as rep (rep.id)}
+										<CommandItem
+											value={rep.id}
+											data-chosen={data.filterRepId === rep.id ? '' : undefined}
+											onSelect={() => {
+												navigateRepFilter(rep.id);
+												repOpen = false;
+											}}>{rep.name}</CommandItem
+										>
+									{/each}
+								{/if}
+							</CommandGroup>
+						</CommandList>
+					</Command>
+				</PopoverContent>
+			</Popover>
+		</div>
+	{/if}
+
+	<div class="mb-3 flex flex-wrap items-center gap-2" aria-label="Calendar legend">
+		{#each [{ label: 'Meeting', bg: 'bg-blue-50', text: 'text-blue-700', dot: 'bg-blue-400' }, { label: 'Follow-up', bg: 'bg-amber-50', text: 'text-amber-700', dot: 'bg-amber-400' }, { label: 'Sale Opens', bg: 'bg-green-50', text: 'text-green-700', dot: 'bg-green-500' }, { label: 'Event Start', bg: 'bg-purple-50', text: 'text-purple-700', dot: 'bg-purple-500' }, { label: 'Travel', bg: 'bg-sky-50', text: 'text-sky-700', dot: 'bg-sky-400' }] as item (item.label)}
+			<span
+				class="flex items-center gap-1 rounded-[4px] px-1.5 py-0.5 text-[11px] font-medium {item.bg} {item.text}"
+			>
+				<span class="h-1.5 w-1.5 rounded-full {item.dot}"></span>
+				{item.label}
+			</span>
+		{/each}
+	</div>
+
 	<div class={navLoading ? 'opacity-60 transition-opacity' : 'transition-opacity'}>
-		<CalendarGrid {view} entries={data.entries} visibleDate={anchor} />
+		<CalendarGrid
+			{view}
+			entries={data.entries}
+			visibleDate={anchor}
+			onentryclick={(entry) => {
+				selectedEvent = entry;
+				detailOpen = true;
+			}}
+		/>
 		{#if data.entries.length === 0}
 			<!-- C2: empty-state messaging for a {view} with no meetings or follow-ups. The grid
 			     above still renders (AC9) — this is an additive "no data yet" cue below it. -->
@@ -186,3 +409,47 @@
 		{/if}
 	</div>
 </div>
+
+<!-- Create event modal -->
+<EventFormModal
+	open={createOpen}
+	saving={createSaving}
+	serverError={createError}
+	onclose={() => {
+		createOpen = false;
+		createError = '';
+	}}
+	onsubmit={handleCreateEvent}
+/>
+
+<!-- Event detail modal -->
+<EventDetailModal
+	open={detailOpen}
+	event={selectedEvent}
+	saving={detailSaving}
+	serverError={detailError}
+	onclose={() => {
+		detailOpen = false;
+		selectedEvent = null;
+		detailError = '';
+	}}
+	onedit={() => {
+		detailOpen = false;
+		editOpen = true;
+	}}
+	ondelete={handleDeleteEvent}
+	onlink={handleLinkToLead}
+/>
+
+<!-- Edit event modal (reuses EventFormModal in edit mode) -->
+<EventFormModal
+	open={editOpen}
+	event={selectedEvent}
+	saving={detailSaving}
+	serverError={editError}
+	onclose={() => {
+		editOpen = false;
+		editError = '';
+	}}
+	onsubmit={handleEditEvent}
+/>

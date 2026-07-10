@@ -8,11 +8,13 @@
 	let {
 		view,
 		entries,
-		visibleDate
+		visibleDate,
+		onentryclick = undefined
 	}: {
 		view: CalendarView;
 		entries: CalendarEntry[];
 		visibleDate: Date;
+		onentryclick?: (entry: CalendarEntry) => void;
 	} = $props();
 
 	const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -104,7 +106,11 @@
 					</div>
 					<div class="flex flex-col gap-0.5">
 						{#each visibleEntries as entry (entry.id)}
-							<CalendarEntryChip {entry} detailed={view === 'week'} />
+							<CalendarEntryChip
+								{entry}
+								detailed={view === 'week'}
+								onentryclick={onentryclick ? () => onentryclick(entry) : undefined}
+							/>
 						{/each}
 						{#if overflowEntries.length > 0}
 							<Popover.Root>
@@ -120,7 +126,11 @@
 									class="flex max-h-72 w-56 flex-col gap-0.5 overflow-y-auto"
 								>
 									{#each overflowEntries as entry (entry.id)}
-										<CalendarEntryChip {entry} detailed />
+										<CalendarEntryChip
+											{entry}
+											detailed
+											onentryclick={onentryclick ? () => onentryclick(entry) : undefined}
+										/>
 									{/each}
 								</Popover.Content>
 							</Popover.Root>

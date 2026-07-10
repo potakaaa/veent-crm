@@ -1,0 +1,2 @@
+ALTER TABLE "crm_meetings" ADD COLUMN "lead_organizer_id" uuid;--> statement-breakpoint
+ALTER TABLE "crm_meetings" ADD CONSTRAINT "crm_meetings_lead_organizer_id_crm_organizers_id_fk" FOREIGN KEY ("lead_organizer_id") REFERENCES "public"."crm_organizers"("id") ON DELETE set null ON UPDATE no action;

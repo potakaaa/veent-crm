@@ -2,10 +2,12 @@
 	import Avatar from '$lib/components/shared/Avatar.svelte';
 	import PlatformBadge from '$lib/components/shared/PlatformBadge.svelte';
 	import EventBadge from '$lib/components/shared/EventBadge.svelte';
+	import CompetitorBadge from '$lib/components/shared/CompetitorBadge.svelte';
 	import AppealScoreBadge from '$lib/components/AppealScoreBadge.svelte';
 	import StageSelect from './StageSelect.svelte';
 	import { BOARD_STAGES, stageColor, stageLabel } from '$lib/utils/stages';
 	import { riskMeta } from '$lib/utils/risk';
+	import { resolveAvatarColor } from '$lib/design/tokens';
 	import type { Lead, Stage, User } from '$lib/types';
 
 	// Loader attaches derived `appealScore` to each lead at runtime (spread + extra field);
@@ -14,6 +16,7 @@
 
 	let {
 		leads,
+		isFiltering = false,
 		totalsPerStage = {},
 		loadingPerStage = {},
 		users,
@@ -21,6 +24,7 @@
 		onLoadMore
 	}: {
 		leads: LeadWithAppeal[];
+		isFiltering?: boolean;
 		totalsPerStage?: Partial<Record<Stage, number>>;
 		loadingPerStage?: Partial<Record<Stage, boolean>>;
 		users: User[];
@@ -31,6 +35,11 @@
 	const ownerName = (id: string | null) => users.find((u) => u.id === id)?.name ?? null;
 	const ownerActive = (id: string | null) =>
 		id ? (users.find((u) => u.id === id)?.active ?? false) : false;
+	// Per-AE color-coding accent bar (GitHub #275 — supersedes never-built PIPE-4 Section B).
+	const ownerColor = (id: string | null) => {
+		const u = id ? users.find((x) => x.id === id) : undefined;
+		return resolveAvatarColor(u?.color, u?.name);
+	};
 
 	const columns = $derived(
 		BOARD_STAGES.map((stage) => {
@@ -53,29 +62,6 @@
 
 	let dragId = $state<string | null>(null);
 
-	// A1: only show the right-edge scroll fade when the board actually overflows
-	// horizontally, so it never renders over blank trailing canvas on wide screens.
-	let scrollEl = $state<HTMLElement | null>(null);
-	let canScroll = $state(false);
-
-	function checkScroll() {
-		if (scrollEl) canScroll = scrollEl.scrollWidth > scrollEl.clientWidth + 1;
-	}
-
-	// Re-check when the board data changes (columns/cards added or removed).
-	$effect(() => {
-		void columns;
-		checkScroll();
-	});
-
-	// Re-check on viewport/layout resize.
-	$effect(() => {
-		if (!scrollEl) return;
-		const ro = new ResizeObserver(() => checkScroll());
-		ro.observe(scrollEl);
-		return () => ro.disconnect();
-	});
-
 	function drop(stage: Stage) {
 		if (dragId && onMove) onMove(dragId, stage);
 		dragId = null;
@@ -93,21 +79,15 @@
 	}
 </script>
 
-<!-- Scroll region wrapper — a right-edge fade cues that the board scrolls horizontally (A1). -->
 <div class="relative min-h-0 flex-1">
-	<div
-		bind:this={scrollEl}
-		class="flex h-full gap-3.5 overflow-x-auto pb-2"
-		role="list"
-		aria-label="Pipeline stages"
-	>
+	<div class="flex h-full gap-3.5 overflow-x-auto pb-2" role="list" aria-label="Pipeline stages">
 		{#each columns as col (col.stage)}
 			{@const total = totalsPerStage[col.stage] ?? col.cards.length}
 			{@const loading = loadingPerStage[col.stage] ?? false}
 			{@const hasMore = col.cards.length < total}
 			<!-- svelte-ignore a11y_no_static_element_interactions -->
 			<div
-				class="flex min-w-[260px] flex-1 flex-col"
+				class="flex w-[380px] shrink-0 flex-col"
 				role="listitem"
 				aria-label="{stageLabel(col.stage)} stage — drop target"
 				ondragover={(e) => e.preventDefault()}
@@ -153,7 +133,14 @@
 							draggable="true"
 							ondragstart={() => (dragId = c.id)}
 							class="cursor-grab rounded-[10px] border border-hairline bg-panel shadow-frame hover:shadow-raised"
+							style={c.ownerId
+								? `border-left-width:3px;border-left-color:${ownerColor(c.ownerId)}`
+								: undefined}
 						>
+							<!-- Per-AE accent bar (GitHub #275) — expressed as the card's own left
+							     border (not an absolutely-positioned overlay), so it naturally follows
+							     rounded-[10px] with zero overflow/clipping risk; top/right/bottom stay
+							     border-hairline via the class, only left is overridden inline. -->
 							<a
 								href="/leads/{c.id}"
 								draggable="false"
@@ -172,14 +159,11 @@
 									{/if}
 								</div>
 								<div class="mt-1.5 flex items-center gap-1.5">
-									<span
-										class="shrink-0 rounded-[4px] bg-panel-sunken px-[5px] py-px font-mono text-[9px] text-ink-400"
-										>{c.category}</span
-									>
 									<span class="truncate font-mono text-[10.5px] text-ink-300"
 										>{c.eventName ?? '—'}{c.eventDate ? ` · ${c.eventDate}` : ''}</span
 									>
 									<EventBadge date={c.eventDate} />
+									<CompetitorBadge platform={c.currentPlatform} />
 								</div>
 								{#if risk.atRisk}
 									<div class="mt-2.5 flex items-center gap-[7px]">
@@ -196,7 +180,7 @@
 								{/if}
 								<div class="mt-2.5 flex items-center gap-[7px] border-t border-panel-sunken pt-2.5">
 									<span class="relative shrink-0">
-										<Avatar name={ownerName(c.ownerId)} />
+										<Avatar name={ownerName(c.ownerId)} color={ownerColor(c.ownerId)} />
 										<span
 											class="absolute -bottom-px -right-px h-[7px] w-[7px] rounded-full border-[1.5px] border-white"
 											style="background:{ownerActive(c.ownerId) ? '#22c55e' : '#b7b1bc'}"
@@ -217,7 +201,11 @@
 						</div>
 					{/each}
 
-					{#if hasMore}
+					{#if col.cards.length === 0 && isFiltering}
+						<p class="px-1 py-3 font-mono text-[11px] text-ink-300">No results</p>
+					{/if}
+
+					{#if hasMore && !isFiltering}
 						<div use:sentinel={col.stage} class="flex items-center justify-center py-2">
 							{#if loading}
 								<span class="font-mono text-[11px] text-ink-400">Loading…</span>
@@ -232,10 +220,4 @@
 			</div>
 		{/each}
 	</div>
-	{#if canScroll}
-		<div
-			class="pointer-events-none absolute inset-y-0 right-0 w-10 bg-gradient-to-l from-canvas to-transparent"
-			aria-hidden="true"
-		></div>
-	{/if}
 </div>

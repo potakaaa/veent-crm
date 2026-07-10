@@ -19,7 +19,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		throw error(400, parsed.error.issues[0]?.message ?? 'Invalid payload');
 	}
 
-	const { name, email, role } = parsed.data;
+	const { firstName, lastName, email, role } = parsed.data;
 
 	// super_manager is a singleton reachable ONLY via the promote-super flow —
 	// never created directly through the add-rep path.
@@ -29,7 +29,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 	let user;
 	try {
-		user = await createUser({ name, email, role });
+		user = await createUser({ firstName, lastName, email, role });
 	} catch (err) {
 		// Unique constraint violation on crm_users.email → 409
 		if (err && typeof err === 'object' && 'code' in err && err.code === '23505') {

@@ -3,6 +3,7 @@ import type { RequestHandler } from './$types';
 import { leadUpdateSchema } from '$lib/zod/schemas';
 import { getLead, updateLead } from '$lib/server/db/leads';
 import { canEditLead } from '$lib/utils/permissions';
+import { syncLeadDatesToNextcloud } from '$lib/server/n8n/calendar-sync';
 
 export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 	if (!locals.user) throw error(401, 'Unauthorized');
@@ -27,6 +28,8 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 		id: locals.user.id,
 		email: locals.user.email,
 		name: locals.user.name,
+		firstName: locals.user.firstName,
+		lastName: locals.user.lastName,
 		role: locals.user.role,
 		active: true
 	};
@@ -37,7 +40,6 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 		params.id,
 		{
 			name: data.name,
-			category: data.category,
 			platform: data.platform,
 			location: data.location || undefined,
 			pageUrl: data.pageUrl || undefined,
@@ -70,11 +72,35 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			serviceFeePct: data.serviceFeePct,
 			serviceFeePerTicketPesos: data.serviceFeePerTicketPesos,
 			bankChargesAbsorbed: data.bankChargesAbsorbed,
-			hasFutureEvents: data.hasFutureEvents
+			hasFutureEvents: data.hasFutureEvents,
+			currentPlatform:
+				data.currentPlatform === undefined ? undefined : data.currentPlatform || null,
+			competitorNotes:
+				data.competitorNotes === undefined ? undefined : data.competitorNotes || null,
+			// Done-stage post-event revenue (GitHub #273) — forward only when present so a
+			// normal edit never wipes it. No change to canEditLead gate above — it now
+			// covers revenue edits automatically.
+			revenueCents: data.revenueCents === undefined ? undefined : data.revenueCents,
+			currency: data.currency === undefined ? undefined : data.currency
 		},
 		locals.user.id
 	);
 
 	if (!lead) throw error(404, 'Lead not found');
+
+	// Only sync when date fields changed or existing UIDs need to be cleared.
+	const datesChanged =
+		lead.goLiveDate !== (existing.goLiveDate ?? null) ||
+		lead.eventDate !== (existing.eventDate ?? null);
+	const hasUids = !!(existing.nextcloudGoLiveUid || existing.nextcloudEventUid);
+	if (datesChanged || hasUids) {
+		void syncLeadDatesToNextcloud(lead, {
+			goLiveDate: existing.goLiveDate ?? null,
+			eventDate: existing.eventDate ?? null,
+			nextcloudGoLiveUid: existing.nextcloudGoLiveUid ?? null,
+			nextcloudEventUid: existing.nextcloudEventUid ?? null
+		}).catch((e) => console.error('[NCAL-3] lead date sync failed:', e));
+	}
+
 	return json({ id: lead.id, name: lead.name });
 };

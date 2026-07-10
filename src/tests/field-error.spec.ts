@@ -65,11 +65,15 @@ describe('field-error ARIA wiring (B4 — AC6 non-e2e proof)', () => {
 	});
 
 	it('wires real userFormSchema.flatten().fieldErrors output (Team invite)', () => {
-		const parsed = userFormSchema.safeParse({ name: '', email: 'not-an-email', role: 'rep' });
+		const parsed = userFormSchema.safeParse({
+			firstName: '',
+			email: 'not-an-email',
+			role: 'rep'
+		});
 		expect(parsed.success).toBe(false);
 		if (parsed.success) return;
 		const fieldErrors = parsed.error.flatten().fieldErrors;
-		expect(fieldErrorAttrs('rep-name', fieldErrors.name)['aria-invalid']).toBe('true');
+		expect(fieldErrorAttrs('rep-first-name', fieldErrors.firstName)['aria-invalid']).toBe('true');
 		expect(fieldErrorAttrs('rep-email', fieldErrors.email)['aria-describedby']).toBe(
 			'rep-email-error'
 		);

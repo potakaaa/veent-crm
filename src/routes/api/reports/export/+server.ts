@@ -2,6 +2,7 @@ import type { RequestHandler } from './$types';
 import { db } from '$lib/server/db';
 import { crmLeads, crmUsers, crmActivities, crmMeetings } from '$lib/server/db/schema';
 import { eq, isNull, isNotNull, and, count, gte, lte, sql, inArray } from 'drizzle-orm';
+import { formatFullName } from '$lib/utils/format-name';
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -40,11 +41,15 @@ export const GET: RequestHandler = async ({ url }) => {
 		// All active reps (optionally filtered to one)
 		const userConds = [];
 		if (repId) userConds.push(eq(crmUsers.id, repId));
-		const users = await db
-			.select({ id: crmUsers.id, name: crmUsers.name })
+		const userRows = await db
+			.select({ id: crmUsers.id, firstName: crmUsers.firstName, lastName: crmUsers.lastName })
 			.from(crmUsers)
 			.where(userConds.length ? and(...userConds) : undefined)
-			.orderBy(crmUsers.name);
+			.orderBy(crmUsers.firstName);
+		const users = userRows.map((u) => ({
+			id: u.id,
+			name: formatFullName(u.firstName, u.lastName)
+		}));
 
 		// Touches + replies per rep in date range
 		const touchConds = [isNull(crmLeads.deletedAt)];
@@ -204,9 +209,13 @@ export const GET: RequestHandler = async ({ url }) => {
 		.from(crmLeads)
 		.where(and(isNull(crmLeads.deletedAt), inArray(crmLeads.id, leadIds)));
 
-	const users = await db.select({ id: crmUsers.id, name: crmUsers.name }).from(crmUsers);
+	const userRows = await db
+		.select({ id: crmUsers.id, firstName: crmUsers.firstName, lastName: crmUsers.lastName })
+		.from(crmUsers);
 
-	const userMap = Object.fromEntries(users.map((u) => [u.id, u.name]));
+	const userMap = Object.fromEntries(
+		userRows.map((u) => [u.id, formatFullName(u.firstName, u.lastName)])
+	);
 	const touchMap = Object.fromEntries(
 		touchRows.map((r) => [r.leadId, { touches: Number(r.touches), replied: Number(r.replied) > 0 }])
 	);

@@ -42,9 +42,9 @@ describe('meetingFormSchema', () => {
 		expect(r.success).toBe(true);
 	});
 
-	it('rejects a missing leadId', () => {
+	it('accepts a missing leadId (standalone meeting)', () => {
 		const r = meetingFormSchema.safeParse({ startAt: '2026-07-10T14:00:00Z' });
-		expect(r.success).toBe(false);
+		expect(r.success).toBe(true);
 	});
 
 	it('rejects a non-uuid leadId', () => {

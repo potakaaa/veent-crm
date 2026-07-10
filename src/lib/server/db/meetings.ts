@@ -164,7 +164,7 @@ export async function getMeetingDetail(id: string): Promise<Meeting | null> {
 		})
 		.from(crmMeetings)
 		.leftJoin(crmUsers, eq(crmMeetings.organizerId, crmUsers.id))
-		.innerJoin(crmLeads, eq(crmMeetings.leadId, crmLeads.id))
+		.leftJoin(crmLeads, eq(crmMeetings.leadId, crmLeads.id))
 		.leftJoin(crmOrganizers, eq(crmMeetings.leadOrganizerId, crmOrganizers.id))
 		.where(and(eq(crmMeetings.id, id), isNull(crmMeetings.deletedAt)))
 		.limit(1);
@@ -224,7 +224,7 @@ export async function listAllMeetings(): Promise<Meeting[]> {
 		})
 		.from(crmMeetings)
 		.leftJoin(crmUsers, eq(crmMeetings.organizerId, crmUsers.id))
-		.innerJoin(crmLeads, eq(crmMeetings.leadId, crmLeads.id))
+		.leftJoin(crmLeads, eq(crmMeetings.leadId, crmLeads.id))
 		.where(isNull(crmMeetings.deletedAt))
 		.orderBy(desc(crmMeetings.startAt));
 
@@ -291,7 +291,7 @@ export async function listMeetingsPaginated(
 			})
 			.from(crmMeetings)
 			.leftJoin(crmUsers, eq(crmMeetings.organizerId, crmUsers.id))
-			.innerJoin(crmLeads, eq(crmMeetings.leadId, crmLeads.id))
+			.leftJoin(crmLeads, eq(crmMeetings.leadId, crmLeads.id))
 			.leftJoin(crmOrganizers, eq(crmMeetings.leadOrganizerId, crmOrganizers.id))
 			.where(where)
 			// asc(id) tiebreaker ALWAYS present (both directions) so pages never dup/skip.
@@ -339,7 +339,7 @@ export async function getMeeting(
 // ---------------------------------------------------------------------------
 
 export async function createMeeting(input: {
-	leadId: string;
+	leadId?: string | null;
 	startAt: Date;
 	organizerId?: string | null;
 	leadOrganizerId?: string | null;
@@ -353,7 +353,7 @@ export async function createMeeting(input: {
 		const [row] = await tx
 			.insert(crmMeetings)
 			.values({
-				leadId: input.leadId,
+				leadId: input.leadId ?? null,
 				startAt: input.startAt,
 				organizerId: input.organizerId ?? null,
 				leadOrganizerId: input.leadOrganizerId ?? null,

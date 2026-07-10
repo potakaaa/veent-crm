@@ -13,7 +13,7 @@
 	import type { Meeting, User } from '$lib/types';
 
 	export interface MeetingFormPayload {
-		leadId: string;
+		leadId: string | null;
 		startAt: string; // ISO
 		organizerId?: string;
 		leadOrganizerId?: string | null;
@@ -41,7 +41,7 @@
 	}: {
 		open: boolean;
 		users: User[];
-		leadId?: string;
+		leadId?: string | null;
 		leadOrganizerId?: string | null;
 		leadOrganizerName?: string;
 		meeting?: Meeting | null;
@@ -115,10 +115,6 @@
 	function submit() {
 		fieldErrors = {};
 		const effectiveLeadId = leadId ?? selectedLeadId;
-		if (!effectiveLeadId) {
-			fieldErrors = { leadId: 'Pick a lead for this meeting.' };
-			return;
-		}
 		if (!startLocal) {
 			fieldErrors = { startAt: 'Set a date and time.' };
 			return;
@@ -129,7 +125,7 @@
 			return;
 		}
 		onsubmit({
-			leadId: effectiveLeadId,
+			leadId: effectiveLeadId || null,
 			startAt: startAt.toISOString(),
 			// On edit keep the empty-string value so unassigning is distinct from
 			// "field untouched"; on create collapse empty to undefined (omit).

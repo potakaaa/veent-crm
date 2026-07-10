@@ -45,9 +45,11 @@
 	let backdrop = $state<HTMLDivElement | null>(null);
 
 	// Token matcher. ORDER MATTERS: /repfirst & /replast MUST come before the bare /rep
-	// alternative (/rep is a literal prefix of both), and the (?![a-zA-Z]) lookahead stops
-	// /rep matching as a partial prefix inside a longer word — same collision fillTemplate
-	// solves via replace-ordering (see src/lib/data/templates.ts).
+	// alternative (/rep is a literal prefix of both). The (?![a-zA-Z]) lookahead prevents
+	// /rep from matching inside longer words (e.g. /reports) — a collision fillTemplate
+	// does NOT guard against (it uses bare .replaceAll with no word boundary). This
+	// means the editor's highlighting is intentionally more conservative than
+	// fillTemplate's actual substitution behavior (accepted residual, see plan).
 	const TOKEN_RE = /\/(repfirst|replast|orgname|event|rep)(?![a-zA-Z])/g;
 
 	type Segment = { text: string; token: boolean };
@@ -224,6 +226,10 @@
 			onkeyup={computeSuggestions}
 			onclick={computeSuggestions}
 			onscroll={syncScroll}
+			onblur={() => {
+				suggestions = [];
+				dismissedWord = null;
+			}}
 			style="caret-color: var(--color-ink);"
 			class={cn(
 				sharedBox,

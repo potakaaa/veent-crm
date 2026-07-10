@@ -158,9 +158,11 @@
 					<div class="flex min-w-0 items-center lg:contents">
 						<Avatar name={ownerName(l.ownerId)} color={ownerColor(l.ownerId)} />
 					</div>
-					<div class="flex items-center lg:contents">
+					<div class="flex items-center">
 						{#if !isClosed(l.stage)}
 							<AgeBadge label={l.age.label} type={l.age.type} />
+						{:else}
+							<span class="text-ink-300">—</span>
 						{/if}
 					</div>
 					<div class="flex items-center lg:contents"><PlatformBadge platform={l.platform} /></div>

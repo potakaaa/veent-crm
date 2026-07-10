@@ -107,7 +107,7 @@
 		<select
 			bind:value={selectedId}
 			disabled={busy || available.length === 0}
-			class="h-[32px] flex-1 rounded-control border border-hairline bg-panel px-2 font-mono text-[12.5px] text-ink focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
+			class="h-[32px] flex-1 rounded-control border border-hairline bg-panel py-0 pl-2 pr-7 font-mono text-[12.5px] text-ink focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
 		>
 			<option value="">
 				{available.length === 0 ? 'All categories assigned' : 'Add category…'}

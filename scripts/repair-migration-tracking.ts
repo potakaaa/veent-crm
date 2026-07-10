@@ -19,7 +19,7 @@ import { createHash } from 'crypto';
 import { readFileSync } from 'fs';
 import postgres from 'postgres';
 
-// All migrations from journal (idx 0–28)
+// All migrations from journal (idx 0–36)
 const ALL_MIGRATIONS = [
 	{ idx: 0, tag: '0000_medical_betty_ross', when: 1782373222845 },
 	{ idx: 1, tag: '0001_acoustic_malice', when: 1782376448198 },
@@ -47,10 +47,17 @@ const ALL_MIGRATIONS = [
 	{ idx: 23, tag: '0023_sharp_frightful_four', when: 1783296559797 },
 	{ idx: 24, tag: '0024_glamorous_blob', when: 1783298831035 },
 	{ idx: 25, tag: '0025_mature_aaron_stack', when: 1783308740036 },
-	// 0026: crm_categories + crm_lead_categories tables — already applied (IF NOT EXISTS pattern, tables exist)
 	{ idx: 26, tag: '0026_cat1_add_tables', when: 1783308741036 },
-	// 0027: data migration — category column already gone; mark applied so drizzle skips it
-	{ idx: 27, tag: '0027_cat1_data_migrate', when: 1783308742036 }
+	{ idx: 27, tag: '0027_cat1_data_migrate', when: 1783308742036 },
+	{ idx: 28, tag: '0028_cat1_drop_enum_column', when: 1783308743036 },
+	{ idx: 29, tag: '0029_cat1_partial_name_idx', when: 1783308744036 },
+	{ idx: 30, tag: '0030_careless_captain_britain', when: 1783401304843 },
+	{ idx: 31, tag: '0031_nav2_competitor_fields', when: 1783405500000 },
+	{ idx: 32, tag: '0032_thick_jamie_braddock', when: 1783403762805 },
+	{ idx: 33, tag: '0033_name_split_first_last', when: 1783406000000 },
+	{ idx: 34, tag: '0034_user_color', when: 1783407000000 },
+	{ idx: 35, tag: '0035_done_stage_revenue', when: 1783408000000 },
+	{ idx: 36, tag: '0036_ncal3_uid_columns', when: 1783409000000 }
 ];
 
 const DATABASE_URL = process.env.DATABASE_URL;

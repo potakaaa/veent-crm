@@ -182,7 +182,7 @@ export type ActivityForm = z.infer<typeof activityFormSchema>;
 
 // --- Create a meeting (API endpoint: POST /api/meetings) --------------------
 export const meetingFormSchema = z.object({
-	leadId: z.string().uuid(),
+	leadId: z.string().uuid().optional().nullable(),
 	startAt: z.string().datetime(), // ISO datetime
 	organizerId: z.string().uuid().optional(),
 	// Lead's linked recurring-organizer entity (crm_organizers, GitHub #188). Distinct from

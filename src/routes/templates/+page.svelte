@@ -9,7 +9,7 @@
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
-	import { Textarea } from '$lib/components/ui/textarea';
+	import TemplateBodyEditor from '$lib/components/templates/TemplateBodyEditor.svelte';
 	import { Select, SelectTrigger, SelectContent, SelectItem } from '$lib/components/ui/select';
 	import ComboboxFreetext from '$lib/components/ui/combobox-freetext/ComboboxFreetext.svelte';
 	import { toasts } from '$lib/stores/toasts.svelte';
@@ -520,7 +520,7 @@
 <Modal
 	open={formOpen}
 	title={editingId ? 'Edit template' : 'Add template'}
-	subtitle="Use {'{{organizerName}}'}, {'{{eventName}}'}, {'{{repName}}'}, {'{{repFirstName}}'}, and {'{{repLastName}}'} as placeholders."
+	subtitle="Use /orgname, /event, /rep, /repfirst, and /replast as placeholders. (Legacy {'{{organizerName}}'}-style tokens still work.)"
 	width={520}
 	onclose={() => (formOpen = false)}
 >
@@ -540,12 +540,7 @@
 		</div>
 		<div class="grid gap-1.5">
 			<Label for="tpl-body">Message</Label>
-			<Textarea
-				id="tpl-body"
-				bind:value={body}
-				rows={6}
-				placeholder="Hi {'{{organizerName}}'}, …"
-			/>
+			<TemplateBodyEditor id="tpl-body" bind:value={body} rows={6} placeholder="Hi /orgname, …" />
 		</div>
 		{#if formError}<p class="text-[12px] text-overdue">{formError}</p>{/if}
 	</div>

@@ -69,4 +69,13 @@ describe('buildSeedRows (all 9 legacy entries)', () => {
 			expect(r.body).not.toContain('{{event}}');
 		}
 	});
+
+	it('emits new /orgname and /event slash syntax and no {{organizerName}}/{{eventName}} tokens (AC7)', () => {
+		expect(rows.some((r) => r.body.includes('/orgname'))).toBe(true);
+		expect(rows.some((r) => r.body.includes('/event'))).toBe(true);
+		for (const r of rows) {
+			expect(r.body).not.toContain('{{organizerName}}');
+			expect(r.body).not.toContain('{{eventName}}');
+		}
+	});
 });

@@ -13,7 +13,7 @@
 	import type { Meeting, User } from '$lib/types';
 
 	export interface MeetingFormPayload {
-		leadId: string;
+		leadId: string | null;
 		startAt: string; // ISO
 		organizerId?: string;
 		leadOrganizerId?: string | null;
@@ -41,7 +41,7 @@
 	}: {
 		open: boolean;
 		users: User[];
-		leadId?: string;
+		leadId?: string | null;
 		leadOrganizerId?: string | null;
 		leadOrganizerName?: string;
 		meeting?: Meeting | null;
@@ -115,10 +115,6 @@
 	function submit() {
 		fieldErrors = {};
 		const effectiveLeadId = leadId ?? selectedLeadId;
-		if (!effectiveLeadId) {
-			fieldErrors = { leadId: 'Pick a lead for this meeting.' };
-			return;
-		}
 		if (!startLocal) {
 			fieldErrors = { startAt: 'Set a date and time.' };
 			return;
@@ -129,7 +125,7 @@
 			return;
 		}
 		onsubmit({
-			leadId: effectiveLeadId,
+			leadId: effectiveLeadId || null,
 			startAt: startAt.toISOString(),
 			// On edit keep the empty-string value so unassigning is distinct from
 			// "field untouched"; on create collapse empty to undefined (omit).
@@ -151,12 +147,15 @@
 	{open}
 	{onclose}
 	title={isEdit ? 'Edit meeting' : 'New meeting'}
-	subtitle={isEdit ? undefined : 'Log a meeting with this lead'}
+	subtitle={isEdit ? undefined : 'Log a meeting'}
 	width={520}
 >
 	{#if !leadId}
 		<div class="mb-3.5 grid gap-1.5">
-			<Label for="mtg-lead">Lead</Label>
+			<div class="flex items-baseline gap-1.5">
+				<Label for="mtg-lead">Lead</Label>
+				<span class="text-xs text-muted-foreground">optional</span>
+			</div>
 			<LeadCombobox
 				mode="assign"
 				bind:value={selectedLeadId}
@@ -164,6 +163,7 @@
 				id="mtg-lead"
 				{...fieldErrorAttrs('mtg-lead', fieldErrors.leadId)}
 			/>
+			<p class="text-xs text-muted-foreground">Leave blank to log a standalone meeting.</p>
 			<FieldError id="mtg-lead" errors={fieldErrors.leadId} />
 		</div>
 	{/if}
@@ -181,7 +181,10 @@
 	</div>
 
 	<div class="mb-3.5 grid gap-1.5">
-		<Label for="mtg-organizer">Organizer</Label>
+		<div class="flex items-baseline gap-1.5">
+			<Label for="mtg-organizer">Organizer</Label>
+			<span class="text-xs text-muted-foreground">optional</span>
+		</div>
 		<Select type="single" bind:value={organizerId}>
 			<SelectTrigger id="mtg-organizer" class="w-full">{organizerName}</SelectTrigger>
 			<SelectContent>
@@ -194,7 +197,10 @@
 	</div>
 
 	<div class="mb-3.5 grid gap-1.5">
-		<Label for="mtg-lead-organizer">Organizer / Contact</Label>
+		<div class="flex items-baseline gap-1.5">
+			<Label for="mtg-lead-organizer">Organizer / Contact</Label>
+			<span class="text-xs text-muted-foreground">optional</span>
+		</div>
 		<OrganizerCombobox
 			id="mtg-lead-organizer"
 			bind:value={selectedLeadOrganizerId}
@@ -206,7 +212,10 @@
 	</div>
 
 	<div class="mb-3.5 grid gap-1.5">
-		<Label id="mtg-attendees-label">Attendees</Label>
+		<div class="flex items-baseline gap-1.5">
+			<Label id="mtg-attendees-label">Attendees</Label>
+			<span class="text-xs text-muted-foreground">optional</span>
+		</div>
 		<div class="max-h-32 overflow-y-auto rounded-[8px] border border-hairline bg-panel-subtle p-2">
 			<div class="flex flex-wrap gap-1.5" role="group" aria-labelledby="mtg-attendees-label">
 				{#each activeUsers as u (u.id)}
@@ -227,7 +236,10 @@
 	</div>
 
 	<div class="mb-3.5 grid gap-1.5">
-		<Label for="mtg-url">Meeting URL</Label>
+		<div class="flex items-baseline gap-1.5">
+			<Label for="mtg-url">Meeting URL</Label>
+			<span class="text-xs text-muted-foreground">optional</span>
+		</div>
 		<Input
 			id="mtg-url"
 			bind:value={meetingUrl}
@@ -237,7 +249,10 @@
 	</div>
 
 	<div class="mb-3.5 grid gap-1.5">
-		<Label for="mtg-venue">Venue</Label>
+		<div class="flex items-baseline gap-1.5">
+			<Label for="mtg-venue">Venue</Label>
+			<span class="text-xs text-muted-foreground">optional</span>
+		</div>
 		<ComboboxFreetext
 			id="mtg-venue"
 			bind:value={venue}
@@ -247,12 +262,18 @@
 	</div>
 
 	<div class="mb-3.5 grid gap-1.5">
-		<Label for="mtg-outcome">Outcome</Label>
+		<div class="flex items-baseline gap-1.5">
+			<Label for="mtg-outcome">Outcome</Label>
+			<span class="text-xs text-muted-foreground">optional</span>
+		</div>
 		<Input id="mtg-outcome" bind:value={outcome} placeholder="e.g. Agreed to a follow-up demo" />
 	</div>
 
 	<div class="grid gap-1.5">
-		<Label for="mtg-notes">Notes</Label>
+		<div class="flex items-baseline gap-1.5">
+			<Label for="mtg-notes">Notes</Label>
+			<span class="text-xs text-muted-foreground">optional</span>
+		</div>
 		<Textarea id="mtg-notes" bind:value={notes} class="min-h-16 resize-y" />
 	</div>
 

@@ -36,7 +36,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 	const { data } = parsed;
 	const meeting = await createMeeting({
-		leadId: data.leadId,
+		leadId: data.leadId ?? null,
 		startAt: new Date(data.startAt),
 		// Any authenticated user may create; organizer defaults to the creator.
 		organizerId: data.organizerId ?? locals.user.id,

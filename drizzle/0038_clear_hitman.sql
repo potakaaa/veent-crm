@@ -1,0 +1,2 @@
+DROP INDEX "crm_categories_name_lower_idx";--> statement-breakpoint
+CREATE UNIQUE INDEX "crm_categories_name_lower_idx" ON "crm_categories" USING btree (LOWER("name")) WHERE "crm_categories"."deleted_at" is null;

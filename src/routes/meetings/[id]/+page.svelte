@@ -168,14 +168,19 @@
 						<Icon name="clock" size={13} />
 						{formatTime(meeting.startAt)}
 					</span>
-					<span class="text-ink-200">·</span>
-					<a
-						href={`/leads/${meeting.leadId}`}
-						class="focus-ring inline-flex items-center gap-1 rounded-chip text-[13px] font-semibold text-primary hover:underline"
-					>
-						<Icon name="leads" size={13} />
-						{meeting.leadName ?? 'View lead'}
-					</a>
+					{#if meeting.leadId}
+						<span class="text-ink-200">·</span>
+						<a
+							href={`/leads/${meeting.leadId}`}
+							class="focus-ring inline-flex items-center gap-1 rounded-chip text-[13px] font-semibold text-primary hover:underline"
+						>
+							<Icon name="leads" size={13} />
+							{meeting.leadName ?? 'View lead'}
+						</a>
+					{:else}
+						<span class="text-ink-200">·</span>
+						<span class="text-[13px] text-ink-400">No lead</span>
+					{/if}
 				</div>
 			</div>
 

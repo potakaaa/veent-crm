@@ -203,7 +203,9 @@ export async function getDueMeetingReminders(
 
 			out.push({
 				meetingId: r.meetingId,
-				leadId: r.leadId,
+				// innerJoin(crmLeads) above guarantees a non-null leadId for reminder candidates
+				// (standalone meetings have no lead and never enter this reminder query).
+				leadId: r.leadId as string,
 				leadName: r.leadName,
 				startAt: r.startAt.toISOString(),
 				meetingUrl: r.meetingUrl,

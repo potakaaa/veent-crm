@@ -174,7 +174,8 @@ export const GET: RequestHandler = async ({ url }) => {
 	const leadIds = [
 		...new Set([
 			...touchRows.map((r) => r.leadId),
-			...meetingLeadRows.map((r) => r.leadId),
+			// Standalone meetings have a null leadId; drop them — the lead report is lead-scoped.
+			...meetingLeadRows.map((r) => r.leadId).filter((id): id is string => id !== null),
 			...reachedLeads.map((r) => r.id)
 		])
 	];

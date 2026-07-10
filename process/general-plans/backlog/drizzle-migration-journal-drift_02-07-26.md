@@ -163,3 +163,35 @@ first place. This is consistent with the existing drift, not a new regression, b
 the highest-numbered `.sql` file before generating/applying) is what surfaces this class of
 collision at merge time rather than at deploy time — worth re-running explicitly after every
 `git merge`/`git pull` that touches `drizzle/`, not just before `db:generate`.
+
+## Update 10-07-26 — snapshot-chain fully reconciled; db:generate working ✅
+
+During the standalone-meetings implementation (`standalone-meetings_10-07-26`), `bun run db:generate`
+was blocked again — the head snapshot `0036_snapshot.json` was missing 4 schema changes that had
+been applied via hand-written migrations (0033–0037) since the last valid snapshot:
+
+| Drift in 0036_snapshot.json | Source migration |
+|---|---|
+| `crm_users.name` still present; `first_name`, `last_name`, `color` missing | 0033–0034 |
+| `crm_lead_stage` enum missing `done` value | 0035 |
+| `crm_leads.revenue_cents` column missing | 0035 |
+| `crm_meetings.lead_id` marked `notNull: true` | 0037 |
+
+The worst drift was the `crm_users.name → first_name/last_name` split — drizzle-kit detected it
+as a phantom column rename and in non-TTY shells (scripts, CI) throws a hard error instead of
+prompting.
+
+**Fix applied (10-07-26):** Created `drizzle/meta/0037_snapshot.json` as the new corrected head
+snapshot with all 4 drifts resolved. `bun run db:generate` then ran cleanly and auto-generated
+`drizzle/0038_clear_hitman.sql` (DROP + recreate `crm_categories_name_lower_idx` — cosmetic
+expression casing `lower` → `LOWER`, functionally identical). On subsequent runs: "No schema
+changes, nothing to migrate."
+
+**Status: RESOLVED as of 10-07-26.** `bun run db:generate` is unblocked. Future schema changes
+should generate cleanly via `db:generate` — no more hand-written migrations needed for ordinary
+column/table additions.
+
+**Guardrail going forward:** after every `git merge`/`git pull` that touches `drizzle/`, run
+`bun run db:generate` once and verify it exits with "No schema changes" or only the expected diff.
+If it prompts interactively, the snapshot is drifted again — fix the head snapshot before
+generating the real migration.

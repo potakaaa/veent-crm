@@ -182,7 +182,8 @@ export interface MeetingAttendee {
 
 export interface Meeting {
 	id: string;
-	leadId: string;
+	/** Linked lead id; null for a standalone meeting (no lead). */
+	leadId: string | null;
 	/** Lead name — populated on the cross-lead /meetings list. */
 	leadName?: string;
 	organizerId: string | null;

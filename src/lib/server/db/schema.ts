@@ -351,9 +351,8 @@ export const crmMeetings = pgTable(
 	'crm_meetings',
 	{
 		id: uuid('id').primaryKey().defaultRandom(),
-		leadId: uuid('lead_id')
-			.notNull()
-			.references(() => crmLeads.id, { onDelete: 'cascade' }),
+		// Nullable: a standalone meeting has no linked lead (GitHub — standalone meetings).
+		leadId: uuid('lead_id').references(() => crmLeads.id, { onDelete: 'cascade' }),
 		// distinct FK (not just an attendee flag); null if the organizing user leaves
 		organizerId: uuid('organizer_id').references(() => crmUsers.id, { onDelete: 'set null' }),
 		// The lead's linked recurring-organizer entity (crm_organizers, GitHub #188).
